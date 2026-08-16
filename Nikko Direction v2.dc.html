@@ -1,0 +1,1363 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nikko Studio — Art Direction v1.1 (moodboard reconciled)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400..700;1,400..600&family=Archivo+Black&family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@1,6..72,300..500&family=Noto+Kufi+Arabic:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin:0; padding:0; background:#E4DCC8; }
+  body { font-family:'Archivo', Helvetica, Arial, sans-serif; color:#111110; -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:#2B45F0; text-decoration:none; border-bottom:1.5px solid #2B45F0; }
+  a:hover { color:#EE5439; border-bottom-color:#EE5439; }
+  ::selection { background:#FFD400; color:#111110; }
+  :focus-visible { outline:3px solid #EE5439; outline-offset:2px; }
+  @keyframes nk-blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  @keyframes nk-drift { 0%{transform:translateY(0)} 100%{transform:translateY(-6px)} }
+  @keyframes nk-roll { 0%{transform:translateY(-110%)} 100%{transform:translateY(410%)} }
+  @keyframes nk-jitter { 0%,88%,100%{transform:translateX(0)} 90%{transform:translateX(-5px)} 92%{transform:translateX(4px)} 94%{transform:translateX(-2px)} }
+  @keyframes nk-flicker { 0%,100%{opacity:0.20} 45%{opacity:0.32} 70%{opacity:0.15} }
+  @keyframes nk-vu { 0%{height:18%} 22%{height:82%} 41%{height:36%} 63%{height:94%} 82%{height:44%} 100%{height:22%} }
+  @keyframes nk-ground {
+    0%   { background-color:#F2ECDF }
+    20%  { background-color:#F9F3DB }
+    40%  { background-color:#FAEFE9 }
+    60%  { background-color:#EFF1FC }
+    80%  { background-color:#FAF1E0 }
+    100% { background-color:#F2ECDF }
+  }
+  @media (prefers-reduced-motion: reduce) { *{animation:none !important; transition:none !important} }
+</style>
+</helmet>
+
+<div style="background:#F2ECDF;min-height:100vh;position:relative;overflow-x:hidden;animation:nk-ground {{ groundSeconds }} ease-in-out infinite">
+
+  <div aria-hidden="true" style="position:fixed;inset:0;z-index:60;pointer-events:none;mix-blend-mode:multiply;background-image:url('data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'160\' height=\'160\'><filter id=\'n\'><feTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'3\'/></filter><rect width=\'160\' height=\'160\' filter=\'url(%23n)\' opacity=\'0.55\'/></svg>');opacity:{{ grainOpacity }}"></div>
+
+  <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#2B45F0"/><ellipse cx="50" cy="47" rx="27" ry="19" fill="#F2ECDF"/><rect x="23" y="47" width="54" height="6" fill="#111110"/><rect x="23" y="53" width="54" height="4" fill="#FFD400"/></svg></template>
+
+  <sc-if value="{{ showMargin }}" hint-placeholder-val="{{ true }}">
+    <div aria-hidden="true" style="position:fixed;left:14px;top:0;bottom:0;width:104px;z-index:40;pointer-events:none;display:flex;flex-direction:column;justify-content:center;gap:16px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#4A463C">
+      <div style="background:#E8E0CE;border:1.5px solid #111110;padding:6px 7px;transform:rotate(-2.5deg);line-height:1.5"><span style="color:#111110">№ 12587</span><br />TOKYO / SER.</div>
+      <div style="background:#F2ECDF;border:1.5px solid #111110;padding:6px 7px;transform:rotate(1.8deg);line-height:1.5"><span style="display:flex;gap:2px;align-items:flex-end;height:22px;margin-bottom:5px"><span style="width:2px;height:100%;background:#111110"></span><span style="width:4px;height:70%;background:#111110"></span><span style="width:2px;height:100%;background:#111110"></span><span style="width:5px;height:55%;background:#111110"></span><span style="width:2px;height:85%;background:#111110"></span><span style="width:3px;height:100%;background:#111110"></span><span style="width:2px;height:60%;background:#111110"></span><span style="width:6px;height:90%;background:#111110"></span></span>1983/05/12</div>
+      <div style="background:#FFD400;border:1.5px solid #111110;padding:6px 7px;transform:rotate(-1.2deg);line-height:1.5"><span style="color:#111110">¥3900</span><br />PAID / STAMPED</div>
+      <div style="background:#F2ECDF;border:1.5px solid #111110;padding:6px 7px;transform:rotate(2.4deg);line-height:1.5"><span style="border-bottom:1px dashed #111110;display:block;padding-bottom:4px;margin-bottom:4px">CUT HERE</span>BEIRUT 87 / 04</div>
+      <div style="background:#EE5439;border:1.5px solid #111110;padding:6px 7px;transform:rotate(-3deg);line-height:1.5"><span style="color:#F2ECDF">FILED</span><br /><span style="color:#F2ECDF;opacity:0.8">NKO—0421</span></div>
+    </div>
+  </sc-if>
+
+  <header style="position:sticky;top:0;z-index:50;background:#2B45F0;color:#F2ECDF;border-bottom:2px solid #111110">
+    <div style="max-width:1320px;margin:0 auto;padding:10px 32px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase">
+      <span style="font-weight:500">NIKKO STUDIO</span>
+      <span style="opacity:0.7">ART DIRECTION / SPEC 1.1</span>
+      <span style="opacity:0.7">NKO—2026—08—14</span>
+      <span style="display:flex;border:1.5px solid #F2ECDF;letter-spacing:0.1em">
+        <span style="padding:2px 8px;border-right:1.5px solid #F2ECDF">TOKYO 1983</span>
+        <span style="padding:2px 8px">BEIRUT 1987</span>
+      </span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:12px">
+        <span style="opacity:0.7">MODE</span>
+        <button type="button" onClick="{{ toggleMode }}" aria-pressed="{{ isAnalogue }}" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;background:#F2ECDF;color:#111110;border:2px solid #111110;padding:5px 12px;cursor:pointer;display:flex;align-items:center;gap:9px" style-hover="background:#FFD400">
+          <span style="width:9px;height:9px;background:#EE5439;display:inline-block;animation:nk-blink 1.4s steps(1) infinite"></span>{{ modeLabel }}
+        </button>
+      </span>
+    </div>
+  </header>
+
+  <section style="max-width:1320px;margin:0 auto;padding:0 32px">
+
+    <div style="position:relative;padding:64px 0 40px;border-bottom:2px solid #111110">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:48px;align-items:end">
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 28px">Plate 00 — Governing concept</p>
+          <h1 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(46px,7.4vw,116px);line-height:0.86;letter-spacing:-0.035em;text-transform:uppercase;margin:0">An inherited<br />machine full of<br /><span style="color:#EE5439">fragments</span></h1>
+          <p style="font-size:19px;line-height:1.5;max-width:44ch;margin:32px 0 0;text-wrap:pretty">A 1980s object has been reopened, rewired and filled with new stories. The machine logic is structural — <em style="font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:21px">open, inspect, tune, transmit, archive</em> — and the surface is a junk journal: cut paper, tape, annotation, scan. The site is the proof of the proposition. If it can't survive in your memory, it doesn't work.</p>
+          <div style="display:flex;flex-wrap:wrap;margin:32px 0 0;border:2px solid #111110;width:fit-content;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;box-shadow:5px 5px 0 #111110">
+            <div style="padding:10px 14px;border-right:2px solid #111110;background:#F2ECDF">Tokyo 1983<span style="display:block;font-size:9px;color:#4A463C;margin-top:3px">35.6895° N 139.6917° E</span></div>
+            <div style="padding:10px 14px;border-right:2px solid #111110;background:#F2ECDF">Beirut 1987<span style="display:block;font-size:9px;color:#4A463C;margin-top:3px">33.8938° N 35.5018° E</span></div>
+            <div style="padding:10px 14px;background:#FFD400">Origin<span style="display:block;font-size:9px;margin-top:3px">// Inheritance</span></div>
+          </div>
+        </div>
+        <div style="position:relative">
+          <img src="assets/collage-hero.png" alt="Nikko collage: archive fragments, Lebanese flag, cut-out figures, hand-lettered NIKKO" style="width:100%;display:block;border:2px solid #111110;filter:saturate(1.05) contrast(1.03)" />
+          <img src="assets/logo-cobalt.png" alt="Nikko Studio logo" style="position:absolute;left:-26px;bottom:-26px;width:132px;background:#F2ECDF;padding:10px;border:2px solid #111110" />
+          <p style="position:absolute;right:0;top:-30px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#111110;background:#FFD400;padding:3px 7px;border:1.5px solid #111110;transform:rotate(1.6deg)">Fig. 00 — source material, founder archive</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 01 — Visual grammar</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 40px">Five rules, no exceptions</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:0;border:2px solid #111110">
+        <div style="padding:24px;border-right:2px solid #111110;background:#F2ECDF">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#EE5439;letter-spacing:0.14em">R1</span>
+          <p style="margin:10px 0 0;font-size:16px;line-height:1.45"><strong>Cobalt carries the structure. Coral only punctuates.</strong> Cream is the room. Nothing shouts twice on one screen.</p>
+        </div>
+        <div style="padding:24px;border-right:2px solid #111110;background:#F2ECDF">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#EE5439;letter-spacing:0.14em">R2</span>
+          <p style="margin:10px 0 0;font-size:16px;line-height:1.45"><strong>Cut, arched or oval — never merely rounded.</strong> Radius is 0 or 50%; nothing in between, and no 999px capsules. Structure stays square; a container takes one clipped corner (dialect A) or an arched top (dialect C); small interactive things — buttons, chips, tags, avatars — are true ovals. Imagery is always torn and taped.</p>
+        </div>
+        <div style="padding:24px;border-right:2px solid #111110;background:#F2ECDF">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#EE5439;letter-spacing:0.14em">R3</span>
+          <p style="margin:10px 0 0;font-size:16px;line-height:1.45"><strong>Everything is catalogued.</strong> Every block wears a mono label: plate number, serial, date, status. Metadata is functional, never novelty.</p>
+        </div>
+        <div style="padding:24px;border-right:2px solid #111110;background:#F2ECDF">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#EE5439;letter-spacing:0.14em">R4</span>
+          <p style="margin:10px 0 0;font-size:16px;line-height:1.45"><strong>Brutal scale contrast.</strong> 11px mono sits in the same eyeline as 110px grotesk. The gap between them is the voice.</p>
+        </div>
+        <div style="padding:24px;background:#F2ECDF">
+          <span style="font-family:'DM Mono',monospace;font-size:11px;color:#EE5439;letter-spacing:0.14em">R5</span>
+          <p style="margin:10px 0 0;font-size:16px;line-height:1.45"><strong>Off register once per section.</strong> One thing tilted, taped or misprinted — never two. Asymmetry over a grid you can still feel.</p>
+        </div>
+      </div>
+
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C;margin:32px 0 14px">R2 specimens — how the boxiness breaks</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:20px">
+
+        <div>
+          <div style="background:#111110;clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);padding:2px"><div style="background:#F2ECDF;clip-path:polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);padding:20px 16px;min-height:104px;display:flex;align-items:flex-end"><span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase">Cut corner<br /><span style="color:#4A463C">18px, top right</span></span></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#4A463C;margin:9px 0 0">Preferred — reads sharp, not square</p>
+        </div>
+
+        <div>
+          <div style="border:2px solid #111110;border-radius:0 0 10px 0;background:#F2ECDF;padding:20px 16px;min-height:104px;display:flex;align-items:flex-end"><span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase">One soft corner<br /><span style="color:#4A463C">10px, bottom right</span></span></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#4A463C;margin:9px 0 0">Permitted — one corner, one object</p>
+        </div>
+
+        <div>
+          <div style="border:2px solid #111110;background:#F2ECDF;padding:20px 16px 26px;min-height:104px;display:flex;align-items:flex-end;position:relative;overflow:hidden"><span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase">Receipt notch<br /><span style="color:#4A463C">scalloped foot</span></span><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:-9px;height:18px;background-image:radial-gradient(circle 9px at 9px 9px, #F2ECDF 6.5px, #111110 6.5px, #111110 9px, transparent 9.5px);background-size:18px 18px;background-repeat:repeat-x"></span></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#4A463C;margin:9px 0 0">Permitted — artefact objects only</p>
+        </div>
+
+        <div>
+          <div style="border:2px solid #111110;background:#E8E0CE;padding:20px 16px;min-height:104px;display:flex;align-items:flex-end"><span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase">Square<br /><span style="color:#4A463C">0px, all four</span></span></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#4A463C;margin:9px 0 0">Structure only — plates, rules, bleed</p>
+        </div>
+
+        <div>
+          <div style="border:2px solid #4A463C;border-radius:16px;background:#E8E0CE;padding:20px 16px;min-height:104px;display:flex;align-items:flex-end;opacity:0.55"><span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:line-through;color:#4A463C">Uniform radius<br />16px, all four</span></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#4A463C;margin:9px 0 0">Rejected — this is every other studio</p>
+        </div>
+      </div>
+
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C;margin:40px 0 6px">R2 dialects — the same card, both ways</p>
+      <p style="font-size:16px;line-height:1.5;max-width:64ch;margin:0 0 18px;text-wrap:pretty">A is machine-shop: milled from one sheet, one clipped corner per object. C is the logo's geometry generalised — an ellipse cut in half is an arch, which is also Levantine architecture and a sunrise. Both are legal; a page may run either, but never both on the same object. Imagery is torn and taped in both dialects.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:20px">
+        <div style="background:#E8E0CE;border:2px solid #111110;padding:24px 22px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 16px">Dialect A — cut</p>
+          <div style="background:#111110;clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);padding:2px"><div style="background:#F2ECDF;clip-path:polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);padding:18px">
+            <p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 10px">CASE 04 / QATAR</p>
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:19px;line-height:1;text-transform:uppercase;margin:0 0 12px">A mural people queued for</p>
+            <span style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:12px 24px;border-radius:50%;position:relative;overflow:hidden"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:6px;height:3px;background:#FFD400"></span>Read the case</span>
+          </div></div>
+        </div>
+        <div style="background:#E8E0CE;border:2px solid #111110;padding:24px 22px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 16px">Dialect C — arched</p>
+          <div style="background:#F2ECDF;border:2px solid #111110;border-radius:50% 50% 6px 6px / 18% 18% 6px 6px;padding:26px 20px 18px;text-align:center">
+            <p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 10px">CASE 04 / QATAR</p>
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:19px;line-height:1;text-transform:uppercase;margin:0 0 12px">A mural people queued for</p>
+            <span style="display:inline-block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:10px 22px;border-radius:50%">Read the case</span>
+          </div>
+        </div>
+        <div style="background:#E8E0CE;border:2px solid #111110;padding:24px 22px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 16px">Both dialects — imagery</p>
+          <div style="position:relative;transform:rotate(-1.4deg)">
+            <div style="background:#F2ECDF;padding:10px 10px 12px;box-shadow:2px 3px 0 rgba(17,17,16,0.28);clip-path:polygon(0 3px, 6% 0, 22% 4px, 41% 0, 63% 5px, 84% 0, 100% 4px, calc(100% - 3px) 34%, 100% 68%, calc(100% - 5px) 100%, 76% calc(100% - 4px), 52% 100%, 27% calc(100% - 5px), 4% 100%, 0 72%, 4px 38%)">
+              <span style="display:block;height:104px;background-color:#4A463C;background-image:repeating-linear-gradient(28deg, rgba(242,236,223,0.22) 0 9px, rgba(17,17,16,0.3) 9px 18px)"></span>
+              <span style="display:block;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin-top:9px">DOHA / 2024 — SCRAP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0">Discipline — <span style="text-transform:none;letter-spacing:0.04em">arch the top edge only, once per section, on the object you want remembered. Mixed radii (8 here, 16 there) is the failure mode, not the arch.</span></p>
+
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C;margin:44px 0 6px">Levantine pattern, at scalloped-foot volume</p>
+      <p style="font-size:16px;line-height:1.5;max-width:64ch;margin:0 0 18px;text-wrap:pretty">Cement tile, tatreez, lantern and star tile, embroidered lattice — held to the same volume as the scallop: ink at 8–12% on paper, one pattern per page, never behind body copy. Grounds and dividers, not decoration.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px">
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:radial-gradient(circle 13px at 0 0, transparent 11.4px, rgba(17,17,16,0.34) 11.4px 12.6px, transparent 12.6px),radial-gradient(circle 13px at 100% 0, transparent 11.4px, rgba(17,17,16,0.34) 11.4px 12.6px, transparent 12.6px),radial-gradient(circle 13px at 0 100%, transparent 11.4px, rgba(17,17,16,0.34) 11.4px 12.6px, transparent 12.6px),radial-gradient(circle 13px at 100% 100%, transparent 11.4px, rgba(17,17,16,0.34) 11.4px 12.6px, transparent 12.6px);background-size:34px 34px"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Interlace / cement tile</span><br />Beirut floor. Big grounds.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:repeating-linear-gradient(45deg, rgba(17,17,16,0.3) 0 1.4px, transparent 1.4px 20px),repeating-linear-gradient(-45deg, rgba(17,17,16,0.3) 0 1.4px, transparent 1.4px 20px)"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Lattice / mashrabiya</span><br />Panel fills, forms.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:repeating-linear-gradient(60deg, rgba(17,17,16,0.26) 0 3px, transparent 3px 12px),repeating-linear-gradient(-60deg, rgba(17,17,16,0.26) 0 3px, transparent 3px 12px)"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Kilim zigzag</span><br />Dividers, 40px strips.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:radial-gradient(circle 11px at 50% 100%, rgba(17,17,16,0.22) 0 10px, transparent 10.6px);background-size:22px 22px"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Arch scale</span><br />The scallop, repeated.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:repeating-conic-gradient(from 45deg, rgba(17,17,16,0.16) 0 25%, transparent 0 50%);background-size:26px 26px"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Diamond check</span><br />Behind image scraps only.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:repeating-linear-gradient(90deg, transparent 0 3px, rgba(17,17,16,0.3) 3px 6px, transparent 6px 9px),repeating-linear-gradient(0deg, transparent 0 3px, rgba(17,17,16,0.3) 3px 6px, transparent 6px 9px);background-size:9px 9px"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Tatreez / cross-stitch</span><br />Counted grid. Bands, never fields.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:repeating-linear-gradient(45deg, rgba(238,84,57,0.5) 0 4px, transparent 4px 8px),repeating-linear-gradient(-45deg, rgba(17,17,16,0.34) 0 4px, transparent 4px 8px);background-size:16px 16px"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Tatreez / two-thread</span><br />Coral and ink counted together — the one pattern allowed colour.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:radial-gradient(ellipse 12px 20px at 50% 50%, rgba(17,17,16,0.26) 0 96%, transparent 97%);background-size:30px 42px"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Lantern tile</span><br />Arabesque foot. Grounds under headers.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:conic-gradient(from 22.5deg at 50% 50%, rgba(17,17,16,0.22) 0 25%, transparent 0 50%, rgba(17,17,16,0.22) 0 75%, transparent 0);background-size:40px 40px"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Star &amp; cross</span><br />Eight-point tile. Full-bleed only.</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;min-height:108px;background-color:#F2ECDF;background-image:radial-gradient(circle 6px at 50% 50%, rgba(17,17,16,0.3) 0 5px, transparent 5.6px),radial-gradient(circle 3px at 0 50%, rgba(17,17,16,0.2) 0 2.4px, transparent 3px),radial-gradient(circle 3px at 100% 50%, rgba(17,17,16,0.2) 0 2.4px, transparent 3px);background-size:28px 28px"></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:12px 0 0"><span style="color:#111110">Embroidered rosette</span><br />Sparse. Endpapers and 404s.</p>
+        </div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0">Rule — one pattern per page, max 25% of visible area, always ink-on-paper. Pick one as the house pattern; delete the rest.</p>
+
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C;margin:36px 0 6px">Box primitives — the container is the archive</p>
+      <p style="font-size:16px;line-height:1.5;max-width:62ch;margin:0 0 18px;text-wrap:pretty">A box here should look like something a thing was <em>kept in</em>: a folder, a ledger, a punched sheet, a proof with crop marks. Nine primitives, all built from borders and gradients — no images, no radius, no glass. Pick per content type and stay consistent.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:18px">
+
+        <div><div style="border:2px solid #111110;outline:1.5px solid #111110;outline-offset:4px;background:#F2ECDF;min-height:96px"></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0"><span style="color:#111110">Double rule</span><br />quotes, statements</p></div>
+
+        <div><div style="position:relative;background:#F2ECDF;min-height:96px"><span aria-hidden="true" style="position:absolute;left:0;top:0;width:18px;height:18px;border-left:2px solid #111110;border-top:2px solid #111110"></span><span aria-hidden="true" style="position:absolute;right:0;top:0;width:18px;height:18px;border-right:2px solid #111110;border-top:2px solid #111110"></span><span aria-hidden="true" style="position:absolute;left:0;bottom:0;width:18px;height:18px;border-left:2px solid #111110;border-bottom:2px solid #111110"></span><span aria-hidden="true" style="position:absolute;right:0;bottom:0;width:18px;height:18px;border-right:2px solid #111110;border-bottom:2px solid #111110"></span></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0"><span style="color:#111110">Crop marks</span><br />images, proofs</p></div>
+
+        <div><div style="border:2px solid #111110;background:#F2ECDF;min-height:96px;box-shadow:5px 5px 0 #F2ECDF, 5px 5px 0 2px #111110, 10px 10px 0 #F2ECDF, 10px 10px 0 2px #111110"></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:22px 0 0"><span style="color:#111110">Stacked print</span><br />drops, editions</p></div>
+
+        <div><div style="border:2px dashed #111110;background:#E8E0CE;min-height:96px"></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0"><span style="color:#111110">Cut line</span><br />coupons, asides</p></div>
+
+        <div><div style="position:relative;padding-top:22px"><span aria-hidden="true" style="position:absolute;left:0;top:0;width:78px;height:24px;background:#FFD400;border:2px solid #111110;border-bottom:0"></span><div style="border:2px solid #111110;background:#F2ECDF;min-height:74px"></div></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0"><span style="color:#111110">File tab</span><br />sections, cases</p></div>
+
+        <div><div style="border:2px solid #111110;background:#F2ECDF;min-height:96px;background-image:radial-gradient(circle 5px at 16px 22px, #E4DCC8 4.5px, #111110 4.5px, #111110 6px, transparent 6.5px);background-repeat:repeat-y;background-size:32px 34px"></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0"><span style="color:#111110">Punched sheet</span><br />archive, notes</p></div>
+
+        <div><div style="border:2px solid #111110;background:#111110;min-height:96px;background-image:radial-gradient(#F2ECDF 1.1px, transparent 1.4px);background-size:6px 6px"></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0"><span style="color:#111110">Halftone ground</span><br />one full bleed only</p></div>
+
+        <div><div style="border:2px solid #111110;background:#F2ECDF;min-height:96px;background-image:repeating-linear-gradient(to bottom, transparent 0 21px, rgba(43,69,240,0.3) 21px 22px);border-left:4px solid #EE5439"></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0"><span style="color:#111110">Ruled card</span><br />forms, fields</p></div>
+
+        <div><div style="border:3px dotted #111110;background:#F2ECDF;min-height:96px"></div><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:16px 0 0"><span style="color:#111110">Perforation</span><br />tickets, seats</p></div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:20px 0 0">Rule — one primitive per content type across the whole site. Nine available; expect to use four.</p>
+
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C;margin:40px 0 6px">Edge treatments — which side gets bitten</p>
+      <p style="font-size:16px;line-height:1.5;max-width:62ch;margin:0 0 18px;text-wrap:pretty">The scalloped foot generalised. Any single edge or corner can be cut, punched, torn or scalloped — the constraint is <strong>one treated edge per object</strong>, chosen to mean something: a stub bites where you'd tear it, a dog-ear folds where you'd save it, a tear runs along the edge that was ripped from something else.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:18px">
+        <div>
+          <div style="background:#111110;padding:2px;mask-image:radial-gradient(circle 9px at 9px 0, transparent 9px, #000 9.5px), linear-gradient(#000,#000);mask-size:18px 18px, 100% calc(100% - 18px);mask-position:top, bottom;mask-repeat:repeat-x, no-repeat"><div style="background:#F2ECDF;min-height:96px;mask-image:radial-gradient(circle 9px at 9px 0, transparent 9px, #000 9.5px), linear-gradient(#000,#000);mask-size:18px 18px, 100% calc(100% - 18px);mask-position:top, bottom;mask-repeat:repeat-x, no-repeat;position:relative"></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Scallop / top</span><br />headers, mastheads</p>
+        </div>
+        <div>
+          <div style="background:#111110;padding:2px;mask-image:radial-gradient(circle 9px at 9px 18px, transparent 9px, #000 9.5px), linear-gradient(#000,#000);mask-size:18px 18px, 100% calc(100% - 18px);mask-position:bottom, top;mask-repeat:repeat-x, no-repeat"><div style="background:#F2ECDF;min-height:96px;mask-image:radial-gradient(circle 9px at 9px 18px, transparent 9px, #000 9.5px), linear-gradient(#000,#000);mask-size:18px 18px, 100% calc(100% - 18px);mask-position:bottom, top;mask-repeat:repeat-x, no-repeat;position:relative"></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Scallop / foot</span><br />receipts, invoices</p>
+        </div>
+        <div>
+          <div style="background:#111110;padding:2px;mask-image:radial-gradient(circle 9px at 0 9px, transparent 9px, #000 9.5px), linear-gradient(#000,#000);mask-size:18px 18px, calc(100% - 18px) 100%;mask-position:left, right;mask-repeat:repeat-y, no-repeat"><div style="background:#F2ECDF;min-height:96px;mask-image:radial-gradient(circle 9px at 0 9px, transparent 9px, #000 9.5px), linear-gradient(#000,#000);mask-size:18px 18px, calc(100% - 18px) 100%;mask-position:left, right;mask-repeat:repeat-y, no-repeat;position:relative"></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Scallop / spine</span><br />archive, journals</p>
+        </div>
+        <div>
+          <div style="background:#111110;padding:2px;clip-path:polygon(0 0,100% 0,100% 100%,0 100%,0 92%,7% 84%,0 76%,7% 68%,0 60%,7% 52%,0 44%,7% 36%,0 28%,7% 20%,0 12%,7% 4%)"><div style="background:#F2ECDF;min-height:96px;clip-path:polygon(0 0,100% 0,100% 100%,0 100%,0 92%,7% 84%,0 76%,7% 68%,0 60%,7% 52%,0 44%,7% 36%,0 28%,7% 20%,0 12%,7% 4%);position:relative"></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Zigzag / spine</span><br />torn from a pad</p>
+        </div>
+        <div>
+          <div style="background:#111110;padding:2px;clip-path:polygon(0 0,100% 0,100% 88%,93% 96%,86% 86%,79% 97%,72% 87%,64% 98%,57% 87%,50% 97%,43% 86%,36% 96%,29% 86%,21% 97%,14% 87%,7% 96%,0 86%)"><div style="background:#F2ECDF;min-height:96px;clip-path:polygon(0 0,100% 0,100% 88%,93% 96%,86% 86%,79% 97%,72% 87%,64% 98%,57% 87%,50% 97%,43% 86%,36% 96%,29% 86%,21% 97%,14% 87%,7% 96%,0 86%);position:relative"></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Tear / foot</span><br />fragments, clippings</p>
+        </div>
+        <div>
+          <div style="background:#111110;padding:2px;clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0 calc(100% - 14px),0 14px)"><div style="background:#F2ECDF;min-height:96px;clip-path:polygon(14px 0,calc(100% - 14px) 0,100% 14px,100% calc(100% - 14px),calc(100% - 14px) 100%,14px 100%,0 calc(100% - 14px),0 14px);position:relative"></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Cut / all four</span><br />plates, filed objects</p>
+        </div>
+        <div>
+          <div style="background:#111110;padding:2px;clip-path:polygon(20px 0,100% 0,100% calc(100% - 20px),calc(100% - 20px) 100%,0 100%,0 20px)"><div style="background:#F2ECDF;min-height:96px;clip-path:polygon(20px 0,100% 0,100% calc(100% - 20px),calc(100% - 20px) 100%,0 100%,0 20px);position:relative"></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Cut / opposed</span><br />drops, editions</p>
+        </div>
+        <div>
+          <div style="background:#111110;padding:2px;clip-path:polygon(0 0,60% 0,60% 14%,76% 14%,76% 30%,92% 30%,92% 46%,100% 46%,100% 100%,0 100%)"><div style="background:#F2ECDF;min-height:96px;clip-path:polygon(0 0,60% 0,60% 14%,76% 14%,76% 30%,92% 30%,92% 46%,100% 46%,100% 100%,0 100%);position:relative"></div></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Stair / corner</span><br />the machine speaking</p>
+        </div>
+        <div>
+          <div style="background:#111110;padding:2px;clip-path:polygon(0 0,100% 0,100% calc(100% - 26px),calc(100% - 26px) 100%,0 100%);position:relative"><div style="background:#F2ECDF;min-height:96px;clip-path:polygon(0 0,100% 0,100% calc(100% - 26px),calc(100% - 26px) 100%,0 100%)"></div><span aria-hidden="true" style="position:absolute;right:0;bottom:0;width:26px;height:26px;background:#E4DCC8;clip-path:polygon(100% 0,100% 100%,0 100%);border-left:2px solid #111110"></span></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Dog-ear</span><br />saved, bookmarked, read</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;background:#F2ECDF;min-height:96px;display:flex;justify-content:space-between">
+            <span aria-hidden="true" style="width:20px;background:#111110;background-image:repeating-linear-gradient(to bottom, transparent 0 7px, #F2ECDF 7px 17px);"></span>
+            <span aria-hidden="true" style="width:20px;background:#111110;background-image:repeating-linear-gradient(to bottom, transparent 0 7px, #F2ECDF 7px 17px);"></span>
+          </div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Sprocket rail</span><br />film stills, replays</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;background:#F2ECDF;min-height:96px;position:relative;display:flex;align-items:center;justify-content:center">
+            <span aria-hidden="true" style="position:absolute;left:-11px;top:50%;transform:translateY(-50%);width:20px;height:20px;background:#E4DCC8;border:2px solid #111110;border-radius:50%"></span>
+            <span aria-hidden="true" style="position:absolute;right:-11px;top:50%;transform:translateY(-50%);width:20px;height:20px;background:#E4DCC8;border:2px solid #111110;border-radius:50%"></span>
+            <span aria-hidden="true" style="position:absolute;left:50%;top:8px;bottom:8px;border-left:2px dashed #111110"></span>
+          </div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Stub bite</span><br />tickets, seats, RSVPs</p>
+        </div>
+        <div>
+          <div style="border:2px solid #111110;border-left-width:0;background:#F2ECDF;min-height:96px;position:relative"><span aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;border-left:4px dotted #111110"></span></div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0"><span style="color:#111110">Perforation / spine</span><br />forms, tear-offs</p>
+        </div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:20px 0 0">Never two treated edges on one object. Never a treatment on a block of body copy. The bite is punctuation, not pattern.</p>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 02 — Colour</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">Cobalt leads. Coral bites.</h2>
+      <p style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.06em;margin:0 0 36px;color:#4A463C">Ratio target per screen — paper 70 / ink 18 / cobalt 8 / coral 3 / spark 1</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:20px">
+        <div style="border:2px solid #111110">
+          <div style="height:150px;background:#F2ECDF;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px;background:#F2ECDF;font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;letter-spacing:0.06em"><strong style="font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:0.02em;display:block;margin-bottom:6px">PAPER</strong>#F2ECDF<br /><span style="color:#4A463C">warm cream · the room</span></div>
+        </div>
+        <div style="border:2px solid #111110">
+          <div style="height:150px;background:#111110;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px;background:#F2ECDF;font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;letter-spacing:0.06em"><strong style="font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:0.02em;display:block;margin-bottom:6px">INK</strong>#111110<br /><span style="color:#4A463C">near-black · type &amp; rules</span></div>
+        </div>
+        <div style="border:2px solid #111110">
+          <div style="height:150px;background:#2B45F0;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px;background:#F2ECDF;font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;letter-spacing:0.06em"><strong style="font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:0.02em;display:block;margin-bottom:6px">ELECTRIC</strong>#2B45F0<br /><span style="color:#4A463C">cobalt · structure, nav, links</span></div>
+        </div>
+        <div style="border:2px solid #111110">
+          <div style="height:150px;background:#EE5439;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px;background:#F2ECDF;font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;letter-spacing:0.06em"><strong style="font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:0.02em;display:block;margin-bottom:6px">SIGNAL</strong>#EE5439<br /><span style="color:#4A463C">vermilion · the punchline</span></div>
+        </div>
+        <div style="border:2px solid #111110">
+          <div style="height:150px;background:#FFD400;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px;background:#F2ECDF;font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;letter-spacing:0.06em"><strong style="font-family:'Archivo Black',sans-serif;font-size:14px;letter-spacing:0.02em;display:block;margin-bottom:6px">SPARK</strong>#FFD400<br /><span style="color:#4A463C">printed yellow · highlighter only</span></div>
+        </div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;line-height:1.8;margin:24px 0 0;color:#4A463C;border-left:4px solid #00B2A9;padding-left:14px">RESERVE — <span style="color:#111110">#00B2A9</span> turquoise is permitted <strong style="color:#111110">inside collage imagery only</strong>.<br />Never UI. Never type. Never a sixth accent in the interface. Five colours hold a hierarchy; six flatten it — but inside a collage, turquoise is a colour in a photograph, not a token, and it earns its place there. <span style="color:#111110">Approved: returns in imagery — see Plate 04D.</span></p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:28px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase">
+        <span style="border:1.5px solid #111110;padding:6px 10px;text-decoration:line-through;color:#4A463C">gradients</span>
+        <span style="border:1.5px solid #111110;padding:6px 10px;text-decoration:line-through;color:#4A463C">mustard / gold</span>
+        <span style="border:1.5px solid #111110;padding:6px 10px;text-decoration:line-through;color:#4A463C">green-led</span>
+        <span style="border:1.5px solid #111110;padding:6px 10px;text-decoration:line-through;color:#4A463C">pastel</span>
+        <span style="border:1.5px solid #111110;padding:6px 10px;text-decoration:line-through;color:#4A463C">arcade error red</span>
+        <span style="border:1.5px solid #111110;padding:6px 10px;text-decoration:line-through;color:#4A463C">navy + teal</span>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 03 — Typography</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 40px">Four voices, one page</h2>
+      <div style="display:grid;gap:2px;background:#111110;border:2px solid #111110">
+        <div style="background:#F2ECDF;padding:28px 24px;display:flex;flex-wrap:wrap;gap:20px 28px;align-items:baseline">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;letter-spacing:0.08em;text-transform:uppercase;color:#4A463C;flex:0 0 170px">Display<br /><span style="color:#111110">Archivo Black</span><br />clamp 46–116px<br />lh 0.86 · ls −0.035em</div>
+          <div style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(34px,5vw,72px);line-height:0.88;letter-spacing:-0.035em;text-transform:uppercase;flex:1 1 260px">Stories endure.</div>
+        </div>
+        <div style="background:#F2ECDF;padding:28px 24px;display:flex;flex-wrap:wrap;gap:20px 28px;align-items:baseline">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;letter-spacing:0.08em;text-transform:uppercase;color:#4A463C;flex:0 0 170px">Body<br /><span style="color:#111110">Archivo 400/600</span><br />17–20px · lh 1.5<br />max 62ch</div>
+          <p style="margin:0;font-size:19px;line-height:1.5;max-width:58ch;text-wrap:pretty;flex:1 1 260px">Nikko is a story studio. We market for memorability, so when it's time to buy, book, recommend or return, you're the only one on their mind.</p>
+        </div>
+        <div style="background:#F2ECDF;padding:28px 24px;display:flex;flex-wrap:wrap;gap:20px 28px;align-items:baseline">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;letter-spacing:0.08em;text-transform:uppercase;color:#4A463C;flex:0 0 170px">Metadata<br /><span style="color:#111110">DM Mono</span><br />10–12px · ls 0.14em<br />the coding voice</div>
+          <div style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;display:flex;gap:10px;flex-wrap:wrap;flex:1 1 260px">
+            <span style="background:#2B45F0;color:#F2ECDF;padding:4px 8px">DROP 07</span>
+            <span style="border:1.5px solid #111110;padding:4px 8px">STATUS: LIVE</span>
+            <span style="border:1.5px solid #111110;padding:4px 8px">SER. NKO—0421—ESEC</span>
+            <span style="background:#FFD400;padding:4px 8px">SOLD OUT / GONE</span>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;line-height:1.8;text-transform:uppercase;color:#4A463C;margin:6px 0 0;flex:1 1 100%">The “coding” accent is monospace — fixed-width, terminal lineage. DM Mono is doing that job across the whole board. If you want it more machine-like, the swap is IBM Plex Mono; a true bitmap face stays available for micro-labels only, never for anything you have to read.</p>
+          </div>
+        </div>
+        <div style="background:#F2ECDF;padding:28px 24px;display:flex;flex-wrap:wrap;gap:20px 28px;align-items:baseline">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;letter-spacing:0.08em;text-transform:uppercase;color:#4A463C;flex:0 0 170px">Interruption<br /><span style="color:#111110">Newsreader italic</span><br />once per section<br />quotes &amp; asides only</div>
+          <p style="margin:0;font-family:'Newsreader',Georgia,serif;font-style:italic;font-weight:300;font-size:clamp(24px,2.6vw,36px);line-height:1.22;max-width:34ch;flex:1 1 260px">Your brand should be stickier than warm bubble gum in a wad of hair.</p>
+        </div>
+        <div style="background:#F2ECDF;padding:28px 24px;display:flex;flex-wrap:wrap;gap:20px 28px;align-items:baseline">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;letter-spacing:0.08em;text-transform:uppercase;color:#4A463C;flex:0 0 170px">Arabic<br /><span style="color:#111110">Noto Kufi Arabic</span><br />RTL, always semantic<br />decorative once per page</div>
+          <div style="flex:1 1 260px">
+            <div dir="rtl" lang="ar" style="font-family:'Noto Kufi Arabic',sans-serif;font-size:clamp(28px,3.4vw,46px);font-weight:700;line-height:1.5">خشمك. خرا.</div>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;line-height:1.8;text-transform:uppercase;color:#4A463C;margin:14px 0 0">Decorative Arabic is permitted — once per page, at display scale, and only on words that mean something. Ornament is welcome; wallpaper is not. Every glyph gets native sign-off before build: mis-shaped or disconnected letterforms lose the exact audience this is for.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 04 — Material</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">Junk journal, not UI kit</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:56ch;margin:0 0 36px">Every image on the site is evidence: archive, artefact, screenshot, scrawl. Photographed and scanned material is always given a hard border and a caption — it is filed, not decorated. Zero stock.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:26px;align-items:start">
+        <figure style="margin:0">
+          <img src="assets/nadia-portrait.png" alt="Nadia Amer portrait with collage overlay" style="width:100%;display:block;border:2px solid #111110" />
+          <figcaption style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-top:8px;color:#4A463C">Fig. 04a — founder. faded scan, high grain</figcaption>
+        </figure>
+        <figure style="margin:0;transform:rotate(-1.2deg);position:relative">
+          <div style="position:relative">
+            <img src="assets/journal-firstdraft.png" alt="Collage: figure with cut-paper text over face" style="width:100%;display:block;border:2px solid #111110" />
+            <span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:-1px;height:20px;background:#F2ECDF;clip-path:polygon(0 62%,6% 24%,13% 66%,20% 30%,28% 60%,36% 20%,44% 64%,52% 28%,60% 68%,68% 26%,76% 58%,84% 22%,92% 62%,100% 32%,100% 100%,0 100%)"></span>
+          </div>
+          <figcaption style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-top:8px;color:#4A463C">Fig. 04b — cut-paper sentence. torn, off register</figcaption>
+        </figure>
+        <figure style="margin:0">
+          <img src="assets/journal-crt.png" alt="Journal page with CRT television collage" style="width:100%;display:block;border:2px solid #111110" />
+          <figcaption style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-top:8px;color:#4A463C">Fig. 04c — the machine. CRT + system message</figcaption>
+        </figure>
+        <figure style="margin:0;transform:rotate(1deg)">
+          <img src="assets/mouth-plane.png" alt="Cut-paper mouth containing a plane and a city" style="width:100%;display:block;border:2px solid #111110;background:#F2ECDF" />
+          <figcaption style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-top:8px;color:#4A463C">Fig. 04d — word of mouth. riso red</figcaption>
+        </figure>
+        <figure style="margin:0">
+          <img src="assets/collage-artefacts.png" alt="Screenshots of customer journeys, client praise, cut lettering" style="width:100%;display:block;border:2px solid #111110" />
+          <figcaption style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-top:8px;color:#4A463C">Fig. 04e — proof. artefacts over polish</figcaption>
+        </figure>
+        <figure style="margin:0">
+          <img src="assets/workshop-proof.png" alt="Workshop slides and attendee praise clippings" style="width:100%;display:block;border:2px solid #111110" />
+          <figcaption style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin-top:8px;color:#4A463C">Fig. 04f — Show&amp;Tell. replay stills</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div style="margin:0 calc(50% - 50vw);width:100vw;background:#111110;color:#F2ECDF;border-top:2px solid #111110;border-bottom:2px solid #111110;position:relative;overflow:hidden">
+      <div aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(#F2ECDF 1.1px, transparent 1.4px);background-size:6px 6px;opacity:0.2"></div>
+      <div aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(#EE5439 1.7px, transparent 2px);background-size:12px 12px;background-position:4px 5px;opacity:0.34"></div>
+      <div style="position:relative;max-width:1320px;margin:0 auto;padding:74px 32px 78px">
+        <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#FFD400;margin:0 0 26px">Plate 04B — Full bleed / newsprint halftone</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:44px;align-items:end">
+          <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(40px,5.6vw,92px);line-height:0.88;letter-spacing:-0.03em;text-transform:uppercase;margin:0">Words<br />make<br /><span style="color:#FFD400">the light</span></h2>
+          <div>
+            <p dir="rtl" lang="ar" style="font-family:'Noto Kufi Arabic',sans-serif;font-weight:700;font-size:clamp(28px,3.4vw,48px);line-height:1.5;margin:0">الكلمات تصنع الضوء</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;line-height:1.8;text-transform:uppercase;color:#8A8474;margin:16px 0 0">AR — set at headline weight, equal to the English. Not a texture, not a caption. Pending native sign-off.</p>
+          </div>
+        </div>
+        <p style="font-size:18px;line-height:1.5;max-width:62ch;margin:36px 0 0;text-wrap:pretty">One block per page may go full bleed and wear the halftone. Ink ground, dot screen, no photograph behind it — the texture is the point, so the type stays enormous and the copy stays short. Nikko means sunlight, so yellow appears only where light lands: a highlight, a stamp, an edge. It is never an icon of a sun.</p>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 04C — The breathing ground</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">The page changes temperature</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:70ch;margin:0 0 12px;text-wrap:pretty">The site's ground is not one flat cream. It drifts, over about a minute, through the palette at the faintest strength the screen can hold — paper, horizon, last light, offshore, and back. Nobody watching should be able to catch it moving; they should only notice, on the second scroll, that the room feels different. Same instinct as the logo's swapping line: one system, changing light.</p>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 30px">Live on this page — <span style="text-transform:none;letter-spacing:0.04em">the ground behind these plates is the animation. Drift and cycle length are both in the tweak panel under Ground.</span></p>
+
+      <div style="border:2px solid #111110;overflow:hidden;margin-bottom:2px">
+        <div style="height:56px;animation:nk-ground 10s ease-in-out infinite;display:flex;align-items:center;padding:0 16px"><span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C">Same cycle at 10s — five times too fast, shown only so you can see what is happening</span></div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:2px;background:#111110;border:2px solid #111110">
+        <div style="background:#F2ECDF;padding:0 0 16px;flex:1 1 150px;min-width:150px">
+          <div style="height:76px;background:#F2ECDF;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px 15px 0">
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:0 0 6px">0% · 0.0s</p>
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:14px;text-transform:uppercase;margin:0 0 6px">Paper</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#4A463C;margin:0 0 8px">#F2ECDF</p>
+            <p style="margin:0;font-size:13.5px;line-height:1.5;color:#4A463C">The neutral. The colour every plate, card and photo edge is drawn against.</p>
+          </div>
+        </div>
+        <div style="background:#F2ECDF;padding:0 0 16px;flex:1 1 150px;min-width:150px">
+          <div style="height:76px;background:#F9F3DB;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px 15px 0">
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:0 0 6px">20% · 9.6s</p>
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:14px;text-transform:uppercase;margin:0 0 6px">Horizon</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#4A463C;margin:0 0 8px">#F9F3DB</p>
+            <p style="margin:0;font-size:13.5px;line-height:1.5;color:#4A463C">Yellow tint. Warmest read of the noon light in the mark.</p>
+          </div>
+        </div>
+        <div style="background:#F2ECDF;padding:0 0 16px;flex:1 1 150px;min-width:150px">
+          <div style="height:76px;background:#FAEFE9;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px 15px 0">
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:0 0 6px">40% · 19.2s</p>
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:14px;text-transform:uppercase;margin:0 0 6px">Last light</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#4A463C;margin:0 0 8px">#FAEFE9</p>
+            <p style="margin:0;font-size:13.5px;line-height:1.5;color:#4A463C">Coral tint. The dusk end — the shortest-feeling stop because it is closest to paper in value.</p>
+          </div>
+        </div>
+        <div style="background:#F2ECDF;padding:0 0 16px;flex:1 1 150px;min-width:150px">
+          <div style="height:76px;background:#EFF1FC;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px 15px 0">
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:0 0 6px">60% · 28.8s</p>
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:14px;text-transform:uppercase;margin:0 0 6px">Offshore</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#4A463C;margin:0 0 8px">#EFF1FC</p>
+            <p style="margin:0;font-size:13.5px;line-height:1.5;color:#4A463C">Cobalt tint. The only cool stop; it makes ink look blacker and coral look louder.</p>
+          </div>
+        </div>
+        <div style="background:#F2ECDF;padding:0 0 16px;flex:1 1 150px;min-width:150px">
+          <div style="height:76px;background:#FAF1E0;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px 15px 0">
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:0 0 6px">80% · 38.4s</p>
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:14px;text-transform:uppercase;margin:0 0 6px">Warm paper</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#4A463C;margin:0 0 8px">#FAF1E0</p>
+            <p style="margin:0;font-size:13.5px;line-height:1.5;color:#4A463C">Half-step back through yellow so the loop closes without a visible jump.</p>
+          </div>
+        </div>
+        <div style="background:#F2ECDF;padding:0 0 16px;flex:1 1 150px;min-width:150px">
+          <div style="height:76px;background:#F2ECDF;border-bottom:2px solid #111110"></div>
+          <div style="padding:14px 15px 0">
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:0 0 6px">100% · 48.0s</p>
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:14px;text-transform:uppercase;margin:0 0 6px">Paper again</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#4A463C;margin:0 0 8px">#F2ECDF</p>
+            <p style="margin:0;font-size:13.5px;line-height:1.5">The loop always closes on the neutral, so a reload never starts mid-tint.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:22px;margin-top:24px">
+        <div style="border:2px solid #111110;background:#F2ECDF;padding:22px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 14px">Timing</p>
+          <p style="margin:0 0 10px;font-size:15px;line-height:1.5"><strong>48s full cycle</strong>, five stops, <strong>ease-in-out</strong> between each — roughly 9.6s per leg. Never linear: the ease is what stops it reading as a slideshow of colours.</p>
+          <p style="margin:0 0 10px;font-size:15px;line-height:1.5">Legal range is <strong>30–90s</strong>. Under 30 it becomes an effect people watch; over 90 it stops being perceptible at all and you may as well pick one cream.</p>
+          <p style="margin:0;font-size:15px;line-height:1.5">The loop must return to paper, and adjacent stops must be within about 4% lightness of each other. That is the whole trick — the value stays flat, only the hue rotates.</p>
+        </div>
+        <div style="border:2px solid #111110;background:#F2ECDF;padding:22px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 14px">Colour derivation</p>
+          <p style="margin:0 0 10px;font-size:15px;line-height:1.5">Each stop is the brand colour mixed into paper at about <strong>6–9%</strong>, then lifted back halfway to paper again. No new hues are ever introduced — the ground can only be tinted with horizon, last light or offshore.</p>
+          <p style="margin:0;font-size:15px;line-height:1.5">Green, purple and any hue outside the palette are banned here, however subtle. A ground the audience cannot name as one of three colours is just a stale screen.</p>
+        </div>
+        <div style="border:2px solid #EE5439;background:#F2ECDF;padding:22px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 14px">What must not move</p>
+          <p style="margin:0 0 10px;font-size:15px;line-height:1.5">Only the page ground drifts. <strong>Cards, plates, the memory box and every image mount stay fixed paper</strong> — if the containers drift too, the whole screen breathes and it reads as a broken monitor.</p>
+          <p style="margin:0 0 10px;font-size:15px;line-height:1.5">Ink, coral, cobalt and yellow never drift. Text contrast is measured against the darkest stop and must clear it at every point in the cycle.</p>
+          <p style="margin:0;font-size:15px;line-height:1.5"><strong>prefers-reduced-motion holds the ground at paper</strong>, permanently. It is an atmosphere, never information.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 04D — Turquoise, and where the Levantine touches the picture</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">Cut the photograph, not the interface</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:70ch;margin:0 0 34px;text-wrap:pretty">Turquoise is barred from the UI and the pattern is barred from behind body copy — which leaves one place they are both allowed to be loud: the imagery. Three mounts, using the archive we already have. The rule underneath all of them is that the Levantine shape is a <strong>window cut into the photo</strong>, never a sticker laid on top of it.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:2px;background:#111110;border:2px solid #111110">
+
+        <div style="background:#E8E0CE;padding:26px 22px 28px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 18px">01 — Lantern cut</p>
+          <div style="position:relative;background:#00B2A9;padding:20px 18px">
+            <span aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(circle 11px at 50% 100%, rgba(17,17,16,0.18) 0 10px, transparent 10.6px);background-size:22px 22px"></span>
+            <img src="assets/nadia-child.png" alt="Child seated before a wall of cut mirrors" style="position:relative;width:100%;display:block;aspect-ratio:3/4;object-fit:cover;clip-path:polygon(50% 0%, 62% 6%, 72% 15%, 80% 27%, 86% 41%, 88% 56%, 85% 71%, 78% 84%, 66% 94%, 50% 100%, 34% 94%, 22% 84%, 15% 71%, 12% 56%, 14% 41%, 20% 27%, 28% 15%, 38% 6%)" />
+          </div>
+          <p style="margin:22px 0 0;font-size:14px;line-height:1.5;color:#4A463C">The mirror shape from the wall behind her, used as the mount for the picture of her in front of it. Turquoise sits underneath as the plaster, so the colour arrives as a wall, not as a brand tint. One cut per page.</p>
+        </div>
+
+        <div style="background:#E8E0CE;padding:26px 22px 28px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 18px">02 — Inlay keyline</p>
+          <div style="border:2px solid #111110;background:#F2ECDF;padding:9px">
+            <div style="border:5px solid #00B2A9;position:relative">
+              <img src="assets/nadia-portrait.png" alt="Founder portrait with collage overlay" style="width:100%;display:block;aspect-ratio:4/5;object-fit:cover" />
+            </div>
+            <div style="height:18px;margin-top:9px;background-color:#F2ECDF;background-image:repeating-linear-gradient(90deg, transparent 0 3px, rgba(0,178,169,0.85) 3px 6px, transparent 6px 9px),repeating-linear-gradient(0deg, transparent 0 3px, rgba(17,17,16,0.4) 3px 6px, transparent 6px 9px);background-size:9px 9px"></div>
+          </div>
+          <p style="margin:22px 0 0;font-size:14px;line-height:1.5;color:#4A463C">Ink frame, turquoise inlay line, a counted tatreez band along the foot like the stitched edge of a keepsake box. The band is the only tinted element and it never exceeds the width of the picture.</p>
+        </div>
+
+        <div style="background:#E8E0CE;padding:26px 22px 28px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 18px">03 — Arched window</p>
+          <div style="border:2px solid #111110;background:#111110;border-radius:50% 50% 6px 6px / 22% 22% 6px 6px;overflow:hidden">
+            <img src="assets/collage-hero.png" alt="Collage hero artwork" style="width:100%;display:block;aspect-ratio:4/5;object-fit:cover" />
+            <div style="height:16px;background-color:#00B2A9;background-image:radial-gradient(circle 7px at 7px 0, transparent 0 5.2px, #111110 5.2px 7px, transparent 7px);background-size:14px 16px;background-repeat:repeat-x"></div>
+          </div>
+          <p style="margin:22px 0 0;font-size:14px;line-height:1.5;color:#4A463C">The house dome used as an aperture, with the scalloped foot picked out in turquoise — the same band the memory box wears, borrowed by the picture. Best on hero and case-study openers.</p>
+        </div>
+      </div>
+
+      <div style="border:2px solid #00B2A9;background:#F2ECDF;padding:20px 22px;margin-top:22px">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#00B2A9;margin:0 0 10px">The turquoise licence</p>
+        <p style="margin:0;font-size:15px;line-height:1.5"><strong>Turquoise may be a surface inside a picture — plaster, tile, thread, a mount. It may never be a fill, a rule, a chip, a link or a word.</strong> One turquoise element per page, always touching an image; the moment it appears next to type it has become a sixth accent and the hierarchy is gone. The Levantine shape follows the same licence: cut into the photograph, never applied over the interface.</p>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 05 — Parts bin</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 40px">Components, as machine parts</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px">
+        <div style="border:2px solid #111110;padding:22px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;margin:0 0 18px;color:#4A463C">PART 01 — Buttons</p>
+          <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+            <button type="button" style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;border:0;padding:17px 32px;border-radius:50%;cursor:pointer;position:relative;overflow:hidden" style-hover="background:#2B45F0"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:4px;background:#FFD400"></span>Pitch your project</button>
+            <button type="button" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:transparent;color:#111110;border:2px solid #111110;padding:17px 32px;border-radius:50%;cursor:pointer" style-hover="background:#FFD400">Grab a seat</button>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;color:#4A463C;letter-spacing:0.1em">PRESS = SLOT SHRINKS TO 2PX. NO DROP SHADOW.</span>
+          </div>
+        </div>
+        <div style="border:2px solid #111110;padding:22px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;margin:0 0 18px;color:#4A463C">PART 02 — Field &amp; key</p>
+          <label style="display:block;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin-bottom:6px">First name</label>
+          <input type="text" placeholder="type it in" style="width:100%;font-family:'Archivo',sans-serif;font-size:15px;padding:12px 13px;background:#F2ECDF;border:2px solid #111110;border-radius:3px;color:#111110" />
+          <button type="button" style="margin-top:14px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;border:0;padding:17px 32px;border-radius:50%;cursor:pointer;position:relative;overflow:hidden" style-hover="background:#2B45F0"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:4px;background:#FFD400"></span>Get inside</button>
+        </div>
+        <div style="border:2px solid #111110;padding:22px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;margin:0 0 18px;color:#4A463C">PART 03 — Drop card</p>
+          <div style="border:2px solid #111110;background:#E8E0CE">
+            <div style="background:#111110;color:#F2ECDF;padding:7px 10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;display:flex;justify-content:space-between"><span>DROP 07</span><span>LIVE · 12 SEATS</span></div>
+            <div style="padding:16px">
+              <h3 style="font-family:'Archivo Black',sans-serif;font-size:20px;line-height:1.05;margin:0 0 8px;text-transform:uppercase">Emails that turn tales into sales</h3>
+              <p style="margin:0;font-size:14px;line-height:1.45">Live once. Yours on replay. Then gone off the internet.</p>
+              <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;margin:12px 0 0;color:#EE5439">FROM £35</p>
+            </div>
+          </div>
+          <div style="border:2px solid #4A463C;background:#E8E0CE;color:#4A463C;padding:12px;margin-top:12px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;text-decoration:line-through;text-decoration-thickness:2px">DROP 06 — GONE</div>
+        </div>
+        <div style="border:2px solid #111110;padding:22px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;margin:0 0 18px;color:#4A463C">PART 04 — Labels, tape, stamps</p>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center">
+            <span style="background:#FFD400;border:1.5px solid #111110;padding:5px 10px;font-family:'DM Mono',monospace;font-size:11px;transform:rotate(-2deg)">annotation →</span>
+            <span style="background:#E8E0CE;border:1px dashed #111110;padding:5px 10px;font-family:'DM Mono',monospace;font-size:11px">cut here</span>
+            <span style="background:#EE5439;color:#F2ECDF;padding:5px 10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;transform:rotate(1.5deg)">MEMBERS FIRST</span>
+            <span style="border:2px solid #EE5439;color:#EE5439;padding:6px 10px;font-family:'Archivo Black',sans-serif;font-size:13px;letter-spacing:0.06em;transform:rotate(-4deg)">FILED</span>
+            <span style="background:#111110;color:#F2ECDF;padding:5px 10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em">SER. 1983—NKO</span>
+          </div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;color:#4A463C;letter-spacing:0.1em;margin:18px 0 0">TILT RANGE ±4°. ONE PER SECTION.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 06 — Signature interaction, live</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">Word weight</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:58ch;margin:0 0 32px">The brand thesis — words are material, context changes their weight — argued by making you turn the selector yourself. This is the moment people will describe to someone else.</p>
+      <div style="border:2px solid #111110;background:#111110;color:#F2ECDF;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))">
+        <div style="border-right:2px solid #F2ECDF;padding:26px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;margin:0 0 20px;color:#FFD400">Selector — same meaning</p>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ words }}" as="w" hint-placeholder-count="3">
+              <button type="button" onClick="{{ w.pick }}" aria-pressed="{{ w.active }}" style="text-align:left;font-family:'Archivo Black',sans-serif;font-size:19px;padding:14px;cursor:pointer;border:2px solid #F2ECDF;background:{{ w.bg }};color:{{ w.fg }};display:flex;justify-content:space-between;align-items:center;gap:12px">{{ w.label }}<span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em">{{ w.tag }}</span></button>
+            </sc-for>
+          </div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;line-height:1.7;letter-spacing:0.08em;color:#8A8474;margin:22px 0 0">ALL THREE POINT AT THE SAME LITERAL THING. NONE OF THEM DO THE SAME JOB.</p>
+        </div>
+        <div style="padding:26px">
+          <div dir="{{ activeDir }}" lang="{{ activeLang }}" style="font-family:'Noto Kufi Arabic','Archivo Black',sans-serif;font-size:clamp(44px,6vw,88px);font-weight:700;line-height:1.1;color:#EE5439">{{ activeDisplay }}</div>
+          <p style="font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:clamp(20px,2.2vw,30px);line-height:1.3;margin:18px 0 26px;max-width:36ch;color:#F2ECDF">{{ activeRoom }}</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:18px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase">
+            <div><span style="color:#8A8474;display:block;margin-bottom:5px">Language</span>{{ activeLangLabel }}</div>
+            <div><span style="color:#8A8474;display:block;margin-bottom:5px">Register</span>{{ activeRegister }}</div>
+            <div><span style="color:#8A8474;display:block;margin-bottom:5px">Who it's for</span>{{ activeAudience }}</div>
+          </div>
+          <div style="margin-top:26px">
+            <div style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8A8474;margin-bottom:7px"><span>Weight in the room</span><span>{{ activeWeight }}/100</span></div>
+            <div style="height:14px;border:2px solid #F2ECDF;background:#111110">
+              <div style="height:100%;background:#FFD400;width:{{ activeWeightPct }};transition:width 140ms steps(6)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;margin:12px 0 0;color:#4A463C">Fig. 06 — Arabic set in Noto Kufi, RTL, semantic.</p>
+    </div>
+
+    <sc-if value="{{ showNod }}" hint-placeholder-val="{{ true }}">
+      <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+        <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 06B — The one permitted nod</p>
+        <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">One dialogue box. That's the lot.</h2>
+        <p style="font-size:18px;line-height:1.5;max-width:60ch;margin:0 0 36px;text-wrap:pretty">The machine speaks exactly once, in one place, and it speaks in the studio's own voice. Everything else from the console reference is cut — a site that cosplays a games handheld dates itself to a reference instead of holding a sensibility, and it undercuts the claim that the words carry the weight.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:32px;align-items:start">
+          <div style="border:2px solid #111110;background:#F2ECDF;padding:5px;box-shadow:6px 6px 0 #111110">
+            <div style="border:1.5px solid #111110;background:#E8E0CE;padding:20px 18px 16px">
+              <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C;margin:0 0 14px">NKO — SYS. 1983 / MSG {{ nodNumber }}</p>
+              <p style="font-family:'DM Mono',monospace;font-size:clamp(14px,1.5vw,17px);line-height:1.65;margin:0;min-height:3.3em">{{ nodLine }}<span aria-hidden="true" style="display:inline-block;width:9px;height:16px;background:#EE5439;vertical-align:-3px;margin-left:4px;animation:nk-blink 1s steps(1) infinite"></span></p>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:20px">
+                <button type="button" onClick="{{ advanceNod }}" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;background:#111110;color:#FFD400;border:2px solid #111110;padding:8px 14px;cursor:pointer" style-hover="background:#2B45F0;color:#F2ECDF">Next ▶</button>
+                <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C">{{ nodNumber }} / {{ nodTotal }}</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C;margin:0 0 14px">Cut from the console reference</p>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px">
+              <sc-for list="{{ cuts }}" as="c" hint-placeholder-count="6">
+                <span style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;border:1.5px solid #4A463C;color:#4A463C;padding:8px 12px;text-decoration:line-through">{{ c }}</span>
+              </sc-for>
+            </div>
+            <p style="font-size:15px;line-height:1.5;max-width:46ch;text-wrap:pretty">What survives is the <strong>instrument</strong>, not the toy: status lines, serials, plate numbers, a blinking cursor, a hard press. The box is cream and ink, set in the same mono as every other label on the site, so it reads as part of the machine rather than a quotation of someone else's product.</p>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 07 — Interaction grammar</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 36px">Cut, snap, stamp — never fade</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:2px;background:#111110;border:2px solid #111110">
+        <div style="padding:24px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;color:#EE5439;margin:0 0 12px">01 — WORD WEIGHT</p>
+          <h3 style="font-family:'Archivo Black',sans-serif;font-size:21px;line-height:1.05;margin:0 0 10px;text-transform:uppercase">The thesis, turned by hand</h3>
+          <p style="margin:0;font-size:15px;line-height:1.5">Three words for one thing. Turning the selector rewrites the register, the audience and the weight bar. Plate 06 is the live specimen — this is the set-piece the visit is built around.</p>
+        </div>
+        <div style="padding:24px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;color:#EE5439;margin:0 0 12px">02 — THE DIAL</p>
+          <h3 style="font-family:'Archivo Black',sans-serif;font-size:21px;line-height:1.05;margin:0 0 10px;text-transform:uppercase">Tune the machine</h3>
+          <p style="margin:0;font-size:15px;line-height:1.5">A hardware switch in the header swings the whole page between <strong>DIGITAL</strong> (crisp, cobalt, flat) and <strong>ANALOGUE</strong> (grain, misregistration, warmth). Same content, inherited surface. It's live on this board — top right.</p>
+        </div>
+        <div style="padding:24px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;color:#EE5439;margin:0 0 12px">03 — RESIDUE</p>
+          <h3 style="font-family:'Archivo Black',sans-serif;font-size:21px;line-height:1.05;margin:0 0 10px;text-transform:uppercase">You leave a mark</h3>
+          <p style="margin:0;font-size:15px;line-height:1.5">Fragments you touch get stamped and collect in a thin margin rail. By the footer you've assembled your own memory of the page — and it's still there on your second visit.</p>
+        </div>
+        <div style="padding:24px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;color:#EE5439;margin:0 0 12px">04 — POWER ON</p>
+          <h3 style="font-family:'Archivo Black',sans-serif;font-size:21px;line-height:1.05;margin:0 0 10px;text-transform:uppercase">One second of wake</h3>
+          <p style="margin:0;font-size:15px;line-height:1.5">A single CRT snap and a serial line on first load. Under 900ms, skippable, never repeated, never blocking content. No preloader theatre.</p>
+        </div>
+        <div style="padding:24px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;color:#EE5439;margin:0 0 12px">05 — SIGNAL</p>
+          <h3 style="font-family:'Archivo Black',sans-serif;font-size:21px;line-height:1.05;margin:0 0 10px;text-transform:uppercase">Bad aerial on moving image</h3>
+          <p style="margin:0;font-size:15px;line-height:1.5">Scanlines, a rolling luminance band, a cobalt screen-blend and an occasional horizontal tear. Video and hero stills only — never a client portrait, never over text. Live specimen in Plate 07B, with a toggle.</p>
+        </div>
+        <div style="padding:24px;background:#F2ECDF">
+          <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;color:#EE5439;margin:0 0 12px">06 — VOICE</p>
+          <h3 style="font-family:'Archivo Black',sans-serif;font-size:21px;line-height:1.05;margin:0 0 10px;text-transform:uppercase">The machine speaks, if asked</h3>
+          <p style="margin:0;font-size:15px;line-height:1.5">A voice note, offered in the first screen as a cassette label. The page lands silent — no autoplay with sound, ever. Transcript sits on the page as text. Declined once, declined all session. Plate 07B.</p>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:18px;margin-top:26px">
+        <div style="border:2px solid #111110;padding:16px;background:#E8E0CE"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;margin:0 0 8px;color:#4A463C">TIMING</p><p style="margin:0;font-size:14px;line-height:1.45">120–220ms. <code style="font-family:'DM Mono',monospace">steps()</code> and hard cubic-bezier. No 800ms luxury ease.</p></div>
+        <div style="border:2px solid #111110;padding:16px;background:#E8E0CE"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;margin:0 0 8px;color:#4A463C">REVEALS</p><p style="margin:0;font-size:14px;line-height:1.45">Wipe, clip and slide — content arrives from under a layer, never fading up from below.</p></div>
+        <div style="border:2px solid #111110;padding:16px;background:#E8E0CE"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;margin:0 0 8px;color:#4A463C">HOVER</p><p style="margin:0;font-size:14px;line-height:1.45">Easter eggs only. No information lives behind a pointer. Everything reachable by keyboard.</p></div>
+        <div style="border:2px solid #111110;padding:16px;background:#E8E0CE"><p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;margin:0 0 8px;color:#4A463C">BUDGET</p><p style="margin:0;font-size:14px;line-height:1.45">One set-piece per scroll-third. <code style="font-family:'DM Mono',monospace">prefers-reduced-motion</code> kills all of it and nothing breaks.</p></div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 07B — Multi-modal</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">The machine has a voice and a bad aerial</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:64ch;margin:0 0 36px;text-wrap:pretty">Two media patterns, both inherited from the object: <strong>signal degradation</strong> on moving image, and a <strong>voice note</strong> you choose to play. A studio that sells words out loud should let you hear one. But sound that arrives uninvited is the fastest way to lose a visitor — so the rule is invitation, never ambush.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:32px;align-items:start">
+
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 12px">Pattern A — bad signal / moving image</p>
+          <div style="position:relative;border:2px solid #111110;overflow:hidden;background:#111110">
+            <img src="assets/journal-crt.png" alt="Journal page with CRT television collage, shown with signal degradation" style="width:100%;display:block;animation:nk-jitter 7s steps(1) infinite" />
+            <span aria-hidden="true" style="position:absolute;inset:0;background-image:repeating-linear-gradient(to bottom, rgba(17,17,16,0.42) 0 1px, transparent 1px 3px);animation:nk-flicker 2.6s ease-in-out infinite"></span>
+            <sc-if value="{{ signalOn }}" hint-placeholder-val="{{ true }}">
+              <span aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:22%;background-image:linear-gradient(to bottom, transparent, rgba(242,236,223,0.30), transparent);animation:nk-roll 4.4s linear infinite"></span>
+              <span aria-hidden="true" style="position:absolute;inset:0;background:#2B45F0;mix-blend-mode:screen;opacity:0.10"></span>
+              <span aria-hidden="true" style="position:absolute;left:0;right:0;top:38%;height:3px;background:#EE5439;opacity:0.5;animation:nk-roll 2.9s steps(14) infinite"></span>
+            </sc-if>
+            <span style="position:absolute;top:10px;left:10px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;background:#111110;color:#FFD400;padding:4px 8px;border:1px solid #FFD400">{{ signalStatus }}</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-top:14px">
+            <button type="button" onClick="{{ toggleSignal }}" aria-pressed="{{ signalOn }}" style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;border:0;padding:15px 28px;border-radius:50%;cursor:pointer;position:relative;overflow:hidden" style-hover="background:#2B45F0"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:7px;height:4px;background:#FFD400"></span>{{ signalLabel }}</button>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C">Live specimen — try it</span>
+          </div>
+          <p style="font-size:15px;line-height:1.5;margin:18px 0 0;max-width:48ch;text-wrap:pretty">Scanlines, a rolling luminance band, a cobalt screen-blend and an occasional horizontal tear. Applied to <strong>video and hero stills only</strong> — never to a portrait of a client, never over text. Degradation is a texture the machine adds, so it belongs on the machine's own footage.</p>
+        </div>
+
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 12px">Pattern B — the voice note</p>
+          <div style="border:2px solid #111110;background:#111110;color:#F2ECDF;padding:20px 18px">
+            <div style="display:flex;justify-content:space-between;gap:14px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8A8474;margin-bottom:18px"><span>NKO — VOICE NOTE 01</span><span>{{ audioTime }}</span></div>
+            <div style="display:flex;align-items:center;gap:16px">
+              <button type="button" onClick="{{ toggleAudio }}" aria-pressed="{{ audioOn }}" style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#F2ECDF;color:#111110;border:0;padding:15px 28px;border-radius:50%;cursor:pointer;flex:0 0 auto;position:relative;overflow:hidden" style-hover="background:#FFD400"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:7px;height:4px;background:#EE5439"></span>{{ audioLabel }}</button>
+              <div style="flex:1 1 auto;height:54px;display:flex;gap:4px;align-items:flex-end;border-bottom:2px solid #4A463C">
+                <sc-if value="{{ audioOn }}" hint-placeholder-val="{{ true }}">
+                  <span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.12s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.25s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.05s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.32s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.18s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.4s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.09s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.28s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.36s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.15s infinite alternate ease-in-out;align-self:flex-end"></span><span style="width:5px;background:#FFD400;height:20%;animation:nk-vu 1.1s 0.22s infinite alternate ease-in-out;align-self:flex-end"></span>
+                </sc-if>
+                <sc-if value="{{ audioIdle }}" hint-placeholder-val="{{ false }}">
+                  <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8A8474;align-self:center">— silent until you ask —</span>
+                </sc-if>
+              </div>
+            </div>
+            <p style="font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:19px;line-height:1.4;margin:20px 0 0;color:#F2ECDF">“{{ audioTranscript }}”</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#8A8474;margin:10px 0 0">Transcript — always visible, never behind the play state</p>
+          </div>
+
+          <div style="border:2px solid #111110;border-top:0;background:#F2ECDF;padding:18px">
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 12px">Non-negotiable rules</p>
+            <ul style="margin:0;padding-left:20px;font-size:15px;line-height:1.55">
+              <li>The page lands <strong>silent</strong>. No autoplay with sound — browsers block it, and unannounced audio is an accessibility failure, not a surprise.</li>
+              <li>Invitation is visible within the first screen and styled as a cassette label, not a media widget.</li>
+              <li>Any clip over three seconds needs pause, stop and volume within reach at all times.</li>
+              <li>Transcript is on the page as text — for people who can't hear it and for the search engines that can't either.</li>
+              <li>One voice note per visit. Declined once, it stays declined for that session.</li>
+              <li><code style="font-family:'DM Mono',monospace">prefers-reduced-motion</code> freezes the signal filter; the still image underneath still reads.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:22px 0 0">Fig. 07B — VU meter is a specimen of the live behaviour. Real waveform is generated from the file at build.</p>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 08 — Homepage narrative</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">Ten beats, one reading path</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:62ch;margin:0 0 10px;text-wrap:pretty">This is the structural map, not the copy. The words are final — every beat below is tied to its section in the approved draft, so the layout is built against real sentences and nothing gets paraphrased into existence during build.</p>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#EE5439;margin:0 0 36px">One open question — beat 04 sits at §7 in the draft. See note below the table.</p>
+      <div style="display:grid;gap:2px;background:#111110;border:2px solid #111110">
+        <sc-for list="{{ beats }}" as="b" hint-placeholder-count="10">
+          <div style="background:#F2ECDF;padding:20px 22px;display:flex;flex-wrap:wrap;gap:14px 22px;align-items:start">
+            <span style="font-family:'Archivo Black',sans-serif;font-size:26px;color:#2B45F0;line-height:1;flex:0 0 40px">{{ b.n }}</span>
+            <div style="flex:1 1 220px;min-width:0">
+              <h3 style="font-family:'Archivo Black',sans-serif;font-size:17px;line-height:1.1;margin:0 0 6px;text-transform:uppercase">{{ b.title }}</h3>
+              <p style="margin:0;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.08em;color:#4A463C;text-transform:uppercase">{{ b.job }}</p>
+              <p style="margin:6px 0 0;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;color:#2B45F0;text-transform:uppercase">{{ b.src }}</p>
+            </div>
+            <p style="margin:0;font-size:15px;line-height:1.45;flex:1 1 280px;min-width:0">{{ b.note }}</p>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;border:1.5px solid #111110;padding:5px 7px;text-align:center;flex:0 0 auto;align-self:flex-start;background:{{ b.tagBg }};color:{{ b.tagFg }}">{{ b.tag }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="border:2px solid #EE5439;background:#F2ECDF;padding:22px;margin-top:26px;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:26px">
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#EE5439;margin:0 0 10px">Open — copy order</p>
+          <p style="margin:0;font-size:15px;line-height:1.5">Beat 04 pulls §7 forward. The argument for moving it: khara / kaka is the most memorable thing on the site and at §7 most visitors never reach it. The argument against: philosophy lands harder after the work, and services-before-philosophy converts.</p>
+        </div>
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 10px">Recommended — hook, don't move</p>
+          <p style="margin:0;font-size:15px;line-height:1.5">Keep the approved order intact and plant a taped margin note in §2 or §3 promising a word worth the scroll. Discovery beats relocation, and no approved copy has to move.</p>
+        </div>
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C;margin:0 0 10px">Flag — new copy</p>
+          <p style="margin:0;font-size:15px;line-height:1.5">The selector's third register, <em>faecal matter</em> / clinical, is not in the approved draft. It widens a binary into a spectrum, but it is new copy and needs sign-off or removal.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 08F — Aperture, the four candidates</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">One ellipse, four skies</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:68ch;margin:0 0 36px;text-wrap:pretty">All four descend from the original drawing: a solid ellipse split by a slot of light. Camera, mouth, horizon, dead channel — one shape carrying all of them. What changes is what time of day it is.</p>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:-24px 0 36px">Closed rounds — <span style="text-transform:none;letter-spacing:0.04em"><a href="Nikko Archive - Logo Round 1.dc.html">logo rounds 1–3</a>, the <a href="Nikko Archive - Colour.dc.html">colour options</a> and the <a href="Nikko Archive - Lockups.dc.html">NIKKO STUDIO lockups</a> are archived. The live logo is the mark plus NIKKO — no second word.</span></p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,272px),1fr));gap:22px">
+
+        <div style="border:2px solid #111110;background:#F2ECDF;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:7px 11px"><span>MARK 01</span><span style="color:#FFD400">DAYLIGHT</span></div>
+          <div style="padding:34px 22px;min-height:168px;display:flex;align-items:center;justify-content:center;border-bottom:2px solid #111110;background:#E8E0CE">
+            <span style="display:block;width:176px;height:118px;border-radius:50%;background:#111110;position:relative;overflow:hidden">
+              <span style="position:absolute;left:0;right:0;top:63px;height:15px;background:#F2ECDF"></span>
+              <span style="position:absolute;left:0;right:0;top:78px;height:8px;background:#FFD400"></span>
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;border-bottom:2px solid #111110">
+            <span style="display:block;width:52px;height:35px;border-radius:50%;background:#111110;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:19px;height:5px;background:#F2ECDF"></span><span style="position:absolute;left:0;right:0;top:24px;height:3px;background:#FFD400"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:34px;letter-spacing:-0.05em;text-transform:uppercase;line-height:0.9">NIKKO</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;background:#111110;border-bottom:2px solid #111110">
+            <span style="display:block;width:52px;height:35px;border-radius:50%;background:#F2ECDF;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:19px;height:5px;background:#111110"></span><span style="position:absolute;left:0;right:0;top:24px;height:3px;background:#FFD400"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:34px;letter-spacing:-0.05em;text-transform:uppercase;line-height:0.9;color:#F2ECDF">NIKKO</span>
+          </div>
+          <div style="padding:16px 18px 18px">
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:15px;text-transform:uppercase;margin:0 0 8px">The horizon</p>
+            <p style="margin:0;font-size:14px;line-height:1.5">Your original, cleaned up. Two inks, cheapest to print, stitch or stamp — and the only version that survives at 20px without a second thought. This is the master unless something below beats it.</p>
+          </div>
+        </div>
+
+        <div style="border:2px solid #111110;background:#F2ECDF;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:7px 11px"><span>MARK 01R</span><span style="color:#EE5439">TWILIGHT</span></div>
+          <div style="padding:34px 22px;min-height:168px;display:flex;align-items:center;justify-content:center;border-bottom:2px solid #111110;background:#E8E0CE">
+            <span style="display:block;width:176px;height:118px;border-radius:50%;background:#111110;position:relative;overflow:hidden">
+              <span style="position:absolute;left:0;right:0;top:63px;height:15px;background:#F2ECDF"></span>
+              <span style="position:absolute;left:0;right:0;top:78px;height:8px;background:#EE5439"></span>
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;border-bottom:2px solid #111110">
+            <span style="display:block;width:52px;height:35px;border-radius:50%;background:#111110;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:19px;height:5px;background:#F2ECDF"></span><span style="position:absolute;left:0;right:0;top:24px;height:3px;background:#EE5439"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:34px;letter-spacing:-0.05em;text-transform:uppercase;line-height:0.9">NIKKO</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;background:#111110;border-bottom:2px solid #111110">
+            <span style="display:block;width:52px;height:35px;border-radius:50%;background:#F2ECDF;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:19px;height:5px;background:#111110"></span><span style="position:absolute;left:0;right:0;top:24px;height:3px;background:#EE5439"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:34px;letter-spacing:-0.05em;text-transform:uppercase;line-height:0.9;color:#F2ECDF">NIKKO</span>
+          </div>
+          <div style="padding:16px 18px 18px">
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:15px;text-transform:uppercase;margin:0 0 8px">The last light</p>
+            <p style="margin:0;font-size:14px;line-height:1.5">Same mark, coral instead of yellow. Yes — it reads as dusk rather than noon: warmer, more Beirut, more nostalgic. It also has more contrast against cream than yellow does, so it holds up better in small print.</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:#EE5439;margin:12px 0 0">Cost — <span style="color:#4A463C;letter-spacing:0.05em;text-transform:none">coral is the site's punctuation colour. If the logo takes it, coral can no longer be used to shout elsewhere.</span></p>
+          </div>
+        </div>
+
+        <div style="border:2px solid #111110;background:#F2ECDF;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:7px 11px"><span>MARK 02</span><span style="color:{{ accent }}">{{ accentName }}</span></div>
+          <div style="padding:34px 22px;min-height:168px;display:flex;align-items:center;justify-content:center;border-bottom:2px solid #111110;background:#E8E0CE">
+            <span style="display:block;width:176px;height:118px;border-radius:50%;background:#111110;position:relative;overflow:hidden">
+              <span style="position:absolute;left:0;right:0;top:63px;height:15px;background:#F2ECDF"></span>
+              <span style="position:absolute;left:0;right:0;top:78px;height:8px;background:{{ accent }};transition:background 420ms ease"></span>
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;border-bottom:2px solid #111110">
+            <span style="display:block;width:52px;height:35px;border-radius:50%;background:#111110;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:19px;height:5px;background:#F2ECDF"></span><span style="position:absolute;left:0;right:0;top:24px;height:3px;background:{{ accent }};transition:background 420ms ease"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:34px;letter-spacing:-0.05em;text-transform:uppercase;line-height:0.9">NIKKO</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;background:#111110;border-bottom:2px solid #111110">
+            <span style="display:block;width:52px;height:35px;border-radius:50%;background:#F2ECDF;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:19px;height:5px;background:#111110"></span><span style="position:absolute;left:0;right:0;top:24px;height:3px;background:{{ accent }};transition:background 420ms ease"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:34px;letter-spacing:-0.05em;text-transform:uppercase;line-height:0.9;color:#F2ECDF">NIKKO</span>
+          </div>
+          <div style="display:flex;gap:2px;background:#111110;border-bottom:2px solid #111110">
+            <sc-for list="{{ accents }}" as="a" hint-placeholder-count="3">
+              <button type="button" onClick="{{ a.pick }}" style="flex:1 1 0;appearance:none;cursor:pointer;border:0;background:#F2ECDF;padding:11px 6px;display:flex;flex-direction:column;align-items:center;gap:7px" style-hover="background:#E8E0CE">
+                <span style="display:block;width:40px;height:27px;border-radius:50%;background:#111110;position:relative;overflow:hidden"><span style="position:absolute;left:0;right:0;top:14px;height:4px;background:#F2ECDF"></span><span style="position:absolute;left:0;right:0;top:18px;height:3px;background:{{ a.hex }}"></span></span>
+                <span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:{{ a.labelColor }}">{{ a.name }}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="padding:16px 18px 18px">
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:15px;text-transform:uppercase;margin:0 0 8px">One line, three lights</p>
+            <p style="margin:0;font-size:14px;line-height:1.5">Same silhouette as 01 and 01R — black oval, slot of light, one coloured line under it. The colour is the only variable, so the mark can change temperature by page, by season, by hour, and still be one logo. Horizon at noon, Last light at dusk, Offshore for the cold end of the day.</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:#2B45F0;margin:12px 0 0">Naming — <span style="color:#4A463C;letter-spacing:0.05em;text-transform:none">Offshore is a placeholder for the cobalt; Deep End and Blue Hour are the other two candidates.</span></p>
+          </div>
+        </div>
+
+        <div style="border:2px solid #111110;background:#F2ECDF;display:flex;flex-direction:column">
+          <div style="display:flex;justify-content:space-between;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:7px 11px"><span>MARK 02C</span><span style="color:#EE5439">SIGNAL</span></div>
+          <div style="padding:34px 22px;min-height:168px;display:flex;align-items:center;justify-content:center;border-bottom:2px solid #111110;background:#E8E0CE">
+            <span style="display:block;width:176px;height:118px;border-radius:50%;background:#111110;position:relative;overflow:hidden">
+              <span style="position:absolute;left:0;right:0;top:46px;height:9px;background:#EE5439"></span>
+              <span style="position:absolute;left:0;right:0;top:55px;height:14px;background:#F2ECDF"></span>
+              <span style="position:absolute;left:0;right:0;top:69px;height:9px;background:#FFD400"></span>
+              <span style="position:absolute;left:0;right:0;bottom:0;height:40px;background:#2B45F0"></span>
+            </span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;border-bottom:2px solid #111110">
+            <span style="display:block;width:52px;height:35px;border-radius:50%;background:#111110;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:13px;height:3px;background:#EE5439"></span><span style="position:absolute;left:0;right:0;top:16px;height:4px;background:#F2ECDF"></span><span style="position:absolute;left:0;right:0;top:20px;height:3px;background:#FFD400"></span><span style="position:absolute;left:0;right:0;bottom:0;height:12px;background:#2B45F0"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:34px;letter-spacing:-0.05em;text-transform:uppercase;line-height:0.9">NIKKO</span>
+          </div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:18px;background:#111110;border-bottom:2px solid #111110">
+            <span style="display:block;width:52px;height:35px;border-radius:50%;background:#F2ECDF;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:13px;height:3px;background:#EE5439"></span><span style="position:absolute;left:0;right:0;top:16px;height:4px;background:#111110"></span><span style="position:absolute;left:0;right:0;top:20px;height:3px;background:#FFD400"></span><span style="position:absolute;left:0;right:0;bottom:0;height:12px;background:#2B45F0"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:34px;letter-spacing:-0.05em;text-transform:uppercase;line-height:0.9;color:#F2ECDF">NIKKO</span>
+          </div>
+          <div style="padding:16px 18px 18px">
+            <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:15px;text-transform:uppercase;margin:0 0 8px">Full band</p>
+            <p style="margin:0;font-size:14px;line-height:1.5">Coral sky, ink band, slot of light, cobalt sea — the whole palette stacked inside the oval. Test-card nostalgia without cosplaying a test card, because the bars are horizontal bands of a landscape, not vertical bars of a broadcast.</p>
+            <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.13em;text-transform:uppercase;color:#EE5439;margin:12px 0 0">Watch — <span style="color:#4A463C;letter-spacing:0.05em;text-transform:none">four colours in a 20px favicon turns to mud. Needs Mark 01 as its small-size alternate, always.</span></p>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:2px solid #111110;background:#F2ECDF;padding:22px;margin-top:24px">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 16px">The 20px test — one ink, no accents</p>
+        <div style="display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px"><span style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border:1.5px solid #4A463C"><span style="display:block;width:30px;height:20px;border-radius:50%;background:#111110;position:relative;overflow:hidden"><span style="position:absolute;left:0;right:0;top:11px;height:4px;background:#F2ECDF"></span></span></span><span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:#4A463C">01 / 01R / 02</span></div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px"><span style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border:1.5px solid #4A463C"><span style="display:block;width:30px;height:20px;border-radius:50%;background:#111110;position:relative;overflow:hidden"><span style="position:absolute;left:0;right:0;top:0;height:7px;background:#4A463C"></span><span style="position:absolute;left:0;right:0;top:7px;height:3px;background:#F2ECDF"></span><span style="position:absolute;left:0;right:0;bottom:0;height:10px;background:#4A463C"></span></span></span><span style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.08em;text-transform:uppercase;color:#4A463C">02C</span></div>
+          <div style="flex:1 1 280px;min-width:250px">
+            <p style="margin:0;font-size:15px;line-height:1.5"><strong>The system that works:</strong> one silhouette, one accent line. Mark 01 is the ink-only master and the small-size mark; Mark 02 is the same mark with the line free to change colour — Horizon, Last light, Offshore (01R is simply 02 sitting on Last light); Mark 02C reserved for the moments where the site is allowed to be loud — the loading sequence, the 404, the cover of a deck, merch. Same oval throughout, so it never reads as three logos.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 08G — De-boxing</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">Oval, and in colour</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:68ch;margin:0 0 34px;text-wrap:pretty">The oval is settled — a capsule is a rectangle with round ends that every product on earth already uses, and a true oval never lets the curve stop. Square, capsule and the coloured fills are <a href="Nikko Archive - Buttons.dc.html">archived</a>. What is left to decide is where the colour goes. Coral and cobalt fills both had to fight the slot, so the button is now ink and the slot is the accent — the same move as the logo.</p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:2px;background:#111110;border:2px solid #111110">
+        <div style="background:#E8E0CE;padding:26px 22px 28px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 20px">A — Ink / horizon</p>
+          <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+            <span style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:17px 32px;border-radius:50%;position:relative;overflow:hidden"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:4px;background:#FFD400"></span>Put us to work</span>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;border:2px solid #111110;color:#111110;padding:17px 32px;border-radius:50%">See the work</span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;background:#F2ECDF;color:#111110;border:1.5px solid #111110;padding:11px 22px;border-radius:50%">Naming</span>
+          </div>
+          <p style="margin:22px 0 0;font-size:14px;line-height:1.5;color:#4A463C">The default. Black is the only fill the slot never argues with, and yellow under ink is the same relationship the logo already uses — the light under the dark.</p>
+        </div>
+        <div style="background:#E8E0CE;padding:26px 22px 28px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 20px">B — Ink / offshore</p>
+          <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+            <span style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:17px 32px;border-radius:50%;position:relative;overflow:hidden"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:4px;background:#2B45F0"></span>Put us to work</span>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;border:2px solid #111110;color:#111110;padding:17px 32px;border-radius:50%">See the work</span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;background:#F2ECDF;color:#111110;border:1.5px solid #111110;padding:11px 22px;border-radius:50%">Naming</span>
+          </div>
+          <p style="margin:22px 0 0;font-size:14px;line-height:1.5;color:#4A463C">Cooler and quieter. Cobalt on black is a narrow-contrast slot, so it reads as a detail you find rather than a stripe you are shown. Good on pages that already carry a lot of colour.</p>
+        </div>
+        <div style="background:#E8E0CE;padding:26px 22px 28px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 20px">C — Ink / last light</p>
+          <div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start">
+            <span style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:17px 32px;border-radius:50%;position:relative;overflow:hidden"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:4px;background:#EE5439"></span>Put us to work</span>
+            <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;border:2px solid #111110;color:#111110;padding:17px 32px;border-radius:50%">See the work</span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;background:#F2ECDF;color:#111110;border:1.5px solid #111110;padding:11px 22px;border-radius:50%">Naming</span>
+          </div>
+          <p style="margin:22px 0 0;font-size:14px;line-height:1.5;color:#4A463C">The warm one. Closest in feel to the old coral button, but the coral is now a four-pixel line instead of the whole shape — so it stays punctuation.</p>
+        </div>
+      </div>
+
+      <div style="border:2px solid #111110;background:#111110;padding:26px 22px 28px;margin-top:2px">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#FFD400;margin:0 0 6px">D — On ink</p>
+        <p style="margin:0 0 20px;font-size:14px;line-height:1.5;color:#8A8474;max-width:66ch">On a black ground the ink oval disappears, so the fill inverts to paper and the slot goes coral — the one place the accent sits on a light fill and still reads, because the surround is dark. Outlined ovals turn paper too.</p>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center">
+          <span style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#F2ECDF;color:#111110;padding:17px 32px;border-radius:50%;position:relative;overflow:hidden"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:4px;background:#EE5439"></span>Put us to work</span>
+          <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;border:2px solid #F2ECDF;color:#F2ECDF;padding:17px 32px;border-radius:50%">See the work</span>
+          <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;background:transparent;color:#F2ECDF;border:1.5px solid #8A8474;padding:11px 22px;border-radius:50%">Naming</span>
+          <span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#8A8474;margin-left:auto">Same shape, inverted ink</span>
+        </div>
+      </div>
+
+      <div style="border:2px solid #2B45F0;background:#F2ECDF;padding:20px 22px;margin-top:22px">
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:0 0 10px">The button law</p>
+        <p style="margin:0;font-size:15px;line-height:1.5"><strong>One filled oval, one outlined oval, per page.</strong> The filled oval is ink, and the slot inside it carries the accent — horizon by default, offshore or last light where the page wants a different temperature. Two accents never share one button. On ink grounds the fill inverts to paper with a coral slot (D). The slot appears on the filled oval and nowhere else — never on cream, never on the outline, never on a chip.</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,290px),1fr));gap:22px;margin-top:24px">
+        <div style="border:2px solid #111110;background:#F2ECDF;padding:24px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 18px">Container scale — the arch, dialled back</p>
+          <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1 1 150px;border:2px solid #111110;background:#E8E0CE;border-radius:50% 50% 8px 8px / 24% 24% 8px 8px;padding:30px 18px 16px;text-align:center;min-height:130px;display:flex;flex-direction:column;justify-content:flex-end">
+              <p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 6px">SERVICE 01</p>
+              <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:17px;text-transform:uppercase;margin:0">Show &amp; Tell</p>
+              <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:10px 0 0">✓ The dome — use this</p>
+            </div>
+            <div style="flex:1 1 150px;border:2px solid #111110;background:#E8E0CE;border-radius:50%;padding:44px 22px;text-align:center;min-height:150px;display:flex;flex-direction:column;justify-content:center">
+              <p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 6px">SERVICE 02</p>
+              <p style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:17px;text-transform:uppercase;margin:0">Dream &amp; Do</p>
+              <p style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:10px 0 0">✕ Full oval — rejected</p>
+            </div>
+          </div>
+          <p style="margin:18px 0 0;font-size:14px;line-height:1.5;color:#4A463C">A full oval container wastes its corners and fights every paragraph in it. The answer is a shallow dome — a lid, not an archway — with 8px on the bottom corners so the whole thing reads as an object rather than a doorway. This is the curve used everywhere on the site now.</p>
+        </div>
+        <div style="border:2px solid #111110;background:#F2ECDF;padding:24px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 18px">Inputs stay boxes</p>
+          <div style="display:flex;flex-direction:column;gap:12px">
+            <label style="display:block"><span style="display:block;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin-bottom:6px">Your name</span><input type="text" value="Layla" style="width:100%;font-family:'Archivo',sans-serif;font-size:15px;color:#111110;background:#F2ECDF;border:2px solid #111110;border-radius:3px;padding:12px 13px" /></label>
+            <label style="display:block"><span style="display:block;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin-bottom:6px">What are we making</span><textarea rows="2" style="width:100%;font-family:'Archivo',sans-serif;font-size:15px;color:#111110;background:#F2ECDF;border:2px solid #111110;border-radius:3px;padding:12px 13px;resize:none">A film nobody skips</textarea></label>
+            <span style="align-self:flex-start"><span style="display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;padding:17px 32px;border-radius:50%;position:relative;overflow:hidden"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:8px;height:4px;background:#FFD400"></span>Send it</span></span>
+          </div>
+          <p style="margin:18px 0 0;font-size:14px;line-height:1.5;color:#4A463C">Square-ish, 3px corner, 2px ink, focus turns the border cobalt. The oval belongs to <em>actions</em> — if the fields curve too, nothing signals which element does something. Subtle everywhere, edgy in one place per screen.</p>
+        </div>
+        <div style="border:2px solid #2B45F0;background:#F2ECDF;padding:24px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">The oval law</p>
+          <p style="margin:0 0 12px;font-size:15px;line-height:1.5"><strong>Small and interactive → true oval (50%).</strong> Buttons, chips, tags, avatars, the play control. Nothing wider than about 5 words, so the ellipse stays an ellipse and never stretches into a capsule.</p>
+          <p style="margin:0 0 12px;font-size:15px;line-height:1.5"><strong>Large and content-bearing → shallow dome (50% 50% 8px 8px / 24% 24% 8px 8px).</strong> Cards, the memory box, section heads, image mounts. A lid, not an archway.</p>
+          <p style="margin:0;font-size:15px;line-height:1.5"><strong>Structure and inputs → square.</strong> Plates, rules, tables, the grid, every field. And never 999px anywhere: the capsule is banned, that is what stops this looking like everyone else.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="border-bottom:2px solid #111110;padding:56px 0 64px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 08H — The memory box</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">One shell, three cartridges</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:70ch;margin:0 0 12px;text-wrap:pretty">The dialogue box promoted: no longer a nod to a machine, but the studio's own instrument — a box the founder loads with fragments and a visitor turns over. Built like an inlaid keepsake box rather than a UI card: a low lid, the same band mirrored top and bottom, and nothing decorative between them. Text, pictures, voice, in the same shell with the same controls, so it is never re-learned.</p>
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 32px">Shell rules — <span style="text-transform:none;letter-spacing:0.04em">shallow domed lid, one mirrored inlay band under the lid and along the foot, 2px ink, mono chrome, serif italic for anything the founder says. One box per page, maximum.</span></p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:26px;align-items:start">
+
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 14px">A — Text</p>
+          <div style="border:2px solid #111110;background:#F2ECDF;border-radius:50% 50% 6px 6px / 15% 15% 6px 6px;overflow:hidden">
+            <div style="background:#111110;color:#F2ECDF;padding:30px 22px 15px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase">MEMORY BOX — {{ mbIndex }} / {{ mbTotal }} · {{ mbTag }}</div>
+            <div style="position:relative;height:16px;background:#F2ECDF;border-bottom:1.5px solid #111110;overflow:hidden"><span aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(circle 7px at 7px 16px, transparent 0 5.2px, #111110 5.2px 7px, transparent 7px);background-size:14px 16px;background-repeat:repeat-x"></span></div>
+            <div style="padding:24px 24px 18px;min-height:170px">
+              <p style="font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:clamp(18px,1.9vw,23px);line-height:1.4;margin:0;text-wrap:pretty">{{ mbTyped }}<span aria-hidden="true" style="display:inline-block;width:10px;height:1.05em;background:#111110;vertical-align:-3px;margin-left:3px;animation:nk-blink 1s steps(1) infinite"></span></p>
+            </div>
+            <div style="padding:0 20px 20px;display:flex;flex-wrap:wrap;gap:9px">
+              <sc-for list="{{ mbChoices }}" as="c" hint-placeholder-count="3">
+                <button type="button" onClick="{{ c.pick }}" style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;border:2px solid #111110;background:#F2ECDF;padding:10px 20px;border-radius:50%;cursor:pointer" style-hover="background:#FFD400">{{ c.label }}</button>
+              </sc-for>
+            </div>
+            <div style="position:relative;height:16px;background:#F2ECDF;border-top:1.5px solid #111110;overflow:hidden"><span aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(circle 7px at 7px 0, transparent 0 5.2px, #111110 5.2px 7px, transparent 7px);background-size:14px 16px;background-repeat:repeat-x"></span></div>
+          </div>
+          <div style="display:grid;gap:2px;background:#111110;border:2px solid #111110;margin-top:18px">
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">The hesitation</p><p style="margin:0;font-size:13.5px;line-height:1.5">It pauses mid-sentence, backspaces two words, picks better ones. Once a session.</p></div>
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">The weight read</p><p style="margin:0;font-size:13.5px;line-height:1.5">Hover a marked word and the word-weight gauge appears under it with a score.</p></div>
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">It remembers</p><p style="margin:0;font-size:13.5px;line-height:1.5">Second visit: “you left off at the mural”, and a stamped date on the foot. Local only.</p></div>
+          </div>
+        </div>
+
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 14px">B — Album</p>
+          <div style="border:2px solid #111110;background:#F2ECDF;border-radius:50% 50% 6px 6px / 15% 15% 6px 6px;overflow:hidden">
+            <div style="background:#111110;color:#F2ECDF;padding:30px 22px 15px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase">MEMORY BOX — ALBUM / {{ mbAlbumIndex }} OF 04 · {{ mbAlbumKind }}</div>
+            <div style="position:relative;height:16px;background:#F2ECDF;border-bottom:1.5px solid #111110;overflow:hidden"><span aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(circle 7px at 7px 16px, transparent 0 5.2px, #111110 5.2px 7px, transparent 7px);background-size:14px 16px;background-repeat:repeat-x"></span></div>
+            <div style="height:236px;background-color:#4A463C;background-image:{{ mbAlbumTexture }};border-bottom:2px solid #111110"></div>
+            <div style="padding:18px 20px 0"><p style="font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:17px;line-height:1.45;margin:0;min-height:3.6em">{{ mbAlbumCaption }}</p></div>
+            <div style="padding:14px 20px 20px;display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+              <sc-for list="{{ mbThumbs }}" as="t" hint-placeholder-count="4">
+                <button type="button" onClick="{{ t.pick }}" aria-label="{{ t.aria }}" style="width:50px;height:36px;border:2px solid #111110;background-color:#4A463C;cursor:pointer;padding:0;background-image:{{ t.texture }};opacity:{{ t.opacity }}" style-hover="opacity:1"></button>
+              </sc-for>
+              <span style="margin-left:auto;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C">tap a scrap</span>
+            </div>
+            <div style="position:relative;height:16px;background:#F2ECDF;border-top:1.5px solid #111110;overflow:hidden"><span aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(circle 7px at 7px 0, transparent 0 5.2px, #111110 5.2px 7px, transparent 7px);background-size:14px 16px;background-repeat:repeat-x"></span></div>
+          </div>
+          <div style="display:grid;gap:2px;background:#111110;border:2px solid #111110;margin-top:18px">
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">Swap</p><p style="margin:0;font-size:13.5px;line-height:1.5">The scrap cuts in edge to edge, no crossfade — paper does not fade. 220ms, and the caption swaps a beat later so the picture lands first.</p></div>
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">Clips</p><p style="margin:0;font-size:13.5px;line-height:1.5">3s muted loops, only the one in frame. The mono chip reads CLIP 0:03 so it is never mistaken for a still.</p></div>
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">Peel</p><p style="margin:0;font-size:13.5px;line-height:1.5">Press and hold lifts the corner to show what she wrote on the back. The annotation is the payload.</p></div>
+          </div>
+        </div>
+
+        <div>
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#2B45F0;margin:0 0 14px">C — Voice</p>
+          <div style="border:2px solid #111110;background:#F2ECDF;border-radius:50% 50% 6px 6px / 15% 15% 6px 6px;overflow:hidden">
+            <div style="background:#111110;color:#F2ECDF;padding:30px 22px 15px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase">MEMORY BOX — VOICE / {{ mbAudioStatus }}</div>
+            <div style="position:relative;height:16px;background:#F2ECDF;border-bottom:1.5px solid #111110;overflow:hidden"><span aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(circle 7px at 7px 16px, transparent 0 5.2px, #111110 5.2px 7px, transparent 7px);background-size:14px 16px;background-repeat:repeat-x"></span></div>
+            <div style="padding:24px 22px 18px;display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;align-items:center;gap:14px">
+                <button type="button" onClick="{{ mbToggleAudio }}" aria-label="{{ mbAudioAria }}" style="flex:0 0 auto;width:66px;height:46px;border-radius:50%;border:2px solid #111110;background:#111110;color:#FFD400;font-family:'DM Mono',monospace;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" style-hover="background:#2B45F0;color:#F2ECDF">{{ mbAudioIcon }}</button>
+                <span style="flex:1 1 auto;display:flex;align-items:flex-end;gap:3px;height:48px">
+                  <sc-for list="{{ mbBars }}" as="b" hint-placeholder-count="22">
+                    <span style="flex:1;background:{{ b.color }};height:{{ b.height }};animation:{{ b.anim }}"></span>
+                  </sc-for>
+                </span>
+              </div>
+              <div>
+                <span style="display:block;height:12px;border:2px solid #111110;background:#F2ECDF;position:relative;overflow:hidden">
+                  <span style="position:absolute;left:0;top:0;bottom:0;background:#FFD400;width:{{ mbAudioPct }}"></span>
+                  <span style="position:absolute;inset:0;background-image:repeating-linear-gradient(to right, #111110 0 1.5px, transparent 1.5px 19px)"></span>
+                </span>
+                <span style="display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin-top:8px"><span>{{ mbAudioTime }}</span><span>0:19</span></span>
+              </div>
+              <p style="font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:17px;line-height:1.45;margin:0;min-height:4.4em">{{ mbAudioTranscript }}</p>
+            </div>
+            <div style="padding:0 20px 20px;display:flex;gap:8px;flex-wrap:wrap">
+              <span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;border:1.5px solid #111110;padding:9px 18px;border-radius:50%">Teta, 1994 · 0:11</span>
+              <span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;border:1.5px solid #4A463C;color:#4A463C;padding:9px 18px;border-radius:50%">Bad brief · 0:08</span>
+            </div>
+            <div style="position:relative;height:16px;background:#F2ECDF;border-top:1.5px solid #111110;overflow:hidden"><span aria-hidden="true" style="position:absolute;inset:0;background-image:radial-gradient(circle 7px at 7px 0, transparent 0 5.2px, #111110 5.2px 7px, transparent 7px);background-size:14px 16px;background-repeat:repeat-x"></span></div>
+          </div>
+          <div style="display:grid;gap:2px;background:#111110;border:2px solid #111110;margin-top:18px">
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">Live transcript</p><p style="margin:0;font-size:13.5px;line-height:1.5">Words appear as they are said, in serif italic. Pause and the text stops mid-word.</p></div>
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">Scrub is a horizon</p><p style="margin:0;font-size:13.5px;line-height:1.5">The progress bar is the logo's slot — yellow light crossing an ink field. Dragging moves the sun.</p></div>
+            <div style="background:#F2ECDF;padding:13px 15px"><p style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.14em;text-transform:uppercase;color:#EE5439;margin:0 0 5px">Never autoplays</p><p style="margin:0;font-size:13.5px;line-height:1.5">Sound is always a choice. Duration and one line of transcript as bait, then it waits.</p></div>
+          </div>
+        </div>
+      </div>
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:24px 0 0">Ship order — <span style="text-transform:none;letter-spacing:0.04em">voice on the homepage, album on the work page, text everywhere else. Founder tooling is four fields: upload, caption, back-note, tone. If it takes longer than a text message, it will not get fed.</span></p>
+    </div>
+
+    <div style="padding:56px 0 72px">
+      <p style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#2B45F0;margin:0 0 12px">Plate 09 — Anti-brief</p>
+      <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(30px,4vw,60px);line-height:0.94;letter-spacing:-0.025em;text-transform:uppercase;margin:0 0 8px">What this will never be</h2>
+      <p style="font-size:18px;line-height:1.5;max-width:56ch;margin:0 0 32px">Held as a checklist through build. If a decision could plausibly appear on another studio's site this year, it's the wrong decision.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:10px">
+        <sc-for list="{{ antis }}" as="a" hint-placeholder-count="16">
+          <span style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;border:1.5px solid #4A463C;color:#4A463C;padding:8px 12px;text-decoration:line-through">{{ a }}</span>
+        </sc-for>
+      </div>
+    </div>
+
+  </section>
+
+  <footer style="background:#111110;color:#F2ECDF;border-top:2px solid #111110">
+    <div style="max-width:1320px;margin:0 auto;padding:36px 32px;display:flex;gap:22px;flex-wrap:wrap;align-items:center;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase">
+      <span style="color:#FFD400">NIKKO STUDIO — ART DIRECTION 1.1</span>
+      <span style="opacity:0.6">Concept: an inherited machine full of fragments</span>
+      <span style="margin-left:auto;opacity:0.6">v1.1 — moodboard reconciled: stamps, tape, halftone, one nod</span>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;groundDrift&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Ground&quot;},&quot;groundCycle&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:20,&quot;max&quot;:180,&quot;step&quot;:4,&quot;default&quot;:48,&quot;unit&quot;:&quot;s&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Ground&quot;},&quot;showMarginMarks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Moodboard reconciliation&quot;},&quot;showConsoleNod&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Moodboard reconciliation&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;analogue&quot;,&quot;digital&quot;],&quot;default&quot;:&quot;analogue&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Machine&quot;},&quot;grainAmount&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.1,&quot;default&quot;:0.5,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Machine&quot;}}">
+class Component extends DCLogic {
+  state = { mode: null, word: 0, nod: 0, wide: false, signal: true, audio: false,
+    mb: 0, mbTyped: '', mbAlbum: 0, mbAudio: false, mbPos: 0, accent: 0, accentAuto: true };
+
+  componentDidMount() {
+    this._onResize = () => this.setState({ wide: window.innerWidth >= 1560 });
+    this._onResize();
+    window.addEventListener('resize', this._onResize);
+    this._type = setInterval(() => {
+      const full = this.mbBoxes()[this.state.mb].text;
+      if (this.state.mbTyped.length < full.length) {
+        this.setState(s => ({ mbTyped: full.slice(0, s.mbTyped.length + 1) }));
+      }
+    }, 26);
+    this._accent = setInterval(() => {
+      if (this.state.accentAuto) this.setState(s => ({ accent: (s.accent + 1) % 3 }));
+    }, 2600);
+    this._tick = setInterval(() => {
+      if (this.state.mbAudio) this.setState(s => ({ mbPos: s.mbPos >= 19 ? 0 : s.mbPos + 0.25 }));
+    }, 250);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener('resize', this._onResize);
+    clearInterval(this._type);
+    clearInterval(this._tick);
+    clearInterval(this._accent);
+  }
+
+  mbBoxes() {
+    return [
+      { tag: 'OPEN', text: 'This box holds the things I could not throw away. Pick one and I will tell you about it.',
+        choices: [ { label: 'A picture', to: 1 }, { label: 'Something said', to: 2 }, { label: 'Surprise me', to: 3 } ] },
+      { tag: 'DOHA', text: 'A wall in Doha. Nobody was asked to queue for it — they just did, then photographed each other in front of it for a week.',
+        choices: [ { label: 'And then?', to: 3 }, { label: 'Back', to: 0 } ] },
+      { tag: 'HEARD', text: '"Make it memorable." That is not a brief, that is a wish. So we asked what she wanted people to repeat at dinner. That is a brief.',
+        choices: [ { label: 'Another', to: 3 }, { label: 'Back', to: 0 } ] },
+      { tag: 'TETA', text: 'My grandmother told the same story four ways depending on who was in the room. None of them were lies. That is positioning.',
+        choices: [ { label: 'One more', to: 1 }, { label: 'Start again', to: 0 } ] }
+    ];
+  }
+
+  mbAlbums() {
+    return [
+      { meta: 'BEIRUT / 1987', kind: 'SCAN', caption: 'The balcony, before they closed it in. Someone wrote the date on the back in biro and got the year wrong.',
+        texture: 'repeating-linear-gradient(28deg, rgba(242,236,223,0.22) 0 9px, rgba(17,17,16,0.3) 9px 18px)' },
+      { meta: 'DOHA / 2024', kind: 'CLIP 0:03', caption: 'Three seconds of the mural going up. You can hear someone laughing off camera the whole time.',
+        texture: 'repeating-linear-gradient(90deg, rgba(255,212,0,0.5) 0 7px, rgba(17,17,16,0.42) 7px 15px)' },
+      { meta: 'LONDON / 2021', kind: 'PHOTO', caption: 'The first Show & Tell. Eleven people, one projector, and a kebab afterwards that is still being discussed.',
+        texture: 'repeating-linear-gradient(-35deg, rgba(238,84,57,0.42) 0 8px, rgba(17,17,16,0.34) 8px 17px)' },
+      { meta: 'TOKYO / 1983', kind: 'SCRAP', caption: 'Torn from the manual that came with the machine. I cannot read it and I am not getting it translated.',
+        texture: 'repeating-linear-gradient(62deg, rgba(43,69,240,0.42) 0 6px, rgba(17,17,16,0.36) 6px 14px)' }
+    ];
+  }
+
+  nodLines() {
+    return [
+      'NKO wants to write better.',
+      'The machine was inherited. The stories inside it are new.',
+      'One box. No coins, no sprites, no health bars.',
+      'Say the thing that sticks. Then get out of the way.'
+    ];
+  }
+
+  words() {
+    return [
+      { label: 'خرا', translit: 'khara', tag: 'AR', dir: 'rtl', lang: 'ar',
+        langLabel: 'Arabic — Levantine',
+        register: 'Adult. Blunt. Bodily.',
+        audience: 'People who share the room and the history',
+        room: 'Lands like a slap. Everyone at the table stops chewing.',
+        weight: 94 },
+      { label: 'kaka', translit: 'kaka', tag: 'EN', dir: 'ltr', lang: 'en',
+        langLabel: 'English — nursery',
+        register: 'Childish. Softened. Deflecting.',
+        audience: 'Anyone you are not quite willing to be honest with',
+        room: 'Lands like a joke. Nobody stops chewing.',
+        weight: 26 },
+      { label: 'faecal matter', translit: 'faecal matter', tag: 'CLIN', dir: 'ltr', lang: 'en',
+        langLabel: 'English — clinical',
+        register: 'Institutional. Bloodless.',
+        audience: 'A committee. A form. A footnote.',
+        room: 'Lands like paperwork. Everyone stops listening.',
+        weight: 9 }
+    ];
+  }
+
+  renderVals() {
+    const isAnalogue = (this.state.mode ?? this.props.mode ?? 'analogue') === 'analogue';
+    const grain = this.props.grainAmount ?? 0.5;
+    const list = this.words();
+    const i = this.state.word;
+    const active = list[i];
+
+    const mbList = this.mbBoxes();
+    const mbBox = mbList[this.state.mb];
+    const albums = this.mbAlbums();
+    const al = albums[this.state.mbAlbum];
+    const pos = this.state.mbPos;
+    const vFull = 'Right — the brief said make it memorable. That is a wish, not a brief. So here is what we actually did, and why she still quotes it back to us.';
+    const heights = [18,42,26,64,88,52,34,72,96,44,28,58,80,38,22,66,90,48,30,74,54,26];
+
+    const accentList = [
+      { hex: '#FFD400', name: 'Horizon' },
+      { hex: '#EE5439', name: 'Last light' },
+      { hex: '#2B45F0', name: 'Offshore' }
+    ];
+    const ai = this.state.accent;
+
+    return {
+      accent: accentList[ai].hex,
+      accentName: accentList[ai].name,
+      accents: accentList.map((a, n) => ({
+        hex: a.hex, name: a.name,
+        labelColor: n === ai ? '#111110' : '#8A8474',
+        pick: () => this.setState({ accent: n, accentAuto: false })
+      })),
+      mbTyped: this.state.mbTyped,
+      mbTag: mbBox.tag,
+      mbIndex: String(this.state.mb + 1).padStart(2, '0'),
+      mbTotal: String(mbList.length).padStart(2, '0'),
+      mbChoices: mbBox.choices.map(c => ({ label: c.label, pick: () => this.setState({ mb: c.to, mbTyped: '' }) })),
+      mbAlbumIndex: String(this.state.mbAlbum + 1).padStart(2, '0'),
+      mbAlbumMeta: al.meta,
+      mbAlbumKind: al.kind,
+      mbAlbumCaption: al.caption,
+      mbAlbumTexture: al.texture,
+      mbThumbs: albums.map((a, n) => ({
+        texture: a.texture,
+        aria: 'Show ' + a.meta,
+        opacity: n === this.state.mbAlbum ? '1' : '0.45',
+        pick: () => this.setState({ mbAlbum: n })
+      })),
+      mbAudioStatus: this.state.mbAudio ? 'PLAYING' : 'PAUSED',
+      mbAudioIcon: this.state.mbAudio ? '❚❚' : '▶',
+      mbAudioAria: this.state.mbAudio ? 'Pause voice note' : 'Play voice note',
+      mbAudioPct: Math.min(100, (pos / 19) * 100) + '%',
+      mbAudioTime: '0:' + String(Math.floor(pos)).padStart(2, '0'),
+      mbAudioTranscript: (this.state.mbAudio || pos > 0)
+        ? vFull.slice(0, Math.max(1, Math.round(vFull.length * (pos / 19))))
+        : vFull.slice(0, 44) + '…',
+      mbToggleAudio: () => this.setState(s => ({ mbAudio: !s.mbAudio })),
+      mbBars: heights.map((h, n) => ({
+        color: this.state.mbAudio && (n / heights.length) * 19 <= pos ? '#FFD400' : '#111110',
+        height: this.state.mbAudio ? h + '%' : '8%',
+        anim: this.state.mbAudio ? 'nk-vu ' + (0.6 + (n % 5) * 0.14).toFixed(2) + 's ease-in-out infinite' : 'none'
+      })),
+
+      grainOpacity: isAnalogue ? String(0.16 * grain * 2) : '0.03',
+      isAnalogue: isAnalogue,
+      modeLabel: isAnalogue ? 'ANALOGUE' : 'DIGITAL',
+      toggleMode: () => this.setState({ mode: isAnalogue ? 'digital' : 'analogue' }),
+
+      signalOn: this.state.signal,
+      signalStatus: this.state.signal ? 'SIGNAL: WEAK' : 'SIGNAL: CLEAN',
+      signalLabel: this.state.signal ? 'Restore signal' : 'Degrade signal',
+      toggleSignal: () => this.setState(s => ({ signal: !s.signal })),
+      toggleAudio: () => this.setState(s => ({ audio: !s.audio })),
+      audioOn: this.state.audio,
+      audioIdle: !this.state.audio,
+      audioLabel: this.state.audio ? '■ Stop' : '▶ Play the voice note',
+      audioTime: this.state.audio ? 'PLAYING — 0:07 / 0:19' : '0:19 — TAP TO HEAR IT',
+      audioTranscript: 'Right, so — the brief said make it memorable. That is not a brief, that is a wish. Let me tell you what we actually did.',
+      groundSeconds: ((this.props.groundDrift ?? true) ? (this.props.groundCycle ?? 48) : 0) + 's',
+      showMargin: (this.props.showMarginMarks ?? true) && this.state.wide,
+      showNod: this.props.showConsoleNod ?? false,
+      nodLine: this.nodLines()[this.state.nod % this.nodLines().length],
+      nodNumber: String((this.state.nod % this.nodLines().length) + 1).padStart(2, '0'),
+      nodTotal: String(this.nodLines().length).padStart(2, '0'),
+      advanceNod: () => this.setState(s => ({ nod: s.nod + 1 })),
+      cuts: ['insert coin to continue', 'HP / stat bars', 'sprite characters', 'pixel sunburst icon', 'pointer-hand cursor', 'pixel body copy'],
+
+      words: list.map((w, n) => ({
+        label: w.label + (w.label !== w.translit ? '  ' + w.translit : ''),
+        tag: w.tag,
+        active: n === i,
+        bg: n === i ? '#EE5439' : 'transparent',
+        fg: n === i ? '#111110' : '#F2ECDF',
+        pick: () => this.setState({ word: n })
+      })),
+      activeDisplay: active.label,
+      activeDir: active.dir,
+      activeLang: active.lang,
+      activeLangLabel: active.langLabel,
+      activeRegister: active.register,
+      activeAudience: active.audience,
+      activeRoom: active.room,
+      activeWeight: active.weight,
+      activeWeightPct: active.weight + '%',
+
+      beats: [
+        { n: '01', title: 'Power on / Stories endure', src: '§1 — hero H1 + ticker', job: 'Feeling first', tag: 'HERO', tagBg: '#2B45F0', tagFg: '#F2ECDF',
+          note: 'Family albums, plastic straws, a Nokia 3310 thrown from a car. Huge grotesk over an archive fragment; a ticker underneath carries the commercial line.' },
+        { n: '02', title: 'Clarity, fast', src: '§1 — body + “for outliers”', job: 'What Nikko is', tag: 'BODY', tagBg: '#F2ECDF', tagFg: '#111110',
+          note: 'Story studio. Market for memorability. Who it is for — outliers and neck-cracking brands. One screen, no ambiguity.' },
+        { n: '03', title: 'From campfires to comment sections', src: '§2 — problem / positioning', job: 'The problem', tag: 'SCROLL', tagBg: '#F2ECDF', tagFg: '#111110',
+          note: '80 phone checks a day. Passive screentime versus memorable interruption. Bubble-gum aside sits in the margin as a taped note.' },
+        { n: '04', title: 'Word weight', src: '§7 — brand voice / philosophy', job: 'The thesis, felt', tag: 'SET-PIECE', tagBg: '#EE5439', tagFg: '#111110',
+          note: 'khara / kaka / clinical. Culture section and philosophy section collapse into one interactive argument about the weight of a word.' },
+        { n: '05', title: 'Where culture and commerce rub noses', src: '§3 — culture / global', job: 'Reach', tag: 'MAP', tagBg: '#F2ECDF', tagFg: '#111110',
+          note: '12+ countries, four continents, Assalamu Alaikum to Sayonara. Filed as stamps and serials, not a world-map cliché.' },
+        { n: '06', title: 'Meet the founder', src: '§4 — meet the founder', job: 'Nadia, not freelancer', tag: 'PORTRAIT', tagBg: '#F2ECDF', tagFg: '#111110',
+          note: 'First person, scrawled-on-walls copy, faded scan of Nadia with a hand-annotated caption. Studio frame around a human voice.' },
+        { n: '07', title: 'Put us to work', src: '§5 — services 01 + 02', job: 'The offer', tag: 'TWO PANELS', tagBg: '#2B45F0', tagFg: '#F2ECDF',
+          note: 'Two artefact panels, not a service grid: Show&Tell as a drop with a status light, Dream&Do as an open problem intake. Prices stated plainly.' },
+        { n: '08', title: 'Our work travels well', src: '§6 — social proof + testimonial', job: 'Proof', tag: 'ARTEFACTS', tagBg: '#F2ECDF', tagFg: '#111110',
+          note: 'Mural in Qatar, 215k-member journeys, doubled launch revenue. Screenshots and client praise as clippings — reasoning visible, no glossy thumbnails.' },
+        { n: '09', title: 'A messy kebab of an email', src: '§8 — newsletter signup', job: 'The key', tag: 'ACCESS', tagBg: '#FFD400', tagFg: '#111110',
+          note: 'Email is a season, not a newsletter. Two fields, one hard-black button, and a stated members-first benefit: drops and 1:1 access.' },
+        { n: '10', title: 'The stance', src: '§9 — footer + closing note', job: 'Who we are', tag: 'FOOTER', tagBg: '#F2ECDF', tagFg: '#111110',
+          note: 'People before personas. Anti-racist, anti-genocide, pro-equity, said plainly. London-based, Lebanese bread, and the teaser note about the full relaunch.' }
+      ],
+
+      antis: ['gradients', 'SaaS section rhythm', 'six-card service grid', 'uniform soft radius', 'pixel body copy',
+        'arcade neon', 'Y2K cosplay', 'faux-Japanese styling', 'stock studio photography',
+        'Arabic as pure texture', 'testimonial carousel', 'fade-up everything', 'preloader theatre',
+        'scroll-jacking', 'cursor gimmicks', 'wellness pastel', 'mustard gold', 'green-led palette',
+        'framework diagrams', 'fake scarcity', 'book a discovery call',
+        'insert-coin cosplay', 'sprite characters', 'HP / stat bars', 'pixel sunburst icon', 'sixth accent colour']
+    };
+  }
+}
+</script>
+</body>
+</html>
