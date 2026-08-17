@@ -10,6 +10,38 @@ If separate design, content, product, or engineering instructions are provided e
 
 ---
 
+## Repository map
+
+| Where | What it is | Authority |
+|---|---|---|
+| **This file** | Business context — what Nikko is, who it serves, how it makes money | **Source of truth for business meaning** |
+| **[`docs/`](./docs/README.md)** | Engineering documentation — architecture, principles, delivery plan | **Source of truth for how we build** |
+| **[`homepage-1-handoff/`](./homepage-1-handoff/README.md)** | Design handoff — the homepage spec, design source, prototype, art direction, assets | **Source of truth for design intent** |
+
+### Engineering documentation
+
+The website's technical architecture and the doctrine underpinning the build live in **[`docs/`](./docs/README.md)**.
+
+| Start with | For |
+|---|---|
+| [Docs index](./docs/README.md) | The map of everything below |
+| [01 — Project Brief](./docs/01-project-brief.md) | What we're building and why, read from this README |
+| [02 — Engineering Principles](./docs/02-engineering-principles.md) | **The guardrails** — 17 principles governing every technical decision |
+| [03 — Tech Stack](./docs/03-tech-stack.md) | Astro, TypeScript, plain CSS, Cloudflare — and the rejected alternatives |
+| [Architecture Decision Records](./docs/adr/README.md) | Why each significant choice was made |
+
+Needing decisions from outside engineering:
+
+| ⚠️ | About |
+|---|---|
+| [13 — Open Questions](./docs/13-open-questions.md) | 12 questions, 3 blocking the build |
+| [14 — Design Source Conflicts](./docs/14-design-source-conflicts.md) | Where the two design documents contradict each other |
+| [06 — Mobile Risks](./docs/06-responsive-and-mobile-risks.md) | 4 elements of the design that break on a phone |
+
+**Status:** architecture proposed, awaiting review. No application code has been written yet.
+
+---
+
 ## 1. What Nikko Studio is
 
 **Nikko Studio is a founder-led story studio** created by writer and strategist **Nadia Amer**.
@@ -464,8 +496,10 @@ Use this README for **business meaning and strategic context**.
 For other decisions:
 
 - use approved website copy for exact public-facing wording;
-- use separate creative/design documentation for visual direction;
-- use separate technical documentation for architecture and implementation;
+- use [`homepage-1-handoff/`](./homepage-1-handoff/README.md) for visual direction and design intent;
+- use [`docs/`](./docs/README.md) for architecture and implementation;
 - use the active task instructions when they explicitly override older assumptions.
 
 If a business assumption is unclear and materially affects implementation, surface the assumption rather than silently inventing a new business rule.
+
+The full precedence order, including how conflicts between sources are resolved, is set out in [P0 — Precedence](./docs/02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess).
