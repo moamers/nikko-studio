@@ -20,9 +20,10 @@ Build the site as a **statically generated Astro site in TypeScript**, styled wi
 | **Content** | **Astro Content Layer** + **Zod** schemas over **YAML + Markdown** | Founder-editable plain text; build-time validation; loader-swappable | [0002](./adr/0002-content-source-abstraction.md) |
 | **Images** | `astro:assets` (sharp) → AVIF/WebP + `srcset` | 1–3 MB PNGs become ~40–120 KB responsive sets | — |
 | **Fonts** | Self-hosted, subset, `woff2`, selective `preload` | Removes two third-party connections and a render-blocking request | — |
-| **Forms** | Cloudflare Pages Function → ESP API | Keeps the site static; keeps the API key server-side | — |
+| **Forms** | Cloudflare Pages Functions → **Kit** (newsletter) / **D1 + Resend** (enquiry) | Keeps the site static; keeps API keys server-side; no third-party widget, so no cookie banner | [16](./16-forms-and-data-capture.md) |
 | **Hosting** | **Cloudflare Pages** | Free, global, GitHub-native, PR previews, free SSL | [0005](./adr/0005-hosting-and-domain-management.md) |
-| **Domain / DNS** | **Cloudflare Registrar** + Cloudflare DNS | At-cost domains; one dashboard for registrar, DNS, CDN, host | [0005](./adr/0005-hosting-and-domain-management.md) |
+| **DNS** | **Cloudflare DNS** | Must move off Squarespace before it is cancelled — see [15](./15-migration-and-cutover.md) | [0005](./adr/0005-hosting-and-domain-management.md) |
+| **Domain** | **GoDaddy** (existing, unchanged for now) | Only the nameservers change. Revisit the registrar after cutover | [0005](./adr/0005-hosting-and-domain-management.md) |
 | **Analytics** | **Cloudflare Web Analytics** (free, cookieless) | No consent banner, no perf cost, satisfies [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism) | — |
 | **CI** | **GitHub Actions** | Types, lint, a11y, Lighthouse, Playwright, budgets | — |
 | **Testing** | **Playwright** (+ `axe-core`), **Lighthouse CI** | Cross-browser and responsive matrix as a gate | — |
@@ -226,17 +227,24 @@ Detail: [05 — Motion & Interaction](./05-motion-and-interaction.md).
 
 | Item | Provider | Cost |
 |---|---|---|
-| Hosting, CDN, SSL, PR previews | Cloudflare Pages | **£0** |
-| Serverless function (newsletter) | Cloudflare Pages Functions | **£0** (100k req/day free) |
+| Hosting, CDN, SSL, PR previews, unlimited bandwidth | Cloudflare Pages | **£0** |
+| Serverless functions (both forms) | Cloudflare Pages Functions | **£0** (100k req/day free) |
+| Enquiry storage | Cloudflare D1 | **£0** (5 GB free) |
+| Spam protection | Cloudflare Turnstile | **£0** |
 | DNS | Cloudflare | **£0** |
-| Domain | Cloudflare Registrar | **~£8–12/yr** (at cost, no markup) |
 | Analytics | Cloudflare Web Analytics | **£0** |
-| CI | GitHub Actions | **£0** (public repo, or free-tier minutes) |
+| Transactional email (form notifications) | Resend | **£0** (3,000/mo free) |
+| CI | GitHub Actions | **£0** |
 | Git-based CMS *(optional, phase 2)* | Sveltia CMS | **£0** |
 | Hosted CMS *(optional, later)* | Sanity free tier | **£0** up to limits |
-| ESP | TBC — [Q1](./13-open-questions.md) | Varies |
+| **Domain** | **GoDaddy** *(existing)* | **~£25–40/yr** — verify on the renewal invoice |
+| **Newsletter** | **Kit** *(existing)* | Existing plan, unchanged |
+| **Business email** | **Google Workspace** *(existing)* | Existing plan, unchanged |
+| ~~Website hosting~~ | ~~Squarespace~~ | **Cancelled → saving ~£10–20/mo** |
 
-**Recurring cost: the domain and the ESP.** Everything else is £0 at this scale.
+**The only new recurring cost is £0.** Everything the new stack adds sits on a free tier; Kit, Google Workspace and the domain are pre-existing. Cancelling Squarespace after cutover means **the total monthly bill goes down**, not up.
+
+Plain-English version of this table, with what each tool is actually for: [00 — Start Here](./00-start-here.md#1-the-tools-what-theyre-for-and-what-they-cost).
 
 ---
 
@@ -250,6 +258,8 @@ Stated explicitly so they can be corrected rather than silently inherited:
 4. Show&Tell bookings and payments happen on a **third-party platform** (Eventbrite, Lu.ma, Stripe Payment Links…), not on this site. If seat counts must be live and on-site, that is a real architectural change — [Q3](./13-open-questions.md).
 5. The founder is comfortable editing structured plain text, or will use a Git-based CMS UI from phase 2.
 6. English is the only site language. Arabic appears as designed typographic content, not as a localisation.
+7. **This is a replatform, not a launch.** `nikkostudio.co` is live on Squarespace with 4 URLs, and its DNS zone — which also carries the Google Workspace mail records for `imnadiaamer.com` — must move before Squarespace is cancelled. See [15](./15-migration-and-cutover.md).
+8. **Kit remains the system of record for the newsletter**; we replace its widget, not the service.
 
 If any of these is wrong, tell us — several of them would change the recommendation.
 

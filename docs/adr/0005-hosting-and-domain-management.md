@@ -1,6 +1,6 @@
-# ADR-0005: Cloudflare Pages for hosting, Cloudflare Registrar for the domain
+# ADR-0005: Cloudflare Pages for hosting, Cloudflare for DNS, registrar unchanged
 
-**Status:** Proposed
+**Status:** Proposed *(amended 2026-08-17 — see [Amendment](#amendment-2026-08-17))*
 **Date:** 2026-08-17
 **Principles:** [P8](../02-engineering-principles.md#p8--boring-cheap-replaceable-infrastructure), [P9](../02-engineering-principles.md#p9--own-the-front-door), [P13](../02-engineering-principles.md#p13--privacy-and-data-minimalism), [P16](../02-engineering-principles.md#p16--every-vendor-choice-has-a-documented-exit)
 
@@ -11,7 +11,9 @@ Two constraints:
 - **C8** — *"simple hosting nothing major/costly (code → github → build/compile → deploy)"*
 - **C9** — *"when we host i need to be able to manage domains"*
 
-The site is static output plus one serverless function (the newsletter proxy). Traffic is expected in the thousands to tens of thousands of monthly visits.
+The site is static output plus serverless functions for the two forms. Traffic is expected in the thousands to tens of thousands of monthly visits.
+
+**This ADR was originally written before the existing infrastructure was known.** It assumed a greenfield launch with a domain yet to be registered. That was wrong, and the [Amendment](#amendment-2026-08-17) below records what changed and why the conclusion survives anyway.
 
 Three providers are all genuinely excellent at static hosting from GitHub: **Cloudflare Pages**, **Netlify** and **Vercel**. All three give free hosting, PR previews, free SSL, GitHub integration and serverless functions at this scale. On C8 alone, any of them would do.
 
@@ -19,7 +21,7 @@ Three providers are all genuinely excellent at static hosting from GitHub: **Clo
 
 ## Decision
 
-**Cloudflare Pages for hosting, Cloudflare Registrar for the domain, Cloudflare DNS for the zone — in a single account owned by Nadia.**
+**Cloudflare Pages for hosting and Cloudflare DNS for both zones, in an account owned by Nadia. Domain registration stays at GoDaddy.**
 
 ```
 git push → GitHub → Cloudflare Pages build → global edge
@@ -97,6 +99,35 @@ Per [P16](../02-engineering-principles.md#p16--every-vendor-choice-has-a-documen
 
 ## Reversal
 
-**Cost: low.** Moving the site to another host is roughly an hour. Moving the domain is a standard transfer.
+**Cost: low.** Moving the site to another host is roughly an hour. Moving DNS is a nameserver change.
 
 Reversal would be triggered by a policy or pricing change, or by needing a runtime feature Workers cannot provide. Neither is foreseeable at this scale.
+
+---
+
+## Amendment (2026-08-17)
+
+Written before the existing infrastructure was known. An audit of the live site and its DNS changed three things.
+
+### What we found
+
+| | Assumed | Actual |
+|---|---|---|
+| Domain | To be registered | **`nikkostudio.co`, already at GoDaddy** |
+| DNS | Greenfield | **Held by Squarespace** — not GoDaddy |
+| Hosting | Greenfield | **Live Squarespace site**, 4 URLs |
+| Mail | Unknown | **Google Workspace, MX on `imnadiaamer.com`, inside the Squarespace zone** |
+
+### What changes
+
+1. **Registration stays at GoDaddy.** The at-cost-domains argument was a real part of the original case for Cloudflare, and it no longer applies — the domain exists and moving a registrar during a live migration adds a 60-day transfer lock and a second moving part for no benefit. Revisit at renewal as a standalone task; `.co` renewals at GoDaddy typically run several times Cloudflare's at-cost price, so there is money in it, just not urgency. *(Verify Cloudflare Registrar supports `.co` first.)*
+
+2. **DNS migration becomes the highest-priority task in the project**, ahead of any build work. Not for the website's sake — because the Squarespace DNS zone carries the Google Workspace MX records, so **cancelling Squarespace before migrating would stop business email**. Full runbook: [15 — Migration & Cutover](../15-migration-and-cutover.md).
+
+3. **One serverless function becomes two,** plus a datastore: newsletter → Kit's API, enquiry → Cloudflare D1 with Resend notifications. All still on the free tier. See [16 — Forms & Data Capture](../16-forms-and-data-capture.md).
+
+### Does the decision survive?
+
+**Yes, on weaker but sufficient grounds.** With the registrar argument removed, Cloudflare wins on: best-in-class free DNS (now the *strongest* reason, since the zones have to move somewhere regardless), unlimited bandwidth, free cookieless analytics with real-user Core Web Vitals, free D1 and Turnstile for the enquiry form, and the largest edge network.
+
+**Netlify is now a close second** rather than a clear runner-up. If there were a preference for its simpler dashboard, the real costs would be paying for analytics, finding another home for DNS, and replacing D1 — all manageable. Cloudflare remains the recommendation, but the margin is narrower than this ADR originally implied, and that is worth stating plainly rather than letting an outdated rationale carry the decision.

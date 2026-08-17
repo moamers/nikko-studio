@@ -22,21 +22,25 @@ If separate design, content, product, or engineering instructions are provided e
 
 The website's technical architecture and the doctrine underpinning the build live in **[`docs/`](./docs/README.md)**.
 
+> 🔴 **Time-sensitive:** Squarespace currently holds the DNS zone that carries the Google Workspace mail records. **Cancelling Squarespace before migrating DNS would stop business email.** See [15 — Migration & Cutover](./docs/15-migration-and-cutover.md).
+
 | Start with | For |
 |---|---|
+| [00 — Start Here](./docs/00-start-here.md) | **Plain English** — tools, costs, and how to change text and images |
 | [Docs index](./docs/README.md) | The map of everything below |
 | [01 — Project Brief](./docs/01-project-brief.md) | What we're building and why, read from this README |
 | [02 — Engineering Principles](./docs/02-engineering-principles.md) | **The guardrails** — 17 principles governing every technical decision |
 | [03 — Tech Stack](./docs/03-tech-stack.md) | Astro, TypeScript, plain CSS, Cloudflare — and the rejected alternatives |
 | [Architecture Decision Records](./docs/adr/README.md) | Why each significant choice was made |
 
-Needing decisions from outside engineering:
+Needing decisions or action from outside engineering:
 
-| ⚠️ | About |
+| | About |
 |---|---|
-| [13 — Open Questions](./docs/13-open-questions.md) | 12 questions, 3 blocking the build |
-| [14 — Design Source Conflicts](./docs/14-design-source-conflicts.md) | Where the two design documents contradict each other |
-| [06 — Mobile Risks](./docs/06-responsive-and-mobile-risks.md) | 4 elements of the design that break on a phone |
+| 🔴 [15 — Migration & Cutover](./docs/15-migration-and-cutover.md) | Getting off Squarespace without breaking email or search |
+| ⚠️ [13 — Open Questions](./docs/13-open-questions.md) | What we still need answered, with a default for each |
+| ⚠️ [14 — Design Source Conflicts](./docs/14-design-source-conflicts.md) | Where the two design documents contradict each other |
+| ⚠️ [06 — Mobile Risks](./docs/06-responsive-and-mobile-risks.md) | Elements of the design that break on a phone |
 
 **Status:** architecture proposed, awaiting review. No application code has been written yet.
 

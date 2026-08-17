@@ -9,44 +9,28 @@ Questions that need an answer from outside engineering. Each states **what we wo
 
 ---
 
-## 🔴 Q1 — Which email service provider?
+## ✅ Q1 — Which email service provider? — **ANSWERED: Kit**
 
-**Why it matters.** Email is described in the README as historically generating the large majority of sales. The newsletter form is the highest-value interaction on the page ([Job 2](./01-project-brief.md#job-2--capture-email-the-real-conversion-event)). We need to know where subscribers go before we can wire it.
+Confirmed by Nadia and by the live site, which already loads `app.kit.com` / `f.convertkit.com`. Kit was our top recommendation; nothing changes.
 
-The footer links **Substack**, which suggests the newsletter may already live there — worth confirming, because Substack's API for programmatic subscription is limited and it may be better to capture into a proper ESP and cross-post.
+**Architecture decision:** the design's own signup form posts to a Cloudflare Function which calls **Kit's API**, rather than embedding Kit's JavaScript widget. Kit still owns the list, the double opt-in, the confirmation email and the sequences — we replace only the widget, which would otherwise cost us a third-party script, cookies (and therefore a cookie banner), and control of the design. Full reasoning: [16 — Forms & Data Capture](./16-forms-and-data-capture.md#part-1--newsletter--kit).
 
-| Option | Notes |
-|---|---|
-| **Kit** (ConvertKit) | Best-in-class for creator businesses; excellent API, tagging, sequences. Free to 10k subscribers |
-| **beehiiv** | Strong growth tooling and referral mechanics; good API |
-| **MailerLite** | Cheapest capable option; solid API |
-| **Substack** | If the list already lives there. Limited API — may need an embed, which costs us control and adds a third-party script |
-| **Mailchimp** | Works; gets expensive; heavier |
-
-**Also needed:** does the flow use double opt-in? Is there a welcome sequence? Should first name be required or optional?
-
-**Default if unanswered:** build against a provider-agnostic interface with a stub, so the ESP is a one-file change later. The form ships fully working in every other respect.
+**Still needed, minor:** which Kit form/tag should site subscribers land in? Source tagging (`site-footer` etc.) lets Nadia see what the website actually contributes to the list.
 
 ---
 
-## 🔴 Q2 — Where do project enquiries actually go?
+## 🟠 Q2 — Enquiry form — **LARGELY ANSWERED**
 
-**Why it matters.** This is the biggest **business** gap in the design. Every primary CTA — "Pitch your project" (×4), "Grab a seat", "Submit your project here ➺" — points at `#pitch`, which is the *newsletter*. The site's main commercial action has no destination.
+A real enquiry form already exists at `/contact`, and its **field design is good** — it asks the qualifying questions that matter, including **budget**, which is exactly right on a service with a £5,000 floor.
 
-Options:
+**Resolved:**
+- ✅ There is a form, and it stays at `/contact` — [keep the URL](./15-migration-and-cutover.md#redirect-map), don't rename it to `/pitch`. The CTA copy can still say "Pitch your project"
+- ✅ The homepage CTAs point at `/contact`, not at the newsletter
+- ✅ The current Apps Script → Google Sheet pipeline is [being replaced](./16-forms-and-data-capture.md#part-2--enquiry-form) with durable storage plus notification to both Nadia and the enquirer
 
-| Option | Trade-off |
-|---|---|
-| **A dedicated `/pitch` page with a real form** ✅ | Best qualification, best tracking, best experience. Needs form fields and destination decided. *Recommended* |
-| A `mailto:` link | Zero build, but no qualification, no tracking, and it invites spam |
-| An external form (Tally, Typeform) | Fast; costs a third-party script, a visual break and some data-protection surface |
-| A booking link (Cal.com, Calendly) | Conflicts with the README's stated position on selective founder access — *"Nadia does not want an always-open consultation calendar"* |
+**Still open:** the form is being redesigned and will arrive in the updated handoff. See [16's open questions](./16-forms-and-data-capture.md#open-questions) for the four operational decisions (where notifications go, what the confirmation says, retention, whether the Google Sheet stays).
 
-**If a form:** what does Nadia need to know before replying? Suggested minimum — name, email, business/website, what the challenge is, timeline, budget band. The budget band matters: with a £5,000 floor, it does the qualification work that keeps the inbox useful.
-
-**And separately:** where does "Grab a seat" for Show&Tell go? Eventbrite, Lu.ma, a Stripe payment link, or an email waitlist? This determines whether phase 2 needs any dynamic behaviour at all.
-
-**Default if unanswered:** `/pitch` is scaffolded with a form whose destination is a stub, and CTAs point at it rather than the newsletter.
+**And separately, still unanswered:** where does **"Grab a seat"** for Show&Tell go? Eventbrite, Lu.ma, a Stripe payment link, or an email waitlist? This is the one thing that determines whether phase 2 needs any dynamic behaviour at all — see [Q3](#-q3--homepage-only-or-the-fuller-site).
 
 ---
 
@@ -70,21 +54,30 @@ The question for Nadia: **how comfortable are you editing a structured text file
 
 ---
 
-## 🟡 Q5 — Domain, and what happens to `irnnadiaamer.com`?
+## 🔴 Q5 — Domain & migration — **MOSTLY ANSWERED, one urgent item**
 
-Three things needed:
+**Resolved by Nadia and by DNS inspection:**
+- ✅ The domain is **`nikkostudio.co`**, registered at **GoDaddy**, currently on Squarespace
+- ✅ `www` is canonical; apex already 301s to it — **keep it that way**
+- ✅ Only 4 URLs exist, so the redirect map is [trivial](./15-migration-and-cutover.md#redirect-map)
+- ✅ The legacy domain is **`imnadiaamer.com`** — note the design footer spells it `irnnadiaamer.com`, an `rn`/`m` typo that would ship as written
 
-1. **What is the new domain?** Not specified anywhere in the repo. Is it registered? Where?
-2. **Does `irnnadiaamer.com` still exist and does Nadia still control it?** The footer implies it does.
-3. **Are there existing pages worth redirecting individually,** or is a blanket 301 to `/` acceptable?
+**⚠️ Still needed, and urgent — this is now the highest-priority item in this document:**
 
-That domain carries eight years of history, inbound links and brand searches. Losing it, or redirecting it badly, throws away the most valuable SEO asset the business has. **Do not let it lapse** — see [10](./10-hosting-domains-and-ops.md#irnnadiaamercom).
+1. **Confirm the Google business email is on `@imnadiaamer.com`.** That domain has live Google Workspace MX records; `nikkostudio.co` has none. If mail is somewhere else too, we need to know before touching nameservers.
+2. **Do not cancel Squarespace yet.** Squarespace holds the **DNS zone** for both domains — including those MX records. Cancelling before DNS moves would **stop email delivery**. See [15 — Migration & Cutover](./15-migration-and-cutover.md).
+3. **Should `imnadiaamer.com` be retired** and 301'd to `nikkostudio.co`? Recommended — it consolidates eight years of link equity rather than splitting it across two live sites.
+4. **Should email move to `@nikkostudio.co`?** Optional, separate, and should not be bundled with the website cutover.
 
-**Default:** launch on the domain provided at launch time; a blanket 301 from the old domain if no URL list is available.
+**Default:** move DNS to Cloudflare, keep registration at GoDaddy, keep `www` canonical, keep the three existing slugs, 301 `/home` → `/`.
 
 ---
 
-## 🟡 Q6 — Should AI crawlers be allowed?
+## 🟠 Q6 — Should AI crawlers be allowed?
+
+**New context:** the current Squarespace site **already blocks all of them** — `GPTBot`, `ClaudeBot`, `Google-Extended`, `anthropic-ai`, `CCBot`, `Applebot-Extended`, `PerplexityBot` and more — via Squarespace's default `robots.txt`. That was a platform default, not a decision Nadia made. **The site is currently invisible to LLM search.**
+
+So constraint C6 requires *actively reversing* an existing block. That makes this a real decision rather than a hypothetical one, and it needs an explicit answer either way.
 
 Constraint C6 asks for LLM discoverability. That requires letting AI crawlers in, which means Nikko's distinctive writing becomes training data, uncompensated. **For a studio whose product is distinctive language, that is a real tension** and deserves a deliberate answer rather than a default.
 
@@ -169,8 +162,25 @@ Also worth agreeing: a light cadence for dependency updates and a quarterly chec
 
 ---
 
+## 🟡 Q13 — Enquiry data: storage and notifications
+
+New, arising from [16 — Forms & Data Capture](./16-forms-and-data-capture.md). Four operational decisions:
+
+1. **Keep the Google Sheet** as a working view of enquiries, or is an email plus a periodic export enough? (The Sheet is a decent lightweight CRM and it's already the habit — we'd keep it as a best-effort mirror, not the system of record.)
+2. **Where do enquiry notifications go** — Nadia's Workspace address, or a shared `hello@`?
+3. **What should the enquirer's confirmation email say about when they'll hear back?** This is where a studio wins trust, and the current setup can't do it at all.
+4. **Retention period** for enquiry data? Suggested: 24 months, then deleted or anonymised.
+
+**Default:** durable storage in Cloudflare D1, notification to Nadia and confirmation to the enquirer via Resend, Google Sheet mirror retained, 24-month retention.
+
+---
+
 ## Answer log
 
-| Q | Answered | Decision | Date |
-|---|---|---|---|
-| *(populated as answers arrive)* | | | |
+| Q | Decision | Date |
+|---|---|---|
+| **Q1** ESP | **Kit (ConvertKit)** — confirmed. Our form → Kit API, not Kit's JS embed | 2026-08-17 |
+| **Q2** Enquiry form | An enquiry form already exists at `/contact` and stays at that URL. Being redesigned; arriving in the updated handoff | 2026-08-17 |
+| **Q5** Domain | `nikkostudio.co`, GoDaddy registrar, Squarespace DNS+hosting → migrate DNS to Cloudflare, keep registrar at GoDaddy, keep `www` canonical | 2026-08-17 |
+| **Q5** Legacy domain | It is `imnadiaamer.com` (design copy has an `rn`/`m` typo). Carries the Google Workspace MX records | 2026-08-17 |
+| **Q6** AI crawlers | Context changed: currently **blocked** by Squarespace's default. Decision still open | 2026-08-17 |

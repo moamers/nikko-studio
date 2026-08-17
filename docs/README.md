@@ -10,17 +10,24 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 
 ## Start here
 
+> **📍 Not an engineer?** Read **[00 — Start Here: Plain English](./00-start-here.md)**. It covers what each tool costs, what you have to manage, and exactly what you do when you want to change a word or an image.
+
+> 🔴 **Urgent:** Squarespace holds the DNS zone that carries the Google Workspace mail records. **Cancelling it before DNS migrates would stop business email.** See [15 — Migration & Cutover](./15-migration-and-cutover.md).
+
 | If you want to know… | Read |
 |---|---|
+| Costs, tools, and how to change content — in plain English | [00 — Start Here](./00-start-here.md) 📍 |
 | What we're building and why | [01 — Project Brief](./01-project-brief.md) |
 | The rules we build by | [02 — Engineering Principles](./02-engineering-principles.md) ⭐ |
 | What we're building it with | [03 — Tech Stack](./03-tech-stack.md) ⭐ |
 | How the founder edits content | [04 — Content Architecture](./04-content-architecture.md) |
+| How we get off Squarespace without breaking email | [15 — Migration & Cutover](./15-migration-and-cutover.md) 🔴 |
+| Where form data goes and who gets notified | [16 — Forms & Data Capture](./16-forms-and-data-capture.md) |
 | What's broken on mobile | [06 — Mobile Risks](./06-responsive-and-mobile-risks.md) ⚠️ |
 | Where the design docs disagree | [14 — Design Source Conflicts](./14-design-source-conflicts.md) ⚠️ |
 | What we need answered | [13 — Open Questions](./13-open-questions.md) ⚠️ |
 
-⭐ = the core of the proposal · ⚠️ = needs a decision from outside engineering
+⭐ = the core of the proposal · ⚠️ = needs a decision from outside engineering · 🔴 = time-sensitive
 
 ---
 
@@ -30,6 +37,7 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 
 | # | Document | What it covers |
 |---|---|---|
+| **00** | [Start Here: Plain English](./00-start-here.md) | For Nadia. Tools and costs, what you manage, how to change text and images, what's urgent |
 | **01** | [Project Brief](./01-project-brief.md) | The business read as an engineering problem; the four jobs the site must do; what the handoff covers and what it doesn't |
 
 ### The doctrine
@@ -50,6 +58,7 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 | **08** | [Performance](./08-performance.md) | C4 — budgets enforced in CI |
 | **09** | [SEO & LLM Discoverability](./09-seo-and-llm-discoverability.md) | C5, C6 — technical SEO and machine-readability |
 | **10** | [Hosting, Domains & Ops](./10-hosting-domains-and-ops.md) | C8, C9 — deployment pipeline and domain ownership |
+| **16** | [Forms & Data Capture](./16-forms-and-data-capture.md) | Newsletter → Kit; enquiries → durable storage + notifications both ways |
 
 ### Delivery
 
@@ -57,8 +66,9 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 |---|---|---|
 | **11** | [Quality Gates](./11-quality-gates.md) | How every principle becomes a CI check |
 | **12** | [Roadmap](./12-roadmap.md) | Phased plan, sequencing rationale, delivery risks |
-| **13** | [Open Questions](./13-open-questions.md) | 12 questions needing answers, each with a default if unanswered |
+| **13** | [Open Questions](./13-open-questions.md) | Questions needing answers, each with a default if unanswered — plus the answer log |
 | **14** | [Design Source Conflicts](./14-design-source-conflicts.md) | Where the two design documents contradict each other |
+| **15** | [Migration & Cutover](./15-migration-and-cutover.md) | 🔴 Getting off Squarespace without breaking email or search |
 
 ### Decisions
 
@@ -115,8 +125,11 @@ When documents disagree ([P0](./02-engineering-principles.md#p0--precedence-when
 | Item | State |
 |---|---|
 | Business context | ✅ Documented ([root README](../README.md)) |
-| Design handoff | ✅ Received, ⚠️ internally inconsistent ([14](./14-design-source-conflicts.md)) |
+| Design handoff | 🟡 An **updated handoff is coming** from Nadia. The one in the repo is superseded but broadly accurate |
 | Architecture & doctrine | 🟡 **Proposed — awaiting review** |
-| Open questions | 🔴 12 open, 3 blocking ([13](./13-open-questions.md)) |
-| Mobile design decisions | 🔴 4 hard breaks need design input ([06](./06-responsive-and-mobile-risks.md)) |
+| Existing infrastructure | ✅ Audited — domain, DNS, mail, ESP, forms, robots ([15](./15-migration-and-cutover.md)) |
+| Newsletter / ESP | ✅ **Kit**, confirmed and staying ([16](./16-forms-and-data-capture.md)) |
+| DNS migration | 🔴 **Not started — do this first** ([15](./15-migration-and-cutover.md)) |
+| Open questions | 🟠 3 answered, several open ([13](./13-open-questions.md)) |
+| Mobile design decisions | ⏸️ Deferred until the updated handoff lands ([06](./06-responsive-and-mobile-risks.md)) |
 | Code | ⬜ **Not started — by design** |

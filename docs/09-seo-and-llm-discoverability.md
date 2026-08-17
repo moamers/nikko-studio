@@ -76,11 +76,33 @@ The handoff specifies **one URL** with anchor navigation. That is right for a la
 
 The homepage keeps its anchors. New routes are additive, and each existing anchor section becomes the summary that links to its deeper page.
 
-### Migration from `irnnadiaamer.com`
+### Migration: this is a replatform, not a launch
 
-The footer copy states this is *"a teaser for the full relaunch of what used to be irnnadiaamer.com"* — implying an existing domain with eight years of history, inbound links and brand searches.
+`nikkostudio.co` is **live today on Squarespace**, and the new build replaces it on the same domain. That is a lower-risk migration than a domain change — but it is not a no-risk one.
 
-Before launch we need: the old URL list (Search Console / Analytics export), a **URL-to-URL 301 map**, retention of the old domain (redirect, do not drop — it holds the link equity), both properties verified in Search Console with a change-of-address where appropriate, and a `Person`/`Organization` `sameAs` link so the entity relationship is explicit. See [Q5](./13-open-questions.md).
+What the live site actually has:
+
+| | |
+|---|---|
+| URLs | **4** — `/home`, `/privacy-policy`, `/terms-and-conditions`, `/contact` |
+| Canonical | `www`, with apex 301ing to it |
+| Redirects needed | **One** — `/home` → `/`. Keep the other three slugs exactly |
+
+Keeping the existing slugs is the whole SEO strategy here: no redirect chains, no lost equity, nothing to reindex except the homepage's content. Do **not** rename `/contact` to `/pitch` — the CTA copy can say "Pitch your project" while the URL stays the term both humans and machines already understand.
+
+Before and after cutover: verify the property in Search Console, export the current URL and query baseline for comparison, submit the new sitemap, and watch coverage for two weeks. Full sequence: [15 — Migration & Cutover](./15-migration-and-cutover.md).
+
+### The legacy domain: `imnadiaamer.com`
+
+The footer copy refers to *"the full relaunch of what used to be irnnadiaamer.com"* — which is a typo. The domain is **`imnadiaamer.com`** (`rn` misread as `m`), it is still live on Squarespace, and it carries eight years of history and inbound links.
+
+**Recommended:** retire the site and 301 the whole domain to `nikkostudio.co`, consolidating the link equity rather than splitting it across two live properties. Verify both in Search Console and file a change of address. Add a `sameAs` link in the `Organization` and `Person` structured data so the entity relationship is explicit.
+
+**Do not let it lapse** — and note it also carries the Google Workspace mail records, which is a separate and more urgent concern ([15](./15-migration-and-cutover.md#the-critical-finding-cancelling-squarespace-would-break-nadias-email)).
+
+### One inherited default to reverse
+
+Squarespace's stock `robots.txt` **blocks every AI crawler** — `GPTBot`, `ClaudeBot`, `Google-Extended`, `anthropic-ai`, `CCBot`, `Applebot-Extended`, `PerplexityBot` and others. The site is currently invisible to LLM search. Constraint C6 therefore requires actively reversing a block nobody chose. See [Q6](./13-open-questions.md).
 
 ---
 

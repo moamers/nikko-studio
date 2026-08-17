@@ -187,7 +187,8 @@ Headline budgets: **LCP ≤ 2.0 s** and **INP ≤ 200 ms** on emulated Moto G Po
 **This forbids.**
 - Registering the domain in an engineer's personal account.
 - A host that also holds the registration in a way that makes leaving painful.
-- Losing `irnnadiaamer.com` or its inbound links. Any migration ships a redirect map with 301s.
+- Losing `imnadiaamer.com` or its inbound links. Any migration ships a redirect map with 301s.
+- **Cancelling a provider that holds a live DNS zone.** Squarespace currently holds the zone carrying the Google Workspace mail records — see [15](./15-migration-and-cutover.md). Own the front door means knowing where it actually is.
 
 **Verified by.** [Hosting, Domains & Ops](./10-hosting-domains-and-ops.md) records the registrar, the DNS provider, the account holder and the renewal date.
 

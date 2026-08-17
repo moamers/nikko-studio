@@ -15,7 +15,8 @@ Sequenced so that **nothing is built twice** and every phase ships something usa
 | 0.2 | Resolve the [design source conflicts](./14-design-source-conflicts.md) — at minimum the turquoise licence and the motion grammar | Nadia + design | Language section, all motion |
 | 0.3 | Decide the mobile header ([R1](./06-responsive-and-mobile-risks.md)) | Nadia + design | Header |
 | 0.4 | Decide the mobile treatment for the language tiles ([R3](./06-responsive-and-mobile-risks.md)) and hero collage ([R4](./06-responsive-and-mobile-risks.md)) | Nadia + design | Those sections |
-| 0.5 | Confirm the domain and secure the Cloudflare account **in Nadia's name** | Nadia | Launch |
+| **0.0** | 🔴 **Migrate DNS off Squarespace to Cloudflare** — both `nikkostudio.co` and `imnadiaamer.com`, preserving the Google Workspace MX records, then verify email still flows. **Do this first; it is independent of the build and it removes an email-outage risk.** See [15](./15-migration-and-cutover.md) | Eng + Nadia | Cancelling Squarespace |
+| 0.5 | Set up the Cloudflare account **in Nadia's name**; confirm GoDaddy auto-renew is on for both domains; add the missing SPF/DKIM/DMARC records | Nadia + Eng | Launch |
 | 0.6 | Scaffold Astro + TypeScript + CI + Cloudflare Pages; verify a "hello world" deploys | Eng | Everything |
 | 0.7 | Build the token layer from the handoff — every colour, type step, radius, duration, easing as a custom property | Eng | Every section |
 | 0.8 | Font pipeline: self-host, subset, metric-matched fallbacks, preload | Eng | LCP |
@@ -44,15 +45,20 @@ Built **section by section, in reading order**, each one reviewed on a preview U
 | 1.8 | Put us to work — service cards | [R8](./06-responsive-and-mobile-risks.md) |
 | 1.9 | Sampler + testimonial | [P6](./02-engineering-principles.md#p6--machine-readable-by-default-llm-discoverability) — all 8 fragments in the HTML |
 | 1.10 | Joyride / word swap | Arabic sign-off ([Q8](./13-open-questions.md)) |
-| 1.11 | Pitch / footer + **working newsletter form** | The highest-value interaction on the page |
+| 1.11 | Pitch / footer + **working newsletter form** (→ Kit API) | The highest-value interaction on the page ([16](./16-forms-and-data-capture.md)) |
 | 1.12 | Wake splash | [R2](./06-responsive-and-mobile-risks.md) 🔴 — fix the landing coordinates |
 | 1.13 | Cursor residue | Desktop-only; pooled nodes |
 | 1.14 | SEO layer — meta, JSON-LD, sitemap, `robots.txt`, `llms.txt`, OG image | [Q6](./13-open-questions.md) |
-| 1.15 | Privacy Policy + Terms | **Must ship before the form goes live** ([P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism)) |
-| 1.16 | 404 page | — |
-| 1.17 | Full audit — a11y, performance, cross-browser, real devices | — |
+| 1.15 | **`/contact` — rebuild the enquiry form** with durable storage, notification to Nadia, confirmation to the enquirer ([16](./16-forms-and-data-capture.md)) | Replaces a hacky Apps Script that can silently lose a five-figure lead |
+| 1.16 | Privacy Policy + Terms — migrate from the live site, review against the new processor list | **Must ship before either form goes live** ([P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism)) |
+| 1.17 | 404 page | — |
+| 1.18 | Redirect map + Search Console baseline | [15](./15-migration-and-cutover.md) |
+| 1.19 | Full audit — a11y, performance, cross-browser, real devices | — |
+| 1.20 | **Cutover**, then watch for 1–2 weeks, **then** cancel Squarespace | [15](./15-migration-and-cutover.md) — cancelling early is the one irreversible mistake |
 
-**Exit:** the homepage live on the real domain, all gates green, Nadia able to edit content herself.
+**Exit:** the new site live on `www.nikkostudio.co`, all gates green, both forms working end-to-end, Nadia able to edit content herself, Squarespace safely cancelled.
+
+**Note:** `/contact` moves into phase 1 (it was phase 2) because the form already exists and is load-bearing — the replatform cannot ship without it.
 
 **Note on 1.15:** legal pages are not optional and not phase 2. Capturing email addresses in the UK without a linked, real privacy policy is a compliance problem, and the current design links both to `#pitch`.
 
@@ -62,13 +68,13 @@ Built **section by section, in reading order**, each one reviewed on a preview U
 
 | # | Deliverable | Why |
 |---|---|---|
-| 2.1 | **`/pitch` — a real enquiry page and form** | The primary commercial CTA currently has no destination ([Q2](./13-open-questions.md)). Highest business value in this phase |
-| 2.2 | **Sveltia CMS** at `/admin` | Editing UI with drag-and-drop images; still Git-backed, still £0 ([04](./04-content-architecture.md#phase-2-a-git-based-cms-recommended-next-step)) |
-| 2.3 | **`/show-and-tell`** with a drops system | ~7 dated drops a year with live/gone/sold-out status. `Event` structured data. The current static card cannot express scarcity, which *is* the offer |
-| 2.4 | **`/dream-and-do`** | Its own ranking surface for project-work intent |
-| 2.5 | `irnnadiaamer.com` redirect map + Search Console migration | Protects eight years of link equity ([Q5](./13-open-questions.md)) |
-| 2.6 | Analytics + conversion events | Measure the two things that matter: subscribes and enquiries |
-| 2.7 | OG image generation per page | Referral traffic is link-shared; the card *is* the ad |
+| 2.1 | **Sveltia CMS** at `/admin` | Editing UI with drag-and-drop images; still Git-backed, still £0 ([04](./04-content-architecture.md#phase-2-a-git-based-cms-recommended-next-step)) |
+| 2.2 | **`/show-and-tell`** with a drops system | ~7 dated drops a year with live/gone/sold-out status. `Event` structured data. The current static card cannot express scarcity, which *is* the offer |
+| 2.3 | **`/dream-and-do`** | Its own ranking surface for project-work intent |
+| 2.4 | **`imnadiaamer.com`** retirement — 301 the domain, Search Console change of address | Consolidates eight years of link equity instead of splitting it ([Q5](./13-open-questions.md)) |
+| 2.5 | Google Sheet mirror for enquiries, if wanted | Nadia's existing working view ([Q13](./13-open-questions.md)) |
+| 2.6 | OG image generation per page | Referral traffic is link-shared; the card *is* the ad |
+| 2.7 | Registrar review — transfer `.co` to Cloudflare at renewal? | At-cost renewals; low risk once cutover is settled ([15](./15-migration-and-cutover.md)) |
 
 ## Phase 3 — Compounding assets
 
@@ -88,9 +94,9 @@ Built **section by section, in reading order**, each one reviewed on a preview U
 
 **Why tokens and content schemas before any section.** Both are consumed by every section. Building them after two sections means rewriting two sections.
 
-**Why the newsletter form is in phase 1, not phase 2.** It is the site's highest-value interaction ([Job 2](./01-project-brief.md#job-2--capture-email-the-real-conversion-event)). A homepage that looks finished but does not capture email is not finished.
+**Why DNS migration is task zero.** It is the only item here that can cause an outage of something already working — Nadia's business email. It is also completely independent of the website build, so there is no reason to sequence it behind anything. Do it this week.
 
-**Why the enquiry page is phase 2, not phase 1.** It needs a decision from Nadia about where enquiries go ([Q2](./13-open-questions.md)) and probably some new copy. The homepage should not wait on it — but it should not be forgotten either, which is why it is 2.1.
+**Why both forms are in phase 1.** The newsletter is the site's highest-value interaction ([Job 2](./01-project-brief.md#job-2--capture-email-the-real-conversion-event)), and `/contact` already exists and already receives enquiries — a replatform that drops a working commercial surface is not a replatform, it is a regression.
 
 **Why the CMS is phase 2, not phase 1.** Direct file editing on GitHub works from day one at zero cost. Adding a CMS before knowing whether it is needed is speculative work. It is also purely additive, so deferring costs nothing.
 
@@ -102,6 +108,7 @@ Built **section by section, in reading order**, each one reviewed on a preview U
 
 | Risk | Impact | Mitigation |
 |---|---|---|
+| 🔴 **Squarespace cancelled before DNS migrates** | **Business email outage** | Task 0.0. This is the only genuinely dangerous step in the project ([15](./15-migration-and-cutover.md)) |
 | Design conflicts unresolved ([14](./14-design-source-conflicts.md)) | Rework, or an inconsistent site | Resolve in phase 0. The turquoise and motion questions block real sections |
 | Mobile design decisions unresolved ([R1](./06-responsive-and-mobile-risks.md), [R3](./06-responsive-and-mobile-risks.md), [R4](./06-responsive-and-mobile-risks.md)) | Three sections blocked | Phase 0.3–0.4. Engineering can propose; design must sign off |
 | Final imagery not ready | Ships with placeholders | Content architecture makes swapping images a one-line change — low risk by design |

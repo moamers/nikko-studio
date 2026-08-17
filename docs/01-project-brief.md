@@ -106,7 +106,7 @@ These are gaps between "one designed homepage" and "a website the business can r
 - **No Show&Tell drop mechanism.** The business releases ~7 dated drops a year with limited availability. A static card saying "From £35" does not express that.
 - **No legal pages.** Privacy Policy and T&Cs are linked but point at `#pitch`. A UK business capturing email addresses **needs a real privacy policy** — this is a GDPR obligation, not a nice-to-have.
 - **No 404, no thank-you/confirmation state, no error states.**
-- **No `irnnadiaamer.com` migration plan.** The footer says this is "a teaser for the full relaunch of what used to be irnnadiaamer.com", which implies an existing domain with existing SEO equity and inbound links.
+- **No migration plan.** This is a replatform: `nikkostudio.co` is live on Squarespace, and the legacy domain `imnadiaamer.com` is live too, carrying eight years of SEO equity — and the Google Workspace mail records. See [15](./15-migration-and-cutover.md). *(The footer copy spells it `irnnadiaamer.com` — an `rn`/`m` typo that would ship as written.)*
 
 None of these block the homepage build. All of them shape the architecture, which is why we design the content and routing model to accommodate them from day one rather than retrofitting. See [Roadmap](./12-roadmap.md).
 
