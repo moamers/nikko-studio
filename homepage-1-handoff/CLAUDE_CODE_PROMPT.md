@@ -32,6 +32,7 @@ Please:
 - Implement the accent-cycle, analogue/digital mode, wake splash, cursor, scroll reveals and the sampler's projector treatment as described. Respect `prefers-reduced-motion` everywhere — the README says which behaviours must bail out entirely.
 - Use `animation-timeline: view()` / `scroll(root)` where the source does, but add a graceful fallback (or an IntersectionObserver path) for browsers without scroll-driven animations.
 - Keep the logo as CSS markup, not an image — its lower stripe animates with the accent.
+- Generate the favicon set from the logo mark per the Assets section of the README (none exists yet). Include the small-size variant with thickened stripes.
 - Wire the newsletter form to `<your ESP / API route>` with real validation and success/error states. The prototype's form is inert.
 - The `marks` localStorage feature in the source is a dead hook with no UI — leave it out unless I ask for it.
 
@@ -64,6 +65,7 @@ Please:
 - Implement the accent-cycle, analogue/digital mode, wake splash, cursor, scroll reveals and the sampler's projector treatment as described. Respect `prefers-reduced-motion` everywhere — the README says which behaviours must bail out entirely.
 - Use `animation-timeline: view()` / `scroll(root)` where the source does, but add a graceful fallback (or an IntersectionObserver path) for browsers without scroll-driven animations.
 - Keep the logo as CSS markup, not an image — its lower stripe animates with the accent.
+- Generate the favicon set from the logo mark per the Assets section of the README (none exists yet). Include the small-size variant with thickened stripes.
 - Wire the newsletter form to `<your ESP / endpoint>` with real validation and success/error states. The prototype's form is inert.
 - The `marks` localStorage feature in the source is a dead hook with no UI — leave it out unless I ask for it.
 - Check it at 1440, 1024, 768 and 390 wide. The layout is flex/grid with `flex-wrap` throughout, so most of it should hold, but the hero collage, the ticket bar and the three-up service card grid need a look on small screens.

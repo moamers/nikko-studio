@@ -227,6 +227,8 @@ These are placeholders/working images from the studio's archive — expect final
 
 The logo is drawn in CSS, not an image: an ink oval (`border-radius:50%`) with two absolutely-positioned stripes. Keep it as markup so the accent stripe can animate.
 
+**No favicon exists yet — generate one from the logo mark.** It's trivially reproducible as SVG since the mark is two rects in an ellipse. Spec: square viewBox, ink `#111110` ellipse filling the frame with ~8% padding, a paper `#F2ECDF` stripe across the middle third, and a `#FFD400` stripe directly beneath it at ~60% of the paper stripe's height — the same proportions as the 44×30 header oval (stripes at `top:16px/height:5px` and `top:21px/height:3px`). Ship `favicon.svg` plus PNG fallbacks at 32 and 180 (apple-touch), and a `theme-color` of `#F2ECDF`. At 16px the two stripes merge, so thicken them ~1.5× in a small-size variant rather than shipping one file for all sizes.
+
 ## Files
 | File | What it is |
 |---|---|
