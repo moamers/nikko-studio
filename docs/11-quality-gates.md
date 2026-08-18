@@ -5,6 +5,26 @@
 
 A principle that is not verified is a wish. This document is how each one becomes a gate.
 
+## What runs today
+
+Almost everything in this document describes gates for **code that does not exist yet**. Until the Astro site is scaffolded ([roadmap 0.6](./12-roadmap.md)), the repository is documentation-only and there is exactly one automated check:
+
+```bash
+python3 scripts/check-docs-links.py
+```
+
+It validates **every relative Markdown link and heading anchor** across `docs/` and the root README This matters because the documentation is deliberately cross-linked ([conventions](./README.md#documentation-conventions)), so renaming a heading silently breaks navigation somewhere else. It has already caught three real breakages during authoring.
+
+It reproduces GitHub's own anchor-slug algorithm, including the quirk that runs of whitespace are *not* collapsed — so `## P1 — Motion serves the story` becomes `#p1--motion-serves-the-story` with a double hyphen. Naive slugifiers get this wrong and report false failures.
+
+Exit code 0 = clean, 1 = broken links listed. Suitable for CI as-is.
+
+### Session startup
+
+`.claude/hooks/session-start.sh` runs at the start of each Claude Code on the web session. Today it is nearly a no-op — there are no dependencies to install. It is written ahead of the build so that the moment `site/package.json` exists, `npm install` runs automatically with no further setup. It is idempotent and only runs in the remote environment.
+
+---
+
 ## Gate summary
 
 | Gate | Enforces | Blocks merge | Runs |
