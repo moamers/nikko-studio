@@ -27,6 +27,7 @@ The website's technical architecture and the doctrine underpinning the build liv
 | Start with | For |
 |---|---|
 | [00 — Start Here](./docs/00-start-here.md) | **Plain English** — tools, costs, and how to change text and images |
+| [17 — Action Tracker](./docs/17-action-tracker.md) | **The checklist** — everything outstanding, with an owner |
 | [Docs index](./docs/README.md) | The map of everything below |
 | [01 — Project Brief](./docs/01-project-brief.md) | What we're building and why, read from this README |
 | [02 — Engineering Principles](./docs/02-engineering-principles.md) | **The guardrails** — 17 principles governing every technical decision |

@@ -5,7 +5,7 @@
 
 ## The recommendation in one paragraph
 
-Build the site as a **statically generated Astro site in TypeScript**, styled with **plain CSS driven by custom-property design tokens**, with **zero UI-framework runtime** — the handful of interactive systems ship as small vanilla-TypeScript islands that mutate CSS custom properties and `data-` attributes rather than re-rendering a component tree. All content lives in **schema-validated YAML and Markdown** read through Astro's Content Layer, behind a loader that can be swapped for a CMS without touching a template. Images are optimised at build time to AVIF/WebP with responsive `srcset`. It deploys from GitHub to **Cloudflare Pages**, with the domain on **Cloudflare Registrar** so the founder owns registrar, DNS and hosting in one account. One serverless function proxies the newsletter form to the ESP. Expected running cost: **the domain, plus £0/month.**
+Build the site as a **statically generated Astro site in TypeScript**, styled with **plain CSS driven by custom-property design tokens**, with **zero UI-framework runtime** — the handful of interactive systems ship as small vanilla-TypeScript islands that mutate CSS custom properties and `data-` attributes rather than re-rendering a component tree. All content lives in **schema-validated YAML and Markdown** read through Astro's Content Layer, behind a loader that can be swapped for a CMS without touching a template. Images are optimised at build time to AVIF/WebP with responsive `srcset`. It deploys from GitHub to **Cloudflare Pages**; the domain stays at **GoDaddy** while DNS moves to **Cloudflare**. Two serverless functions handle the forms — the newsletter to **Kit's API**, enquiries to **Cloudflare D1** with **Resend** notifying both Nadia and the enquirer. Expected running cost: **£0/month on top of the domain and the tools the business already pays for** — and cancelling Squarespace after cutover reduces the bill.
 
 ---
 
@@ -20,15 +20,19 @@ Build the site as a **statically generated Astro site in TypeScript**, styled wi
 | **Content** | **Astro Content Layer** + **Zod** schemas over **YAML + Markdown** | Founder-editable plain text; build-time validation; loader-swappable | [0002](./adr/0002-content-source-abstraction.md) |
 | **Images** | `astro:assets` (sharp) → AVIF/WebP + `srcset` | 1–3 MB PNGs become ~40–120 KB responsive sets | — |
 | **Fonts** | Self-hosted, subset, `woff2`, selective `preload` | Removes two third-party connections and a render-blocking request | — |
-| **Forms** | Cloudflare Pages Functions → **Kit** (newsletter) / **D1 + Resend** (enquiry) | Keeps the site static; keeps API keys server-side; no third-party widget, so no cookie banner | [16](./16-forms-and-data-capture.md) |
+| **Forms** | Cloudflare Pages Functions → **Kit** (newsletter) / **D1 + Resend** (enquiry) | Keeps the site static; keeps API keys server-side; no third-party form widget | [16](./16-forms-and-data-capture.md) |
 | **Hosting** | **Cloudflare Pages** | Free, global, GitHub-native, PR previews, free SSL | [0005](./adr/0005-hosting-and-domain-management.md) |
 | **DNS** | **Cloudflare DNS** | Must move off Squarespace before it is cancelled — see [15](./15-migration-and-cutover.md) | [0005](./adr/0005-hosting-and-domain-management.md) |
 | **Domain** | **GoDaddy** (existing, unchanged for now) | Only the nameservers change. Revisit the registrar after cutover | [0005](./adr/0005-hosting-and-domain-management.md) |
-| **Analytics** | **Cloudflare Web Analytics** (free, cookieless) | No consent banner, no perf cost, satisfies [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism) | — |
+| **Analytics (baseline)** | **Cloudflare Web Analytics** | Free, cookieless, no consent needed → sees 100% of traffic, reports real-user Core Web Vitals | — |
+| **Analytics (detail)** | **Google Tag Manager + GA4** | Requested by Nadia. **Consent-gated** — loads only after accept | [17 A7](./17-action-tracker.md#a7--the-honest-trade-off-on-gtm) |
+| **Consent** | Own cookie banner | Required once GTM loads. Design task [D3](./17-action-tracker.md) | — |
 | **CI** | **GitHub Actions** | Types, lint, a11y, Lighthouse, Playwright, budgets | — |
 | **Testing** | **Playwright** (+ `axe-core`), **Lighthouse CI** | Cross-browser and responsive matrix as a gate | — |
 
-**Not** in the stack, deliberately: React, Vue, Svelte, Tailwind, a CSS-in-JS runtime, a database, a headless CMS (yet), GA4, jQuery, GSAP, Framer Motion, Lenis or any smooth-scroll library.
+**Not** in the stack, deliberately: React, Vue, Svelte, Tailwind, a CSS-in-JS runtime, a headless CMS (yet), jQuery, GSAP, Framer Motion, Lenis or any smooth-scroll library.
+
+**In the stack by explicit request, against the original recommendation:** Google Tag Manager and GA4. They bring a mandatory cookie banner and are the largest script on the page by some margin — trade-offs recorded at [17 A7](./17-action-tracker.md#a7--the-honest-trade-off-on-gtm) and [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism). Cloudflare D1 is also in, as the durable store for enquiry submissions — a justified exception to [P8](./02-engineering-principles.md#p8--boring-cheap-replaceable-infrastructure), reasoned in [16](./16-forms-and-data-capture.md).
 
 ---
 
@@ -232,7 +236,8 @@ Detail: [05 — Motion & Interaction](./05-motion-and-interaction.md).
 | Enquiry storage | Cloudflare D1 | **£0** (5 GB free) |
 | Spam protection | Cloudflare Turnstile | **£0** |
 | DNS | Cloudflare | **£0** |
-| Analytics | Cloudflare Web Analytics | **£0** |
+| Analytics (baseline, cookieless) | Cloudflare Web Analytics | **£0** |
+| Analytics (detail, consent-gated) | Google Tag Manager + GA4 | **£0** |
 | Transactional email (form notifications) | Resend | **£0** (3,000/mo free) |
 | CI | GitHub Actions | **£0** |
 | Git-based CMS *(optional, phase 2)* | Sveltia CMS | **£0** |
@@ -244,7 +249,8 @@ Detail: [05 — Motion & Interaction](./05-motion-and-interaction.md).
 
 **The only new recurring cost is £0.** Everything the new stack adds sits on a free tier; Kit, Google Workspace and the domain are pre-existing. Cancelling Squarespace after cutover means **the total monthly bill goes down**, not up.
 
-Plain-English version of this table, with what each tool is actually for: [00 — Start Here](./00-start-here.md#1-the-tools-what-theyre-for-and-what-they-cost).
+A plain-English version of this table — separating *services you have an account with* from *build tools you'll never log into* — is at [00 — Start Here](./00-start-here.md#1-every-tool-what-it-does-how-it-connects-what-it-costs).
+
 
 ---
 

@@ -240,17 +240,30 @@ Headline budgets: **LCP ≤ 2.0 s** and **INP ≤ 200 ms** on emulated Moto G Po
 
 ## P13 — Privacy and data minimalism
 
-**The rule.** Collect the minimum: first name and email for the newsletter; whatever the enquiry form genuinely needs. No cookies without consent. Prefer analytics that require no consent banner at all. A real Privacy Policy ships **before** the form goes live.
+**The rule.** Collect the minimum: first name and email for the newsletter; whatever the enquiry form genuinely needs. **No cookie is set, and no tracking script loads, before the visitor has agreed.** The site must be fully functional — including both forms — for anyone who declines. A real Privacy Policy ships **before** either form goes live.
 
-**Why.** UK GDPR applies. A cookie banner is also a measurable conversion and performance tax on the site's single most valuable interaction.
+**Why.** UK GDPR applies. And a visitor who declines tracking is still a customer: the site owes them the same experience.
+
+**Amended 2026-08-17.** This principle originally said *"prefer analytics that require no consent banner at all"*, and forbade GA4 outright. **Nadia has asked for Google Tag Manager and GA4**, accepting the cookie banner that comes with them — she raised the banner herself, so the decision is deliberate rather than accidental. The principle is amended rather than quietly broken, and the trade-offs are recorded at [17 — A7](./17-action-tracker.md#a7--the-honest-trade-off-on-gtm).
+
+**The resulting two-track approach:**
+
+| Track | Tool | Consent | Sees |
+|---|---|---|---|
+| **Baseline** | Cloudflare Web Analytics | Not required — cookieless | **100% of visitors**, plus real-user Core Web Vitals |
+| **Detail** | GTM + GA4 | **Required** — loads only after accept | Visitors who opt in |
+
+The baseline track exists precisely so that declining consent costs us depth, not our fundamental numbers.
 
 **This forbids.**
-- Google Analytics 4 without a compliant consent banner (and therefore, in practice, on this site: GA4).
-- Third-party embeds that set cookies — including an ESP's own hosted form widget, which is why we proxy instead.
-- Shipping the newsletter form while Privacy Policy links point at `#pitch`.
-- The `nk-marks` `localStorage` write. The handoff is explicit: *"Do not ship a dead localStorage write without the UI."* It is out of scope until a UI exists for it.
+- GTM, GA4 or any cookie-setting script loading before consent. The tag manager is **consent-gated, not merely present**.
+- A consent banner where "reject" is harder to find or click than "accept" — UK GDPR requires them to be equally easy.
+- Third-party embeds that set cookies — including an ESP's own hosted form widget, which is why we call [Kit's API](./16-forms-and-data-capture.md#part-1--newsletter--kit) instead.
+- Shipping either form while the Privacy Policy is missing or its links are broken.
+- A Privacy Policy that does not list every processor: Cloudflare, Resend, Kit, Google Workspace, GA4.
+- The `nk-marks` `localStorage` write. The handoff is explicit: *"Do not ship a dead localStorage write without the UI."* Out of scope until a UI exists for it.
 
-**Verified by.** No-cookie assertion in the Playwright run. Privacy Policy present and linked before form launch.
+**Verified by.** A Playwright assertion that **no cookies exist before consent is given**, and that the site works fully when consent is refused. Privacy Policy present and linked before either form launches.
 
 ---
 

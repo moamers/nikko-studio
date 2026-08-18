@@ -17,6 +17,7 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 | If you want to know… | Read |
 |---|---|
 | Costs, tools, and how to change content — in plain English | [00 — Start Here](./00-start-here.md) 📍 |
+| **The checklist of everything outstanding** | [17 — Action Tracker](./17-action-tracker.md) ✅ |
 | What we're building and why | [01 — Project Brief](./01-project-brief.md) |
 | The rules we build by | [02 — Engineering Principles](./02-engineering-principles.md) ⭐ |
 | What we're building it with | [03 — Tech Stack](./03-tech-stack.md) ⭐ |
@@ -27,7 +28,7 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 | Where the design docs disagree | [14 — Design Source Conflicts](./14-design-source-conflicts.md) ⚠️ |
 | What we need answered | [13 — Open Questions](./13-open-questions.md) ⚠️ |
 
-⭐ = the core of the proposal · ⚠️ = needs a decision from outside engineering · 🔴 = time-sensitive
+⭐ = the core of the proposal · ⚠️ = needs a decision from outside engineering · 🔴 = time-sensitive · ✅ = the running checklist
 
 ---
 
@@ -69,6 +70,7 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 | **13** | [Open Questions](./13-open-questions.md) | Questions needing answers, each with a default if unanswered — plus the answer log |
 | **14** | [Design Source Conflicts](./14-design-source-conflicts.md) | Where the two design documents contradict each other |
 | **15** | [Migration & Cutover](./15-migration-and-cutover.md) | 🔴 Getting off Squarespace without breaking email or search |
+| **17** | [Action Tracker](./17-action-tracker.md) | **The single checklist** — design tasks, Kit, email notifications, analytics, infra, legal |
 
 ### Decisions
 
@@ -79,7 +81,7 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 | 0002 | [Content source abstraction](./adr/0002-content-source-abstraction.md) | Schema + loader, so files→CMS is a one-file change |
 | 0003 | [Motion strategy](./adr/0003-motion-strategy.md) | CSS-first, capability-gated, no animation library |
 | 0004 | [Styling approach](./adr/0004-styling-approach.md) | Plain CSS with custom-property tokens, not Tailwind |
-| 0005 | [Hosting & domains](./adr/0005-hosting-and-domain-management.md) | Cloudflare Pages + Cloudflare Registrar |
+| 0005 | [Hosting & domains](./adr/0005-hosting-and-domain-management.md) | Cloudflare Pages + Cloudflare DNS; registrar stays at GoDaddy |
 
 ---
 
@@ -132,4 +134,5 @@ When documents disagree ([P0](./02-engineering-principles.md#p0--precedence-when
 | DNS migration | 🔴 **Not started — do this first** ([15](./15-migration-and-cutover.md)) |
 | Open questions | 🟠 3 answered, several open ([13](./13-open-questions.md)) |
 | Mobile design decisions | ⏸️ Deferred until the updated handoff lands ([06](./06-responsive-and-mobile-risks.md)) |
+| Analytics | 🟡 GTM + GA4 requested; consent banner needed first ([17 A7](./17-action-tracker.md#a7--the-honest-trade-off-on-gtm)) |
 | Code | ⬜ **Not started — by design** |

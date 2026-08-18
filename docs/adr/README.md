@@ -25,7 +25,7 @@ Do **not** write one for routine choices with an obvious answer.
 | [0002](./0002-content-source-abstraction.md) | Content source abstraction via schema + loader | Proposed | [P7](../02-engineering-principles.md#p7--content-is-data-code-is-presentation) [P16](../02-engineering-principles.md#p16--every-vendor-choice-has-a-documented-exit) |
 | [0003](./0003-motion-strategy.md) | CSS-first motion with capability-gated layers | Proposed | [P1](../02-engineering-principles.md#p1--motion-serves-the-story-it-never-blocks-it) [P3](../02-engineering-principles.md#p3--progressive-enhancement-in-layers-in-that-order) [P4](../02-engineering-principles.md#p4--performance-is-a-budget-enforced-in-ci-not-an-aspiration) |
 | [0004](./0004-styling-approach.md) | Plain CSS with custom-property tokens, not Tailwind | Proposed | [P11](../02-engineering-principles.md#p11--one-source-of-truth-per-fact) [P12](../02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged) |
-| [0005](./0005-hosting-and-domain-management.md) | Cloudflare Pages + Cloudflare Registrar | Proposed | [P8](../02-engineering-principles.md#p8--boring-cheap-replaceable-infrastructure) [P9](../02-engineering-principles.md#p9--own-the-front-door) [P16](../02-engineering-principles.md#p16--every-vendor-choice-has-a-documented-exit) |
+| [0005](./0005-hosting-and-domain-management.md) | Cloudflare Pages + Cloudflare DNS; registrar stays at GoDaddy | Proposed | [P8](../02-engineering-principles.md#p8--boring-cheap-replaceable-infrastructure) [P9](../02-engineering-principles.md#p9--own-the-front-door) [P16](../02-engineering-principles.md#p16--every-vendor-choice-has-a-documented-exit) |
 
 **Status values:** `Proposed` → `Accepted` → `Superseded` / `Deprecated`.
 

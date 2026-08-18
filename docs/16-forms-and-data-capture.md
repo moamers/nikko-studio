@@ -1,7 +1,7 @@
 # 16 — Forms & Data Capture
 
 > **Status:** Draft for review · **Owner:** Engineering · **Last updated:** 2026-08-17
-> **Related:** [Docs index](./README.md) · [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism) · [P15](./02-engineering-principles.md#p15--nothing-is-trusted-at-the-boundary) · [Plain English](./00-start-here.md#3-what-happens-to-the-forms)
+> **Related:** [Docs index](./README.md) · [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism) · [P15](./02-engineering-principles.md#p15--nothing-is-trusted-at-the-boundary) · [Plain English](./00-start-here.md#5-what-happens-to-the-forms)
 
 The site has exactly two places where a visitor hands over data, and they are the two most commercially important interactions on it. They have **different requirements and different architectures**, and conflating them would be a mistake.
 
@@ -30,12 +30,14 @@ Kit offers a JavaScript embed. It is the easy path and we recommend against it.
 | | **Kit JS embed** | **Our form → Kit API** ✅ |
 |---|---|---|
 | Third-party script | ~30–50 KB, render-blocking risk | **None** |
-| Cookies | Sets them → **cookie banner required** | **None** → no banner ([P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism)) |
+| Cookies | Sets them → the form itself becomes **consent-gated** | **None** → the form works for everyone, including people who decline tracking ([P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism)) |
 | Styling | Kit's markup, limited overrides | **Fully ours** — the design's paper inputs, pill button, accent slot bar |
 | CSP | Needs loosening for a third-party origin | Stays tight ([P15](./02-engineering-principles.md#p15--nothing-is-trusted-at-the-boundary)) |
 | Error/success states | Kit's | **Ours** — designed, on-brand |
 | Works without JS | No | **Yes** — progressive enhancement ([P3](./02-engineering-principles.md#p3--progressive-enhancement-in-layers-in-that-order)) |
 | Kit still handles list, opt-in, sequences | Yes | **Yes — identical** |
+
+**Note:** the site now carries a cookie banner regardless, because [GTM and GA4 are in scope](./17-action-tracker.md#a7--the-honest-trade-off-on-gtm). That does *not* weaken the case here — it strengthens it. If the newsletter form set its own cookies, it would have to sit behind the consent banner too, meaning **anyone who declines tracking could not subscribe at all**. Our cookieless form keeps the site's highest-value interaction available to 100% of visitors.
 
 The important point: **going through Kit's API loses nothing.** Adding a subscriber to a Kit form via the API triggers the same double opt-in, the same confirmation email, the same welcome sequence and the same tagging as the embed. Kit remains the system of record for the list. We only replace the *widget*, not the *service*.
 
