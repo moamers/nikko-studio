@@ -2,10 +2,10 @@
 /**
  * The homepage.
  *
- * FOUNDATIONS ONLY. The ten content sections (hero, marquee, attention,
- * language, founder, services, sampler, joyride, pitch) are built separately
- * and dropped into the `<main>` below, in the order listed in
- * `design-handoff/homepage/README.md` § "Screens / Views".
+ * The nine content sections are wired below in the order given by
+ * `design-handoff/homepage/README.md` § "Screens / Views". Each lives in
+ * `src/sections/` and is owned by exactly one build task — edit the section
+ * file, not this one.
  *
  * Two things to know before you add a section:
  *
@@ -21,6 +21,16 @@ import OpeningSequence from '../components/OpeningSequence.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 import { getSiteSettings } from '../lib/content';
 
+import Hero from '../sections/Hero.astro';
+import Marquee from '../sections/Marquee.astro';
+import Attention from '../sections/Attention.astro';
+import Language from '../sections/Language.astro';
+import Founder from '../sections/Founder.astro';
+import Services from '../sections/Services.astro';
+import Sampler from '../sections/Sampler.astro';
+import Joyride from '../sections/Joyride.astro';
+import Pitch from '../sections/Pitch.astro';
+
 const settings = await getSiteSettings();
 ---
 
@@ -30,22 +40,15 @@ const settings = await getSiteSettings();
   <SiteHeader nav={settings.nav} cta={settings.cta} logo={settings.logo} />
 
   <main id="main">
-    <p class="nk-placeholder">Sections build here</p>
+    <Hero />
+    <Marquee />
+    <Attention />
+    <Language />
+    <Founder />
+    <Services />
+    <Sampler />
+    <Joyride />
+    <Pitch />
   </main>
 </Base>
 
-<style>
-  @layer layout {
-    .nk-placeholder {
-      max-width: var(--nk-content-max);
-      margin: 0 auto;
-      padding: var(--nk-section-pad);
-      padding-bottom: clamp(80px, 10vw, 150px);
-      font-family: var(--nk-font-mono);
-      font-size: var(--nk-size-mono-lg);
-      letter-spacing: var(--nk-tracking-mono-wide);
-      text-transform: uppercase;
-      color: var(--nk-ink-muted);
-    }
-  }
-</style>

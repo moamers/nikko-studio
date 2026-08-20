@@ -1,0 +1,33 @@
+---
+/**
+ * Marquee section — PLACEHOLDER.
+ *
+ * Spec section 3. Full-bleed 34s band, pauses on hover and when off-screen.
+ *
+ * Build rules:
+ *   - Copy comes from `src/lib/content`, never a string literal here. [P7]
+ *   - Colours/timings come from `--nk-*` tokens, never a hex literal. [P11]
+ *   - Reveals use <Reveal> / `.nk-reveal` — resting state is the FINAL
+ *     state, so content is never stranded invisible. [P1, P3]
+ *   - Must hold at 390px with no horizontal overflow. [P2]
+ */
+---
+
+<section class="nk-section nk-section--marquee">
+  <p class="nk-todo">TODO: Marquee</p>
+</section>
+
+<style>
+  @layer layout {
+    .nk-todo {
+      max-width: var(--nk-content-max);
+      margin: 0 auto;
+      padding: var(--nk-section-pad);
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-lg);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+  }
+</style>
