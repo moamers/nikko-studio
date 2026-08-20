@@ -45,9 +45,24 @@ function writePinned(mode: Mode): void {
   }
 }
 
+/**
+ * The header mounts this itself, because the dial is useless without it and
+ * the header is the only thing on the page that renders a dial. `site.ts`
+ * mounts it too, for pages that have no header. Whichever runs first wins and
+ * the other gets an inert lifecycle — two sets of click handlers on one dial
+ * would toggle the mode twice per press and look like a dead button. [P14]
+ */
+let mounted: Lifecycle | null = null;
+
 export function initMode(): Lifecycle {
+  if (mounted) return mounted;
+
   const root = document.documentElement;
   const life = createLifecycle();
+  mounted = life;
+  life.add(() => {
+    mounted = null;
+  });
 
   let pinned: Mode | null = readPinned();
   let auto: Mode = 'analogue';

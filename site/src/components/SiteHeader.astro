@@ -2,24 +2,39 @@
 /**
  * §1 — the sticky header.
  *
- * Deliberately minimal. It exists to prove three things work: the chrome gate,
- * the CSS logo lockup, and the live accent reading through from `:root`.
+ * Three things live here: the CSS logo lockup, the primary navigation, and
+ * the right-hand controls (mode dial, CTA, and — below 1024px — the button
+ * that opens the mobile menu). Every rule is in `src/styles/header.css`;
+ * every string is in `src/content/settings/site.yaml`. [P7, P11]
  *
- * NOT HERE YET, by design:
- *   - the mode dial (belongs with `mode.ts`)
- *   - the mobile menu — below 900px the nav links are hidden rather than
- *     wrapped, so the header cannot cause horizontal scroll [P2]. The disclosure
- *     button goes where the comment says.
- *
- * `data-nk-chrome` opts this element into the opening sequence's chrome gate.
+ * `data-nk-chrome` opts the bar into the opening sequence's chrome gate.
  * Note the polarity: it is VISIBLE by default and the sequence hides it while
  * it owns the screen. A JS failure leaves the header exactly where it is. [P1]
  *
+ * THREE THINGS ARE DELIBERATELY OUTSIDE `<header>`:
+ *
+ *   - the skip link, because the header is chrome-gated and a keyboard reader
+ *     wants the skip *during* the opening sequence, not after it;
+ *   - the <dialog>, because `[data-nk-chrome]` animates `transform`, and a
+ *     transformed ancestor becomes the containing block for anything fixed
+ *     inside it — which would pin the full-screen panel to the header;
+ *   - nothing else. The bar itself is one element, and it is sticky, so no
+ *     ancestor may ever gain `overflow: hidden`. [R10]
+ *
  * The header's natural flow position lands at the end of the 320vh runway, so
  * the handoff from the sequence is gapless with no scroll maths.
+ *
+ * PROPS VS SETTINGS. `nav`, `cta` and `logo` arrive as props because the page
+ * already reads them; the header's own microcopy and the dial's labels are
+ * read here so that adding a control never means editing `index.astro`. Both
+ * paths end at the same `getSiteSettings()`. [P7]
  */
 import Logo from './Logo.astro';
-import type { NavItem } from '../lib/content';
+import ModeDial from './ModeDial.astro';
+import MobileMenu from './MobileMenu.astro';
+import Pill from './Pill.astro';
+import { getSiteSettings, type NavItem } from '../lib/content';
+import '../styles/header.css';
 
 interface Props {
   nav: NavItem[];
@@ -28,119 +43,56 @@ interface Props {
 }
 
 const { nav, cta, logo } = Astro.props;
+const { header, modeDial } = await getSiteSettings();
+
+const MENU_ID = 'nk-menu';
 ---
+
+<a class="nk-skip" href="#main">{header.skipLink}</a>
 
 <header class="nk-header" data-nk-chrome="true">
   <div class="nk-header__row">
     <Logo wordmark={logo.wordmark} href={logo.homeHref} label={logo.homeLabel} />
 
-    <nav class="nk-header__nav" aria-label="Primary">
+    <nav class="nk-header__nav" aria-label={header.navLabel}>
       {nav.map((item) => <a class="nk-header__link" href={item.href}>{item.label}</a>)}
-      {/* The mobile disclosure button belongs here. */}
-      <a class="nk-header__cta" href={cta.href}>
-        <span class="nk-header__cta-slot" aria-hidden="true"></span>
-        {cta.label}
-      </a>
     </nav>
+
+    <div class="nk-header__tools">
+      <div class="nk-header__dial"><ModeDial copy={modeDial} /></div>
+
+      <Pill class="nk-header__cta" href={cta.href} size="sm">{cta.label}</Pill>
+
+      {/*
+        Hidden until the inline script in `MobileMenu.astro` has both set
+        `data-nk-js` and wired the dialog — one script, so the button can
+        never appear without something behind it. [P1]
+      */}
+      <div class="nk-header__menu">
+        <Pill
+          size="sm"
+          lift={false}
+          data-nk-menu-open
+          aria-haspopup="dialog"
+          aria-expanded="false"
+          aria-controls={MENU_ID}
+        >
+          {header.menuOpen}
+        </Pill>
+      </div>
+    </div>
   </div>
 </header>
 
-<style>
-  @layer components {
-    .nk-header {
-      position: sticky;
-      top: 0;
-      z-index: var(--nk-z-header);
-      background: var(--nk-veil);
-      transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
-    }
+<MobileMenu id={MENU_ID} nav={nav} cta={cta} copy={header} modeDial={modeDial} />
 
-    /* Progressive, not assumed. Without it the veil is simply opaque enough
-       to read against. [P3] */
-    @supports (backdrop-filter: blur(1px)) {
-      .nk-header {
-        backdrop-filter: blur(var(--nk-veil-blur));
-      }
-    }
+<script>
+  /* The dial is the only control on the page that needs `mode.ts`, so the
+     header mounts it rather than waiting for a page-level entry point. The
+     call is idempotent, so `initSite()` mounting it as well is harmless. The
+     dial stays `display: none` until this module has written `data-mode` on
+     <html>, which means it is never on screen without its behaviour. [P1] */
+  import { initMode } from '../scripts/mode';
 
-    .nk-header__row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      max-width: var(--nk-content-max);
-      margin: 0 auto;
-      padding: var(--nk-header-pad);
-    }
-
-    .nk-header__nav {
-      display: flex;
-      align-items: center;
-      gap: 30px;
-      margin-left: auto;
-      font-family: var(--nk-font-mono);
-      font-size: var(--nk-size-mono);
-      letter-spacing: var(--nk-tracking-mono);
-      text-transform: uppercase;
-    }
-
-    .nk-header__link {
-      display: inline-flex;
-      align-items: center;
-      min-height: var(--nk-tap-min);
-      color: var(--nk-ink-muted);
-    }
-
-    .nk-header__link:hover {
-      color: var(--nk-coral);
-    }
-
-    .nk-header__cta {
-      position: relative;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: var(--nk-tap-min);
-      padding: 14px 26px;
-      overflow: hidden;
-      color: var(--nk-paper);
-      background: var(--nk-ink);
-      border-radius: var(--nk-radius-oval);
-      transition:
-        background-color var(--nk-dur-colour) ease,
-        transform var(--nk-dur-step) var(--nk-ease-step);
-    }
-
-    .nk-header__cta:hover {
-      color: var(--nk-paper);
-      background: var(--nk-cobalt);
-      transform: translateY(-2px);
-    }
-
-    .nk-header__cta-slot {
-      position: absolute;
-      right: 0;
-      bottom: 7px;
-      left: 0;
-      height: 3px;
-      background: var(--nk-accent);
-      transition: background-color var(--nk-dur-accent) var(--nk-ease-accent);
-    }
-
-    /* Below the handoff's own 900px breakpoint the nav collapses to the CTA
-       alone. The links stay reachable from the footer until the mobile menu
-       lands; hiding them is what keeps `scrollWidth <= clientWidth`. [P2] */
-    @media (max-width: 900px) {
-      .nk-header__row {
-        padding: 12px 20px;
-      }
-
-      .nk-header__link {
-        display: none;
-      }
-
-      .nk-header__cta {
-        padding: 12px 20px;
-      }
-    }
-  }
-</style>
+  initMode();
+</script>

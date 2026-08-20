@@ -7,29 +7,37 @@
  *
  * It renders in its resting state — analogue, unpinned, "Auto" showing — which
  * is exactly what `tokens.css` gives a page where `mode.ts` never runs, so the
- * dial is never lying about the page it sits on. Without JavaScript it is an
- * inert label rather than a broken control, which is the honest failure. [P1]
+ * dial is never lying about the page it sits on.
  *
  * EVERY STRING ARRIVES AS A `data-*` ATTRIBUTE, from `settings/site.yaml`.
  * `mode.ts` reads them off the element. That is what lets the labels live in
  * content while the behaviour lives in a script. [P7]
  *
  * It appears twice — in the header row and in the mobile menu — which is why
- * it is a component rather than markup inside `SiteHeader.astro`.
+ * it is a component rather than markup inside `SiteHeader.astro`. The two
+ * instances sit on opposite grounds, hence `tone`; `mode.ts` drives both from
+ * one `querySelectorAll`, so they can never disagree.
+ *
+ * WHERE IT IS SHOWN is not this file's business — `header.css` decides that,
+ * through the wrapper each instance sits in. In particular the dial is absent
+ * with no JavaScript, because pinning a mode writes to `localStorage` and a
+ * button that does nothing when pressed is worse than no button. [P10]
  */
 import type { ModeDialCopy } from '../lib/content';
 
 interface Props {
   copy: ModeDialCopy;
+  /** `paper` is the inverted tone for the ink mobile-menu panel. */
+  tone?: 'ink' | 'paper' | undefined;
   class?: string | undefined;
 }
 
-const { copy, class: className } = Astro.props;
+const { copy, tone = 'ink', class: className } = Astro.props;
 ---
 
 <button
   type="button"
-  class:list={['nk-dial', className]}
+  class:list={['nk-dial', `nk-dial--${tone}`, className]}
   data-nk-mode-dial
   aria-pressed="true"
   title={copy.noteAuto + copy.noteAnalogue}
@@ -58,10 +66,8 @@ const { copy, class: className } = Astro.props;
       font-size: var(--nk-size-mono-sm);
       letter-spacing: var(--nk-tracking-mono);
       text-transform: uppercase;
-      color: var(--nk-ink);
       background: transparent;
       border: var(--nk-rule-hair);
-      border-color: var(--nk-ink);
       cursor: pointer;
       transition:
         background-color var(--nk-dur-step) var(--nk-ease-step),
@@ -83,9 +89,31 @@ const { copy, class: className } = Astro.props;
       transform: translate(-50%, -50%);
     }
 
-    .nk-dial:hover {
+    /* ── Tones ──────────────────────────────────────────────────────────
+       "1.5px solid #111110 … hover inverts to ink/paper" (handoff § 1). The
+       paper tone is the same idea photographed on the other side: it exists
+       because the mobile menu is an ink panel, where an ink border on an ink
+       ground is a border nobody can see. */
+    .nk-dial--ink {
+      color: var(--nk-ink);
+      border-color: var(--nk-ink);
+    }
+
+    .nk-dial--ink:hover,
+    .nk-dial--ink:focus-visible {
       background: var(--nk-ink);
       color: var(--nk-paper);
+    }
+
+    .nk-dial--paper {
+      color: var(--nk-paper);
+      border-color: var(--nk-paper);
+    }
+
+    .nk-dial--paper:hover,
+    .nk-dial--paper:focus-visible {
+      background: var(--nk-paper);
+      color: var(--nk-ink);
     }
 
     .nk-dial__dot {

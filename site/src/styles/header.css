@@ -1,0 +1,341 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   header.css — §1, the sticky header, its mode dial and its mobile menu.
+
+   GLOBAL RATHER THAN SCOPED, on purpose. The header is three components
+   (`SiteHeader`, `ModeDial`, `MobileMenu`) plus two it only borrows
+   (`Logo`, `Pill`), and several of the rules below have to cross those
+   boundaries: the logo's touch target, the dial's paper tone inside the ink
+   menu, the JS/no-JS state switch on `:root`. Scoped blocks in five files
+   would each hold a third of a rule. One stylesheet holds the whole idea.
+
+   Values are quoted from `design-handoff/homepage/README.md` § "1. Header
+   (sticky)". Where the handoff is silent — everything below 1024px — the
+   value comes from `tokens.css` and the deviation is logged in
+   docs/06 § R1. No hex literal appears here. [P11]
+
+   THE TWO STATES. The handoff's header only exists at 1280px. Below 1024px
+   there are two different headers, and which one you get depends on whether
+   JavaScript ran:
+
+     no `data-nk-js`  the row WRAPS. Logo on the first line, the three nav
+                      links on the second, the CTA on the third. Nothing is
+                      hidden, nothing overflows, every link is reachable with
+                      a keyboard and with no script at all. [P1, P3]
+
+     `data-nk-js`     the row COLLAPSES to logo + menu button, and the links,
+                      the CTA and the dial move into the <dialog>.
+
+   The attribute is set by the inline script in `MobileMenu.astro`, which is
+   the same script that wires the dialog — so the collapsed layout can never
+   appear without the button that operates it.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@layer components {
+  /* ── Skip link ──────────────────────────────────────────────────────────
+     A SIBLING OF <header>, NOT A CHILD. The header carries `data-nk-chrome`
+     and is hidden while the opening sequence owns the screen; a skip link
+     inside it would be unreachable for the first three screens, which is
+     exactly when a keyboard reader most wants it. Hence
+     `settings/site.yaml`: "Offered to keyboard readers first, before the
+     opening sequence." [P10] */
+  .nk-skip {
+    position: fixed;
+    top: 0;
+    left: var(--nk-gutter);
+    z-index: calc(var(--nk-z-cursor) + 1);
+    padding: 12px 20px;
+    min-height: var(--nk-tap-min);
+    display: inline-flex;
+    align-items: center;
+    background: var(--nk-ink);
+    color: var(--nk-paper);
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    transform: translateY(-130%);
+    transition: transform var(--nk-dur-colour) var(--nk-ease-accent);
+  }
+
+  .nk-skip:focus-visible,
+  .nk-skip:focus {
+    transform: translateY(0);
+    color: var(--nk-paper);
+  }
+
+  /* ── The bar ────────────────────────────────────────────────────────── */
+  .nk-header {
+    position: sticky;
+    top: 0;
+    z-index: var(--nk-z-header);
+    background: var(--nk-veil);
+    transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+  }
+
+  /* Progressive, not assumed. Without it the veil is simply opaque enough
+     to read against. [P3] */
+  @supports (backdrop-filter: blur(1px)) {
+    .nk-header {
+      backdrop-filter: blur(var(--nk-veil-blur));
+    }
+  }
+
+  .nk-header__row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    max-width: var(--nk-content-max);
+    margin: 0 auto;
+    padding: var(--nk-header-pad);
+  }
+
+  /* R9: the lockup is a 30px oval beside 22px type, so the link is ~30px
+     tall. The mark must not grow — it is the brand — so the HIT AREA grows
+     instead, invisibly, past 44px in both directions. [P2] */
+  .nk-header .nk-logo {
+    position: relative;
+  }
+
+  .nk-header .nk-logo::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100%;
+    height: 100%;
+    min-width: var(--nk-tap-min);
+    min-height: var(--nk-tap-min);
+    transform: translate(-50%, -50%);
+  }
+
+  /* ── Nav ─────────────────────────────────────────────────────────────── */
+  .nk-header__nav {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    margin-left: auto;
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+  }
+
+  /* R9 again: 11px mono is a ~15px line box. `min-height` on an inline-flex
+     link centres the same glyphs inside a 44px target and changes nothing
+     anybody can see. */
+  .nk-header__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--nk-tap-min);
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-header__link:hover {
+    color: var(--nk-coral);
+  }
+
+  /* ── Right-hand controls ─────────────────────────────────────────────── */
+  .nk-header__tools {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  /* WHY WRAPPERS. `Pill` and `ModeDial` carry scoped stylesheets, so their
+     own `display` rules land at `.nk-pill[data-astro-cid-…]` — the same
+     specificity a rule here would reach, with the winner decided by bundling
+     order. Rather than escalate selectors, each control sits in a wrapper
+     THIS file owns outright, and every `display` decision is made on the
+     wrapper. One pattern, no specificity arithmetic.
+
+     The menu button exists only in the collapsed layout; the dial only where
+     a script can actually pin a mode to `localStorage`. A button that does
+     nothing when pressed is worse than no button. [P10] */
+  .nk-header__menu,
+  .nk-header__dial,
+  .nk-menu__dial {
+    display: none;
+  }
+
+  /* The dial appears on `data-mode`, not on `data-nk-js` — that attribute is
+     written by `mode.ts` itself, so the control cannot be on screen unless
+     the code that answers its clicks is already running. */
+  :root[data-mode] .nk-header__dial,
+  :root[data-mode] .nk-menu__dial {
+    display: flex;
+    align-items: center;
+  }
+
+  /* ── Below 1024px ────────────────────────────────────────────────────
+     R1: at 390px the designed row needs ~774px of a 310px line. Both
+     branches below are answers to that arithmetic. */
+  @media (max-width: 1023px) {
+    .nk-header__row {
+      flex-wrap: wrap;
+      row-gap: 12px;
+      padding: 12px var(--nk-gutter);
+    }
+
+    /* The wrapped, script-free layout. */
+    .nk-header__nav {
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      width: 100%;
+      margin-left: 0;
+    }
+
+    .nk-header__tools {
+      margin-left: auto;
+    }
+
+    /* The collapsed layout. */
+    :root[data-nk-js] .nk-header__row {
+      flex-wrap: nowrap;
+    }
+
+    /* R1's arithmetic: logo (131px) + menu button (~85px) + gap fits inside
+       310px. The dial (~130px) does not — so it moves into the menu, where a
+       full screen gives it more room than the designed row ever did. It is
+       moved, never cut: below 768px the grain is off, but `--nk-img-filter`
+       and `--nk-misreg` still differ between the two modes, so the control
+       still does something a reader can see. (docs/06 § Q9a.) */
+    :root[data-nk-js] .nk-header__nav,
+    :root[data-nk-js] .nk-header__cta,
+    :root[data-nk-js] .nk-header__dial {
+      display: none;
+    }
+
+    :root[data-nk-js] .nk-header__menu {
+      display: flex;
+      align-items: center;
+    }
+  }
+
+  @media (max-width: 479px) {
+    .nk-header__row {
+      padding: 12px 20px;
+    }
+  }
+
+  /* ── The mobile menu ────────────────────────────────────────────────────
+     A real <dialog> opened with `showModal()`. Focus trapping, `Esc`, the
+     inert background and top-layer stacking are the platform's job, not
+     ours — hand-rolled focus management is the thing everyone gets wrong.
+     (docs/06 § R1.) */
+  .nk-menu {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--nk-ink);
+    color: var(--nk-paper);
+    overscroll-behavior: contain;
+
+    /* Entry and exit are one declaration thanks to `allow-discrete`: no
+       `setTimeout` waiting for a transition before calling `close()`.
+       Browsers without it simply appear and disappear. [P3] */
+    opacity: 0;
+    transform: translateY(-8px);
+    transition:
+      opacity var(--nk-dur-card) var(--nk-ease-card),
+      transform var(--nk-dur-card) var(--nk-ease-card),
+      overlay var(--nk-dur-card) allow-discrete,
+      display var(--nk-dur-card) allow-discrete;
+  }
+
+  .nk-menu[open] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @starting-style {
+    .nk-menu[open] {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nk-menu {
+      transition-property: none;
+      transform: none;
+    }
+  }
+
+  .nk-menu::backdrop {
+    background: rgb(var(--nk-ink-rgb) / 0.72);
+  }
+
+  /* `html` while the dialog is open. The dialog is in the top layer, so the
+     page behind it would otherwise still scroll under the panel. */
+  .nk-scroll-locked {
+    overflow: hidden;
+  }
+
+  .nk-menu__panel {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(24px, 6vh, 48px);
+    min-height: 100%;
+    padding: 20px var(--nk-gutter) clamp(28px, 6vh, 48px);
+  }
+
+  .nk-menu__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .nk-menu__eyebrow {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono-wide);
+    text-transform: uppercase;
+    color: var(--nk-paper-muted);
+  }
+
+  .nk-menu__nav {
+    display: flex;
+    flex-direction: column;
+    margin-top: auto;
+  }
+
+  /* Display scale, because a full screen can carry it and a thumb needs it.
+     `--nk-size-menu-link` is engineering's value, not the designer's — the
+     handoff has no mobile header at all. (docs/06 § R1, logged per P12.) */
+  .nk-menu__link {
+    display: flex;
+    align-items: center;
+    min-height: var(--nk-tap-min);
+    padding: 10px 0;
+    border-bottom: var(--nk-rule-hair);
+    border-color: rgb(var(--nk-paper-rgb) / 0.18);
+    color: var(--nk-paper);
+    font-family: var(--nk-font-display);
+    font-size: var(--nk-size-menu-link);
+    letter-spacing: var(--nk-tracking-display-tight);
+    line-height: var(--nk-leading-h1);
+    text-transform: uppercase;
+    transition: color var(--nk-dur-step) var(--nk-ease-step);
+  }
+
+  .nk-menu__link:hover,
+  .nk-menu__link:focus-visible {
+    color: var(--nk-accent);
+  }
+
+  .nk-menu__foot {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  /* Focus rings are coral on paper; on the ink panel coral is legible but
+     the offset needs the darker ground to read, which it has. Nothing to
+     override — noted so the next reader does not add an override. */
+}
