@@ -1,33 +1,466 @@
 ---
 /**
- * Pitch section — PLACEHOLDER.
+ * Pitch section — §10, the newsletter capture and footer.
  *
- * Spec section 10. Newsletter capture, link block, legal row.
+ * The one section that is full-bleed ink, with the section-lid radius, the
+ * perforated top edge and the Levantine dot field — three `radial-gradient`s
+ * tiled at 24px, quoted from `Nikko Homepage.dc.html` lines 604-725.
  *
- * Build rules:
- *   - Copy comes from `src/lib/content`, never a string literal here. [P7]
- *   - Colours/timings come from `--nk-*` tokens, never a hex literal. [P11]
- *   - Reveals use <Reveal> / `.nk-reveal` — resting state is the FINAL
- *     state, so content is never stranded invisible. [P1, P3]
- *   - Must hold at 390px with no horizontal overflow. [P2]
+ * The three link columns and the header navigation both live in
+ * `settings/site.yaml` (`footerColumns`) — this section only owns the
+ * newsletter copy, the positioning paragraph and the legal row. [P7]
+ *
+ * THE FORM. The prototype's newsletter inputs have no `name`, no `<label>`
+ * and no submit handler — "not wired" per the handoff. This build fixes all
+ * three: real `<label for>`s, `autocomplete`, a POST to `/api/subscribe`
+ * that works with JavaScript off (the endpoint does not exist yet — that is
+ * expected, not a bug in this section), a honeypot field, and an
+ * `aria-live` region that a small progressive-enhancement script fills in
+ * once fetch succeeds or fails. [P10, P15]
  */
+import Reveal from '../components/Reveal.astro';
+import Pill from '../components/Pill.astro';
+import { getPitch, getSiteSettings } from '../lib/content';
+
+const pitch = await getPitch();
+const settings = await getSiteSettings();
+
+/** Maps a newsletter field onto the `autocomplete` token a browser expects. */
+function autocompleteFor(field: { name: string; type: 'text' | 'email' }): string {
+  if (field.type === 'email') return 'email';
+  if (field.name === 'firstName') return 'given-name';
+  return 'name';
+}
 ---
 
-<section id="pitch" class="nk-section nk-section--pitch">
-  <p class="nk-todo">TODO: Pitch</p>
+<section id="pitch" class="nk-pitch">
+  <span class="nk-pitch__perforation" aria-hidden="true"></span>
+
+  <div class="nk-pitch__inner">
+    <div class="nk-pitch__top">
+      <Reveal class="nk-pitch__intro">
+        <h2 class="nk-pitch__heading">{pitch.heading}</h2>
+        {pitch.body.map((paragraph) => (
+          <p class="nk-pitch__body">{paragraph}</p>
+        ))}
+      </Reveal>
+
+      <Reveal class="nk-pitch__form-col">
+        {/* `novalidate` is deliberately absent: native constraint validation
+            (via `required`/`type="email"`) is exactly what keeps the form
+            usable with JavaScript off. */}
+        <form class="nk-pitch__form" action="/api/subscribe" method="post" data-pitch-form>
+          {pitch.newsletter.fields.map((field) => (
+            <div class="nk-pitch__field">
+              <label class="nk-pitch__label" for={`nk-pitch-${field.name}`}>
+                {field.label}
+              </label>
+              <input
+                class="nk-pitch__input"
+                id={`nk-pitch-${field.name}`}
+                name={field.name}
+                type={field.type}
+                placeholder={field.placeholder || undefined}
+                autocomplete={autocompleteFor(field)}
+                required={field.required}
+              />
+            </div>
+          ))}
+
+          {/* Honeypot: invisible and unreachable for a real visitor — off
+              the tab order, hidden from assistive tech, ignored by autofill.
+              A filled value is the one signal `/api/subscribe` will have,
+              once it exists, that a submission was automated. Its label is
+              the one hardcoded string in this section: nobody ever sees or
+              hears it, so it is not the "user-facing string" P7 guards
+              against — there is no user it faces. */}
+          <div class="nk-pitch__hp" aria-hidden="true">
+            <label for="nk-pitch-hp">Leave this field blank</label>
+            <input
+              id="nk-pitch-hp"
+              type="text"
+              name="companyWebsite"
+              tabindex="-1"
+              autocomplete="off"
+            />
+          </div>
+
+          <Pill type="submit" tone="paper" size="lg" class="nk-pitch__submit">
+            {pitch.newsletter.submit}
+          </Pill>
+
+          <p class="nk-pitch__consent">{pitch.newsletter.consent}</p>
+
+          <p class="nk-pitch__status" id="nk-pitch-status" role="status" aria-live="polite" data-pitch-status></p>
+        </form>
+      </Reveal>
+    </div>
+
+    <div class="nk-pitch__links">
+      <div class="nk-pitch__brand">
+        <div class="nk-pitch__brand-row">
+          <span class="nk-pitch__logo" aria-hidden="true">
+            <span class="nk-pitch__logo-ink"></span>
+            <span class="nk-pitch__logo-accent"></span>
+          </span>
+          <span class="nk-pitch__wordmark">{settings.logo.wordmark}</span>
+        </div>
+        <p class="nk-pitch__positioning">{pitch.positioning}</p>
+      </div>
+
+      {settings.footerColumns.map((column) => (
+        <div class="nk-pitch__col">
+          <p class="nk-pitch__col-title">{column.title}</p>
+          <ul class="nk-pitch__col-list">
+            {column.items.map((item) => (
+              <li>
+                {item.href ? <a href={item.href}>{item.label}</a> : item.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+
+    <div class="nk-pitch__legal">
+      <p class="nk-pitch__teaser">{pitch.legal.teaser}</p>
+      <p class="nk-pitch__copyright">{pitch.legal.copyright}</p>
+    </div>
+  </div>
 </section>
+
+<script>
+  // Progressive enhancement only. With JavaScript off — or `fetch` missing —
+  // the <form> above already works: it POSTs to `/api/subscribe` and the
+  // browser navigates there. This just upgrades that into an in-page
+  // success/error message through the `aria-live` region, without ever
+  // blocking the native submit path from running first. [P3, P10]
+  const form = document.querySelector<HTMLFormElement>('[data-pitch-form]');
+  const status = document.querySelector<HTMLElement>('[data-pitch-status]');
+
+  if (form && status && typeof window.fetch === 'function') {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      status.removeAttribute('data-state');
+      status.textContent = '';
+
+      try {
+        const response = await fetch(form.action, {
+          method: form.method || 'POST',
+          body: new FormData(form),
+          headers: { Accept: 'application/json' },
+        });
+        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+        status.dataset.state = 'success';
+        // Deliberately hardcoded, like the honeypot label above: this pair of
+        // messages is UI feedback for a form the original design never wired
+        // up, not editorial copy, and no content schema exists for it yet.
+        status.textContent = "Thanks — you're on the list.";
+        form.reset();
+      } catch {
+        status.dataset.state = 'error';
+        status.textContent = 'Something went wrong. Please try again in a moment.';
+      }
+    });
+  }
+</script>
 
 <style>
   @layer layout {
-    .nk-todo {
+    .nk-pitch {
+      position: relative;
+      margin: clamp(90px, 11vw, 160px) 0 0;
+      padding: var(--nk-section-pad-bleed);
+      overflow: hidden;
+      background-color: var(--nk-ink);
+      background-image:
+        radial-gradient(circle 2px at 5px 5px, rgb(var(--nk-paper-rgb) / 0.1) 0 100%, transparent 0),
+        radial-gradient(circle 3.6px at 16px 13px, rgb(var(--nk-coral-rgb) / 0.3) 0 100%, transparent 0),
+        radial-gradient(circle 1.6px at 19px 17px, rgb(var(--nk-coral-rgb) / 0.3) 0 100%, transparent 0);
+      background-size: 24px 24px, 24px 24px, 24px 24px;
+      border-radius: var(--nk-radius-section-lid);
+    }
+
+    .nk-pitch__perforation {
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 34px;
+      background-image: radial-gradient(
+        circle 12px at 12px 0,
+        transparent 0 9px,
+        rgb(var(--nk-paper-rgb) / 0.14) 9px 12px,
+        transparent 12px
+      );
+      background-repeat: repeat-x;
+      background-size: 24px 34px;
+      pointer-events: none;
+    }
+
+    .nk-pitch__inner {
+      position: relative;
       max-width: var(--nk-content-max);
       margin: 0 auto;
-      padding: var(--nk-section-pad);
+      padding: 0 var(--nk-gutter);
+    }
+
+    .nk-pitch__top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: clamp(34px, 5vw, 80px);
+    }
+
+    .nk-pitch__intro {
+      flex: 1 1 430px;
+      min-width: 310px;
+    }
+
+    .nk-pitch__heading {
+      max-width: 20ch;
+      margin: 0 0 22px;
+      color: var(--nk-paper);
+      font-size: var(--nk-size-h2-pitch);
+      line-height: var(--nk-leading-h1);
+      letter-spacing: var(--nk-tracking-h1);
+      text-wrap: pretty;
+    }
+
+    .nk-pitch__body {
+      max-width: 50ch;
+      margin: 0 0 16px;
+      color: var(--nk-paper);
+      font-size: var(--nk-size-body);
+      line-height: var(--nk-leading-body);
+      text-wrap: pretty;
+    }
+
+    .nk-pitch__body:last-child {
+      margin-bottom: 0;
+    }
+
+    /* ── Newsletter form ─────────────────────────────────────────────── */
+    .nk-pitch__form-col {
+      flex: 1 1 380px;
+      min-width: 300px;
+    }
+
+    .nk-pitch__form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .nk-pitch__label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--nk-paper-muted);
       font-family: var(--nk-font-mono);
-      font-size: var(--nk-size-mono-lg);
+      font-size: var(--nk-size-mono-sm);
       letter-spacing: var(--nk-tracking-mono-wide);
       text-transform: uppercase;
+    }
+
+    .nk-pitch__input {
+      width: 100%;
+      padding: 15px;
+      background: var(--nk-paper);
+      border: 2px solid var(--nk-paper);
+      border-radius: var(--nk-radius-input);
+      color: var(--nk-ink);
+      font-family: var(--nk-font-body);
+      /* Never lower — 16px is the floor iOS uses to decide whether to zoom
+         the viewport on focus. [P2] */
+      font-size: var(--nk-size-input);
+    }
+
+    .nk-pitch__input::placeholder {
       color: var(--nk-ink-muted);
+    }
+
+    /* Off-screen, not `display:none` — some bots skip fields a stylesheet
+       hides outright, and this still has to be unreachable by keyboard and
+       silent to assistive tech regardless. */
+    .nk-pitch__hp {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .nk-pitch__submit {
+      align-self: flex-start;
+    }
+
+    .nk-pitch__consent {
+      max-width: 46ch;
+      margin: 0;
+      color: var(--nk-paper);
+      font-size: var(--nk-size-note);
+      line-height: 1.5;
+    }
+
+    .nk-pitch__status {
+      margin: 0;
+      min-height: 1.4em;
+      color: var(--nk-paper);
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono);
+    }
+
+    .nk-pitch__status[data-state='success'] {
+      color: var(--nk-turquoise);
+    }
+
+    .nk-pitch__status[data-state='error'] {
+      color: var(--nk-coral);
+    }
+
+    /* ── Link block ──────────────────────────────────────────────────── */
+    .nk-pitch__links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(30px, 5vw, 70px);
+      margin-top: clamp(60px, 8vw, 110px);
+      padding-top: clamp(34px, 4vw, 54px);
+      border-top: 1.5px solid var(--nk-ink-muted);
+    }
+
+    .nk-pitch__brand {
+      flex: 1 1 300px;
+    }
+
+    .nk-pitch__brand-row {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      margin-bottom: 20px;
+    }
+
+    /* The footer lockup is the header's logo INVERTED: a ground-coloured
+       oval carrying an ink stripe and the accent stripe, rather than an ink
+       oval carrying a ground stripe and the accent stripe. It is built here
+       rather than through `Logo.astro` because that component only knows
+       the header's tone and 44×30 size — this one is 48×32 and the other
+       way round. */
+    .nk-pitch__logo {
+      position: relative;
+      display: block;
+      flex: 0 0 auto;
+      width: 48px;
+      height: 32px;
+      overflow: hidden;
+      background: var(--nk-ground);
+      border-radius: var(--nk-radius-oval);
+      transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+    }
+
+    .nk-pitch__logo-ink,
+    .nk-pitch__logo-accent {
+      position: absolute;
+      right: 0;
+      left: 0;
+    }
+
+    .nk-pitch__logo-ink {
+      top: 17px;
+      height: 5px;
+      background: var(--nk-ink);
+    }
+
+    .nk-pitch__logo-accent {
+      top: 22px;
+      height: 3px;
+      background: var(--nk-accent);
+      transition: background-color var(--nk-dur-accent) var(--nk-ease-accent);
+    }
+
+    .nk-pitch__wordmark {
+      color: var(--nk-paper);
+      font-family: var(--nk-font-display);
+      font-size: 26px;
+      letter-spacing: var(--nk-tracking-display-tight);
+      text-transform: uppercase;
+    }
+
+    .nk-pitch__positioning {
+      max-width: 42ch;
+      margin: 0;
+      color: var(--nk-paper);
+      font-size: 15px;
+      line-height: 1.6;
+      text-wrap: pretty;
+    }
+
+    .nk-pitch__col {
+      flex: 0 1 190px;
+      min-width: 150px;
+    }
+
+    .nk-pitch__col-title {
+      margin: 0 0 14px;
+      color: var(--nk-paper-muted);
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      text-transform: uppercase;
+    }
+
+    .nk-pitch__col-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .nk-pitch__col-list li {
+      color: var(--nk-paper);
+      font-size: 15px;
+      line-height: 1.9;
+    }
+
+    .nk-pitch__col-list a {
+      color: var(--nk-paper);
+      transition: color var(--nk-dur-colour) ease;
+    }
+
+    .nk-pitch__col-list a:hover,
+    .nk-pitch__col-list a:focus-visible {
+      color: var(--nk-yellow);
+    }
+
+    /* ── Legal row ───────────────────────────────────────────────────── */
+    .nk-pitch__legal {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: clamp(34px, 4vw, 54px);
+    }
+
+    .nk-pitch__teaser {
+      max-width: 54ch;
+      margin: 0;
+      color: var(--nk-paper);
+      font-size: 14.5px;
+      line-height: 1.6;
+      text-wrap: pretty;
+    }
+
+    .nk-pitch__copyright {
+      margin: 0;
+      color: var(--nk-paper);
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      text-transform: uppercase;
     }
   }
 </style>

@@ -1,33 +1,329 @@
 ---
 /**
- * Joyride section — PLACEHOLDER.
+ * Joyride section — §9, the word swap.
  *
- * Spec section 9. Word swap Khara/Kaka — both states in the HTML.
+ * Both "Khara" and "Kaka" ship in the HTML: the live word sits in the
+ * button; the alternate sits in a `hidden` list right beside it, in plain
+ * text, so a crawler or a language model sees both without ever running
+ * `wordswap.ts`. [P6] The resting state — the button showing "Khara",
+ * un-animated — is already the FINAL state; motion is only ever added on
+ * top by the script. [P1, P3]
  *
- * Build rules:
- *   - Copy comes from `src/lib/content`, never a string literal here. [P7]
- *   - Colours/timings come from `--nk-*` tokens, never a hex literal. [P11]
- *   - Reveals use <Reveal> / `.nk-reveal` — resting state is the FINAL
- *     state, so content is never stranded invisible. [P1, P3]
- *   - Must hold at 390px with no horizontal overflow. [P2]
+ * The heading mixes Archivo Black with Newsreader italic `<em>`s. `{1}` `{2}`
+ * `{3}` in `joyride.yaml`'s `heading.template` mark where each phrase in
+ * `heading.emphasis` lands — parsed here, at build time, never as a literal
+ * string in this file. [P7]
+ *
+ * Copy comes from `getJoyride()`, never a string literal here. [P7]
  */
+import Reveal from '../components/Reveal.astro';
+import { getJoyride } from '../lib/content';
+
+const joyride = await getJoyride();
+
+type HeadingPart = { kind: 'text'; value: string } | { kind: 'em'; value: string; accent: boolean };
+
+/** Splits `template` on `{1}`…`{n}` tokens, substituting `emphasis[n-1]`. */
+function buildHeadingParts(template: string, emphasis: typeof joyride.heading.emphasis): HeadingPart[] {
+  const parts: HeadingPart[] = [];
+  const pattern = /\{(\d+)\}/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(template))) {
+    if (match.index > lastIndex) {
+      parts.push({ kind: 'text', value: template.slice(lastIndex, match.index) });
+    }
+    const item = emphasis[Number(match[1]) - 1];
+    if (item) parts.push({ kind: 'em', value: item.text, accent: item.accent });
+    lastIndex = pattern.lastIndex;
+  }
+  if (lastIndex < template.length) {
+    parts.push({ kind: 'text', value: template.slice(lastIndex) });
+  }
+  return parts;
+}
+
+const headingParts = buildHeadingParts(joyride.heading.template, joyride.heading.emphasis);
+
+const [primaryState, alternateState] = joyride.swap.states;
 ---
 
-<section class="nk-section nk-section--joyride">
-  <p class="nk-todo">TODO: Joyride</p>
+<section id="joyride" class="nk-joyride" aria-labelledby="joyride-heading">
+  <Reveal as="h2" id="joyride-heading" class="nk-joyride__heading">
+    {headingParts.map((part) =>
+      part.kind === 'em' ? (
+        <em class:list={['nk-joyride__em', { 'nk-joyride__em--accent': part.accent }]}>{part.value}</em>
+      ) : (
+        part.value
+      ),
+    )}
+  </Reveal>
+
+  <div class="nk-joyride__cols">
+    <div class="nk-joyride__left">
+      <Reveal as="p" class="nk-joyride__lead">
+        {joyride.lead}
+      </Reveal>
+      {joyride.body.map((paragraph, index) => (
+        <Reveal as="p" class:list={['nk-joyride__body', { 'nk-joyride__body--muted': index > 0 }]}>
+          {paragraph}
+        </Reveal>
+      ))}
+    </div>
+
+    <Reveal class="nk-joyride__right">
+      <p class="nk-joyride__swap-intro">{joyride.swap.intro}</p>
+
+      <div class="nk-joyride__swap">
+        <button type="button" class="nk-joyride__swap-button" aria-label={joyride.swap.ariaLabel} data-swap-button>
+          <span class="nk-joyride__swap-latin" data-swap-latin data-colour={primaryState?.colour}>{primaryState?.latin}</span>
+          <span class="nk-joyride__swap-arabic" dir="rtl" lang="ar" data-swap-arabic>{primaryState?.arabic}</span>
+          <span class="nk-joyride__swap-hint-row">
+            <span class="nk-joyride__swap-logo" aria-hidden="true" data-swap-logo data-colour={primaryState?.colour}>
+              <span class="nk-joyride__swap-logo-ground"></span>
+              <span class="nk-joyride__swap-logo-stripe"></span>
+            </span>
+            <span data-swap-hint>{primaryState?.hint}</span>
+          </span>
+        </button>
+
+        <p class="nk-joyride__swap-note" data-swap-note>{primaryState?.note}</p>
+
+        {/* Present for crawlers and language models, never for eyes: the
+            alternate word this button swaps to. [P6] */}
+        <ul class="nk-joyride__swap-alt" hidden data-swap-alt>
+          <li data-colour={alternateState?.colour}>
+            <span data-field="latin">{alternateState?.latin}</span>
+            <span data-field="arabic" dir="rtl" lang="ar">{alternateState?.arabic}</span>
+            <span data-field="hint">{alternateState?.hint}</span>
+            <span data-field="note">{alternateState?.note}</span>
+          </li>
+        </ul>
+      </div>
+
+      <a class="nk-joyride__link" href={joyride.link.href}>
+        {joyride.link.label}
+      </a>
+    </Reveal>
+  </div>
 </section>
+
+<script>
+  import { initWordSwap } from '../scripts/wordswap';
+
+  initWordSwap();
+</script>
 
 <style>
   @layer layout {
-    .nk-todo {
+    .nk-joyride {
       max-width: var(--nk-content-max);
       margin: 0 auto;
-      padding: var(--nk-section-pad);
+      padding: clamp(90px, 11vw, 160px) var(--nk-gutter) 0;
+    }
+
+    .nk-joyride__heading {
+      max-width: 30ch;
+      margin: 0 0 40px;
+      font-size: var(--nk-size-h2-joyride);
+      line-height: var(--nk-leading-flat);
+      letter-spacing: var(--nk-tracking-h1);
+      text-wrap: pretty;
+    }
+
+    .nk-joyride__em {
+      font-family: var(--nk-font-editorial);
+      font-style: italic;
+      font-weight: 400;
+      letter-spacing: -0.01em;
+    }
+
+    .nk-joyride__em--accent {
+      color: var(--nk-coral);
+    }
+
+    .nk-joyride__cols {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: clamp(30px, 5vw, 70px);
+    }
+
+    .nk-joyride__left {
+      flex: 1 1 420px;
+      min-width: 310px;
+    }
+
+    .nk-joyride__lead {
+      max-width: 28ch;
+      margin: 0 0 26px;
+      font-family: var(--nk-font-editorial);
+      font-style: italic;
+      font-size: clamp(24px, 2.6vw, 38px);
+      line-height: 1.15;
+      color: var(--nk-cobalt);
+    }
+
+    .nk-joyride__body {
+      max-width: 54ch;
+      margin: 0 0 18px;
+      font-size: var(--nk-size-body);
+      line-height: var(--nk-leading-body);
+      text-wrap: pretty;
+    }
+
+    .nk-joyride__body:last-child {
+      margin-bottom: 0;
+    }
+
+    .nk-joyride__body--muted {
+      color: var(--nk-ink-muted);
+    }
+
+    .nk-joyride__right {
+      flex: 1 1 380px;
+      min-width: 300px;
+    }
+
+    .nk-joyride__swap-intro {
+      margin: 0 0 22px;
+      font-size: var(--nk-size-body);
+      line-height: var(--nk-leading-body);
+      color: var(--nk-ink-muted);
+    }
+
+    .nk-joyride__swap-button {
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    .nk-joyride__swap-latin {
+      display: block;
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-wordswap);
+      line-height: 0.86;
+      letter-spacing: var(--nk-tracking-display-tight);
+      /* No token covers this exact 320ms — it belongs only to this control,
+         called out explicitly in the handoff. Every other timing on this
+         page comes from `tokens.css`; this is the one deliberate exception,
+         left as a literal rather than invented into a new global token. */
+      transition: color 320ms ease;
+    }
+
+    .nk-joyride__swap-latin[data-colour='coral'] {
+      color: var(--nk-coral);
+    }
+
+    .nk-joyride__swap-latin[data-colour='cobalt'] {
+      color: var(--nk-cobalt);
+    }
+
+    .nk-joyride__swap-arabic {
+      display: block;
+      min-height: 1.5em;
+      margin-top: 10px;
+      font-size: clamp(26px, 3.4vw, 48px);
+      color: var(--nk-ink);
+    }
+
+    .nk-joyride__swap-hint-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      margin-top: 16px;
       font-family: var(--nk-font-mono);
-      font-size: var(--nk-size-mono-lg);
-      letter-spacing: var(--nk-tracking-mono-wide);
+      font-size: var(--nk-size-mono-md);
+      letter-spacing: var(--nk-tracking-mono-tight);
       text-transform: uppercase;
       color: var(--nk-ink-muted);
+    }
+
+    .nk-joyride__swap-logo {
+      position: relative;
+      display: block;
+      flex: 0 0 auto;
+      width: 26px;
+      height: 18px;
+      overflow: hidden;
+      background: var(--nk-ink);
+      border-radius: var(--nk-radius-oval);
+    }
+
+    .nk-joyride__swap-logo-ground,
+    .nk-joyride__swap-logo-stripe {
+      position: absolute;
+      right: 0;
+      left: 0;
+    }
+
+    .nk-joyride__swap-logo-ground {
+      top: 9px;
+      height: 3px;
+      background: var(--nk-ground);
+      transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+    }
+
+    .nk-joyride__swap-logo-stripe {
+      top: 12px;
+      height: 2px;
+      transition: background-color 320ms ease;
+    }
+
+    .nk-joyride__swap-logo[data-colour='coral'] .nk-joyride__swap-logo-stripe {
+      background: var(--nk-coral);
+    }
+
+    .nk-joyride__swap-logo[data-colour='cobalt'] .nk-joyride__swap-logo-stripe {
+      background: var(--nk-cobalt);
+    }
+
+    .nk-joyride__swap-note {
+      max-width: 44ch;
+      margin: 24px 0 0;
+      font-size: var(--nk-size-body);
+      line-height: var(--nk-leading-body);
+      color: var(--nk-ink-muted);
+      text-wrap: pretty;
+    }
+
+    /* Present in the DOM for crawlers; never painted, never focusable,
+       never announced. */
+    .nk-joyride__swap-alt {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .nk-joyride__link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 22px;
+      padding-bottom: 3px;
+      border-bottom: 1.5px solid var(--nk-cobalt);
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+      color: var(--nk-cobalt);
+      transition:
+        color var(--nk-dur-colour) ease,
+        border-color var(--nk-dur-colour) ease;
+    }
+
+    .nk-joyride__link:hover,
+    .nk-joyride__link:focus-visible {
+      color: var(--nk-coral);
+      border-bottom-color: var(--nk-coral);
     }
   }
 </style>
