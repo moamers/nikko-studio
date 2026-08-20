@@ -103,6 +103,21 @@ That way the consent banner costs you detail, not your baseline numbers. This is
 
 ---
 
+## 🔧 Build backlog — deferred from foundations
+
+Raised during the foundations build (2026-08-20), reviewed, and **deliberately deferred by Nadia** so the full build could proceed. Each carries its proposed fix so none of this needs re-deriving later.
+
+| | Item | Proposed fix | Size | Status |
+|---|---|---|---|---|
+| B1 | `.nkhero-frame` uses `height: 100vh`, not `100svh` — [P2](./02-engineering-principles.md#p2--mobile-is-the-design-target-not-an-adaptation) bans `100vh` for full-height regions. On iOS the collapsing URL bar shifts the composition mid-scroll | Change to `100svh` with a `100vh` fallback. One character. Log as a [P12](./02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged) deviation since the block is marked "reproduce verbatim" | XS | ⬜ |
+| B2 | At 390×844 the resolution line (`bottom: 7vh`) collides with the bottom corner note (`bottom: 1.25rem`) | Raise the resolution line, or fade the corner note out earlier, below ~500px height | S | ⬜ |
+| B3 | **Mobile runway is ~2.7 swipes before any content**, with no scrollbar affordance — costly for the referral traffic [P2](./02-engineering-principles.md#p2--mobile-is-the-design-target-not-an-adaptation) identifies as commercially valuable | **Session-scoped skip** — the sequence is already stateless and replayable, so this is cheap. Alternative: shorten the mobile runway below 270vh | S | ⬜ **Needs Nadia** |
+| B4 | **The static frame is not composed.** Every reduced-motion and no-JS visitor sees only this one frame, and with mark/title/resolution all forced visible the origin ring sits behind a title that is still offset | Design ruling — compose a deliberate static frame, or accept as-is. It is exactly what the spec prescribes | S | ⬜ **Needs design** |
+| B5 | **Font budget breach: ~181 KB against the 120 KB budget** ([P4](./02-engineering-principles.md#p4--performance-is-a-budget-enforced-in-ci-not-an-aspiration)). Newsreader variable is 64 KB, Noto Kufi Arabic 44 KB | Two changes reach ~106 KB: static `@fontsource/newsreader` 400-italic instead of the variable package (−35 KB), and **build-time** subsetting of Kufi (−40 KB). Must be a build step, not a committed subset — the Arabic is founder-editable content and a hand-subset font breaks silently if she edits it | M | ⬜ Before launch |
+| B6 | No `robots.txt` yet | Write it once [Q6](./13-open-questions.md) (AI-crawler policy) is answered. Deliberately not pre-empted | XS | ⏸️ Blocked on Q6 |
+
+---
+
 ## 🔴 Infrastructure — do first
 
 | | Task | Detail | Status |
