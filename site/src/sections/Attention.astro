@@ -1,33 +1,416 @@
 ---
 /**
- * Attention section — PLACEHOLDER.
+ * Attention section — spec §4 (design-handoff/homepage/README.md).
+ * Source markup: `Nikko Homepage.dc.html` lines 405-433.
  *
- * Spec section 4. Hover scraps, animated counter (80), pull-quote row.
+ * Four hover targets deal a fan of image scraps; a two-column body carries an
+ * animated counter to 80 beside an arch-cropped, reverse-parallax figure; a
+ * pull-quote row closes the section.
  *
  * Build rules:
  *   - Copy comes from `src/lib/content`, never a string literal here. [P7]
  *   - Colours/timings come from `--nk-*` tokens, never a hex literal. [P11]
- *   - Reveals use <Reveal> / `.nk-reveal` — resting state is the FINAL
- *     state, so content is never stranded invisible. [P1, P3]
+ *   - Reveals use <Reveal> — resting state is the FINAL state, so content is
+ *     never stranded invisible. [P1, P3]
  *   - Must hold at 390px with no horizontal overflow. [P2]
+ *
+ * HOVER SCRAPS — two deviations from a literal reading of the source, both
+ * logged in docs/06-responsive-and-mobile-risks.md (R5):
+ *   (a) Touch has no hover and the lane geometry overflows a phone viewport,
+ *       so the whole interaction is disabled below `hover:hover and
+ *       (min-width:1024px)`. It is `aria-hidden` decoration; nothing is lost
+ *       semantically.
+ *   (b) The trigger words are focusable (`tabindex="0"`) and the reveal also
+ *       fires on `:focus-within`, which the source's `onMouseEnter`-only
+ *       spans do not offer a keyboard user. [P10]
+ *
+ * A further, non-mobile deviation: in the source, each scrap's *own* rotation
+ * (`transform:rotate(-8deg)` etc.) is a static inline style, but `nk-deal`'s
+ * keyframe also animates `transform`, which would win for the property and
+ * leave every scrap flat at rest. Here the per-scrap angle is set on the
+ * `rotate` CSS property (composable, independent of `transform`) so `nk-deal`
+ * only ever animates `translate`/`scale`/`opacity` and each photo keeps its
+ * distinct angle once dealt — i.e. actually delivers the "rotated scraps"
+ * the design describes.
  */
+import Reveal from '../components/Reveal.astro';
+import Figure from '../components/Figure.astro';
+import { getAttention, resolveImage } from '../lib/content';
+import { Image } from 'astro:assets';
+
+const attention = await getAttention();
+const { heading, lead, counter, counterLabel, body, figure, pullQuote, subheading, closing, highlights } =
+  attention;
+
+/**
+ * Presentational geometry for the hover-scrap fan — one entry per word in
+ * `heading.words`, matched by index. This is placement, not copy: which
+ * three photographs deal, and their labels, live in `attention.yaml`; where
+ * each one lands and at what angle is unique to this one interaction and has
+ * no equivalent token in `tokens.css`, so the literal values are reproduced
+ * here exactly from the source (handoff lines 405-406). [P12]
+ */
+interface ScrapSlot {
+  top: string;
+  rotate: string;
+  ratio: string;
+}
+interface WordGeometry {
+  laneLeft: string;
+  scraps: [ScrapSlot, ScrapSlot, ScrapSlot];
+}
+
+const WORD_GEOMETRY: [WordGeometry, WordGeometry, WordGeometry, WordGeometry] = [
+  {
+    laneLeft: '26%',
+    scraps: [
+      { top: '14px', rotate: '-8deg', ratio: '4 / 3' },
+      { top: '0', rotate: '-1deg', ratio: '1 / 1' },
+      { top: '20px', rotate: '8deg', ratio: '4 / 3' },
+    ],
+  },
+  {
+    laneLeft: '14%',
+    scraps: [
+      { top: '16px', rotate: '-9deg', ratio: '1 / 1' },
+      { top: '0', rotate: '0deg', ratio: '4 / 3' },
+      { top: '22px', rotate: '7deg', ratio: '1 / 1' },
+    ],
+  },
+  {
+    laneLeft: '22%',
+    scraps: [
+      { top: '12px', rotate: '-10deg', ratio: '4 / 3' },
+      { top: '0', rotate: '-2deg', ratio: '1 / 1' },
+      { top: '18px', rotate: '9deg', ratio: '1 / 1' },
+    ],
+  },
+  {
+    laneLeft: '40%',
+    scraps: [
+      { top: '14px', rotate: '-9deg', ratio: '1 / 1' },
+      { top: '0', rotate: '-1deg', ratio: '1 / 1' },
+      { top: '20px', rotate: '8deg', ratio: '4 / 3' },
+    ],
+  },
+];
+
+const words = await Promise.all(
+  heading.words.map(async (word, i) => {
+    const geometry = WORD_GEOMETRY[i];
+    if (!geometry) throw new Error(`attention.yaml: heading.words[${i}] has no matching geometry entry`);
+    const scraps = await Promise.all(
+      word.scraps.map(async (filename, j) => {
+        const slot = geometry.scraps[j];
+        if (!slot) throw new Error(`attention.yaml: word "${word.label}" scrap ${j} has no geometry slot`);
+        return { asset: await resolveImage(filename), ...slot };
+      }),
+    );
+    return { label: word.label, laneLeft: geometry.laneLeft, scraps };
+  }),
+);
+
+/** Splits `heading.template` on `{n}` word placeholders and literal `\n`s. */
+type HeadingPart = { kind: 'text'; value: string } | { kind: 'break' } | { kind: 'word'; index: number };
+
+function splitHeading(template: string): HeadingPart[] {
+  const parts: HeadingPart[] = [];
+  const re = /\{(\d)\}|\n/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(template))) {
+    if (match.index > last) parts.push({ kind: 'text', value: template.slice(last, match.index) });
+    parts.push(match[0] === '\n' ? { kind: 'break' } : { kind: 'word', index: Number(match[1]) - 1 });
+    last = match.index + match[0].length;
+  }
+  if (last < template.length) parts.push({ kind: 'text', value: template.slice(last) });
+  return parts;
+}
+
+const headingParts = splitHeading(heading.template);
+
+/** Splits `closing` around the phrases in `highlights`, in whichever order they occur. */
+function splitHighlights(text: string, phrases: string[]): { value: string; on: boolean }[] {
+  if (!phrases.length) return [{ value: text, on: false }];
+  const pattern = phrases.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|');
+  const re = new RegExp(`(${pattern})`, 'g');
+  return text
+    .split(re)
+    .filter((part) => part.length > 0)
+    .map((part) => ({ value: part, on: phrases.includes(part) }));
+}
+
+const closingParts = splitHighlights(closing, highlights);
 ---
 
-<section id="work" class="nk-section nk-section--attention">
-  <p class="nk-todo">TODO: Attention</p>
+<section id="work" class="nk-attn">
+  <Reveal as="h2" class="nk-attn__heading">
+    {
+      headingParts.map((part) => {
+        if (part.kind === 'text') return part.value;
+        if (part.kind === 'break') return <br />;
+        const word = words[part.index];
+        if (!word) return null;
+        return (
+          <span class="nk-attn-word" tabindex="0">
+            {word.label}
+            <span class="nk-attn-lane" aria-hidden="true" style={`--nk-lane-left:${word.laneLeft}`}>
+              {word.scraps.map((scrap) => (
+                <span
+                  class="nk-attn-scrap"
+                  style={`--nk-scrap-top:${scrap.top};--nk-scrap-rotate:${scrap.rotate}`}
+                >
+                  <Image
+                    class="nk-attn-scrap__img"
+                    src={scrap.asset}
+                    alt=""
+                    widths={[220, 440]}
+                    sizes="180px"
+                    layout="none"
+                    style={`aspect-ratio:${scrap.ratio}`}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </span>
+              ))}
+            </span>
+          </span>
+        );
+      })
+    }
+  </Reveal>
+
+  <div class="nk-attn__body">
+    <div class="nk-attn__text">
+      <Reveal as="p" class="nk-attn__lead">{lead}</Reveal>
+      <Reveal as="div" class="nk-attn__counter">
+        <span
+          class="nk-attn__counter-value"
+          data-count={counter.key}
+          data-count-target={counter.value}
+          data-count-suffix={counter.suffix}
+        >{counter.value}{counter.suffix}</span>
+        <span class="nk-attn__counter-label">{counterLabel}</span>
+      </Reveal>
+      <Reveal as="p" class="nk-attn__aside">{body}</Reveal>
+    </div>
+    <div class="nk-attn__figure nk-para-rev">
+      <Figure image={figure.image} alt={figure.alt} caption={figure.caption} ratio="4 / 3" />
+    </div>
+  </div>
+
+  <div class="nk-attn__quote-row">
+    <Reveal as="p" class="nk-attn__quote">{pullQuote}</Reveal>
+    <div class="nk-attn__quote-text">
+      <Reveal as="h3" class="nk-attn__subheading">{subheading}</Reveal>
+      <Reveal as="p" class="nk-attn__closing">
+        {closingParts.map((part) =>
+          part.on ? <strong class="nk-attn__highlight">{part.value}</strong> : part.value,
+        )}
+      </Reveal>
+    </div>
+  </div>
 </section>
+
+<script>
+  import { initCounters } from '../scripts/counters';
+  initCounters();
+</script>
 
 <style>
   @layer layout {
-    .nk-todo {
+    .nk-attn {
       max-width: var(--nk-content-max);
       margin: 0 auto;
       padding: var(--nk-section-pad);
+      position: relative;
+    }
+
+    /* ── Heading + hover scraps ────────────────────────────────────────── */
+    .nk-attn__heading {
+      font-size: var(--nk-size-h2);
+      /* 0.93 in the source; no token lands exactly here (h1's is 0.94). [P12] */
+      line-height: 0.93;
+      letter-spacing: var(--nk-tracking-h1);
+      margin: 0 0 60px;
+      max-width: var(--nk-measure-heading);
+    }
+
+    .nk-attn-word {
+      position: relative;
+      display: inline-block;
+      cursor: default;
+      border-bottom: var(--nk-rule-dotted-coral);
+    }
+
+    .nk-attn-lane {
+      display: none; /* R5(a): off below the breakpoint — see file header. */
+      position: absolute;
+      left: var(--nk-lane-left);
+      top: 0.72em;
+      width: min(52vw, 360px);
+      height: 0;
+      pointer-events: none;
+      z-index: var(--nk-z-scrap);
+    }
+
+    @media (hover: hover) and (min-width: 1024px) {
+      .nk-attn-lane {
+        display: block;
+      }
+    }
+
+    .nk-attn-scrap {
+      position: absolute;
+      top: var(--nk-scrap-top);
+      width: 50%;
+      rotate: var(--nk-scrap-rotate);
+      opacity: 0;
+      transform: translate(-42px, 26px) scale(0.6);
+      pointer-events: none;
+    }
+
+    .nk-attn-scrap:nth-child(1) { left: 0; }
+    .nk-attn-scrap:nth-child(2) { left: 26%; }
+    .nk-attn-scrap:nth-child(3) { left: 50%; }
+
+    .nk-attn-scrap__img {
+      display: block;
+      width: 100%;
+      object-fit: cover;
+      border-radius: var(--nk-radius-scrap);
+      background: var(--nk-paper);
+      box-shadow: var(--nk-shadow-scrap);
+    }
+
+    @media (hover: hover) and (min-width: 1024px) {
+      .nk-attn-word:hover .nk-attn-scrap,
+      .nk-attn-word:focus-within .nk-attn-scrap {
+        animation: nk-deal var(--nk-dur-deal) var(--nk-ease-deal) both;
+      }
+
+      .nk-attn-word:hover .nk-attn-scrap:nth-child(2),
+      .nk-attn-word:focus-within .nk-attn-scrap:nth-child(2) {
+        animation-delay: var(--nk-stagger-deal);
+      }
+
+      .nk-attn-word:hover .nk-attn-scrap:nth-child(3),
+      .nk-attn-word:focus-within .nk-attn-scrap:nth-child(3) {
+        animation-delay: calc(var(--nk-stagger-deal) * 2);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .nk-attn-word:hover .nk-attn-scrap,
+        .nk-attn-word:focus-within .nk-attn-scrap {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    }
+
+    @keyframes nk-deal {
+      0% { opacity: 0; transform: translate(-42px, 26px) scale(0.6); }
+      70% { opacity: 1; }
+      100% { opacity: 1; transform: translate(0, 0) scale(1); }
+    }
+
+    /* ── Two-column body ──────────────────────────────────────────────── */
+    .nk-attn__body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(34px, 5vw, 80px);
+      align-items: flex-start;
+    }
+
+    .nk-attn__text {
+      flex: 1 1 340px;
+      min-width: min(300px, 100%);
+      order: 2;
+    }
+
+    .nk-attn__lead {
+      font-size: clamp(17px, 1.5vw, 21px);
+      line-height: 1.5;
+      margin: 0 0 26px;
+    }
+
+    .nk-attn__counter {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      margin: 0 0 22px;
+      flex-wrap: wrap;
+    }
+
+    .nk-attn__counter-value {
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-numeral);
+      line-height: 0.8;
+      letter-spacing: var(--nk-tracking-display-tight);
+      color: var(--nk-coral);
+    }
+
+    .nk-attn__counter-label {
       font-family: var(--nk-font-mono);
-      font-size: var(--nk-size-mono-lg);
-      letter-spacing: var(--nk-tracking-mono-wide);
+      font-size: var(--nk-size-mono);
+      letter-spacing: 0.16em;
       text-transform: uppercase;
       color: var(--nk-ink-muted);
+      max-width: 14ch;
+      line-height: 1.6;
+    }
+
+    .nk-attn__aside {
+      margin: 0;
+      max-width: var(--nk-measure-prose);
+    }
+
+    .nk-attn__figure {
+      flex: 1 1 300px;
+      min-width: min(280px, 100%);
+      order: 1;
+    }
+
+    /* ── Pull-quote row ────────────────────────────────────────────────── */
+    .nk-attn__quote-row {
+      margin: clamp(70px, 9vw, 130px) 0 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(30px, 5vw, 70px);
+      align-items: flex-start;
+    }
+
+    .nk-attn__quote {
+      flex: 0 1 340px;
+      font-family: var(--nk-font-editorial);
+      font-style: italic;
+      font-size: var(--nk-size-quote-sm);
+      line-height: 1.15;
+      margin: 0;
+      color: var(--nk-coral);
+    }
+
+    .nk-attn__quote-text {
+      flex: 1 1 460px;
+      min-width: min(320px, 100%);
+    }
+
+    .nk-attn__subheading {
+      /* clamp(24px,2.9vw,44px) in the source; no exact token match. [P12] */
+      font-size: clamp(24px, 2.9vw, 44px);
+      line-height: 1.02;
+      letter-spacing: var(--nk-tracking-display);
+      margin: 0 0 24px;
+    }
+
+    .nk-attn__closing {
+      margin: 0;
+      max-width: 50ch;
+    }
+
+    .nk-attn__highlight {
+      font-weight: 600;
+      box-shadow: inset 0 -0.42em 0 rgb(var(--nk-yellow-rgb) / 0.55);
     }
   }
 </style>
