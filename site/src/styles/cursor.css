@@ -1,0 +1,80 @@
+/* cursor.css — the residue trail.
+
+   Every colour, size and duration lives here, not in `cursor.ts`. The script
+   only ever writes a transform, an opacity and a `left`/`top` — so the two
+   modes, the two gradients and the blend modes are all one source of
+   truth. [P11]
+
+   The layer is only ever inserted by `cursor.ts`, which refuses to run unless
+   motion is allowed AND the pointer is fine AND the viewport is >= 1024px. The
+   media query below is belt and braces: if the script ever mounted on a phone,
+   the layer would still be invisible. [P1, P2] */
+
+@layer components {
+  .nk-cursor {
+    position: fixed;
+    inset: 0;
+    z-index: var(--nk-z-cursor);
+    pointer-events: none;
+    contain: strict;
+  }
+
+  /* ── The pool: a wide aperture, not a dot ─────────────────────────────── */
+  .nk-cursor__lens {
+    position: absolute;
+    top: calc(var(--nk-cursor-h) / -2);
+    left: calc(var(--nk-cursor-w) / -2);
+    width: var(--nk-cursor-w);
+    height: var(--nk-cursor-h);
+    border-radius: var(--nk-radius-oval);
+    filter: blur(var(--nk-cursor-blur));
+    opacity: 0;
+    transition: opacity var(--nk-dur-cursor-fade) ease;
+    will-change: transform;
+    background: radial-gradient(
+      closest-side,
+      rgb(var(--nk-yellow-rgb) / 0.22),
+      rgb(var(--nk-coral-rgb) / 0.1) 58%,
+      transparent 100%
+    );
+    mix-blend-mode: multiply;
+  }
+
+  :root[data-mode='digital'] .nk-cursor__lens {
+    background: radial-gradient(
+      closest-side,
+      rgb(var(--nk-cobalt-rgb) / 0.16),
+      rgb(var(--nk-turquoise-rgb) / 0.08) 58%,
+      transparent 100%
+    );
+    mix-blend-mode: screen;
+  }
+
+  /* ── The residue: the logo's slot, dropped and fading ─────────────────── */
+  .nk-cursor__mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 2px;
+    border-radius: 1px;
+    opacity: 0;
+    background: rgb(var(--nk-coral-rgb) / 0.5);
+    mix-blend-mode: multiply;
+  }
+
+  :root[data-mode='digital'] .nk-cursor__mark {
+    background: rgb(var(--nk-cobalt-rgb) / 0.42);
+    mix-blend-mode: normal;
+  }
+
+  /* `cursor.ts` recycles ten of these forever, restarting the animation on
+     each reuse rather than creating and destroying a node every 110ms. Same
+     visual result, bounded memory. [P4] */
+  .nk-cursor__mark[data-live='true'] {
+    animation: nk-residue var(--nk-dur-residue) ease-out forwards;
+  }
+
+  @media (prefers-reduced-motion: reduce), (pointer: coarse), (max-width: 1023px) {
+    .nk-cursor { display: none; }
+  }
+}

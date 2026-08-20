@@ -1,0 +1,27 @@
+# ─────────────────────────────────────────────────────────────
+#  FOUNDER — Nadia.
+# ─────────────────────────────────────────────────────────────
+
+eyebrow: "Meet the founder"
+
+heading: >
+  Your ideas should be scrawled on walls. Blown up on billboards. Sent around
+  the world in an email.
+
+body:
+  - >
+    Smuggled onto stickers that cling to the backs of MacBooks in indie cafes
+    and public toilet doors. If it's daring or difficult to explain to your
+    accountant, we want in.
+  - >
+    Led by Nadia Amer, Founder and Creative Director, each project is assembled
+    around the challenge, so you get flexibility, expertise and execution.
+
+cta:
+  label: "Pitch your project"
+  href: "#pitch"
+
+portrait:
+  image: "nadia-portrait.png"
+  alt: "Nadia Amer, Founder and Creative Director"
+  caption: "Nadia Amer — founder, creative director"

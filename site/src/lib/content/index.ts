@@ -11,7 +11,34 @@
  * for `hero.subhead` when the field is `subLead` fails to compile.
  */
 export { getSiteSettings } from './settings';
-export { getHero } from './hero';
 export { resolveImage } from './images';
-export type { SiteSettings, NavItem } from './settings';
-export type { Hero } from './hero';
+export {
+  getHero,
+  getMarquee,
+  getAttention,
+  getLanguage,
+  getFounder,
+  getServices,
+  getSampler,
+  getJoyride,
+  getPitch,
+} from './homepage';
+
+export type { SiteSettings, NavItem, ModeDialCopy, FooterColumn } from './settings';
+export type {
+  Hero,
+  Marquee,
+  Attention,
+  Language,
+  Founder,
+  Services,
+  Service,
+  Sampler,
+  Testimonial,
+  Joyride,
+  Pitch,
+  Cta,
+  ContentImage,
+  ContentFigure,
+  Counter,
+} from './homepage';

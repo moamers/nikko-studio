@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────────────────────
+#  WORK SAMPLER + TESTIMONIAL
+#
+#  The sampler shows one line at a time, like a slide pulled at
+#  random from a carousel. All eight are written into the page,
+#  so search engines and AI assistants see every one of them —
+#  do not be tempted to trim the list to the one on screen.
+# ─────────────────────────────────────────────────────────────
+
+heading: "Turns out our work travels well"
+
+# {n} is replaced by the number of the line currently showing.
+status: "Pulling one at random — no. {n} of far too many"
+pullLabel: "Pull another →"
+
+fragments:
+  - tag: "QATAR / MURAL"
+    text: "A mural on a gym wall people queued to photograph."
+  - tag: "UK / MANIFESTO"
+    text: "A manifesto that gave a room full of businesses their spine back."
+  - tag: "UAE / MEMBERSHIP"
+    text: "Membership journeys for a talent agency — 215,000 members deep."
+  - tag: "INBOX / LETTERS"
+    text: "Newsletters thousands of people actually open on a Tuesday."
+  - tag: "LAUNCH / REVENUE"
+    text: >
+      A launch that almost doubled its own revenue, and felt like a walk in the
+      park.
+  - tag: "WEB / JOURNEYS"
+    text: "Websites and customer journeys running in a dozen-plus countries."
+  - tag: "ROOM / SESSION"
+    text: "A workshop that ended with strangers swapping numbers."
+  - tag: "CAMPAIGN / RECALL"
+    text: "A campaign people still quote back to us, unprompted."
+
+note: >
+  Our stories have a habit of wandering off and finding the people that need
+  them most.
+
+figure:
+  image: "collage-artefacts.png"
+  alt: "Work artefacts"
+  caption: "12+ countries · four continents"
+
+testimonial:
+  eyebrow: "And then clients come back and say things like this…"
+  pullQuote: "“The highest quality of leads and enrolments we've ever seen.”"
+  body:
+    - >
+      “I've never known someone just ‘get it’ so quickly, completely immerse
+      themselves in the world of our offers, ecosystem and audience, and make
+      me laugh so much inside of Google Docs (who knew!?)
+    - >
+      As we wrap up the first phase of this project together, where we've
+      almost doubled the launch revenue…and the launch itself has felt like a
+      walk in the park vs a meltdown-a-minute, I have never felt so excited,
+      nay — GIDDY — about my own business as I do right now.”
+  authorName: "— Maddi Cook,"
+  authorRole: "Founder of Maddi Cook Coaching"

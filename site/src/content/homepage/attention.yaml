@@ -1,0 +1,61 @@
+# ─────────────────────────────────────────────────────────────
+#  ATTENTION — "From campfires to comment sections…"
+#
+#  This is the section people remember: hovering one of the four
+#  words deals out a little fan of photographs.
+# ─────────────────────────────────────────────────────────────
+
+heading:
+  # {1} {2} {3} {4} are the four words below, in order.
+  # The line break is written as a real new line inside the quotes.
+  template: "From {1} to {2},\n{3} to {4}"
+  words:
+    - label: "campfires"
+      # Three photographs, dealt out in this order.
+      scraps: ["journal-crt.png", "collage-artefacts.png", "workshop-proof.png"]
+    - label: "comment sections"
+      scraps: ["mouth-plane.png", "journal-firstdraft.png", "chips-pattern.png"]
+    - label: "dinner tables"
+      scraps: ["workshop-proof.png", "chips-pattern.png", "collage-artefacts.png"]
+    - label: "DMs"
+      scraps: ["collage-hero.png", "nadia-portrait.png", "journal-crt.png"]
+
+lead: >
+  People bring their grief, nostalgia, weird little obsessions, 5-second
+  attention spans, supermarket meal deals and unfinished thoughts with them
+  every time they open their phone.
+
+# The big coral number that counts up. The number itself is the point —
+# it is written into the page whether or not the animation runs.
+counter:
+  key: "phone"
+  value: 80
+counterLabel: "times a day, on average"
+
+body: >
+  So are you creating a brand that's just another passive part of their
+  screentime? Or a memorable interruption that makes you the go-to in your
+  category?
+
+figure:
+  image: "mouth-plane.png"
+  alt: "Collage of a mouth and a plane"
+  caption: "Fig. 01 — attention, mid-flight"
+
+pullQuote: "Your brand should be stickier than warm bubble gum in a wad of hair."
+
+subheading: >
+  Think about the businesses you jump to recommend. The emails you forward.
+  The coffee shop you drag your friends to. The podcast you won't shut up
+  about.
+
+closing: >
+  That's what story-led strategy, memorable messaging and a thoughtful
+  customer experience do. And that's our bread and butter.
+
+# Phrases inside "closing" that get the yellow highlighter. They must match
+# the wording above exactly, or they will not be found.
+highlights:
+  - "story-led strategy"
+  - "memorable messaging"
+  - "thoughtful customer experience"

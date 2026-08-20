@@ -1,0 +1,203 @@
+---
+/**
+ * The ink pill — the site's one button shape.
+ *
+ * `border-radius: 50%`, which is a TRUE OVAL, never `999px`. That is the
+ * handoff's "R2" rule: radius is 0 or 50%, and nothing in between. A `999px`
+ * pill has straight sides and semicircular ends; a 50% pill is a continuous
+ * ellipse, and the difference is the entire character of the shape.
+ *
+ * Inside sits "the slot" — an accent-coloured bar echoing the logo mark. It
+ * reads the live accent and declares its own 2600ms transition, so it
+ * crossfades with the rest of the page without anyone coordinating it.
+ *
+ * Renders an `<a>` when given `href`, a `<button>` otherwise. Never a
+ * `<div onClick>`. [P10]
+ *
+ * SIZES — each is a real value from the design source, matched to its place:
+ *   sm  header CTA
+ *   md  service card CTA
+ *   lg  founder CTA, newsletter submit
+ *   xl  hero CTA
+ *
+ * TONES:
+ *   ink    ink ground, paper text, hover cobalt          (every CTA on paper)
+ *   paper  paper ground, ink text, hover Horizon yellow  (newsletter submit,
+ *          which sits on the ink footer)
+ *
+ * The label is a slot, so the words come from the caller's content file and
+ * never from here. [P7]
+ */
+import type { HTMLAttributes } from 'astro/types';
+
+type Size = 'sm' | 'md' | 'lg' | 'xl';
+type Tone = 'ink' | 'paper';
+
+interface Props extends Omit<HTMLAttributes<'a'>, 'type'> {
+  /** Renders an `<a>`. Omit to render a `<button>`. */
+  href?: string | undefined;
+  /** Only read when there is no `href`. */
+  type?: 'button' | 'submit' | undefined;
+  size?: Size | undefined;
+  tone?: Tone | undefined;
+  /** `false` drops the `translateY(-2px)` on hover; colour still changes. */
+  lift?: boolean | undefined;
+  /** Stretches the pill to its container — the mobile menu wants this. */
+  block?: boolean | undefined;
+}
+
+const {
+  href,
+  type = 'button',
+  size = 'lg',
+  tone = 'ink',
+  lift = true,
+  block = false,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const Tag = href ? 'a' : 'button';
+const tagProps = href ? { href } : { type };
+---
+
+<Tag
+  class:list={['nk-pill', `nk-pill--${size}`, `nk-pill--${tone}`, { 'nk-pill--lift': lift, 'nk-pill--block': block }, className]}
+  {...tagProps}
+  {...rest}
+>
+  <span class="nk-pill__slot" aria-hidden="true"></span>
+  <span class="nk-pill__label"><slot /></span>
+</Tag>
+
+<style>
+  @layer components {
+    .nk-pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--nk-tap-min);
+      overflow: hidden;
+      border: 0;
+      border-radius: var(--nk-radius-oval);
+      font-family: var(--nk-font-mono);
+      text-transform: uppercase;
+      text-align: center;
+      cursor: pointer;
+      transition:
+        background-color var(--nk-dur-colour) ease,
+        color var(--nk-dur-colour) ease,
+        transform var(--nk-dur-step) var(--nk-ease-step);
+    }
+
+    .nk-pill--block {
+      display: flex;
+      width: 100%;
+    }
+
+    /* The label sits above the slot bar. */
+    .nk-pill__label {
+      position: relative;
+      z-index: 1;
+    }
+
+    .nk-pill__slot {
+      position: absolute;
+      right: 0;
+      left: 0;
+      background: var(--nk-accent);
+      transition: background-color var(--nk-dur-accent) var(--nk-ease-accent);
+    }
+
+    /* ── Tones ────────────────────────────────────────────────────────── */
+    .nk-pill--ink {
+      background: var(--nk-ink);
+      color: var(--nk-paper);
+    }
+
+    .nk-pill--ink:hover,
+    .nk-pill--ink:focus-visible {
+      background: var(--nk-cobalt);
+      color: var(--nk-paper);
+    }
+
+    .nk-pill--paper {
+      background: var(--nk-paper);
+      color: var(--nk-ink);
+    }
+
+    .nk-pill--paper:hover,
+    .nk-pill--paper:focus-visible {
+      background: var(--nk-yellow);
+      color: var(--nk-ink);
+    }
+
+    /* ── Sizes ────────────────────────────────────────────────────────── */
+    .nk-pill--sm {
+      padding: var(--nk-pill-pad-sm);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono);
+    }
+
+    .nk-pill--sm .nk-pill__slot {
+      bottom: var(--nk-pill-slot-sm);
+      height: var(--nk-pill-slot-h-sm);
+    }
+
+    .nk-pill--md {
+      padding: var(--nk-pill-pad-md);
+      font-size: var(--nk-size-mono-md);
+      letter-spacing: var(--nk-tracking-mono-tight);
+    }
+
+    .nk-pill--md .nk-pill__slot {
+      bottom: var(--nk-pill-slot-md);
+      height: var(--nk-pill-slot-h-md);
+    }
+
+    .nk-pill--lg {
+      padding: var(--nk-pill-pad-lg);
+      font-size: var(--nk-size-mono-lg);
+      letter-spacing: var(--nk-tracking-mono-tight);
+    }
+
+    .nk-pill--lg .nk-pill__slot {
+      bottom: var(--nk-pill-slot-lg);
+      height: var(--nk-pill-slot-h-lg);
+    }
+
+    .nk-pill--xl {
+      padding: var(--nk-pill-pad-xl);
+      font-size: var(--nk-size-mono-lg);
+      letter-spacing: var(--nk-tracking-mono-tight);
+    }
+
+    .nk-pill--xl .nk-pill__slot {
+      bottom: var(--nk-pill-slot-xl);
+      height: var(--nk-pill-slot-h-xl);
+    }
+
+    /* ── Hover ────────────────────────────────────────────────────────── */
+    /* Stepped, mechanical: `120ms steps(2)`, not a smooth glide. Only on
+       devices that actually hover, so a tap does not leave a stuck lift. */
+    @media (hover: hover) {
+      .nk-pill--lift:hover {
+        transform: translateY(-2px);
+      }
+    }
+
+    .nk-pill--lift:focus-visible {
+      transform: translateY(-2px);
+    }
+
+    /* Reduced motion removes movement, not function: the colour change stays,
+       the lift goes. (docs/05 § Reduced motion.) */
+    @media (prefers-reduced-motion: reduce) {
+      .nk-pill--lift:hover,
+      .nk-pill--lift:focus-visible {
+        transform: none;
+      }
+    }
+  }
+</style>

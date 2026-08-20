@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────
+#  PITCH / FOOTER — the black section at the bottom.
+#
+#  The newsletter form is here. The three link columns and the
+#  header navigation live together in settings/site.yaml.
+# ─────────────────────────────────────────────────────────────
+
+heading: "A messy kebab of an email, dripping with sauce"
+
+body:
+  - >
+    Like a cough on a packed tube carriage, each season is a petri dish of
+    business-building ideas that stick to the inside of your brain (like
+    bogeys).
+  - >
+    Subscribe for the antidote to an inbox filled with pee-warm hot takes and
+    the best and worst of internet culture and marketing. Members get first
+    dibs on Show&Tell workshops and exclusive access to book a 1:1 with Nadia.
+
+newsletter:
+  fields:
+    - name: "firstName"
+      label: "First name"
+      placeholder: "Nadia"
+      type: "text"
+    - name: "email"
+      label: "Email address"
+      placeholder: "you@studio.co"
+      type: "email"
+  submit: "Get inside"
+  consent: >
+    By subscribing, you agree to get emails from Nikko Studio. Unsubscribe
+    whenever you damn well please. We'll look after your data in accordance
+    with our Privacy Policy.
+
+# The paragraph beside the footer logo.
+positioning: >
+  People before personas isn't just a marketing philosophy. Nikko Studio is an
+  anti-racist, anti-genocide, pro-equity business. If your work is about making
+  life fairer, safer or just plain better for people, we should make sweet,
+  sweet business together.
+
+legal:
+  teaser: >
+    If you made it down here, thank you. This is just a teaser for the full
+    relaunch of what used to be irnnadiaamer.com. Stay tuned ✨
+  copyright: "© Nikko Studio 2026"

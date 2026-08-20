@@ -5,6 +5,11 @@ export type SiteSettings = CollectionEntry<'settings'>['data'];
 
 export type NavItem = SiteSettings['nav'][number];
 
+/** The dial's labels and note fragments, rendered onto the button as data-*. */
+export type ModeDialCopy = SiteSettings['modeDial'];
+
+export type FooterColumn = SiteSettings['footerColumns'][number];
+
 /**
  * Site-wide settings: name, description, header navigation, primary CTA.
  *

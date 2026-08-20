@@ -92,9 +92,14 @@
     --nk-size-wordswap: clamp(52px, 7vw, 110px);
     --nk-size-price: clamp(22px, 2vw, 30px);
     --nk-size-logo: 22px;
+    /* The mobile menu's nav links. The handoff has no mobile header design at
+       all, so this one value is engineering's, not the designer's — logged as
+       a deviation in docs/06. (docs/06 § R1.) */
+    --nk-size-menu-link: clamp(30px, 9vw, 44px);
     --nk-size-mono-xs: 9.5px;
     --nk-size-mono-sm: 10px;
     --nk-size-mono: 11px;
+    --nk-size-mono-md: 11.5px;
     --nk-size-mono-lg: 12px;
     --nk-size-note: 13px;
     --nk-size-input: 16px;              /* never lower — iOS zooms below 16px [P2] */
@@ -116,6 +121,7 @@
     --nk-radius-arch: 50% 50% 8px 8px / 26% 26% 8px 8px;
     --nk-radius-arch-frame: 50% 50% 10px 10px / 26% 26% 10px 10px;
     --nk-radius-arch-service: 50% 50% 8px 8px / 22% 22% 8px 8px;
+    --nk-radius-arch-figure: 50% 50% 8px 8px / 24% 24% 8px 8px;
     --nk-radius-arch-tile: 50% 50% 6px 6px / 30% 30% 6px 6px;
     --nk-radius-lid-card: 34px 34px 8px 8px;
     --nk-radius-lid-panel: 26px 26px 8px 8px;
@@ -135,6 +141,23 @@
     --nk-measure-heading: 32ch;
     --nk-measure-heading-tight: 24ch;
     --nk-gap-cards: clamp(20px, 2.6vw, 34px);
+
+    /* Pill geometry. Four sizes exist in the source and each is used by a
+       different part of the page — see the size table in `Pill.astro`. The
+       slot bar's offset and height change with the size, so they are named
+       together. */
+    --nk-pill-pad-sm: 14px 26px;        /* header CTA                        */
+    --nk-pill-slot-sm: 7px;
+    --nk-pill-slot-h-sm: 3px;
+    --nk-pill-pad-md: 17px 32px;        /* service card CTA                  */
+    --nk-pill-slot-md: 8px;
+    --nk-pill-slot-h-md: 4px;
+    --nk-pill-pad-lg: 19px 36px;        /* founder CTA, newsletter submit    */
+    --nk-pill-slot-lg: 9px;
+    --nk-pill-slot-h-lg: 4px;
+    --nk-pill-pad-xl: 20px 38px;        /* hero CTA                          */
+    --nk-pill-slot-xl: 9px;
+    --nk-pill-slot-h-xl: 4px;
     --nk-header-pad: 16px var(--nk-gutter);
 
     /* ── Motion ─────────────────────────────────────────────────────────── */
@@ -191,6 +214,37 @@
 
     /* Minimum comfortable touch target [P2]. */
     --nk-tap-min: 44px;
+
+    /* ── Analogue / digital mode ────────────────────────────────────────
+       `mode.ts` writes `data-mode` on <html>; every difference between the
+       two modes is one of these three properties. Analogue is the resting
+       state, so a page with no JavaScript is analogue — which is what the
+       source's `auto: 'analogue'` initial state means. (handoff § Analogue /
+       digital mode.) */
+    --nk-mode-flip: 0.52;               /* scroll depth at which mode drifts */
+    --nk-grain: 0.13;
+    --nk-img-filter: saturate(0.94) contrast(0.97) sepia(0.09);
+    --nk-misreg: 1.4px 0 0 rgb(var(--nk-turquoise-rgb) / 0.42),
+      -1.4px 0 0 rgb(var(--nk-coral-rgb) / 0.26);
+
+    /* ── Cursor residue (desktop, fine pointer, motion allowed) ─────────── */
+    --nk-cursor-w: 340px;
+    --nk-cursor-h: 150px;
+    --nk-cursor-blur: 26px;
+    --nk-cursor-lerp: 0.12;             /* read by cursor.ts via getComputedStyle */
+    --nk-cursor-idle: 900ms;
+    --nk-dur-cursor-fade: 620ms;
+    --nk-interval-residue: 110ms;
+    --nk-residue-pool: 10;              /* fixed recycled pool size [P4] */
+
+    /* ── Breakpoints ────────────────────────────────────────────────────
+       Named here for reference; `@media` cannot read a custom property, so
+       the literal widths are repeated in the rules that use them. This is the
+       one place the numbers are explained. (docs/06 § Breakpoint strategy.) */
+    --nk-bp-sm: 390px;
+    --nk-bp-md: 768px;
+    --nk-bp-lg: 1024px;
+    --nk-bp-xl: 1280px;
   }
 
   /* On coral and cobalt the on-accent text flips to paper. These two rules
@@ -208,5 +262,21 @@
     --nk-on-accent: var(--nk-paper);
     --nk-ground: var(--nk-ground-offshore);
     --nk-veil: rgb(var(--nk-ground-offshore-rgb) / 0.74);
+  }
+
+  /* Under `prefers-reduced-motion` the cycle does not run, and the direction
+     document requires the ground to sit at base paper rather than at any
+     state's tint. `accent.ts` sets this once and stops. The accent itself is
+     left at state 1 so the logo slot and every button bar keep their colour. */
+  :root[data-accent='held'] {
+    --nk-ground: var(--nk-paper);
+    --nk-veil: rgb(var(--nk-paper-rgb) / 0.74);
+  }
+
+  /* The other half of the mode switch. Analogue lives on `:root` above. */
+  :root[data-mode='digital'] {
+    --nk-grain: 0;
+    --nk-img-filter: saturate(1.06) contrast(1.04);
+    --nk-misreg: 0 0 0 rgb(var(--nk-ink-rgb) / 0);
   }
 }

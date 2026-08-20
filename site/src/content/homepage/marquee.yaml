@@ -1,0 +1,9 @@
+# ─────────────────────────────────────────────────────────────
+#  THE MARQUEE — the scrolling band under the hero.
+#
+#  The line is printed twice, side by side, and slid along
+#  forever. That is what makes the loop seamless — so keep the
+#  ✦ on the end, or you will see the join.
+# ─────────────────────────────────────────────────────────────
+
+text: "A creative story studio  ✦  London  ✦  UAE  ✦  Know your customer. Market for memorability. Become the go-to  ✦  "

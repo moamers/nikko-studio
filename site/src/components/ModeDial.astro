@@ -1,0 +1,116 @@
+---
+/**
+ * The analogue / digital dial.
+ *
+ * A real `<button>` with `aria-pressed` and a descriptive `title`, per the
+ * handoff's own accessibility note. Pressed means analogue.
+ *
+ * It renders in its resting state — analogue, unpinned, "Auto" showing — which
+ * is exactly what `tokens.css` gives a page where `mode.ts` never runs, so the
+ * dial is never lying about the page it sits on. Without JavaScript it is an
+ * inert label rather than a broken control, which is the honest failure. [P1]
+ *
+ * EVERY STRING ARRIVES AS A `data-*` ATTRIBUTE, from `settings/site.yaml`.
+ * `mode.ts` reads them off the element. That is what lets the labels live in
+ * content while the behaviour lives in a script. [P7]
+ *
+ * It appears twice — in the header row and in the mobile menu — which is why
+ * it is a component rather than markup inside `SiteHeader.astro`.
+ */
+import type { ModeDialCopy } from '../lib/content';
+
+interface Props {
+  copy: ModeDialCopy;
+  class?: string | undefined;
+}
+
+const { copy, class: className } = Astro.props;
+---
+
+<button
+  type="button"
+  class:list={['nk-dial', className]}
+  data-nk-mode-dial
+  aria-pressed="true"
+  title={copy.noteAuto + copy.noteAnalogue}
+  data-label-analogue={copy.analogue}
+  data-label-digital={copy.digital}
+  data-label-auto={copy.auto}
+  data-note-analogue={copy.noteAnalogue}
+  data-note-digital={copy.noteDigital}
+  data-note-auto={copy.noteAuto}
+  data-note-pinned={copy.notePinned}
+>
+  <span class="nk-dial__dot" aria-hidden="true"></span>
+  <span data-nk-mode-label>{copy.analogue}</span>
+  <span class="nk-dial__state" data-nk-mode-state>{copy.auto}</span>
+</button>
+
+<style>
+  @layer components {
+    .nk-dial {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+      color: var(--nk-ink);
+      background: transparent;
+      border: var(--nk-rule-hair);
+      border-color: var(--nk-ink);
+      cursor: pointer;
+      transition:
+        background-color var(--nk-dur-step) var(--nk-ease-step),
+        color var(--nk-dur-step) var(--nk-ease-step);
+    }
+
+    /* R9: the dial is 28px tall by design and must not grow, so the HIT AREA
+       grows instead. The pseudo-element is invisible, centred and at least
+       44x44 — a finger finds it, the eye never sees it. [P2, P10] */
+    .nk-dial::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      min-width: var(--nk-tap-min);
+      min-height: var(--nk-tap-min);
+      width: 100%;
+      height: 100%;
+      transform: translate(-50%, -50%);
+    }
+
+    .nk-dial:hover {
+      background: var(--nk-ink);
+      color: var(--nk-paper);
+    }
+
+    .nk-dial__dot {
+      width: 8px;
+      height: 8px;
+      border-radius: var(--nk-radius-oval);
+      background: var(--nk-accent);
+      transition: background-color var(--nk-dur-accent) var(--nk-ease-accent);
+      animation: nk-blink 1.6s steps(1) infinite;
+    }
+
+    /* The dot is the only thing on the page that blinks continuously. Under
+       reduced motion it simply stays lit. */
+    @media (prefers-reduced-motion: reduce) {
+      .nk-dial__dot { animation: none; }
+    }
+
+    .nk-dial__state {
+      opacity: 0.5;
+    }
+
+    /* An empty "Auto" span would still contribute the flex gap once the mode
+       is pinned, leaving a lopsided button. */
+    .nk-dial__state:empty {
+      display: none;
+    }
+  }
+</style>

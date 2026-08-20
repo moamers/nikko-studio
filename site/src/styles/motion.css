@@ -1,0 +1,83 @@
+/* motion.css — the keyframes and parallax utilities that more than one
+   section needs.
+
+   They live here rather than in each section so that `nk-rise` means the same
+   thing everywhere and its 30px offset is written down once. [P11]
+   Values are quoted from `Nikko Homepage.dc.html` lines 27–43.
+
+   Anything used by exactly one section belongs in that section's own
+   component, not here. [P14] */
+
+@layer components {
+  /* ── Entrances ──────────────────────────────────────────────────────── */
+  @keyframes nk-rise {
+    from { opacity: 0; transform: translateY(30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes nk-rise-sm {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes nk-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── Parallax ───────────────────────────────────────────────────────── */
+  @keyframes nk-para-slow {
+    from { transform: translateY(52px); }
+    to   { transform: translateY(-52px); }
+  }
+
+  @keyframes nk-para-fast {
+    from { transform: translateY(90px); }
+    to   { transform: translateY(-90px); }
+  }
+
+  @keyframes nk-para-rev {
+    from { transform: translateY(-40px); }
+    to   { transform: translateY(40px); }
+  }
+
+  /* ── Small looping tells ────────────────────────────────────────────── */
+  @keyframes nk-blink {
+    0%, 49%   { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+
+  @keyframes nk-residue {
+    0%   { opacity: 0.42; transform: scaleX(1); }
+    100% { opacity: 0; transform: scaleX(0.4); }
+  }
+
+  /* ── Parallax utilities ─────────────────────────────────────────────────
+     Purely decorative, so unlike `.nk-reveal` there is no fallback: without
+     `animation-timeline` the element simply sits still and nobody who has not
+     seen both can tell. (docs/05 § Tier 2.) */
+  .nk-para,
+  .nk-para-fast,
+  .nk-para-rev {
+    /* Resting state IS the final state. Nothing is offset in the stylesheet. */
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    @supports (animation-timeline: view()) {
+      .nk-para,
+      .nk-para-fast,
+      .nk-para-rev {
+        animation-duration: 1s;
+        animation-timing-function: linear;
+        animation-fill-mode: both;
+        animation-timeline: view();
+        animation-range: entry 0% exit 100%;
+      }
+
+      .nk-para      { animation-name: nk-para-slow; }
+      .nk-para-fast { animation-name: nk-para-fast; }
+      .nk-para-rev  { animation-name: nk-para-rev; }
+    }
+  }
+}

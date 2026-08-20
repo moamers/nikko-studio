@@ -1,6 +1,10 @@
 # ─────────────────────────────────────────────────────────────
 #  SITE SETTINGS — the name, the description search engines and
-#  language models read, and the header navigation.
+#  language models read, the header navigation, the small words
+#  on the header's own controls, and the footer link columns.
+#
+#  Edit the text between the quotes. Keep the labels on the left
+#  exactly as they are.
 # ─────────────────────────────────────────────────────────────
 
 title: "Nikko Studio"
@@ -14,6 +18,8 @@ description: >
 
 locale: "en-GB"
 
+# ── The header navigation ────────────────────────────────────
+# These are the links across the top of the page, in this order.
 nav:
   - label: "The work"
     href: "#work"
@@ -22,6 +28,7 @@ nav:
   - label: "Founder"
     href: "#founder"
 
+# The button at the right of the header, and in the mobile menu.
 cta:
   label: "Pitch your project"
   href: "#pitch"
@@ -30,3 +37,51 @@ logo:
   wordmark: "Nikko"
   homeLabel: "Nikko Studio — back to the top"
   homeHref: "#top"
+
+# ── The header's own small words ─────────────────────────────
+header:
+  # Offered to keyboard readers first, before the opening sequence.
+  skipLink: "Skip to content"
+  # The name a screen reader announces for the navigation itself.
+  navLabel: "Primary"
+  # On phones and small tablets the navigation folds into a menu.
+  menuOpen: "Menu"
+  menuClose: "Close"
+  menuLabel: "Site menu"
+
+# ── The analogue / digital dial ──────────────────────────────
+# The little bordered button beside the menu. The site drifts from
+# "analogue" (warm, grainy) to "digital" (crisp, cool) as you scroll,
+# and clicking the dial pins whichever you prefer.
+#
+# The tooltip is built from two halves: one of the two "note" lines
+# about pinning, followed by one of the two mood lines.
+modeDial:
+  analogue: "Analogue"
+  digital: "Digital"
+  auto: "Auto"
+  noteAnalogue: "grain · signal · warmth"
+  noteDigital: "crisp · flat · cobalt"
+  noteAuto: "Drifting with your scroll — click to pin. "
+  notePinned: "Pinned — click to switch. "
+
+# ── The footer's three link columns ──────────────────────────
+# An item with an "href" becomes a link. An item without one is
+# just a line of text.
+footerColumns:
+  - title: "About"
+    items:
+      - label: "London-based 🇬🇧"
+      - label: "Lebanese bread 🫓"
+  - title: "Follow"
+    items:
+      - label: "Threads"
+        href: "#pitch"
+      - label: "Substack"
+        href: "#pitch"
+  - title: "Legal"
+    items:
+      - label: "Privacy Policy"
+        href: "#pitch"
+      - label: "Terms & Conditions"
+        href: "#pitch"

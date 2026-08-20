@@ -1,0 +1,52 @@
+# ─────────────────────────────────────────────────────────────
+#  JOYRIDE — the word swap.
+#
+#  Tapping the big word switches between the two states below.
+#  Both are written into the page, so nothing is hidden from
+#  search engines or AI assistants.
+# ─────────────────────────────────────────────────────────────
+
+heading:
+  # {1} {2} {3} are the phrases below, set in italic.
+  template: >
+    Leo Burnett calls them {1}. Ogilvy calls it {2}. Nikko calls it hotwiring
+    your audience and taking their thoughts for a {3}.
+  emphasis:
+    - text: "big ideas"
+    - text: "impact"
+    - text: "joyride"
+      accent: true      # this one is set in coral
+
+lead: "Because marketing should be joyful."
+
+body:
+  - >
+    A storytelling legacy built off the back of white guys with cool names is
+    cute. You can throw around a few buzzwords and let a century of advertising
+    mythology do the heavy lifting. But imagine how powerful your story becomes
+    when you understand the weight of every word and the person it has to land
+    with.
+  - "Those are the word-level choices you can trust us with."
+
+swap:
+  intro: "It's the difference between shouting…"
+  ariaLabel: "Swap the word"
+  states:
+    - latin: "Khara"
+      arabic: "خرا"
+      colour: "coral"
+      hint: "Tap — soften it"
+      note: >
+        …across a table when someone asks how your day has been. It lands
+        because it costs something to say.
+    - latin: "Kaka"
+      arabic: ""            # this state has no Arabic setting
+      colour: "cobalt"
+      hint: "Tap — say it properly"
+      note: >
+        Or saying kaka, because it sounds funny. Same meaning, no weight, no
+        room. Nobody flinches and nobody remembers.
+
+link:
+  label: "Submit your project here ➺"
+  href: "#pitch"
