@@ -354,6 +354,36 @@ const pitchSchema = z.object({
   }),
 });
 
+/* ── Contact / enquiry form ───────────────────────────────────────────────── */
+
+/** One selectable option. `value` is the stable code stored against a
+ *  submission; `label` is what a person reads. Renaming a label is safe.
+ *  Changing a value that real enquiries already carry is not — old rows
+ *  would lose their meaning. The founder-facing note in form.yaml says so. */
+const optionSchema = z.object({
+  value: z.string().min(1).max(40).regex(/^[a-z0-9-]+$/,
+    'value must be lowercase letters, numbers and hyphens — it is a stored code, not a label'),
+  label: z.string().min(1).max(60),
+});
+
+const intentOptionSchema = optionSchema.extend({
+  /** The one-line explanation under the card title. */
+  note: z.string().min(1).max(120),
+});
+
+const contactFormSchema = z.object({
+  intents:  z.array(intentOptionSchema).min(2).max(6),
+  outputs:  z.array(optionSchema).min(2).max(12),
+  budgets:  z.array(optionSchema).min(2).max(8),
+  pronouns: z.array(optionSchema).min(2).max(8),
+  timing: z.object({
+    /** This year plus N. Derived at build time so the list never goes stale. */
+    yearsAhead: z.number().int().min(0).max(5),
+    flexibleLabel: z.string().min(1).max(30),
+    months: z.array(z.string().min(1)).length(12),
+  }),
+});
+
 /* ── Collections ─────────────────────────────────────────────────────────── */
 
 /** Every homepage section is one YAML file in the same founder-facing folder. */
@@ -374,4 +404,9 @@ export const collections = {
   sampler: defineCollection({ loader: homepageFile('sampler.yaml'), schema: samplerSchema }),
   joyride: defineCollection({ loader: homepageFile('joyride.yaml'), schema: joyrideSchema }),
   pitch: defineCollection({ loader: homepageFile('pitch.yaml'), schema: pitchSchema }),
+
+  contactForm: defineCollection({
+    loader: glob({ pattern: 'form.yaml', base: './src/content/contact' }),
+    schema: contactFormSchema,
+  }),
 };

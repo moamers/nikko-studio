@@ -12,6 +12,7 @@
  */
 export { getSiteSettings } from './settings';
 export { resolveImage } from './images';
+export { getContactFormOptions } from './contact';
 export {
   getHero,
   getMarquee,
@@ -42,3 +43,9 @@ export type {
   ContentFigure,
   Counter,
 } from './homepage';
+export type {
+  ContactFormOptions,
+  IntentOption,
+  Option,
+  TimingOptions,
+} from './contact';

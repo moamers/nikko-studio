@@ -1,0 +1,124 @@
+# ─────────────────────────────────────────────────────────────────────
+#  THE ENQUIRY FORM — every option someone can pick.
+#
+#  This file is yours. Add, remove or reword any option below and the
+#  form updates when the site rebuilds (about two minutes). You do not
+#  need an engineer.
+#
+#  A few things worth knowing before you edit:
+#
+#  • Keep the indentation exactly as you find it. The dashes and the
+#    two spaces in front of them are what make it a list.
+#  • If your text contains a colon followed by a space, or starts with
+#    a quote, wrap the whole thing in "double quotes".
+#  • Deleting an option is safe. Deleting a whole SECTION is not —
+#    if you want a section gone, ask an engineer.
+#  • Every option you add must have a `value`. That is the short code
+#    saved against a submission. Once a value has been used by a real
+#    enquiry, DON'T change it — old submissions would lose their
+#    meaning. Reword the `label` instead; the label is what people see.
+# ─────────────────────────────────────────────────────────────────────
+
+# ══ 02 · THE PROJECT ═════════════════════════════════════════════════
+# Single choice. Four cut-corner cards. Selected turns cobalt blue.
+# The `note` is the small line underneath — keep it to one sentence.
+intents:
+  - value: launch
+    label: "Launch something"
+    note: "It doesn't exist yet. It needs a story before it has a shape."
+
+  - value: grow
+    label: "Grow something"
+    note: "It works. It should be reaching further than it does."
+
+  - value: fix
+    label: "Fix something"
+    note: "It's there, but the words aren't landing."
+
+  - value: learn
+    label: "Learn something"
+    note: "You want the thinking in the room, not just the deliverable."
+
+# ══ 03 · THE WORK ════════════════════════════════════════════════════
+# Multiple choice — at least one is required. Eight square boxes.
+# Selected turns yellow.
+#
+# These lay out in a grid, so an even number looks tidiest. Long labels
+# are fine; they wrap.
+outputs:
+  - value: website
+    label: "Website"
+  - value: email
+    label: "Email"
+  - value: journey
+    label: "Customer journey"
+  - value: campaign
+    label: "Campaign"
+  - value: workshop
+    label: "Workshop / talk"
+  - value: growth
+    label: "Growth strategy"
+  - value: messaging
+    label: "Messaging & positioning"
+  - value: surprise
+    label: "Surprise me"
+
+# ══ 05 · BALLPARK BUDGET ═════════════════════════════════════════════
+# Single choice, six boxes. Required.
+#
+# These bands do real work: they let you tell a £2k enquiry from a £20k
+# one before you open it. If you change the floor of your pricing,
+# change these to match.
+budgets:
+  - value: under-2k
+    label: "Under £2k"
+  - value: 2k-5k
+    label: "£2k – £5k"
+  - value: 5k-10k
+    label: "£5k – £10k"
+  - value: 10k-20k
+    label: "£10k – £20k"
+  - value: 20k-plus
+    label: "£20k+"
+  - value: unsure
+    label: "Not sure yet"
+
+# ══ 01 · PRONOUNS ════════════════════════════════════════════════════
+# Single choice, optional, and deselectable — clicking a chosen chip
+# clears it. Never labelled "optional" in the interface; only required
+# fields are marked, with a red asterisk.
+pronouns:
+  - value: she
+    label: "She / her"
+  - value: he
+    label: "He / him"
+  - value: they
+    label: "They / them"
+  - value: name
+    label: "Use my name"
+  - value: private
+    label: "Prefer not to say"
+
+# ══ 05 · TARGET TIMING ═══════════════════════════════════════════════
+# The year chips are worked out from today's date, NOT listed here on
+# purpose — a hardcoded list would quietly go out of date and start
+# offering people a year that has already passed.
+#
+# `yearsAhead: 2` means: this year, plus the next two.
+# Choosing the flexible option greys out the month grid.
+timing:
+  yearsAhead: 2
+  flexibleLabel: "Flexible"
+  months:
+    - "January"
+    - "February"
+    - "March"
+    - "April"
+    - "May"
+    - "June"
+    - "July"
+    - "August"
+    - "September"
+    - "October"
+    - "November"
+    - "December"
