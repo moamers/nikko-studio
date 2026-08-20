@@ -156,7 +156,7 @@ See [ADR-0004](./adr/0004-styling-approach.md).
 nikko-studio/
 ├── README.md                      # entry point → docs
 ├── docs/                          # this documentation set
-├── homepage-1-handoff/            # design handoff (reference; never imported)
+├── design-handoff/homepage/            # design handoff (reference; never imported)
 └── site/                          # the application
     ├── astro.config.mjs
     ├── src/
@@ -186,7 +186,7 @@ nikko-studio/
 
 Two rules about this tree:
 
-1. **`homepage-1-handoff/` is reference material and is never imported.** Nothing in `site/` may depend on it. It stays in the repo as the fidelity record.
+1. **`design-handoff/homepage/` is reference material and is never imported.** Nothing in `site/` may depend on it. It stays in the repo as the fidelity record.
 2. **`src/content/` is the founder's directory.** Everything else is the engineer's. That boundary is the whole point of [P7](./02-engineering-principles.md#p7--content-is-data-code-is-presentation).
 
 ---

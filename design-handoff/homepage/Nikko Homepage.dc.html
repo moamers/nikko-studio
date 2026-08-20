@@ -10,6 +10,7 @@
 <helmet>
 <title>Nikko Studio | Story-led Marketing for Memorability</title>
 <meta name="ext-resource-dependency" content="assets/workshop-proof.png" />
+<meta name="ext-resource-dependency" content="assets/nkhero-band.webp" />
 <meta name="ext-resource-dependency" content="assets/collage-artefacts.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -34,18 +35,6 @@
   @keyframes nk-marquee { from { transform:translateX(0) } to { transform:translateX(-50%) } }
   @keyframes nk-blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
   @keyframes nk-sway { 0%,100%{transform:rotate(-0.6deg)} 50%{transform:rotate(0.6deg)} }
-  @keyframes nk-wake-logo {
-    0%   { transform:scale(16); clip-path:inset(66.7% 0 24.4% 0) }
-    10%  { transform:scale(16); clip-path:inset(66.7% 0 24.4% 0) }
-    13%  { transform:scale(16); clip-path:inset(66.7% 0 24.4% 0); opacity:0.55 }
-    16%  { opacity:1 }
-    40%  { transform:scale(16); clip-path:inset(0 0 0 0) }
-    54%  { transform:scale(16); clip-path:inset(0 0 0 0) }
-    100% { transform:translate(calc(62px - 50vw), calc(37px - 50vh)) scale(0.191); clip-path:inset(0 0 0 0) }
-  }
-  @keyframes nk-wake-veil { 0%,52%{opacity:1} 88%,100%{opacity:0} }
-  @keyframes nk-wake-out { 0%,92%{opacity:1} 100%{opacity:0} }
-  @keyframes nk-wake-label { 0%,40%{opacity:1} 62%,100%{opacity:0} }
   @keyframes nk-residue { 0%{opacity:0.42;transform:scaleX(1)} 100%{opacity:0;transform:scaleX(0.4)} }
   @keyframes nk-stamp { 0%{transform:scale(1.7) rotate(-14deg);opacity:0} 100%{transform:scale(1) rotate(-2deg);opacity:1} }
   @keyframes nk-scan { from{transform:translateY(-40%)} to{transform:translateY(140%)} }
@@ -65,33 +54,299 @@
   @keyframes nk-burn-a { 0%{opacity:0.55} 30%{opacity:0.12} 100%{opacity:0} }
   @keyframes nk-burn-b { 0%{opacity:0.55} 30%{opacity:0.12} 100%{opacity:0} }
   @media (prefers-reduced-motion: reduce) { * { animation:none !important } }
+
+  /* site chrome is held back until the opening sequence hands off */
+  [data-nk-chrome] { visibility:hidden; opacity:0; transform:translateY(-10px); transition:opacity 420ms ease, transform 420ms ease }
+  [data-nkhero-live="1"] [data-nk-chrome] { visibility:visible; opacity:1; transform:none }
+
+  /* ── opening sequence (supplied, scoped) ───────────────────────── */
+  .nkhero-stage,
+  .nkhero-stage *,
+  .nkhero-stage *::before,
+  .nkhero-stage *::after { box-sizing: border-box; }
+
+  .nkhero-stage {
+    --nkhero-ink: #111111;
+    --nkhero-paper: #f1eee5;
+    --nkhero-cream: #f8f4e8;
+    --nkhero-coral: #f0584b;
+    --nkhero-yellow: #f4c62f;
+    --nkhero-blue: #333cdf;
+    --nkhero-opening: 0;
+    --nkhero-resolve: 0;
+    --nkhero-handoff: 0;
+    --nkhero-exit: 0;
+    --nkhero-signal: 0;
+    --nkhero-band: 0.002;
+    --nkhero-image-shift: 4%;
+    position: relative;
+    width: 100%;
+    height: 320vh;
+    margin: 0;
+    padding: 0;
+    background: var(--nkhero-ink);
+    color: var(--nkhero-cream);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    isolation: isolate;
+  }
+
+  .nkhero-frame {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    min-height: 620px;
+    overflow: hidden;
+    background: var(--nkhero-ink);
+    color: var(--nkhero-cream);
+  }
+
+  .nkhero-opening-note {
+    position: absolute;
+    z-index: 15;
+    left: 1.25rem;
+    font-family: "Courier New", monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: calc((1 - var(--nkhero-opening)) * 0.75);
+  }
+
+  .nkhero-opening-note-top { top: 1.25rem; }
+  .nkhero-opening-note-bottom { bottom: 1.25rem; }
+
+  .nkhero-image-band {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: calc(100vh * var(--nkhero-band));
+    min-height: 2px;
+    overflow: hidden;
+    background: var(--nkhero-coral);
+    transform: translateY(-50%);
+    will-change: height;
+  }
+
+  .nkhero-image-band img {
+    position: absolute;
+    top: 50%;
+    left: var(--nkhero-image-shift);
+    display: block;
+    width: 108%;
+    height: 100vh;
+    max-width: none;
+    object-fit: cover;
+    object-position: center;
+    filter: saturate(0.85) contrast(1.08);
+    transform: translateY(-50%) scale(calc(1.05 - var(--nkhero-opening) * 0.05));
+  }
+
+  .nkhero-occlusion {
+    position: absolute;
+    z-index: 6;
+    top: 0;
+    width: calc(50% - min(28vw, 285px));
+    height: 100%;
+    background: var(--nkhero-ink);
+    opacity: var(--nkhero-resolve);
+  }
+
+  .nkhero-occlusion-left { left: 0; }
+  .nkhero-occlusion-right { right: 0; }
+
+  .nkhero-origin-mark {
+    position: absolute;
+    z-index: 7;
+    top: 50%;
+    left: 50%;
+    width: min(56vw, 570px);
+    aspect-ratio: 1.64 / 1;
+    overflow: hidden;
+    border-radius: 50%;
+    opacity: calc(var(--nkhero-resolve) * (1 - var(--nkhero-exit)));
+    transform: translate(-50%, -50%) scale(calc(0.83 + var(--nkhero-resolve) * 0.17));
+  }
+
+  .nkhero-origin-lockup,
+  .nkhero-origin-symbol {
+    display: block;
+    width: 100%;
+  }
+
+  .nkhero-origin-symbol {
+    position: relative;
+    aspect-ratio: 1.64 / 1;
+    overflow: hidden;
+    border-radius: 50%;
+    background: transparent;
+    border: clamp(4px, 0.7vw, 9px) solid var(--nkhero-cream);
+  }
+
+  .nkhero-origin-slot {
+    position: absolute;
+    top: 48.5%;
+    left: 0;
+    width: 100%;
+    height: 12.5%;
+    background: var(--nkhero-cream);
+  }
+
+  .nkhero-signal-line {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    opacity: var(--nkhero-signal);
+    transform: translateY(var(--nkhero-offset));
+  }
+
+  .nkhero-signal-line-coral { --nkhero-offset: -12px; background: var(--nkhero-coral); }
+  .nkhero-signal-line-cream { --nkhero-offset: -4px; background: var(--nkhero-cream); }
+  .nkhero-signal-line-yellow { --nkhero-offset: 4px; background: var(--nkhero-yellow); }
+  .nkhero-signal-line-blue { --nkhero-offset: 12px; background: var(--nkhero-blue); }
+
+  .nkhero-title {
+    position: absolute;
+    z-index: 10;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: clamp(5rem, 16.7vw, 18rem);
+    font-weight: 950;
+    line-height: 0.71;
+    letter-spacing: -0.09em;
+    text-align: center;
+    opacity: calc(var(--nkhero-resolve) * (1 - var(--nkhero-handoff)));
+    pointer-events: none;
+  }
+
+  .nkhero-title span { position: absolute; }
+
+  .nkhero-title-top {
+    bottom: calc(50% + 0.04em);
+    color: var(--nkhero-cream);
+    transform: translateX(calc((1 - var(--nkhero-resolve)) * -8vw));
+  }
+
+  .nkhero-title-bottom {
+    top: calc(50% + 0.04em);
+    color: var(--nkhero-blue);
+    transform: translateX(calc((1 - var(--nkhero-resolve)) * 8vw));
+  }
+
+  .nkhero-resolution {
+    position: absolute;
+    z-index: 14;
+    left: 50%;
+    bottom: 7vh;
+    width: min(90vw, 750px);
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    font-size: clamp(1rem, 1.55vw, 1.45rem);
+    font-weight: 700;
+    opacity: calc(var(--nkhero-handoff) * (1 - var(--nkhero-exit)));
+    transform: translate(-50%, calc((1 - var(--nkhero-handoff)) * 24px));
+  }
+
+  .nkhero-resolution p { margin: 0; }
+
+  .nkhero-source-line {
+    position: absolute;
+    z-index: 14;
+    right: 1.25rem;
+    bottom: 1.2rem;
+    width: min(31rem, 48vw);
+    margin: 0;
+    font-family: "Courier New", monospace;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    letter-spacing: 0.075em;
+    text-align: right;
+    text-transform: uppercase;
+    opacity: calc(var(--nkhero-handoff) * (1 - var(--nkhero-exit)) * 0.66);
+  }
+
+  @media (max-width: 900px) {
+    .nkhero-stage { height: 270vh; }
+    .nkhero-origin-mark { width: 74vw; }
+    .nkhero-title { font-size: 20vw; }
+    .nkhero-resolution {
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      text-align: center;
+    }
+    .nkhero-source-line { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nkhero-stage { height: 100vh; }
+    .nkhero-origin-mark,
+    .nkhero-title,
+    .nkhero-resolution { opacity: 1; }
+    .nkhero-image-band { height: 5px; }
+  }
 </style>
 </helmet>
 
 <div style="position:relative;min-height:100vh;overflow-x:clip;background:{{ ground }};transition:background-color 3400ms cubic-bezier(0.4,0,0.2,1)">
 
-  <sc-if value="{{ wakeOn }}" hint-placeholder-val="{{ false }}">
-    <div aria-hidden="true" style="position:fixed;inset:0;z-index:200;pointer-events:none;overflow:hidden;animation:nk-wake-out 2600ms linear forwards">
-      <span style="position:absolute;inset:0;background:#111110;animation:nk-wake-veil 2600ms cubic-bezier(0.5,0,0.2,1) forwards"></span>
-      <span style="position:absolute;left:50%;top:50%;width:230px;height:156px;margin:-78px 0 0 -115px;border-radius:50%;background:#F2ECDF;overflow:hidden;animation:nk-wake-logo 2600ms cubic-bezier(0.72,0,0.16,1) forwards">
-        <span style="position:absolute;left:0;right:0;top:80px;height:24px;background:#111110"></span>
-        <span style="position:absolute;left:0;right:0;top:104px;height:14px;background:{{ accent }}"></span>
-      </span>
-      <span style="position:absolute;left:18px;bottom:16px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#B5AC98;animation:nk-wake-label 2600ms linear forwards">NKO — SER. 12587 · WAKE</span>
+  <section class="nkhero-stage" id="top" aria-label="Nikko Studio introduction">
+    <div class="nkhero-frame">
+      <div class="nkhero-opening-note nkhero-opening-note-top">A story studio / London / Dubai</div>
+      <div class="nkhero-opening-note nkhero-opening-note-bottom">Scroll to cross the line ↓</div>
+
+      <div class="nkhero-image-band" aria-hidden="true">
+        <img src="assets/nkhero-band.webp" alt="" />
+      </div>
+
+      <div class="nkhero-occlusion nkhero-occlusion-left" aria-hidden="true"></div>
+      <div class="nkhero-occlusion nkhero-occlusion-right" aria-hidden="true"></div>
+
+      <div class="nkhero-origin-mark" aria-hidden="true">
+        <span class="nkhero-origin-lockup">
+          <span class="nkhero-origin-symbol">
+            <span class="nkhero-origin-slot"></span>
+          </span>
+        </span>
+        <div class="nkhero-signal-line nkhero-signal-line-coral"></div>
+        <div class="nkhero-signal-line nkhero-signal-line-cream"></div>
+        <div class="nkhero-signal-line nkhero-signal-line-yellow"></div>
+        <div class="nkhero-signal-line nkhero-signal-line-blue"></div>
+      </div>
+
+      <div class="nkhero-title" aria-label="Stories endure">
+        <span class="nkhero-title-top" aria-hidden="true">STORIES</span>
+        <span class="nkhero-title-bottom" aria-hidden="true">ENDURE.</span>
+      </div>
+
+      <div class="nkhero-resolution">
+        <p>Nikko is a story studio.</p>
+        <p>Market for memorability.</p>
+      </div>
+
+      <p class="nkhero-source-line">Like family albums, plastic straws on the ocean floor and a Nokia 3310 thrown from a fast-moving car, stories endure.</p>
     </div>
-  </sc-if>
+  </section>
 
   <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#111110"/><ellipse cx="50" cy="47" rx="27" ry="19" fill="#F2ECDF"/><rect x="23" y="47" width="54" height="6" fill="#111110"/><rect x="23" y="53" width="54" height="4" fill="#EE5439"/></svg></template>
 
-  <div aria-hidden="true" data-cursor-layer="true" style="position:fixed;inset:0;z-index:95;pointer-events:none;overflow:hidden"></div>
+  <div aria-hidden="true" data-cursor-layer="true" data-nk-chrome="true" style="position:fixed;inset:0;z-index:95;pointer-events:none;overflow:hidden"></div>
 
-  <span aria-hidden="true" style="position:fixed;inset:0;z-index:90;pointer-events:none;mix-blend-mode:multiply;opacity:{{ grainOpacity }};background-image:repeating-linear-gradient(0deg, rgba(17,17,16,0.55) 0 1px, transparent 1px 3px),repeating-linear-gradient(90deg, rgba(17,17,16,0.3) 0 1px, transparent 1px 4px)"></span>
+  <span aria-hidden="true" data-nk-chrome="true" style="position:fixed;inset:0;z-index:90;pointer-events:none;mix-blend-mode:multiply;opacity:{{ grainOpacity }};background-image:repeating-linear-gradient(0deg, rgba(17,17,16,0.55) 0 1px, transparent 1px 3px),repeating-linear-gradient(90deg, rgba(17,17,16,0.3) 0 1px, transparent 1px 4px)"></span>
 
-  <div aria-hidden="true" style="position:fixed;left:0;top:0;bottom:0;width:3px;background:rgba(17,17,16,0.12);z-index:60"><span style="display:block;width:100%;height:100%;background:{{ accent }};transform-origin:top;animation:nk-progress 1s linear both;animation-timeline:scroll(root);transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span></div>
+  <div aria-hidden="true" data-nk-chrome="true" style="position:fixed;left:0;top:0;bottom:0;width:3px;background:rgba(17,17,16,0.12);z-index:60"><span style="display:block;width:100%;height:100%;background:{{ accent }};transform-origin:top;animation:nk-progress 1s linear both;animation-timeline:scroll(root);transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span></div>
 
-  <header style="position:sticky;top:0;z-index:50;backdrop-filter:blur(9px);background:{{ veil }};transition:background-color 3400ms cubic-bezier(0.4,0,0.2,1)">
+  <header data-nk-chrome="true" style="position:sticky;top:0;z-index:50;backdrop-filter:blur(9px);background:{{ veil }};transition:background-color 3400ms cubic-bezier(0.4,0,0.2,1)">
     <div style="max-width:1280px;margin:0 auto;padding:16px 40px;display:flex;align-items:center;gap:16px">
-      <a href="#top" onClick="{{ replayWake }}" title="Replay the wake" style="display:flex;align-items:center;gap:12px;cursor:pointer">
+      <a href="#top" title="Back to the top" style="display:flex;align-items:center;gap:12px;cursor:pointer">
         <span style="display:block;width:44px;height:30px;border-radius:50%;background:#111110;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:16px;height:5px;background:{{ ground }};transition:background-color 3400ms cubic-bezier(0.4,0,0.2,1)"></span><span style="position:absolute;left:0;right:0;top:21px;height:3px;background:{{ accent }};transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span></span>
         <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:22px;letter-spacing:-0.05em;text-transform:uppercase">NIKKO</span>
       </a>
@@ -405,7 +660,7 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280},&quot;accentCycle&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;cycleSeconds&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:12,&quot;min&quot;:4,&quot;max&quot;:24,&quot;step&quot;:1,&quot;unit&quot;:&quot;s&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;tintDepth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:1.6,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Motion&quot;}}">
 class Component extends DCLogic {
-  state = { accent: 0, kaka: false, phone: 0, countries: 0, members: 0, mode: null, auto: 'analogue', marks: [], wake: false, frag: 0, hoverWord: null, hoverTile: null };
+  state = { accent: 0, kaka: false, phone: 0, countries: 0, members: 0, mode: null, auto: 'analogue', marks: [], frag: 0, hoverWord: null, hoverTile: null };
 
   // 03 — RESIDUE: fragments you touch get stamped into the margin rail
   addMark(label, tone) {
@@ -465,19 +720,52 @@ class Component extends DCLogic {
     return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  runWake(force) {
-    if (this.reducedMotion()) return;
-    if (!force) {
-      let seen = true;
-      try { seen = sessionStorage.getItem('nk-wake') === '1'; sessionStorage.setItem('nk-wake', '1'); } catch (e) { seen = true; }
-      if (seen) return;
+  // 00 — OPENING SEQUENCE: supplied scroll-driven hero; drives its own custom props
+  // and flips the site chrome on as it hands off.
+  initHero() {
+    const hero = (this.rootEl || document).querySelector('.nkhero-stage');
+    const shell = hero && hero.parentElement;
+    // fail-safe: the chrome gate defaults to hidden, so if the hero can't be
+    // wired we reveal the site rather than trap the user in a navless page.
+    if (!hero || !shell) {
+      const fallback = (this.rootEl || document).querySelector('[data-nk-chrome]');
+      const host = fallback && fallback.parentElement;
+      if (host) host.setAttribute('data-nkhero-live', '1');
+      return;
     }
-    clearTimeout(this._wakeT);
-    this.setState({ wake: false }, () => this.setState({ wake: true }));
-    this._skip = () => this.setState({ wake: false });
-    window.addEventListener('pointerdown', this._skip, { once: true });
-    window.addEventListener('keydown', this._skip, { once: true });
-    this._wakeT = setTimeout(this._skip, 2600);
+
+    const clamp = (value) => Math.max(0, Math.min(1, value));
+    const ease = (value) => 1 - Math.pow(1 - clamp(value), 3);
+    let frame = 0;
+
+    const update = () => {
+      frame = 0;
+      const rect = hero.getBoundingClientRect();
+      const distance = Math.max(1, hero.offsetHeight - window.innerHeight);
+      const progress = clamp(-rect.top / distance);
+      const opening = ease(progress / 0.29);
+      const resolve = ease((progress - 0.19) / 0.34);
+      const handoff = ease((progress - 0.6) / 0.25);
+      const exit = ease((progress - 0.86) / 0.14);
+      const signal = clamp(1 - Math.abs(progress - 0.54) / 0.095);
+      const band = 0.002 + opening * (1 - handoff) * 0.31 + handoff * 0.048;
+
+      hero.style.setProperty('--nkhero-opening', opening.toFixed(4));
+      hero.style.setProperty('--nkhero-resolve', resolve.toFixed(4));
+      hero.style.setProperty('--nkhero-handoff', handoff.toFixed(4));
+      hero.style.setProperty('--nkhero-exit', exit.toFixed(4));
+      hero.style.setProperty('--nkhero-signal', signal.toFixed(4));
+      hero.style.setProperty('--nkhero-band', band.toFixed(4));
+      hero.style.setProperty('--nkhero-image-shift', `${(1 - progress) * 8 - 4}%`);
+      hero.dataset.nkheroProgress = progress.toFixed(4);
+      hero.dataset.nkheroComplete = progress >= 0.995 ? 'true' : 'false';
+      shell.setAttribute('data-nkhero-live', exit > 0.02 ? '1' : '0');
+    };
+
+    this._heroTick = () => { if (!frame) frame = requestAnimationFrame(update); };
+    update();
+    window.addEventListener('scroll', this._heroTick, { passive: true });
+    window.addEventListener('resize', this._heroTick);
   }
 
   // 03 — RESIDUE: the pointer leaves marks that fade, and drags a small distortion with it
@@ -582,7 +870,7 @@ class Component extends DCLogic {
         this.setState({ mode: m || null, marks: Array.isArray(saved) ? saved : [] });
       }
     } catch (e) {}
-    this.runWake();
+    this.initHero();
     this.initCursor();
     this.initDrift();
     this._frag = setInterval(() => this.setState(s => ({ frag: (s.frag + 1) % this.fragList().length })), 3800);
@@ -617,9 +905,9 @@ class Component extends DCLogic {
     clearInterval(this._accent);
     clearInterval(this._frag);
     clearTimeout(this._wakeT);
-    if (this._skip) {
-      window.removeEventListener('pointerdown', this._skip);
-      window.removeEventListener('keydown', this._skip);
+    if (this._heroTick) {
+      window.removeEventListener('scroll', this._heroTick);
+      window.removeEventListener('resize', this._heroTick);
     }
     if (this._raf) cancelAnimationFrame(this._raf);
     if (this._scroll) window.removeEventListener('scroll', this._scroll);
@@ -655,8 +943,6 @@ class Component extends DCLogic {
       heroFilter: isAnalogue ? 'saturate(0.94) contrast(0.97) sepia(0.09)' : 'saturate(1.06) contrast(1.04)',
       misreg: isAnalogue ? '1.4px 0 0 rgba(0,178,169,0.42), -1.4px 0 0 rgba(238,84,57,0.26)' : '0 0 0 rgba(0,0,0,0)',
 
-      wakeOn: this.state.wake,
-      replayWake: () => this.runWake(true),
       marks: this.state.marks,
       hasMarks: this.state.marks.length > 0,
       markLondon: () => this.addMark('LONDON', '#00B2A9'),

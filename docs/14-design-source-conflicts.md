@@ -7,7 +7,7 @@ The handoff bundle contains **two design documents that disagree with each other
 
 | | Document | Character |
 |---|---|---|
-| **A** | `homepage-1-handoff/README.md` + `Nikko Homepage.dc.html` | A specific, copy-approved, high-fidelity **page design**. Buildable as-is |
+| **A** | `design-handoff/homepage/README.md` + `Nikko Homepage.dc.html` | A specific, copy-approved, high-fidelity **page design**. Buildable as-is |
 | **B** | `Nikko Direction v2.dc.html` — *"Art Direction v1.1 (moodboard reconciled)"*, serial `NKO—2026—08—14` | A system-level **direction board**: 18 plates of rules, specimens and laws. Contains several explicitly open decisions |
 
 Neither is wrong. **B states the system's laws; A breaks several of them.** That is a normal and healthy tension between art direction and a page design — but it has to be resolved deliberately, because the resolution determines what page 2 looks like.

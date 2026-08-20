@@ -87,11 +87,11 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 
 ## The design handoff
 
-Design lives in [`homepage-1-handoff/`](../homepage-1-handoff/). It is **reference material** — the production build never imports from it.
+Design lives in [`design-handoff/homepage/`](../design-handoff/homepage/). It is **reference material** — the production build never imports from it.
 
 | File | What it is |
 |---|---|
-| [`README.md`](../homepage-1-handoff/README.md) | The homepage spec: tokens, ten sections, interactions, state, a11y notes |
+| [`README.md`](../design-handoff/homepage/README.md) | The homepage spec: tokens, ten sections, interactions, state, a11y notes |
 | `Nikko Homepage.dc.html` | The design source — template + logic class. Exact values and copy |
 | `Nikko Homepage (standalone).html` | Runnable prototype (~20 MB). Open it to see the motion |
 | `Nikko Direction v2.dc.html` | Art direction v1.1 — 18 plates of system-level rules |
@@ -108,7 +108,7 @@ When documents disagree ([P0](./02-engineering-principles.md#p0--precedence-when
 
 1. Active task instructions from the founder
 2. [`/README.md`](../README.md) — business meaning, pricing, positioning
-3. `homepage-1-handoff/` — the homepage build
+3. `design-handoff/homepage/` — the homepage build
 4. `Nikko Direction v2.dc.html` — system-level direction beyond the homepage
 5. Engineering judgement, recorded as an [ADR](./adr/README.md)
 

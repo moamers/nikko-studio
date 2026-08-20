@@ -21,7 +21,7 @@ P1–P9 are the founder's constraints, elaborated. P10–P16 are added by engine
 
 1. **Active task instructions** from the founder
 2. **`/README.md`** — for business meaning, pricing, positioning, service definitions
-3. **`homepage-1-handoff/`** — for the homepage build: exact tokens, copy, timings, layout
+3. **`design-handoff/homepage/`** — for the homepage build: exact tokens, copy, timings, layout
 4. **`Nikko Direction v2.dc.html`** — for system-level direction on surfaces the homepage handoff does not cover
 5. Engineering judgement, recorded as an [ADR](./adr/README.md)
 
@@ -43,7 +43,7 @@ Where 3 and 4 conflict — and [they conflict materially, in at least eight plac
 
 **This forbids.**
 - Reveal animations that start at `opacity: 0` in the stylesheet. Content starts **visible**; motion is *added* by a capability check, never *removed* by its absence.
-- Blocking splash screens. The wake splash is `pointer-events: none`, skippable on any input, capped at 2600 ms, once per session, and skipped entirely under `prefers-reduced-motion`.
+- Blocking splash screens. The opening sequence (§0) is scroll-driven, `aria-hidden`, and never traps the user — and per this principle we **invert its chrome gate**: the header, rail and overlays are visible by default and only hidden once the sequence has explicitly claimed the screen. The handoff itself flags the alternative as dangerous — *"default-hidden means a JS failure would leave the site with no navigation"*.
 - Hover as the only route to information. Per the direction document: *"Hover — Easter eggs only. No information lives behind a pointer."* The hover scraps and language tiles are decorative or duplicated in visible copy.
 - Scroll-jacking, scroll hijacking, or overriding native scroll physics. Explicitly banned in the direction document's anti-brief.
 - Layout-affecting animation. Animate `transform`, `opacity`, `clip-path`, `filter`, `background-color`. Never `top`/`left`/`width`/`height`/`margin`.
@@ -81,7 +81,7 @@ Where 3 and 4 conflict — and [they conflict materially, in at least eight plac
 | **1. Semantic HTML** | All content, all links, a submittable form | Layer 0: nothing. This layer must never fail. |
 | **2. CSS (baseline)** | Full layout, typography, colour, shape | Layer 1 |
 | **3. CSS (progressive)** | Scroll-driven motion, blend modes, masks — behind `@supports` | Layer 2 |
-| **4. JavaScript** | Accent cycle, mode drift, wake, cursor, sampler, counters | Layer 2 |
+| **4. JavaScript** | Opening sequence, accent cycle, mode drift, cursor, sampler, counters | Layer 2 |
 
 **Why.** This is what makes the site simultaneously fast, accessible, crawlable, LLM-readable and cross-browser — four of the founder's nine constraints — with one architectural decision rather than four bolt-ons.
 

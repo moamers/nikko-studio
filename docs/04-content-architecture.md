@@ -240,7 +240,7 @@ Rules for the founder, documented in a `site/src/content/README.md` next to the 
 - Always fill in `alt`. If the image is purely decorative, leave it as `""`.
 - Filenames: lowercase, hyphens, descriptive. `nadia-portrait.png`, not `IMG_4821.PNG`.
 
-**Outstanding:** `homepage-1-handoff/assets/chips-pattern.png` is a **2-byte file** — corrupt or a stub — and is referenced twice in the design source. It needs replacing before those two hover-scrap sets are complete. All ten assets are described in the handoff as *"placeholders/working images from the studio's archive — expect final art to be swapped in."* See [Q7](./13-open-questions.md).
+**Outstanding:** `design-handoff/homepage/assets/chips-pattern.png` is a **2-byte file** — corrupt or a stub — and is referenced twice in the design source. It needs replacing before those two hover-scrap sets are complete. All ten assets are described in the handoff as *"placeholders/working images from the studio's archive — expect final art to be swapped in."* See [Q7](./13-open-questions.md).
 
 ---
 

@@ -10,10 +10,10 @@ Sources it draws on:
 | Source | What it is | Authority |
 |---|---|---|
 | [`/README.md`](../README.md) | Business context — what Nikko is, who it serves, how it makes money | **Source of truth for business meaning** |
-| [`homepage-1-handoff/README.md`](../homepage-1-handoff/README.md) | Design handoff spec — tokens, sections, interactions, a11y notes | **Source of truth for design intent** |
-| [`homepage-1-handoff/Nikko Homepage.dc.html`](../homepage-1-handoff/Nikko%20Homepage.dc.html) | Design source — template + logic class | Source of truth for exact values & copy |
-| [`homepage-1-handoff/Nikko Homepage (standalone).html`](../homepage-1-handoff/) | Runnable prototype (~20 MB, images inlined) | Reference for motion only — **never** production code |
-| [`homepage-1-handoff/Nikko Direction v2.dc.html`](../homepage-1-handoff/) | Broader creative direction | Reference |
+| [`design-handoff/homepage/README.md`](../design-handoff/homepage/README.md) | Design handoff spec — tokens, sections, interactions, a11y notes | **Source of truth for design intent** |
+| [`design-handoff/homepage/Nikko Homepage.dc.html`](../design-handoff/homepage/Nikko%20Homepage.dc.html) | Design source — template + logic class | Source of truth for exact values & copy |
+| [`design-handoff/homepage/Nikko Homepage (standalone).html`](../design-handoff/homepage/) | Runnable prototype (~20 MB, images inlined) | Reference for motion only — **never** production code |
+| [`design-handoff/direction/Nikko Direction v2.dc.html`](../design-handoff/homepage/) | Broader creative direction | Reference |
 
 ---
 
@@ -42,7 +42,7 @@ The website is not a brochure. Read against the business model, it has **four di
 
 ### Job 1 — Prove memorability by being memorable *(primary)*
 
-Nikko sells the ability to make a business impossible to forget. A conventional agency site would be a **counter-argument to the product**. The whole reason the design is loaded with a living accent cycle, an analogue/digital drift, a wake splash, a projector-style sampler and hover scraps is that **the site is the portfolio piece**. Someone should be able to describe this site to a friend from memory.
+Nikko sells the ability to make a business impossible to forget. A conventional agency site would be a **counter-argument to the product**. The whole reason the design is loaded with a scroll-driven opening sequence, a living accent cycle, an analogue/digital drift, a projector-style sampler and hover scraps is that **the site is the portfolio piece**. Someone should be able to describe this site to a friend from memory.
 
 **Engineering consequence:** motion and micro-interaction are not decoration to be value-engineered away when the schedule tightens. They are the deliverable. But — see [Principle 1](./02-engineering-principles.md#p1--motion-serves-the-story-it-never-blocks-it) — they must never be the thing standing between a visitor and the content.
 
@@ -93,7 +93,9 @@ Ten sections, in order:
 9. **Joyride** — word swap (Khara ⇄ Kaka)
 10. **Pitch / footer** (`#pitch`) — newsletter capture, link block, legal row
 
-Six page-level interactive systems sit on top: **accent cycle**, **analogue/digital mode drift**, **wake splash**, **cursor residue**, **scroll progress rail**, **viewport-triggered counters**.
+Plus a **scroll-driven opening sequence** (§0) ahead of the header — a 320vh runway with a sticky stage, supplied by the client and reproduced verbatim in its own visual world.
+
+Six page-level interactive systems sit on top: **accent cycle**, **analogue/digital mode drift**, **opening sequence**, **cursor residue**, **scroll progress rail**, **viewport-triggered counters**.
 
 Fidelity is specified as **high** — the tokens, timings and easings in the handoff are exact and are to be reproduced, not approximated.
 

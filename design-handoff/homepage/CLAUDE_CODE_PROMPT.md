@@ -24,14 +24,17 @@ Start by reading, in this order:
 
 **Target stack:** `<e.g. Next.js App Router + Tailwind, TypeScript, existing components in src/components>`. Match the patterns already in the repo — file layout, styling approach, component granularity, lint rules.
 
-**What to build:** one route, the homepage, with the ten sections described in the README, in order. Fidelity is high — colours, type scale, spacing, radii and motion timings in the README are exact and should be reproduced, not approximated.
+**What to build:** one route, the homepage — the supplied opening sequence (§0) followed immediately by the ten sections described in the README, in order, as one continuous scroll with no gap or transition section between them. Fidelity is high — colours, type scale, spacing, radii and motion timings in the README are exact and should be reproduced, not approximated.
 
 Please:
 - Extract the design tokens (colour, type, radius, motion) into whatever the codebase already uses for theming — Tailwind config, CSS custom properties, a theme file — rather than hardcoding hexes across components.
 - Copy the images from `design_handoff_nikko_homepage/assets/` into the project's asset pipeline and serve them responsively. They're placeholders; keep swapping them easy.
-- Implement the accent-cycle, analogue/digital mode, wake splash, cursor, scroll reveals and the sampler's projector treatment as described. Respect `prefers-reduced-motion` everywhere — the README says which behaviours must bail out entirely.
+- **The opening sequence (`.nkhero-stage`, §0 of the README) is client-supplied and must be reproduced verbatim** — its scoped CSS, its markup and its scroll script, exactly as they are in the source. Do not restyle it, retime it, re-tokenise its palette or fold it into the site's theme; it is intentionally its own visual world. Keep the class names `nkhero-*` so it stays isolated.
+- Keep the chrome gate: the header and the fixed overlays start hidden and are revealed by the sequence near its end. **Preserve the fail-safe** that reveals them if the sequence fails to initialise — without it, a JS error leaves the site with no navigation.
+- Implement the accent-cycle, analogue/digital mode, cursor, scroll reveals and the sampler's projector treatment as described. Respect `prefers-reduced-motion` everywhere — the README says which behaviours must bail out entirely.
 - Use `animation-timeline: view()` / `scroll(root)` where the source does, but add a graceful fallback (or an IntersectionObserver path) for browsers without scroll-driven animations.
 - Keep the logo as CSS markup, not an image — its lower stripe animates with the accent.
+- Generate the favicon set from the logo mark per the Assets section of the README (none exists yet). Include the small-size variant with thickened stripes.
 - Wire the newsletter form to `<your ESP / API route>` with real validation and success/error states. The prototype's form is inert.
 - The `marks` localStorage feature in the source is a dead hook with no UI — leave it out unless I ask for it.
 
@@ -56,14 +59,17 @@ Read them in this order:
 
 **Target stack:** `<e.g. Astro + vanilla CSS / React + Tailwind / plain HTML+CSS, no framework>`. `<If there's existing code: match its conventions. If this is a fresh project: pick the simplest stack that supports the motion work — it's a static marketing page — and tell me what you chose and why before scaffolding.>`
 
-**What to build:** one page, the ten sections described in the README, in order. Fidelity is high — colours, type scale, spacing, radii and motion timings in the README are exact and should be reproduced, not approximated.
+**What to build:** one page — the supplied opening sequence (§0) followed immediately by the ten sections described in the README, in order, as one continuous scroll with no gap or transition section between them. Fidelity is high — colours, type scale, spacing, radii and motion timings in the README are exact and should be reproduced, not approximated.
 
 Please:
 - Put the design tokens (colour, type, radius, motion) in one place — CSS custom properties or a theme file — not hardcoded across the markup.
 - Move `assets/` into the project's asset directory and serve the images responsively (AVIF/WebP + sizes). They're placeholders; keep swapping them easy.
-- Implement the accent-cycle, analogue/digital mode, wake splash, cursor, scroll reveals and the sampler's projector treatment as described. Respect `prefers-reduced-motion` everywhere — the README says which behaviours must bail out entirely.
+- **The opening sequence (`.nkhero-stage`, §0 of the README) is client-supplied and must be reproduced verbatim** — its scoped CSS, its markup and its scroll script, exactly as they are in the source. Do not restyle it, retime it, re-tokenise its palette or fold it into the site's theme; it is intentionally its own visual world. Keep the class names `nkhero-*` so it stays isolated.
+- Keep the chrome gate: the header and the fixed overlays start hidden and are revealed by the sequence near its end. **Preserve the fail-safe** that reveals them if the sequence fails to initialise — without it, a JS error leaves the site with no navigation.
+- Implement the accent-cycle, analogue/digital mode, cursor, scroll reveals and the sampler's projector treatment as described. Respect `prefers-reduced-motion` everywhere — the README says which behaviours must bail out entirely.
 - Use `animation-timeline: view()` / `scroll(root)` where the source does, but add a graceful fallback (or an IntersectionObserver path) for browsers without scroll-driven animations.
 - Keep the logo as CSS markup, not an image — its lower stripe animates with the accent.
+- Generate the favicon set from the logo mark per the Assets section of the README (none exists yet). Include the small-size variant with thickened stripes.
 - Wire the newsletter form to `<your ESP / endpoint>` with real validation and success/error states. The prototype's form is inert.
 - The `marks` localStorage feature in the source is a dead hook with no UI — leave it out unless I ask for it.
 - Check it at 1440, 1024, 768 and 390 wide. The layout is flex/grid with `flex-wrap` throughout, so most of it should hold, but the hero collage, the ticket bar and the three-up service card grid need a look on small screens.
@@ -75,5 +81,7 @@ Before you write code, give me a short plan: the component/file breakdown and wh
 ## Useful follow-ups once it's running
 
 - "Compare your build side by side with `Nikko Homepage (standalone).html` at 1440 wide and list every visual difference you can find, then fix them."
+- "Step through the opening sequence at 10% scroll increments and compare each frame against the standalone. The custom-property formulas in §0 are exact — any drift is a bug."
+- "Check the chrome gate: the nav must be invisible for the whole opening sequence, appear once, and never flicker on subsequent scrolling."
 - "The motion timings drifted — recheck every duration and easing against the Motion table in the README."
 - "Audit the page: keyboard focus order, contrast against the values in the README's accessibility notes, and reduced-motion behaviour."

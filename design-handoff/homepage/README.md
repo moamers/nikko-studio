@@ -3,7 +3,7 @@
 ## Overview
 Marketing homepage for **Nikko Studio**, a creative story studio (London / UAE). One long scrolling page: hero, an attention/"stories travel" section, a turquoise language section, founder, services ("Put us to work"), a work sampler + testimonial, a "joyride" section with a word-swap interaction, and a newsletter/pitch footer on black.
 
-The page has a deliberate living quality: an accent colour cycles slowly through the whole page (logo slot, button slots, page background tint), an analogue/digital "mode" drifts as you scroll, a projector-style sampler swaps case-study lines, hovering key words in a heading deals out a fan of image scraps, and a one-per-session "wake" splash resolves the logo into the header.
+The page has a deliberate living quality: an accent colour cycles slowly through the whole page (logo slot, button slots, page background tint), an analogue/digital "mode" drifts as you scroll, a projector-style sampler swaps case-study lines, hovering key words in a heading deals out a fan of image scraps, and and the page opens with a supplied scroll-driven title sequence that hands off into the site.
 
 ## About the Design Files
 The files in this bundle are **design references created in HTML** — a prototype showing intended look and behaviour, **not production code to copy directly**. The task is to **recreate this design in the target codebase's existing environment** (React, Vue, Svelte, Astro, plain HTML/CSS…) using its established patterns, component conventions and styling approach. If no environment exists yet, choose the most appropriate framework and implement it there.
@@ -78,10 +78,11 @@ Radius is **0 or 50%** — never a plain rounded corner. Permitted forms:
 | Scrap deal-in | `220ms cubic-bezier(0.3,1.3,0.5,1)`, 60ms stagger |
 | Language tile reveal | shutter `300ms cubic-bezier(0.3,1,0.4,1)`, copy staggered 90ms / 140ms |
 | Sampler swap | `780ms` projector treatment (below) |
-| Wake splash | `2600ms cubic-bezier(0.72,0,0.16,1)` |
+| Opening sequence | scroll-driven, no fixed duration — see §0 |
+| Chrome reveal after opening | `opacity`/`transform` `420ms ease` |
 | Marquee | `34s linear infinite`, pauses on hover |
 
-Everything is gated behind `@media (prefers-reduced-motion: reduce) { * { animation: none !important } }`; wake and cursor bail out entirely in JS.
+Everything is gated behind `@media (prefers-reduced-motion: reduce) { * { animation: none !important } }`; the cursor bails out entirely in JS, and the opening sequence collapses to a single static frame.
 
 ---
 
@@ -89,9 +90,37 @@ Everything is gated behind `@media (prefers-reduced-motion: reduce) { * { animat
 
 Single page, sections in order.
 
+### 0. Opening sequence (`.nkhero-stage`, id `#top`)
+
+**This section is client-supplied and must be reproduced verbatim.** It arrived as its own scoped stylesheet + markup + script and was integrated as-is. Do not restyle it, retime it, or fold it into the site's token system — it is intentionally its own visual world, and the site proper begins immediately after its closing tag.
+
+**Structure.** A `320vh` tall `<section class="nkhero-stage">` (`270vh` under 900px) containing one `position:sticky; top:0; height:100vh` `.nkhero-frame`. Everything inside is absolutely positioned within that frame. The tall parent is the scroll runway; the sticky child is the stage.
+
+**Drive.** A scroll listener (rAF-throttled, `passive`) computes `progress = clamp(-rect.top / (offsetHeight - innerHeight))` and writes six normalised custom properties onto the stage element. All visual state is `calc()` off those properties — there are no keyframes.
+
+| Property | Formula | Range |
+|---|---|---|
+| `--nkhero-opening` | `ease(progress / 0.29)` | 0–0.29 |
+| `--nkhero-resolve` | `ease((progress - 0.19) / 0.34)` | 0.19–0.53 |
+| `--nkhero-signal` | `clamp(1 - abs(progress - 0.54) / 0.095)` | peaks at 0.54 |
+| `--nkhero-handoff` | `ease((progress - 0.6) / 0.25)` | 0.6–0.85 |
+| `--nkhero-exit` | `ease((progress - 0.86) / 0.14)` | 0.86–1 |
+| `--nkhero-band` | `0.002 + opening * (1 - handoff) * 0.31 + handoff * 0.048` | — |
+
+`ease(v) = 1 - (1 - v)³`, `clamp` to 0–1. It also sets `--nkhero-image-shift: calc((1 - progress) * 8 - 4)%` and mirrors state onto `data-nkhero-progress` / `data-nkhero-complete` for anything downstream.
+
+**Beats.** Ink screen with two mono corner notes ("A story studio / London / Dubai", "Scroll to cross the line ↓") that fade as `opening` rises. A 2px coral band across the centre grows to 31% of viewport height, revealing an image inside it (`nkhero-band.webp`, `width:108%`, `saturate(0.85) contrast(1.08)`, slow horizontal drift). Two ink occlusion panels close in from both edges to leave a central aperture, inside which the ring-and-slot origin mark resolves and scales `0.83 → 1`. Four 4px signal lines (coral / cream / yellow / blue at −12, −4, +4, +12px) flash through at the midpoint. "STORIES" / "ENDURE." slide in from opposite sides in Arial 950 at `clamp(5rem,16.7vw,18rem)`, `line-height:0.71`, `-0.09em` — cream over blue. At `handoff` the title clears and the resolution line ("Nikko is a story studio." / "Market for memorability.") plus a mono source line rise into place. `exit` fades the mark and copy out as the site arrives.
+
+**Its own palette — deliberately not the site's.** `--nkhero-ink #111111`, `--nkhero-paper #f1eee5`, `--nkhero-cream #f8f4e8`, `--nkhero-coral #f0584b`, `--nkhero-yellow #f4c62f`, `--nkhero-blue #333cdf`; Helvetica/Arial, not Archivo. These are close to but not identical to the site tokens. **Keep them as supplied** unless the client says otherwise — the seam is intentional and re-tokenising it would be a redesign. (If you are asked to reconcile it later, it is a six-value change confined to this block.)
+
+**Reduced motion.** The stage collapses to `100vh`, the mark / title / resolution are forced to `opacity:1` and the band to a 5px strip — one static frame, no runway.
+
+**Chrome gate.** The header, grain overlay, scroll-progress rail and cursor layer each carry `data-nk-chrome` and are `visibility:hidden; opacity:0; transform:translateY(-10px)` by default. The script sets `data-nkhero-live="1"` on the page shell once `exit > 0.02` (i.e. at ~86% of the runway), which reveals them with a `420ms` fade. **Default-hidden means a JS failure would leave the site with no navigation** — the source has an early-return fail-safe that sets the attribute to `1` if the stage can't be found. Preserve that, or invert the default so chrome is visible unless the sequence explicitly claims the screen. The header's natural flow position already lands exactly at the end of the runway, so the handoff is gapless without extra scroll maths.
+
 ### 1. Header (sticky)
+Hidden during the opening sequence — see the chrome gate in §0.
 `position: sticky; top: 0; z-index: 50`, `backdrop-filter: blur(9px)`, background = live veil colour. Inner row `max-width:1280px; padding:16px 40px; display:flex; gap:16px`.
-- **Logo lockup** (left, links `#top`): a 44×30 ink oval (`border-radius:50%; overflow:hidden`) containing a ground-coloured stripe at `top:16px; height:5px` and an accent stripe at `top:21px; height:3px` — this pair is "the slot". Beside it, "NIKKO" in Archivo Black 22px, `-0.05em`, uppercase. Clicking replays the wake animation.
+- **Logo lockup** (left, links `#top` — the top of the opening sequence): a 44×30 ink oval (`border-radius:50%; overflow:hidden`) containing a ground-coloured stripe at `top:16px; height:5px` and an accent stripe at `top:21px; height:3px` — this pair is "the slot". Beside it, "NIKKO" in Archivo Black 22px, `-0.05em`, uppercase.
 - **Nav** (`margin-left:auto`, gap 30px): mono 11px uppercase links — "The work" (`#work`), "Put us to work" (`#services`), "Founder" (`#founder`) — colour `#4A463C`, hover `#EE5439`.
 - **Mode dial**: `1.5px solid #111110` button, mono 10px, showing `Analogue`/`Digital` plus a dimmed `Auto` when unpinned, with a blinking 8px accent dot (`nk-blink 1.6s steps(1) infinite`). Hover inverts to ink/paper. Click pins the mode (`localStorage` key `nk-mode`). `title` explains state.
 - **CTA** "Pitch your project": ink pill, `padding:14px 26px`, `border-radius:50%`, accent slot bar `bottom:7px; height:3px` inside it; hover cobalt + `translateY(-2px)`.
@@ -170,15 +199,8 @@ Full-bleed `#111110` with the elliptical section lid, a perforated top edge (`ra
 
 ## Interactions & Behaviour
 
-### Wake splash (once per session)
-2600ms, skippable on any pointer/key press, replayable by clicking the header logo. `position:fixed; inset:0; z-index:200; pointer-events:none`, whole layer fades at 92–100%.
-1. **0–10%** — screen is ink; only an accent slot spans the width: the logo oval (230×156, paper, containing an ink stripe and an accent stripe) scaled ×16 and clipped to `inset(66.7% 0 24.4% 0)`.
-2. **13%** — one flicker to 0.55 opacity, back to 1 at 16%.
-3. **10–40%** — the clip opens to `inset(0)`: the full-bleed aperture appears.
-4. **54–100%** — the mark shrinks and travels to its header position: `translate(calc(62px - 50vw), calc(37px - 50vh)) scale(0.191)`.
-5. The ink veil fades from 52% to 88%, so the site is revealed behind the shrinking mark. A mono serial "NKO — SER. 12587 · WAKE" sits bottom-left and fades out by 62%.
-
-Skipped entirely under `prefers-reduced-motion`. Session guard: `sessionStorage['nk-wake'] === '1'`.
+### Opening sequence
+See §0 — it is the page's entry animation and the reason the header starts hidden. There is no timed splash overlay: the earlier one-per-session wake animation was removed when this block was integrated, so there is no `sessionStorage` guard and nothing fires on load. The sequence is entirely scroll-position-driven and fully re-playable by scrolling back up.
 
 ### Analogue / digital mode
 Unpinned, it drifts with scroll depth: **analogue** above 52% of the scrollable height, **digital** below (rAF-throttled scroll listener). Clicking the dial pins the choice to `localStorage['nk-mode']`. Differences are deliberately subtle:
@@ -199,7 +221,8 @@ A wide aperture-shaped pool — 340×150px, `border-radius:50%`, `filter:blur(26
 accent: 0..2                       // cycling accent index, interval = cycleSeconds
 mode: 'analogue' | 'digital' | null   // null = auto; persisted to localStorage 'nk-mode'
 auto: 'analogue' | 'digital'          // scroll-derived when unpinned
-wake: boolean                      // splash visible; sessionStorage 'nk-wake' guard
+// no wake/splash state — the opening sequence is scroll-driven and stateless in React;
+// it writes custom properties straight to the DOM and never triggers a re-render
 frag: 0..7                         // sampler index, 3800ms interval, reset on manual pull
 hoverWord: 'fire'|'talk'|'table'|'dms'|null
 hoverTile: 'a'|'b'|'c'|null        // language-section tiles
@@ -212,7 +235,7 @@ Config knobs exposed in the prototype (worth keeping as component props / theme 
 No data fetching — all copy is static. The newsletter form is **not wired**: inputs have no state or submit handler. Hook it to the real ESP and add validation + success/error states.
 
 ## Accessibility notes
-- Decorative layers (grain, cursor, patterns, scraps, wake, perforations) are `aria-hidden="true"` and `pointer-events:none`.
+- Decorative layers (grain, cursor, patterns, scraps, perforations, and every layer inside the opening sequence) are `aria-hidden="true"` and `pointer-events:none`.
 - Focus ring: `:focus-visible { outline: 3px solid #EE5439; outline-offset: 3px }`.
 - `::selection { background:#FFD400; color:#111110 }`.
 - Muted text stays above 4.5:1 — `#4A463C` on paper, `#B5AC98` on ink. Never reuse `#B5AC98` on light backgrounds.
@@ -223,9 +246,13 @@ No data fetching — all copy is static. The newsletter form is **not wired**: i
 ## Assets
 In `assets/` — working collage and archive imagery, referenced with relative paths from the design file:
 `collage-hero.png`, `collage-artefacts.png`, `mouth-plane.png`, `nadia-portrait.png`, `nadia-child.png`, `workshop-proof.png`, `journal-crt.png`, `journal-firstdraft.png`, `chips-pattern.png`, `logo-cobalt.png`.
+
+`nkhero-band.webp` (1280×720) belongs to the opening sequence — it is the image revealed inside the growing centre band. It arrived base64-inlined in the supplied file and was extracted to a real asset; keep it as a file rather than re-inlining it.
 These are placeholders/working images from the studio's archive — expect final art to be swapped in. Serve responsive sizes (AVIF/WebP) in production; several are used at `aspect-ratio` crops with `object-fit: cover`.
 
 The logo is drawn in CSS, not an image: an ink oval (`border-radius:50%`) with two absolutely-positioned stripes. Keep it as markup so the accent stripe can animate.
+
+**No favicon exists yet — generate one from the logo mark.** It's trivially reproducible as SVG since the mark is two rects in an ellipse. Spec: square viewBox, ink `#111110` ellipse filling the frame with ~8% padding, a paper `#F2ECDF` stripe across the middle third, and a `#FFD400` stripe directly beneath it at ~60% of the paper stripe's height — the same proportions as the 44×30 header oval (stripes at `top:16px/height:5px` and `top:21px/height:3px`). Ship `favicon.svg` plus PNG fallbacks at 32 and 180 (apple-touch), and a `theme-color` of `#F2ECDF`. At 16px the two stripes merge, so thicken them ~1.5× in a small-size variant rather than shipping one file for all sizes.
 
 ## Files
 | File | What it is |
@@ -235,4 +262,4 @@ The logo is drawn in CSS, not an image: an ink oval (`border-radius:50%`) with t
 | `assets/` | Imagery referenced by the design source |
 | `CLAUDE_CODE_PROMPT.md` | Ready-to-paste prompt for Claude Code, in two variants (repo / uploaded files) |
 
-Open the standalone file first to see the motion — the accent cycle, wake, mode drift and sampler don't read from a screenshot.
+Open the standalone file first and scroll slowly — the opening sequence, accent cycle, mode drift and sampler are all scroll- or time-driven and none of them read from a screenshot.

@@ -16,7 +16,7 @@ If separate design, content, product, or engineering instructions are provided e
 |---|---|---|
 | **This file** | Business context — what Nikko is, who it serves, how it makes money | **Source of truth for business meaning** |
 | **[`docs/`](./docs/README.md)** | Engineering documentation — architecture, principles, delivery plan | **Source of truth for how we build** |
-| **[`homepage-1-handoff/`](./homepage-1-handoff/README.md)** | Design handoff — the homepage spec, design source, prototype, art direction, assets | **Source of truth for design intent** |
+| **[`design-handoff/homepage/`](./design-handoff/homepage/README.md)** | Design handoff — the homepage spec, design source, prototype, art direction, assets | **Source of truth for design intent** |
 
 ### Engineering documentation
 
@@ -501,7 +501,7 @@ Use this README for **business meaning and strategic context**.
 For other decisions:
 
 - use approved website copy for exact public-facing wording;
-- use [`homepage-1-handoff/`](./homepage-1-handoff/README.md) for visual direction and design intent;
+- use [`design-handoff/homepage/`](./design-handoff/homepage/README.md) for visual direction and design intent;
 - use [`docs/`](./docs/README.md) for architecture and implementation;
 - use the active task instructions when they explicitly override older assumptions.
 

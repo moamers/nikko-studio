@@ -13,7 +13,7 @@ Almost everything in this document describes gates for **code that does not exis
 python3 scripts/check-docs-links.py
 ```
 
-It validates **every relative Markdown link and heading anchor** across `docs/` and the root README This matters because the documentation is deliberately cross-linked ([conventions](./README.md#documentation-conventions)), so renaming a heading silently breaks navigation somewhere else. It has already caught three real breakages during authoring.
+It validates **every relative Markdown link and heading anchor** across `docs/` and the root README. This matters because the documentation is deliberately cross-linked ([conventions](./README.md#documentation-conventions)), so renaming a heading silently breaks navigation somewhere else. It has already caught three real breakages during authoring.
 
 It reproduces GitHub's own anchor-slug algorithm, including the quirk that runs of whitespace are *not* collapsed — so `## P1 — Motion serves the story` becomes `#p1--motion-serves-the-story` with a double hyphen. Naive slugifiers get this wrong and report false failures.
 
