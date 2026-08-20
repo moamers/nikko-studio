@@ -1,33 +1,135 @@
 ---
 /**
- * Marquee section — PLACEHOLDER.
+ * Marquee section.
  *
- * Spec section 3. Full-bleed 34s band, pauses on hover and when off-screen.
+ * Spec section 3 (design-handoff/homepage/README.md § "3. Marquee",
+ * `Nikko Homepage.dc.html` lines 398-404). Full-bleed band, two duplicated
+ * spans in a `width:max-content` row, `nk-marquee 34s linear infinite`,
+ * paused on hover.
+ *
+ * The source marks the whole band `aria-hidden="true"` — it is a decorative
+ * repeat of copy that already exists elsewhere on the page (nav, ticket,
+ * lead paragraph), not new information.
+ *
+ * R15 (docs/06-responsive-and-mobile-risks.md): an infinite animation is a
+ * battery cost for nothing while it is off-screen or the tab is hidden. A
+ * tiny inline script pauses it via `IntersectionObserver` and
+ * `visibilitychange`, toggling a class rather than an inline style so it
+ * never fights the CSS `:hover` pause. Pure progressive enhancement: with
+ * no JS the band simply keeps looping, which is correct, not broken.
  *
  * Build rules:
  *   - Copy comes from `src/lib/content`, never a string literal here. [P7]
  *   - Colours/timings come from `--nk-*` tokens, never a hex literal. [P11]
- *   - Reveals use <Reveal> / `.nk-reveal` — resting state is the FINAL
- *     state, so content is never stranded invisible. [P1, P3]
  *   - Must hold at 390px with no horizontal overflow. [P2]
  */
+import { getMarquee } from '../lib/content';
+
+const marquee = await getMarquee();
 ---
 
 <section class="nk-section nk-section--marquee">
-  <p class="nk-todo">TODO: Marquee</p>
+  <div class="nk-marquee" aria-hidden="true" data-nk-marquee>
+    <div class="nk-marquee__track">
+      <span class="nk-marquee__item">{marquee.text}</span>
+      <span class="nk-marquee__item" data-nk-marquee-dup>{marquee.text}</span>
+    </div>
+  </div>
 </section>
+
+<script>
+  // Pause the loop off-screen or while the tab is hidden. Purely additive —
+  // the CSS `animation` already runs (and already pauses on hover) with no
+  // JavaScript at all.
+  const band = document.querySelector<HTMLElement>('[data-nk-marquee]');
+
+  if (band && 'IntersectionObserver' in window) {
+    let offscreen = false;
+    let hidden = document.visibilityState === 'hidden';
+
+    const sync = (): void => {
+      band.classList.toggle('nk-marquee--paused', offscreen || hidden);
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        offscreen = !entries[0]?.isIntersecting;
+        sync();
+      },
+      { threshold: 0 },
+    );
+    observer.observe(band);
+
+    document.addEventListener(
+      'visibilitychange',
+      () => {
+        hidden = document.visibilityState === 'hidden';
+        sync();
+      },
+      { passive: true },
+    );
+  }
+</script>
 
 <style>
   @layer layout {
-    .nk-todo {
-      max-width: var(--nk-content-max);
-      margin: 0 auto;
-      padding: var(--nk-section-pad);
+    /* Full-bleed: breaks out of the shared `.nk-shell` column. `.nk-shell`
+       is `overflow-x: clip` (Base.astro), so the 100vw edge can never push
+       out a scrollbar. */
+    .nk-marquee {
+      width: 100vw;
+      margin-left: calc(50% - 50vw);
+      overflow: hidden;
+      padding: 22px 0;
+      margin-top: var(--nk-gutter);
+    }
+
+    .nk-marquee__track {
+      display: flex;
+      width: max-content;
+    }
+
+    .nk-marquee__item {
+      padding-right: 40px;
       font-family: var(--nk-font-mono);
-      font-size: var(--nk-size-mono-lg);
+      font-size: var(--nk-size-marquee);
       letter-spacing: var(--nk-tracking-mono-wide);
       text-transform: uppercase;
-      color: var(--nk-ink-muted);
+      color: var(--nk-ink);
+      white-space: pre;
+    }
+
+    /* Reduced motion: one static line, not two motionless copies sitting
+       side by side. */
+    @media (prefers-reduced-motion: reduce) {
+      .nk-marquee__item[data-nk-marquee-dup] {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .nk-marquee__track {
+        animation: nk-marquee var(--nk-dur-marquee) linear infinite;
+      }
+
+      @keyframes nk-marquee {
+        from {
+          transform: translateX(0);
+        }
+        to {
+          transform: translateX(-50%);
+        }
+      }
+
+      @media (hover: hover) {
+        .nk-marquee:hover .nk-marquee__track {
+          animation-play-state: paused;
+        }
+      }
+
+      .nk-marquee--paused .nk-marquee__track {
+        animation-play-state: paused;
+      }
     }
   }
 </style>
