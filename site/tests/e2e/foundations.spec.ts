@@ -58,7 +58,17 @@ test.describe('the chrome gate is inverted [P1, P3]', () => {
     await expect(header).toBeVisible();
     await expect(header).toHaveCSS('opacity', '1');
     await expect(header).toHaveCSS('visibility', 'visible');
-    await expect(page.getByRole('link', { name: /pitch your project/i })).toBeVisible();
+    // Scoped to the header on purpose. The same CTA now also appears in the
+    // hero, founder and services sections, so an unscoped locator resolves to
+    // four elements and trips strict mode. The assertion here is about the
+    // HEADER's nav surviving with JS off, not about the CTA existing at all.
+    await expect(header.getByRole('link', { name: /pitch your project/i })).toBeVisible();
+
+    // The nav links must be reachable too — without JS the mobile menu cannot
+    // open, so they have to be in the flow rather than behind a dialog. [P3]
+    for (const label of [/the work/i, /put us to work/i, /founder/i]) {
+      await expect(header.getByRole('link', { name: label })).toBeVisible();
+    }
   });
 
   test('with JavaScript disabled the runway collapses to one screen', async ({ page }) => {

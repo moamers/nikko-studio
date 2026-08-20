@@ -74,6 +74,18 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
     <div class="nk-shell">
       <slot />
     </div>
+
+    {/* The site's one client entry point. Mounts the reveal fallback, the
+        accent cycle, the analogue/digital drift and the cursor residue.
+
+        Deferred by default (module scripts are), so it never competes with
+        LCP. Every module inside is independently optional and each bails on
+        its own conditions — reduced motion, coarse pointer, small viewport.
+        Nothing here is required for the page to be readable. [P3, P4] */}
+    <script>
+      import { initSite } from '../scripts/site';
+      initSite();
+    </script>
   </body>
 </html>
 

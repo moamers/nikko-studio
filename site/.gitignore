@@ -9,3 +9,9 @@ dist/
 npm-debug.log*
 test-results/
 playwright-report/
+
+# Agent/verification scratch artefacts
+scratchpad-*.mjs
+shot-*.png
+test-results/
+playwright-report/
