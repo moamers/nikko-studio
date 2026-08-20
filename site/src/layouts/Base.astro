@@ -25,6 +25,16 @@ const pageTitle = title
   : `${settings.title} | ${settings.tagline}`;
 const pageDescription = description ?? settings.description;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+
+/* Indexing is OFF unless a deployment explicitly turns it on.
+ *
+ * Deliberately fail-safe: a staging or preview build that forgets to set
+ * anything is noindex, which is the harmless mistake. The dangerous mistake —
+ * a *.pages.dev copy of the site competing with the real domain in search —
+ * can only happen if someone opts in on purpose. [P5]
+ *
+ * Set PUBLIC_ALLOW_INDEXING=true on the production deployment ONLY. */
+const allowIndexing = import.meta.env.PUBLIC_ALLOW_INDEXING === 'true';
 ---
 
 <!doctype html>
@@ -36,6 +46,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
     <title>{pageTitle}</title>
     <meta name="description" content={pageDescription} />
     <link rel="canonical" href={canonical} />
+    {!allowIndexing && <meta name="robots" content="noindex, nofollow" />}
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={settings.title} />

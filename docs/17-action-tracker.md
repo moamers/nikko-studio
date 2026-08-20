@@ -118,6 +118,19 @@ Raised during the foundations build (2026-08-20), reviewed, and **deliberately d
 
 ---
 
+## 🚀 Staging — so Nadia can review on a phone
+
+**Needs no DNS change** and is fully decoupled from the migration. Detail: [18](./18-staging-and-deployment.md).
+
+| | Task | Detail | Status |
+|---|---|---|---|
+| S1 | **Create the Cloudflare account** — Nadia's email, 2FA on | It will later hold DNS for both domains, so it must be hers ([P9](./02-engineering-principles.md#p9--own-the-front-door)) | ⬜ **Nadia** |
+| S2 | Connect the repo to Cloudflare Pages | Root directory `site`, build `npm run build`, output `dist` | ⬜ |
+| S3 | Decide: put staging behind Cloudflare Access? | Free to 50 users. The site describes unreleased pricing and positioning | ⬜ **Nadia** |
+| S4 | ✅ `PUBLIC_ALLOW_INDEXING` fail-safe | Builds are noindex unless explicitly opted in. Verified both ways | ✅ Done |
+
+---
+
 ## 🔴 Infrastructure — do first
 
 | | Task | Detail | Status |

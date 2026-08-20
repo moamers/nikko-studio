@@ -22,6 +22,7 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 | The rules we build by | [02 — Engineering Principles](./02-engineering-principles.md) ⭐ |
 | What we're building it with | [03 — Tech Stack](./03-tech-stack.md) ⭐ |
 | How the founder edits content | [04 — Content Architecture](./04-content-architecture.md) |
+| **How to see it on a phone** | [18 — Staging & Deployment](./18-staging-and-deployment.md) |
 | How we get off Squarespace without breaking email | [15 — Migration & Cutover](./15-migration-and-cutover.md) 🔴 |
 | Where form data goes and who gets notified | [16 — Forms & Data Capture](./16-forms-and-data-capture.md) |
 | What's broken on mobile | [06 — Mobile Risks](./06-responsive-and-mobile-risks.md) ⚠️ |
@@ -70,6 +71,7 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 | **13** | [Open Questions](./13-open-questions.md) | Questions needing answers, each with a default if unanswered — plus the answer log |
 | **14** | [Design Source Conflicts](./14-design-source-conflicts.md) | Where the two design documents contradict each other |
 | **15** | [Migration & Cutover](./15-migration-and-cutover.md) | 🔴 Getting off Squarespace without breaking email or search |
+| **18** | [Staging & Deployment](./18-staging-and-deployment.md) | How to get a URL you can open on a phone — needs no DNS change |
 | **17** | [Action Tracker](./17-action-tracker.md) | **The single checklist** — design tasks, Kit, email notifications, analytics, infra, legal |
 
 ### Decisions
