@@ -1,0 +1,146 @@
+---
+/**
+ * §1 — the sticky header.
+ *
+ * Deliberately minimal. It exists to prove three things work: the chrome gate,
+ * the CSS logo lockup, and the live accent reading through from `:root`.
+ *
+ * NOT HERE YET, by design:
+ *   - the mode dial (belongs with `mode.ts`)
+ *   - the mobile menu — below 900px the nav links are hidden rather than
+ *     wrapped, so the header cannot cause horizontal scroll [P2]. The disclosure
+ *     button goes where the comment says.
+ *
+ * `data-nk-chrome` opts this element into the opening sequence's chrome gate.
+ * Note the polarity: it is VISIBLE by default and the sequence hides it while
+ * it owns the screen. A JS failure leaves the header exactly where it is. [P1]
+ *
+ * The header's natural flow position lands at the end of the 320vh runway, so
+ * the handoff from the sequence is gapless with no scroll maths.
+ */
+import Logo from './Logo.astro';
+import type { NavItem } from '../lib/content';
+
+interface Props {
+  nav: NavItem[];
+  cta: { label: string; href: string };
+  logo: { wordmark: string; homeLabel: string; homeHref: string };
+}
+
+const { nav, cta, logo } = Astro.props;
+---
+
+<header class="nk-header" data-nk-chrome="true">
+  <div class="nk-header__row">
+    <Logo wordmark={logo.wordmark} href={logo.homeHref} label={logo.homeLabel} />
+
+    <nav class="nk-header__nav" aria-label="Primary">
+      {nav.map((item) => <a class="nk-header__link" href={item.href}>{item.label}</a>)}
+      {/* The mobile disclosure button belongs here. */}
+      <a class="nk-header__cta" href={cta.href}>
+        <span class="nk-header__cta-slot" aria-hidden="true"></span>
+        {cta.label}
+      </a>
+    </nav>
+  </div>
+</header>
+
+<style>
+  @layer components {
+    .nk-header {
+      position: sticky;
+      top: 0;
+      z-index: var(--nk-z-header);
+      background: var(--nk-veil);
+      transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+    }
+
+    /* Progressive, not assumed. Without it the veil is simply opaque enough
+       to read against. [P3] */
+    @supports (backdrop-filter: blur(1px)) {
+      .nk-header {
+        backdrop-filter: blur(var(--nk-veil-blur));
+      }
+    }
+
+    .nk-header__row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      max-width: var(--nk-content-max);
+      margin: 0 auto;
+      padding: var(--nk-header-pad);
+    }
+
+    .nk-header__nav {
+      display: flex;
+      align-items: center;
+      gap: 30px;
+      margin-left: auto;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+    }
+
+    .nk-header__link {
+      display: inline-flex;
+      align-items: center;
+      min-height: var(--nk-tap-min);
+      color: var(--nk-ink-muted);
+    }
+
+    .nk-header__link:hover {
+      color: var(--nk-coral);
+    }
+
+    .nk-header__cta {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: var(--nk-tap-min);
+      padding: 14px 26px;
+      overflow: hidden;
+      color: var(--nk-paper);
+      background: var(--nk-ink);
+      border-radius: var(--nk-radius-oval);
+      transition:
+        background-color var(--nk-dur-colour) ease,
+        transform var(--nk-dur-step) var(--nk-ease-step);
+    }
+
+    .nk-header__cta:hover {
+      color: var(--nk-paper);
+      background: var(--nk-cobalt);
+      transform: translateY(-2px);
+    }
+
+    .nk-header__cta-slot {
+      position: absolute;
+      right: 0;
+      bottom: 7px;
+      left: 0;
+      height: 3px;
+      background: var(--nk-accent);
+      transition: background-color var(--nk-dur-accent) var(--nk-ease-accent);
+    }
+
+    /* Below the handoff's own 900px breakpoint the nav collapses to the CTA
+       alone. The links stay reachable from the footer until the mobile menu
+       lands; hiding them is what keeps `scrollWidth <= clientWidth`. [P2] */
+    @media (max-width: 900px) {
+      .nk-header__row {
+        padding: 12px 20px;
+      }
+
+      .nk-header__link {
+        display: none;
+      }
+
+      .nk-header__cta {
+        padding: 12px 20px;
+      }
+    }
+  }
+</style>

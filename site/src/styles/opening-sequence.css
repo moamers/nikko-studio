@@ -1,0 +1,288 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   opening-sequence.css — §0, the opening sequence.
+
+   CLIENT-SUPPLIED. REPRODUCED VERBATIM.
+
+   Every declaration between the two "supplied block" markers below is copied
+   byte-for-byte from `design-handoff/homepage/Nikko Homepage.dc.html`
+   (lines 63–295). It has its own `--nkhero-*` palette and its own typeface
+   (Helvetica/Arial, not Archivo) on purpose.
+
+   This is a DOCUMENTED EXCEPTION to P11 (one source of truth per fact):
+   the handoff (§ 0, "Its own palette — deliberately not the site's") states
+   that re-tokenising this block would be a redesign, and that the seam
+   between it and the site proper is intentional. Do not fold these six
+   colours into `tokens.css`. Do not retime the beats.
+
+   Two defects in the source are fixed elsewhere and noted here:
+     (a) duplicate `id="top"` — resolved in `OpeningSequence.astro`.
+     (b) the chrome gate defaulted to hidden — INVERTED below, per P1/P3.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── the chrome gate (INVERTED — see defect (b)) ───────────────────────────
+   The source shipped `[data-nk-chrome] { visibility:hidden; opacity:0 }` as
+   the default and revealed it with `data-nkhero-live="1"`. The handoff itself
+   flags the hazard: "Default-hidden means a JS failure would leave the site
+   with no navigation."
+
+   So the polarity is reversed. Chrome is VISIBLE in CSS. The script sets
+   `data-nkhero-live="0"` on the page shell to hide it *while the sequence
+   owns the screen*, and back to "1" at handoff (exit > 0.02, ~86% of the
+   runway). No JavaScript, no attribute, no hiding — the header is simply
+   there. [P1, P3]
+
+   The 420ms transition from the handoff is preserved. It is armed only after
+   the script has applied the first hidden state, so booting the sequence does
+   not produce a fade-out flash. */
+
+[data-nk-chrome] {
+  transition:
+    opacity var(--nk-dur-chrome) var(--nk-ease-chrome),
+    transform var(--nk-dur-chrome) var(--nk-ease-chrome);
+}
+
+[data-nkhero-live='0'] [data-nk-chrome] {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+[data-nkhero-live='0']:not([data-nkhero-armed]) [data-nk-chrome] {
+  transition: none;
+}
+
+/* ── supplied block: begin ─────────────────────────────────────────────── */
+  .nkhero-stage,
+  .nkhero-stage *,
+  .nkhero-stage *::before,
+  .nkhero-stage *::after { box-sizing: border-box; }
+
+  .nkhero-stage {
+    --nkhero-ink: #111111;
+    --nkhero-paper: #f1eee5;
+    --nkhero-cream: #f8f4e8;
+    --nkhero-coral: #f0584b;
+    --nkhero-yellow: #f4c62f;
+    --nkhero-blue: #333cdf;
+    --nkhero-opening: 0;
+    --nkhero-resolve: 0;
+    --nkhero-handoff: 0;
+    --nkhero-exit: 0;
+    --nkhero-signal: 0;
+    --nkhero-band: 0.002;
+    --nkhero-image-shift: 4%;
+    position: relative;
+    width: 100%;
+    height: 320vh;
+    margin: 0;
+    padding: 0;
+    background: var(--nkhero-ink);
+    color: var(--nkhero-cream);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    isolation: isolate;
+  }
+
+  .nkhero-frame {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 100vh;
+    min-height: 620px;
+    overflow: hidden;
+    background: var(--nkhero-ink);
+    color: var(--nkhero-cream);
+  }
+
+  .nkhero-opening-note {
+    position: absolute;
+    z-index: 15;
+    left: 1.25rem;
+    font-family: "Courier New", monospace;
+    font-size: 0.66rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: calc((1 - var(--nkhero-opening)) * 0.75);
+  }
+
+  .nkhero-opening-note-top { top: 1.25rem; }
+  .nkhero-opening-note-bottom { bottom: 1.25rem; }
+
+  .nkhero-image-band {
+    position: absolute;
+    z-index: 2;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: calc(100vh * var(--nkhero-band));
+    min-height: 2px;
+    overflow: hidden;
+    background: var(--nkhero-coral);
+    transform: translateY(-50%);
+    will-change: height;
+  }
+
+  .nkhero-image-band img {
+    position: absolute;
+    top: 50%;
+    left: var(--nkhero-image-shift);
+    display: block;
+    width: 108%;
+    height: 100vh;
+    max-width: none;
+    object-fit: cover;
+    object-position: center;
+    filter: saturate(0.85) contrast(1.08);
+    transform: translateY(-50%) scale(calc(1.05 - var(--nkhero-opening) * 0.05));
+  }
+
+  .nkhero-occlusion {
+    position: absolute;
+    z-index: 6;
+    top: 0;
+    width: calc(50% - min(28vw, 285px));
+    height: 100%;
+    background: var(--nkhero-ink);
+    opacity: var(--nkhero-resolve);
+  }
+
+  .nkhero-occlusion-left { left: 0; }
+  .nkhero-occlusion-right { right: 0; }
+
+  .nkhero-origin-mark {
+    position: absolute;
+    z-index: 7;
+    top: 50%;
+    left: 50%;
+    width: min(56vw, 570px);
+    aspect-ratio: 1.64 / 1;
+    overflow: hidden;
+    border-radius: 50%;
+    opacity: calc(var(--nkhero-resolve) * (1 - var(--nkhero-exit)));
+    transform: translate(-50%, -50%) scale(calc(0.83 + var(--nkhero-resolve) * 0.17));
+  }
+
+  .nkhero-origin-lockup,
+  .nkhero-origin-symbol {
+    display: block;
+    width: 100%;
+  }
+
+  .nkhero-origin-symbol {
+    position: relative;
+    aspect-ratio: 1.64 / 1;
+    overflow: hidden;
+    border-radius: 50%;
+    background: transparent;
+    border: clamp(4px, 0.7vw, 9px) solid var(--nkhero-cream);
+  }
+
+  .nkhero-origin-slot {
+    position: absolute;
+    top: 48.5%;
+    left: 0;
+    width: 100%;
+    height: 12.5%;
+    background: var(--nkhero-cream);
+  }
+
+  .nkhero-signal-line {
+    position: absolute;
+    z-index: 3;
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    opacity: var(--nkhero-signal);
+    transform: translateY(var(--nkhero-offset));
+  }
+
+  .nkhero-signal-line-coral { --nkhero-offset: -12px; background: var(--nkhero-coral); }
+  .nkhero-signal-line-cream { --nkhero-offset: -4px; background: var(--nkhero-cream); }
+  .nkhero-signal-line-yellow { --nkhero-offset: 4px; background: var(--nkhero-yellow); }
+  .nkhero-signal-line-blue { --nkhero-offset: 12px; background: var(--nkhero-blue); }
+
+  .nkhero-title {
+    position: absolute;
+    z-index: 10;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: clamp(5rem, 16.7vw, 18rem);
+    font-weight: 950;
+    line-height: 0.71;
+    letter-spacing: -0.09em;
+    text-align: center;
+    opacity: calc(var(--nkhero-resolve) * (1 - var(--nkhero-handoff)));
+    pointer-events: none;
+  }
+
+  .nkhero-title span { position: absolute; }
+
+  .nkhero-title-top {
+    bottom: calc(50% + 0.04em);
+    color: var(--nkhero-cream);
+    transform: translateX(calc((1 - var(--nkhero-resolve)) * -8vw));
+  }
+
+  .nkhero-title-bottom {
+    top: calc(50% + 0.04em);
+    color: var(--nkhero-blue);
+    transform: translateX(calc((1 - var(--nkhero-resolve)) * 8vw));
+  }
+
+  .nkhero-resolution {
+    position: absolute;
+    z-index: 14;
+    left: 50%;
+    bottom: 7vh;
+    width: min(90vw, 750px);
+    display: flex;
+    justify-content: space-between;
+    gap: 2rem;
+    font-size: clamp(1rem, 1.55vw, 1.45rem);
+    font-weight: 700;
+    opacity: calc(var(--nkhero-handoff) * (1 - var(--nkhero-exit)));
+    transform: translate(-50%, calc((1 - var(--nkhero-handoff)) * 24px));
+  }
+
+  .nkhero-resolution p { margin: 0; }
+
+  .nkhero-source-line {
+    position: absolute;
+    z-index: 14;
+    right: 1.25rem;
+    bottom: 1.2rem;
+    width: min(31rem, 48vw);
+    margin: 0;
+    font-family: "Courier New", monospace;
+    font-size: 0.62rem;
+    line-height: 1.35;
+    letter-spacing: 0.075em;
+    text-align: right;
+    text-transform: uppercase;
+    opacity: calc(var(--nkhero-handoff) * (1 - var(--nkhero-exit)) * 0.66);
+  }
+
+  @media (max-width: 900px) {
+    .nkhero-stage { height: 270vh; }
+    .nkhero-origin-mark { width: 74vw; }
+    .nkhero-title { font-size: 20vw; }
+    .nkhero-resolution {
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      text-align: center;
+    }
+    .nkhero-source-line { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nkhero-stage { height: 100vh; }
+    .nkhero-origin-mark,
+    .nkhero-title,
+    .nkhero-resolution { opacity: 1; }
+    .nkhero-image-band { height: 5px; }
+  }
+/* ── supplied block: end ───────────────────────────────────────────────── */

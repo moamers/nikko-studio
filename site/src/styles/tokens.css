@@ -1,0 +1,212 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   tokens.css — the single source of truth for every design value.  [P11]
+
+   Source: design-handoff/homepage/README.md § "Design Tokens".
+   Every value here is quoted from that document. If a value is wrong, it is
+   wrong here and nowhere else.
+
+   RULE: no hex literal, no magic duration and no bespoke easing may appear
+   anywhere else in `src/`. Three documented exceptions:
+     1. `opening-sequence.css` — client-supplied, deliberately its own visual
+        world with its own `--nkhero-*` palette (handoff § 0).
+     2. `public/favicon.svg` and `public/site.webmanifest` — standalone
+        documents that cannot read this file; ink, paper and the Horizon
+        accent are duplicated there by necessity.
+     3. `<meta name="theme-color">` in `Base.astro` — an HTML attribute
+        cannot hold a `var()`. It mirrors `--nk-paper`.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@layer tokens {
+  :root {
+    /* ── Colour ─────────────────────────────────────────────────────────
+       Channel triplets accompany each colour that is ever used with alpha,
+       so `rgb(var(--nk-ink-rgb) / 0.12)` never needs a second hex literal. */
+    --nk-ink: #111110;
+    --nk-ink-rgb: 17 17 16;
+    --nk-paper: #F2ECDF;
+    --nk-paper-rgb: 242 236 223;
+    --nk-ink-muted: #4A463C;            /* secondary text on paper */
+    --nk-paper-muted: #B5AC98;          /* secondary text on ink — NEVER on paper [P10] */
+    --nk-coral: #EE5439;
+    --nk-coral-rgb: 238 84 57;
+    --nk-cobalt: #2B45F0;
+    --nk-cobalt-rgb: 43 69 240;
+    --nk-yellow: #FFD400;
+    --nk-yellow-rgb: 255 212 0;
+    --nk-turquoise: #00B2A9;
+    --nk-turquoise-rgb: 0 178 169;
+
+    /* ── Accent cycle ───────────────────────────────────────────────────
+       Three states rotate on a timer. `accent.ts` writes the four live
+       properties below onto :root; nothing else changes. */
+    --nk-accent-horizon: #FFD400;
+    --nk-ground-horizon: #F7EED0;
+    --nk-ground-horizon-rgb: 247 238 208;
+
+    --nk-accent-last-light: #EE5439;
+    --nk-ground-last-light: #F9E9DF;
+    --nk-ground-last-light-rgb: 249 233 223;
+
+    --nk-accent-offshore: #2B45F0;
+    --nk-ground-offshore: #EAEDF8;
+    --nk-ground-offshore-rgb: 234 237 248;
+
+    /* Live accent state — initial value is state 1, "Horizon".
+       `--nk-on-accent` is the text colour that sits legibly on `--nk-accent`:
+       ink on yellow, paper on coral/cobalt. */
+    --nk-accent: var(--nk-accent-horizon);
+    --nk-on-accent: var(--nk-ink);
+    --nk-ground: var(--nk-ground-horizon);
+    --nk-veil: rgb(var(--nk-ground-horizon-rgb) / 0.74);
+    --nk-veil-blur: 9px;
+
+    /* Motion knobs the prototype exposes; genuinely a taste decision. */
+    --nk-accent-cycle-hold: 12s;
+    --nk-tint-depth: 1;
+
+    /* ── Typography ─────────────────────────────────────────────────────
+       Newsreader ships italic-only (handoff: "Editorial — Newsreader italic"),
+       so the family stack is only ever used with `font-style: italic`. */
+    --nk-font-display: 'Archivo Black', Helvetica, Arial, sans-serif;
+    --nk-font-body: 'Archivo', Helvetica, Arial, sans-serif;
+    --nk-font-mono: 'DM Mono', ui-monospace, 'Courier New', monospace;
+    --nk-font-editorial: 'Newsreader Variable', Newsreader, Georgia, serif;
+    --nk-font-arabic: 'Noto Kufi Arabic', system-ui, sans-serif;
+
+    /* Type scale — every clamp() in the handoff, named. */
+    --nk-size-body: clamp(16px, 1.35vw, 19px);
+    --nk-size-lead: clamp(17px, 1.4vw, 20px);
+    --nk-size-h1: clamp(32px, 4.6vw, 68px);
+    --nk-size-h2: clamp(30px, 4.6vw, 72px);
+    --nk-size-h2-services: clamp(34px, 5.4vw, 88px);
+    --nk-size-h2-pitch: clamp(30px, 4.2vw, 64px);
+    --nk-size-h2-joyride: clamp(26px, 3.4vw, 52px);
+    --nk-size-h2-founder: clamp(26px, 3.2vw, 50px);
+    --nk-size-quote: clamp(30px, 4.2vw, 64px);
+    --nk-size-quote-sm: clamp(26px, 3vw, 44px);
+    --nk-size-editorial: clamp(19px, 1.9vw, 26px);
+    --nk-size-editorial-lg: clamp(30px, 4.2vw, 64px);
+    --nk-size-sampler: clamp(21px, 2.4vw, 34px);
+    --nk-size-marquee: clamp(13px, 1.5vw, 17px);
+    --nk-size-numeral: clamp(56px, 8vw, 116px);
+    --nk-size-wordswap: clamp(52px, 7vw, 110px);
+    --nk-size-price: clamp(22px, 2vw, 30px);
+    --nk-size-logo: 22px;
+    --nk-size-mono-xs: 9.5px;
+    --nk-size-mono-sm: 10px;
+    --nk-size-mono: 11px;
+    --nk-size-mono-lg: 12px;
+    --nk-size-note: 13px;
+    --nk-size-input: 16px;              /* never lower — iOS zooms below 16px [P2] */
+
+    --nk-leading-display: 0.78;
+    --nk-leading-h1: 0.94;
+    --nk-leading-flat: 1;
+    --nk-leading-body: 1.55;
+    --nk-leading-arabic: 1.5;
+
+    --nk-tracking-display: -0.03em;
+    --nk-tracking-display-tight: -0.05em;
+    --nk-tracking-h1: -0.035em;
+    --nk-tracking-mono-tight: 0.12em;
+    --nk-tracking-mono: 0.14em;
+    --nk-tracking-mono-wide: 0.2em;
+
+    /* ── Shape: the "R2" rule — radius is 0 or 50%, never a plain corner ── */
+    --nk-radius-arch: 50% 50% 8px 8px / 26% 26% 8px 8px;
+    --nk-radius-arch-frame: 50% 50% 10px 10px / 26% 26% 10px 10px;
+    --nk-radius-arch-service: 50% 50% 8px 8px / 22% 22% 8px 8px;
+    --nk-radius-arch-tile: 50% 50% 6px 6px / 30% 30% 6px 6px;
+    --nk-radius-lid-card: 34px 34px 8px 8px;
+    --nk-radius-lid-panel: 26px 26px 8px 8px;
+    --nk-radius-section-lid: 50% 50% 0 0 / clamp(40px, 6vw, 90px) clamp(40px, 6vw, 90px) 0 0;
+    --nk-radius-oval: 50%;              /* a true 50%, never 999px */
+    --nk-radius-scrap: 16px;            /* documented exception: loose photos */
+    --nk-radius-input: 3px;             /* documented exception: form inputs */
+
+    /* ── Spacing & layout ───────────────────────────────────────────────── */
+    --nk-content-max: 1280px;
+    --nk-gutter: 40px;
+    --nk-section-pad: clamp(80px, 10vw, 150px) var(--nk-gutter) 0;
+    --nk-section-pad-bleed: clamp(60px, 7vw, 110px) 0 clamp(70px, 8vw, 120px);
+    --nk-section-pad-turquoise: clamp(70px, 8vw, 120px) 0 clamp(60px, 7vw, 100px);
+    --nk-measure-prose: 56ch;
+    --nk-measure-prose-min: 46ch;
+    --nk-measure-heading: 32ch;
+    --nk-measure-heading-tight: 24ch;
+    --nk-gap-cards: clamp(20px, 2.6vw, 34px);
+    --nk-header-pad: 16px var(--nk-gutter);
+
+    /* ── Motion ─────────────────────────────────────────────────────────── */
+    --nk-dur-step: 120ms;               /* stepped, mechanical button hover  */
+    --nk-ease-step: steps(2);
+    --nk-dur-colour: 200ms;
+    --nk-dur-lift: 140ms;
+    --nk-dur-card: 220ms;
+    --nk-ease-card: cubic-bezier(0.33, 0.1, 0.25, 1);
+    --nk-dur-accent: 2600ms;
+    --nk-dur-ground: 3400ms;
+    --nk-ease-accent: cubic-bezier(0.4, 0, 0.2, 1);
+    --nk-dur-deal: 220ms;
+    --nk-ease-deal: cubic-bezier(0.3, 1.3, 0.5, 1);
+    --nk-stagger-deal: 60ms;
+    --nk-dur-shutter: 300ms;
+    --nk-ease-shutter: cubic-bezier(0.3, 1, 0.4, 1);
+    --nk-dur-sampler: 780ms;
+    --nk-ease-sampler: cubic-bezier(0.36, 0.02, 0.2, 1);
+    --nk-dur-chrome: 420ms;             /* chrome reveal after the opening sequence */
+    --nk-ease-chrome: ease;
+    --nk-dur-collage: 420ms;
+    --nk-ease-collage: cubic-bezier(0.3, 1, 0.4, 1);
+    --nk-dur-counter: 1100ms;
+    --nk-dur-residue: 820ms;
+    --nk-dur-marquee: 34s;
+    --nk-interval-sampler: 3800ms;
+
+    /* ── Elevation ──────────────────────────────────────────────────────── */
+    --nk-shadow-ticket: 8px 8px 0 var(--nk-turquoise);
+    --nk-shadow-scrap: 0 16px 34px rgb(var(--nk-ink-rgb) / 0.24);
+    --nk-shadow-card-hover: 0 0 0 2px var(--nk-ink);
+
+    /* ── Rules & strokes ────────────────────────────────────────────────── */
+    --nk-rule: 2px solid var(--nk-ink);
+    --nk-rule-hair: 1.5px solid rgb(var(--nk-ink-rgb) / 0.22);
+    --nk-rule-hair-soft: 1.5px solid rgb(var(--nk-ink-rgb) / 0.18);
+    --nk-rule-dashed: 1.5px dashed rgb(var(--nk-ink-rgb) / 0.28);
+    --nk-rule-dotted-coral: 3px dotted rgb(var(--nk-coral-rgb) / 0.55);
+    --nk-rail: rgb(var(--nk-ink-rgb) / 0.12);
+
+    /* ── Focus [P10] ────────────────────────────────────────────────────── */
+    --nk-focus-width: 3px;
+    --nk-focus-colour: var(--nk-coral);
+    --nk-focus-offset: 3px;
+
+    /* ── Stacking order ─────────────────────────────────────────────────── */
+    --nk-z-collage: 0;
+    --nk-z-scrap: 30;
+    --nk-z-header: 50;
+    --nk-z-rail: 60;
+    --nk-z-grain: 90;
+    --nk-z-cursor: 95;
+
+    /* Minimum comfortable touch target [P2]. */
+    --nk-tap-min: 44px;
+  }
+
+  /* On coral and cobalt the on-accent text flips to paper. These two rules
+     exist so `accent.ts` only has to write `--nk-accent` and `--nk-ground`
+     plus the matching `data-accent` attribute — the pairings live here. */
+  :root[data-accent='last-light'] {
+    --nk-accent: var(--nk-accent-last-light);
+    --nk-on-accent: var(--nk-paper);
+    --nk-ground: var(--nk-ground-last-light);
+    --nk-veil: rgb(var(--nk-ground-last-light-rgb) / 0.74);
+  }
+
+  :root[data-accent='offshore'] {
+    --nk-accent: var(--nk-accent-offshore);
+    --nk-on-accent: var(--nk-paper);
+    --nk-ground: var(--nk-ground-offshore);
+    --nk-veil: rgb(var(--nk-ground-offshore-rgb) / 0.74);
+  }
+}

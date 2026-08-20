@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────
+#  THE HERO — the first thing anyone sees after the opening
+#  sequence. Edit the text between the quotes. Keep the labels
+#  on the left exactly as they are.
+# ─────────────────────────────────────────────────────────────
+
+ticket:
+  - label: "London"
+  - label: "UAE"
+  - label: "Creative design studio"
+    highlight: true          # this one is filled with the live accent colour
+
+heading: >
+  Like family albums, plastic straws on the ocean floor, and a Nokia 3310
+  thrown from a fast-moving car, stories endure.
+
+lead: >
+  Nikko is a story studio. We market for memorability, so when it's time to
+  buy, book, recommend or return, you're the only one on their mind.
+
+subLead: >
+  For outliers, category-of-one creatives and the ones building brands that
+  make necks crack as people swivel back for one more look before the light
+  turns green.
+
+cta:
+  label: "Pitch your project"
+  href: "#pitch"
+
+collage:
+  image: "collage-hero.png"
+  alt: ""                    # empty = decorative, hidden from screen readers

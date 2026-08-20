@@ -17,6 +17,7 @@ If separate design, content, product, or engineering instructions are provided e
 | **This file** | Business context — what Nikko is, who it serves, how it makes money | **Source of truth for business meaning** |
 | **[`docs/`](./docs/README.md)** | Engineering documentation — architecture, principles, delivery plan | **Source of truth for how we build** |
 | **[`design-handoff/homepage/`](./design-handoff/homepage/README.md)** | Design handoff — the homepage spec, design source, prototype, art direction, assets | **Source of truth for design intent** |
+| **[`site/`](./site/README.md)** | The website itself — Astro, TypeScript, plain CSS | The application |
 
 ### Engineering documentation
 
@@ -43,7 +44,7 @@ Needing decisions or action from outside engineering:
 | ⚠️ [14 — Design Source Conflicts](./docs/14-design-source-conflicts.md) | Where the two design documents contradict each other |
 | ⚠️ [06 — Mobile Risks](./docs/06-responsive-and-mobile-risks.md) | Elements of the design that break on a phone |
 
-**Status:** architecture proposed, awaiting review. No application code has been written yet.
+**Status:** architecture proposed, awaiting review. The application is scaffolded in [`site/`](./site/README.md) — foundations, the opening sequence and the page shell; the ten homepage sections are not built yet.
 
 ---
 

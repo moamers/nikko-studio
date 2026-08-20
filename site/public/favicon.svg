@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Nikko Studio">
+  <title>Nikko Studio</title>
+  <!-- The logo mark: an ink oval carrying "the slot". -->
+  <!-- These three fills duplicate the ink, paper and Horizon accent tokens
+       in src/styles/tokens.css. A standalone SVG cannot read a custom
+       property from the document, so this is a documented exception to P11,
+       noted in the header of tokens.css. -->
+  <defs>
+    <clipPath id="oval">
+      <ellipse cx="32" cy="32" rx="26.9" ry="18.35"/>
+    </clipPath>
+  </defs>
+  <ellipse cx="32" cy="32" rx="26.9" ry="18.35" fill="#111110"/>
+  <g clip-path="url(#oval)">
+    <rect x="5.1" y="33.22" width="53.8" height="6.12" fill="#F2ECDF"/>
+    <rect x="5.1" y="39.34" width="53.8" height="3.67" fill="#FFD400"/>
+  </g>
+</svg>

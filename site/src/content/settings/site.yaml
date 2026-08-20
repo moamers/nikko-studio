@@ -1,0 +1,32 @@
+# ─────────────────────────────────────────────────────────────
+#  SITE SETTINGS — the name, the description search engines and
+#  language models read, and the header navigation.
+# ─────────────────────────────────────────────────────────────
+
+title: "Nikko Studio"
+tagline: "Story-led Marketing for Memorability"
+
+# Kept under 160 characters so search engines and language models get the
+# whole sentence rather than an ellipsis. The build enforces it.
+description: >
+  A creative story studio in London and the UAE. Nikko markets for
+  memorability, so when it's time to buy or book, you're the only one in mind.
+
+locale: "en-GB"
+
+nav:
+  - label: "The work"
+    href: "#work"
+  - label: "Put us to work"
+    href: "#services"
+  - label: "Founder"
+    href: "#founder"
+
+cta:
+  label: "Pitch your project"
+  href: "#pitch"
+
+logo:
+  wordmark: "Nikko"
+  homeLabel: "Nikko Studio — back to the top"
+  homeHref: "#top"
