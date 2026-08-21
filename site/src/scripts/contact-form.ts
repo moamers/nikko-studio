@@ -83,6 +83,11 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 export function initContactForm(): void {
+  // Before the form guard: the section rail is navigation, not form
+  // behaviour, and it should still light up on a page whose form failed to
+  // render for any reason.
+  wireSectionRail();
+
   const form = document.querySelector<HTMLFormElement>(FORM_SELECTOR);
   if (!form) return;
 
@@ -121,6 +126,157 @@ export function initContactForm(): void {
     window.scrollTo({ top: 0, behavior: 'auto' });
     form.querySelector<HTMLElement>('input, textarea')?.focus();
   });
+}
+
+/* ── The section rail's current-section mark ──────────────────────────────
+ *
+ * The design highlights whichever of the five sections the visitor is
+ * actually reading, in both places the section list appears: the sticky
+ * left rail on desktop and the sticky horizontal chip bar below 1080px.
+ * This is the enhancement that draws it.
+ *
+ * Four decisions worth stating, because each has an obvious wrong version:
+ *
+ *   1. `IntersectionObserver`, not a scroll handler. A scroll handler runs
+ *      on every frame of every scroll for the life of the page and has to
+ *      measure five elements each time; the observer is told once what to
+ *      watch and speaks only when something crosses a line. [P4]
+ *
+ *   2. The observer's root box is cropped to a band across the upper middle
+ *      of the viewport — 140px down from the top, clearing the header and
+ *      the sticky chip bar, which is where the design source puts it too,
+ *      to 45% of the way down. A section is "current" when it is in that
+ *      band, which is where reading happens — not merely when some pixel of
+ *      it is on screen.
+ *
+ *   3. The observer is only the TRIGGER. What it reports is not used to
+ *      pick the answer, because a naive version does exactly that and
+ *      flickers: at a boundary two sections are in the band at once, the
+ *      last entry in the batch wins, and batch order is not document order.
+ *      Instead each callback recomputes the answer from geometry — the last
+ *      section whose top has passed the band's top line is the one being
+ *      read. Five `getBoundingClientRect()` calls, only at the moments a
+ *      section crosses the band, and the answer depends solely on where the
+ *      page is: never on scroll direction, never on which entry the browser
+ *      happened to report last.
+ *
+ *   4. That rule also answers the two ends. Above the first section every
+ *      top is still below the line, so the first section is marked and the
+ *      rail is never blank on arrival. Past the last section every top is
+ *      above it, so the last section stays marked rather than blinking out
+ *      over the footer — including after an instant jump, where a
+ *      "remember the previous answer" rule would have gone stale.
+ *
+ * With JavaScript off none of this runs, no link carries `aria-current`,
+ * and the rail and the chip bar are exactly what they were: five links
+ * that work. [P3]
+ */
+
+/**
+ * The reading line, in px from the top of the viewport: clear of the header
+ * and of the sticky chip bar, which is also where the design source puts it.
+ * `RAIL_BAND` is the observer's root box — a band starting at that line and
+ * ending 45% down the viewport — and `BAND_TOP` is the line itself, which is
+ * what actually decides the answer.
+ */
+const BAND_TOP = 140;
+const RAIL_BAND = `-${BAND_TOP}px 0px -55% 0px`;
+
+function wireSectionRail(): void {
+  const links = Array.from(
+    document.querySelectorAll<HTMLAnchorElement>('.nk-c-rail-link, .nk-c-railbar-chip'),
+  );
+  if (links.length === 0 || typeof IntersectionObserver === 'undefined') return;
+
+  /** id → the (up to two) links pointing at it: the rail's and the bar's. */
+  const linksBySection = new Map<string, HTMLAnchorElement[]>();
+  const sections: HTMLElement[] = [];
+
+  for (const link of links) {
+    const id = (link.getAttribute('href') ?? '').replace(/^#/, '');
+    const section = id ? document.getElementById(id) : null;
+    if (!section) continue;
+    const existing = linksBySection.get(id);
+    if (existing) {
+      existing.push(link);
+    } else {
+      linksBySection.set(id, [link]);
+      sections.push(section);
+    }
+  }
+  if (sections.length === 0) return;
+
+  const order = sections.map((section) => section.id);
+  let current = '';
+
+  /** The last section whose top has passed the reading line; else the first. */
+  const readingNow = (): string => {
+    let chosen = order[0] ?? '';
+    for (const section of sections) {
+      if (section.getBoundingClientRect().top > BAND_TOP) break;
+      chosen = section.id;
+    }
+    return chosen;
+  };
+
+  const apply = (id: string) => {
+    if (!id || id === current) return;
+    current = id;
+    for (const [sectionId, group] of linksBySection) {
+      const isCurrent = sectionId === id;
+      for (const link of group) {
+        // `aria-current` is the announcement AND the style hook — the CSS
+        // selects on the attribute, so the colour cannot appear without the
+        // announcement, or the announcement without the colour. [P10]
+        if (isCurrent) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      }
+      if (isCurrent) revealChip(group);
+    }
+  };
+
+  const observer = new IntersectionObserver(() => apply(readingNow()), {
+    rootMargin: RAIL_BAND,
+    threshold: 0,
+  });
+
+  for (const section of sections) observer.observe(section);
+  // Something is marked from the first paint, before a single scroll. (The
+  // observer also fires once on observe, but only on the next frame.)
+  apply(readingNow());
+}
+
+/**
+ * Mobile only: bring the marked chip into view inside the chip bar's own
+ * horizontal scroll, when it has drifted out of it.
+ *
+ * Deliberately NOT `scrollIntoView`, even with `block: 'nearest'`. This
+ * runs while the visitor is scrolling the page, and `scrollIntoView` may
+ * scroll any ancestor it likes — including the document — to satisfy the
+ * request. A vertical nudge here would be the page fighting the very
+ * gesture that triggered it. Scrolling the track itself can only ever move
+ * the track. It is also a no-op on desktop for free: the rail is a column
+ * with nothing to scroll sideways, so the `scrollWidth` test fails and
+ * nothing happens.
+ *
+ * Reduced motion gets a jump instead of a glide, like everything else here.
+ */
+function revealChip(group: HTMLAnchorElement[]): void {
+  for (const link of group) {
+    const track = link.parentElement;
+    if (!track || track.scrollWidth <= track.clientWidth) continue;
+
+    const chip = link.getBoundingClientRect();
+    const view = track.getBoundingClientRect();
+    const margin = 12;
+    if (chip.left >= view.left + margin && chip.right <= view.right - margin) continue;
+
+    const smooth = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    track.scrollBy({
+      left: chip.left - view.left - (view.width - chip.width) / 2,
+      behavior: smooth ? 'smooth' : 'auto',
+    });
+  }
 }
 
 /* ── Draft autosave, under a switch the visitor owns ──────────────────────
@@ -333,7 +489,7 @@ interface Fragment {
   /** Stable identity, so a chip that hasn't changed is never re-stamped. */
   key: string;
   label: string;
-  tone: 'ink' | 'cobalt' | 'yellow';
+  tone: 'ink' | 'cobalt' | 'yellow' | 'coral';
 }
 
 const FRAG_MAX = 17;
@@ -344,7 +500,9 @@ const FRAG_MAX = 17;
  *
  * Tones carry the same meaning they do on the controls themselves: cobalt
  * for the single-select intent, yellow for the multi-select deliverables,
- * outline for typed-in text. Values are read straight out of the form on
+ * yellow again for the timing chips (which share the deliverables' fill),
+ * coral for the budget box, outline for typed-in text. One colour language, said twice — in the control and in
+ * the rail — so a glance at the rail is a glance at the form. Values are read straight out of the form on
  * every input and change, so the summary cannot drift from the fields, and
  * option codes resolve to their founder-authored labels through the same
  * `#nk-contact-options` map the receipt uses — never a second hand-typed
@@ -392,10 +550,10 @@ function collectFragments(form: HTMLFormElement, options: OptionGroups): Fragmen
   if (year) {
     const month = get('month');
     const label = year === 'flexible' ? 'Flexible' : [month, year].filter(Boolean).join(' ');
-    push('timing', label, 'ink');
+    push('timing', label, 'yellow');
   }
 
-  if (get('budget')) push('budget', labelFor(options, 'budget', get('budget')), 'ink');
+  if (get('budget')) push('budget', labelFor(options, 'budget', get('budget')), 'coral');
 
   return frags;
 }

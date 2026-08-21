@@ -238,10 +238,10 @@ const hero = await getHero();
     }
 
     /* ── Analogue tells ───────────────────────────────────────────────
-       Analogue is the resting state (tokens.css), so these are visible by
-       default and switched off under `[data-mode='digital']` — the same
-       inversion the rest of the site uses, and the one that keeps a
-       no-JS page showing the same analogue world it opens with. */
+       Digital is the resting state (tokens.css), so these are hidden by
+       default and switched ON under `[data-mode='analogue']` — the same
+       inversion the rest of the site uses, and the one that keeps a no-JS
+       page on the clean render the site now opens with. */
     .nk-hero__scan-lines,
     .nk-hero__scan-sweep,
     .nk-hero__tint,
@@ -310,11 +310,18 @@ const hero = await getHero();
       }
     }
 
-    :root[data-mode='digital'] .nk-hero__scan-lines,
-    :root[data-mode='digital'] .nk-hero__scan-sweep,
-    :root[data-mode='digital'] .nk-hero__tint,
-    :root[data-mode='digital'] .nk-hero__tear {
+    .nk-hero__scan-lines,
+    .nk-hero__scan-sweep,
+    .nk-hero__tint,
+    .nk-hero__tear {
       display: none;
+    }
+
+    :root[data-mode='analogue'] .nk-hero__scan-lines,
+    :root[data-mode='analogue'] .nk-hero__scan-sweep,
+    :root[data-mode='analogue'] .nk-hero__tint,
+    :root[data-mode='analogue'] .nk-hero__tear {
+      display: block;
     }
 
     @keyframes nk-flick {

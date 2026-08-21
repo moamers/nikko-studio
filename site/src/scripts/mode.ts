@@ -1,9 +1,14 @@
 /**
  * Analogue / digital mode.
  *
- * Unpinned, it drifts with scroll depth: analogue above 52% of the scrollable
- * height, digital below. Clicking the dial pins the choice. (handoff
- * § "Analogue / digital mode", docs/05 § 2.)
+ * Unpinned, it drifts with scroll depth. The handoff has analogue in the top
+ * half and digital below; the founder inverted that on 2026-08-21, so a fresh
+ * load is DIGITAL and the analogue treatment arrives as you scroll into the
+ * page. Same mechanism and same threshold, opposite ends — the reasoning was
+ * that a first-time visitor met the grain immediately and then watched it
+ * vanish, which read as a rendering fault rather than as atmosphere. Clicking
+ * the dial still pins the choice. (handoff § "Analogue / digital mode",
+ * docs/05 § 2; deviation logged in docs/06.)
  *
  * ONE ATTRIBUTE on <html>; CSS does everything else. `tokens.css` maps
  * `data-mode` to `--nk-grain`, `--nk-img-filter` and `--nk-misreg`, so no
@@ -65,7 +70,7 @@ export function initMode(): Lifecycle {
   });
 
   let pinned: Mode | null = readPinned();
-  let auto: Mode = 'analogue';
+  let auto: Mode = 'digital';
   let applied: Mode | null = null;
 
   const dials = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-nk-mode-dial]'));
@@ -107,7 +112,7 @@ export function initMode(): Lifecycle {
     if (pinned) return;
     const max = document.documentElement.scrollHeight - window.innerHeight;
     const depth = max > 0 ? window.scrollY / max : 0;
-    const next: Mode = depth > threshold ? 'digital' : 'analogue';
+    const next: Mode = depth > threshold ? 'analogue' : 'digital';
     if (next === auto) return;
     auto = next;
     apply();

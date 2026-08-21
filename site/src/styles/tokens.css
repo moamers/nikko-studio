@@ -141,6 +141,14 @@
     --nk-measure-heading: 32ch;
     --nk-measure-heading-tight: 24ch;
     --nk-gap-cards: clamp(20px, 2.6vw, 34px);
+    /* The two rhythms a stacked column of form furniture is built from: a
+       note and the control under it (`--nk-gap-stack`), and one block of
+       the form and the next (`--nk-gap-block`, already the gap between the
+       fields of §05). Named here so the contact page's status line stacks
+       on the same scale as everything below it rather than on a one-off
+       pixel value. */
+    --nk-gap-stack: clamp(12px, 1.5vw, 18px);
+    --nk-gap-block: clamp(26px, 3.4vw, 40px);
 
     /* Pill geometry. Four sizes exist in the source and each is used by a
        different part of the page — see the size table in `Pill.astro`. The
@@ -207,9 +215,24 @@
     --nk-rule-dotted-coral: 3px dotted rgb(var(--nk-coral-rgb) / 0.55);
     --nk-rail: rgb(var(--nk-ink-rgb) / 0.12);
 
-    /* ── Focus [P10] ────────────────────────────────────────────────────── */
+    /* ── Focus [P10] ────────────────────────────────────────────────────
+       One ring for the whole site, on the founder's instruction: every
+       input should look the same wherever it is. Cobalt, not the coral the
+       homepage source specifies — and this is a correction, not only a
+       preference. Measured against the two grounds the ring is ever drawn
+       on (WCAG 2.4.11 wants 3:1 against what sits next to it):
+
+           cobalt on paper  5.55:1  ✓      cobalt on ink  2.89:1  ✗
+           coral  on paper  2.99:1  ✗      coral  on ink  5.36:1  ✓
+           yellow on paper  1.22:1  ✗      yellow on ink 13.20:1  ✓
+
+       Coral was therefore failing on paper — which is nearly every input on
+       the site — so the ring people actually meet is now the compliant one.
+       Cobalt fails on ink by the same measure, so the two ink grounds we
+       have (the mobile menu panel and the footer) override to yellow rather
+       than inherit a ring nobody can see. See the override below. */
     --nk-focus-width: 3px;
-    --nk-focus-colour: var(--nk-coral);
+    --nk-focus-colour: var(--nk-cobalt);
     --nk-focus-offset: 3px;
 
     /* ── Stacking order ─────────────────────────────────────────────────── */
@@ -224,10 +247,17 @@
     --nk-tap-min: 44px;
 
     /* ── Analogue / digital mode ────────────────────────────────────────
-       `mode.ts` writes `data-mode` on <html>. Analogue is the resting state,
-       so a page with no JavaScript is analogue — which is what the source's
-       `auto: 'analogue'` initial state means. (handoff § Analogue / digital
-       mode.)
+       `mode.ts` writes `data-mode` on <html>. DIGITAL is the resting state:
+       the founder inverted the drift on 2026-08-21 so a fresh load is clean
+       and the analogue treatment arrives on scroll. The resting state has to
+       follow, or the page paints the grain from the stylesheet and then has
+       it removed the moment the script runs — a measured ~140ms flash of an
+       effect that is not supposed to be there yet.
+
+       It also means a page with no JavaScript is the clean page, which is
+       the cheaper render and the safer default for the one visitor who
+       cannot switch. (handoff § Analogue / digital mode; deviation in
+       docs/06.)
 
        Six things change between the modes. Three are the properties below,
        read by whoever needs them; the other three are switched by selector,
@@ -240,14 +270,13 @@
          5. the cursor pool's gradient and blend mode           → cursor.css
          6. the dial's own label, `aria-pressed` and title      → mode.ts
 
-       Every one of them keys off `:root` for analogue and
-       `:root[data-mode='digital']` for digital — never the other way round,
-       so the no-JS page is the analogue page and nothing is stranded. */
+       Every one of them keys off `:root` for digital and
+       `:root[data-mode='analogue']` for analogue — never the other way
+       round, so the no-JS page is the clean page and nothing is stranded. */
     --nk-mode-flip: 0.52;               /* scroll depth at which mode drifts */
-    --nk-grain: 0.13;
-    --nk-img-filter: saturate(0.94) contrast(0.97) sepia(0.09);
-    --nk-misreg: 1.4px 0 0 rgb(var(--nk-turquoise-rgb) / 0.42),
-      -1.4px 0 0 rgb(var(--nk-coral-rgb) / 0.26);
+    --nk-grain: 0;
+    --nk-img-filter: saturate(1.06) contrast(1.04);
+    --nk-misreg: 0 0 0 rgb(var(--nk-ink-rgb) / 0);
 
     /* ── Cursor residue (desktop, fine pointer, motion allowed) ─────────── */
     --nk-cursor-w: 340px;
@@ -267,6 +296,17 @@
     --nk-bp-md: 768px;
     --nk-bp-lg: 1024px;
     --nk-bp-xl: 1280px;
+  }
+
+  /* ── Focus on ink ───────────────────────────────────────────────────
+     The two places the site draws a focus ring on its ink ground. Cobalt
+     measures 2.89:1 there and fails; yellow measures 13.20:1. Scoped to
+     the containers rather than set per-control, so any control added to
+     either of them inherits a legible ring without anyone remembering to
+     ask. [P10] */
+  .nk-menu,
+  .nk-pitch {
+    --nk-focus-colour: var(--nk-yellow);
   }
 
   /* On coral and cobalt the on-accent text flips to paper. These two rules
@@ -296,9 +336,10 @@
   }
 
   /* The other half of the mode switch. Analogue lives on `:root` above. */
-  :root[data-mode='digital'] {
-    --nk-grain: 0;
-    --nk-img-filter: saturate(1.06) contrast(1.04);
-    --nk-misreg: 0 0 0 rgb(var(--nk-ink-rgb) / 0);
+  :root[data-mode='analogue'] {
+    --nk-grain: 0.13;
+    --nk-img-filter: saturate(0.94) contrast(0.97) sepia(0.09);
+    --nk-misreg: 1.4px 0 0 rgb(var(--nk-turquoise-rgb) / 0.42),
+      -1.4px 0 0 rgb(var(--nk-coral-rgb) / 0.26);
   }
 }

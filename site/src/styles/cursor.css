@@ -33,21 +33,21 @@
     will-change: transform;
     background: radial-gradient(
       closest-side,
-      rgb(var(--nk-yellow-rgb) / 0.22),
-      rgb(var(--nk-coral-rgb) / 0.1) 58%,
-      transparent 100%
-    );
-    mix-blend-mode: multiply;
-  }
-
-  :root[data-mode='digital'] .nk-cursor__lens {
-    background: radial-gradient(
-      closest-side,
       rgb(var(--nk-cobalt-rgb) / 0.16),
       rgb(var(--nk-turquoise-rgb) / 0.08) 58%,
       transparent 100%
     );
     mix-blend-mode: screen;
+  }
+
+  :root[data-mode='analogue'] .nk-cursor__lens {
+    background: radial-gradient(
+      closest-side,
+      rgb(var(--nk-yellow-rgb) / 0.22),
+      rgb(var(--nk-coral-rgb) / 0.1) 58%,
+      transparent 100%
+    );
+    mix-blend-mode: multiply;
   }
 
   /* ── The residue: the logo's slot, dropped and fading ─────────────────── */
@@ -58,13 +58,13 @@
     height: 2px;
     border-radius: 1px;
     opacity: 0;
-    background: rgb(var(--nk-coral-rgb) / 0.5);
-    mix-blend-mode: multiply;
-  }
-
-  :root[data-mode='digital'] .nk-cursor__mark {
     background: rgb(var(--nk-cobalt-rgb) / 0.42);
     mix-blend-mode: normal;
+  }
+
+  :root[data-mode='analogue'] .nk-cursor__mark {
+    background: rgb(var(--nk-coral-rgb) / 0.5);
+    mix-blend-mode: multiply;
   }
 
   /* `cursor.ts` recycles ten of these forever, restarting the animation on
