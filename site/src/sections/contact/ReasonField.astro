@@ -1,0 +1,36 @@
+---
+/**
+ * §04 — The reason. One ruled-paper textarea plus a Newsreader-italic aside
+ * — the design's one "interruption" use of the editorial face, kept to
+ * exactly that and nowhere else on the page.
+ */
+import SectionHead from './SectionHead.astro';
+---
+
+<section id="reason" class="nk-c-section">
+  <SectionHead number="04" title="The reason" note="Why does this need to exist?" headingId="reason-heading" />
+
+  <div class="nk-c-reason-row">
+    <div class="nk-c-field nk-c-reason-field">
+      <label class="nk-c-label" for="f-why">
+        What's broken, missing or holding things back? <i class="nk-required-mark">*</i>
+      </label>
+      <textarea
+        class="nk-c-textarea nk-c-textarea--ruled nk-c-textarea--why"
+        id="f-why"
+        name="why"
+        required
+        minlength="12"
+        maxlength="4000"
+        placeholder="Start anywhere."
+        aria-describedby="err-why count-why"
+      ></textarea>
+      <span class="nk-c-count" id="count-why" aria-hidden="true"></span>
+      <span class="nk-c-error" id="err-why" role="alert"></span>
+    </div>
+
+    <p class="nk-c-aside">
+      Half-formed is fine. We're after the shape of the problem, not a polished brief.
+    </p>
+  </div>
+</section>

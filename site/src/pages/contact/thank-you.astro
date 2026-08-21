@@ -1,0 +1,66 @@
+---
+/**
+ * The no-JS success page. `src/lib/enquiry/server/env.ts` redirects a plain
+ * form POST here on success, with `?ref=NKO-######` in the query string —
+ * "The contact page owns this route; if it is not built yet the redirect
+ * 404s." This is that route. [P3]
+ *
+ * The site is fully static (`output: 'static'`); a prerendered page cannot
+ * read its own query string at build time, so the reference number is
+ * filled in by a small inline script reading `location.search` after load.
+ * Without JavaScript the page still reads correctly — it just doesn't quote
+ * the reference back, which the visitor already has in the address bar and
+ * in the confirmation email `handler.ts` sends. That is a materially
+ * smaller experience than the JS in-place success state in
+ * `EnquiryForm.astro`, which has the full set of just-submitted answers to
+ * work with; this page only ever receives a reference, because that is all
+ * a static redirect target has, and it's an honest constraint rather than
+ * an oversight — logged in docs/19.
+ */
+import Base from '../../layouts/Base.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import Pill from '../../components/Pill.astro';
+import Pitch from '../../sections/Pitch.astro';
+import { getSiteSettings } from '../../lib/content';
+import '../../styles/contact.css';
+
+const settings = await getSiteSettings();
+---
+
+<Base title="Brief received" description="Your project enquiry is with Nikko Studio.">
+  <SiteHeader nav={settings.nav} cta={settings.cta} logo={settings.logo} />
+
+  <main id="main" class="nk-contact">
+    <section class="nk-c-success" style="padding-top: clamp(80px, 10vw, 140px)">
+      <p class="nk-c-kicker">Brief received</p>
+      <h1 class="nk-c-h1" tabindex="-1">Thank you.</h1>
+      <p class="nk-c-lead">
+        Your fragments are with us. Nadia reads every one — expect a reply within two working days.
+        A confirmation is on its way to your inbox.
+      </p>
+
+      <div class="nk-c-receipt" data-ref-box hidden>
+        <div class="nk-c-receipt-head">
+          <span>Nikko Studio — enquiry receipt</span>
+          <span class="nk-c-receipt-ref" data-ref-value></span>
+        </div>
+      </div>
+
+      <Pill href="/" size="lg" tone="ink">Back to the studio</Pill>
+    </section>
+
+    <Pitch />
+  </main>
+</Base>
+
+<script>
+  const ref = new URLSearchParams(window.location.search).get('ref');
+  if (ref) {
+    const box = document.querySelector<HTMLElement>('[data-ref-box]');
+    const value = document.querySelector<HTMLElement>('[data-ref-value]');
+    if (box && value) {
+      value.textContent = ref;
+      box.hidden = false;
+    }
+  }
+</script>

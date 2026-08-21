@@ -1,0 +1,27 @@
+---
+/**
+ * The horizontal section chip bar — below 1080px only. See
+ * `ContactRail.astro` for why the SECTIONS list is duplicated here rather
+ * than shared.
+ */
+const SECTIONS = [
+  { n: '01', href: '#about', title: 'About you' },
+  { n: '02', href: '#project', title: 'The project' },
+  { n: '03', href: '#work', title: 'The work' },
+  { n: '04', href: '#reason', title: 'The reason' },
+  { n: '05', href: '#finish', title: 'The finish line' },
+] as const;
+---
+
+<nav class="nk-c-railbar" aria-label="Enquiry sections">
+  <div class="nk-c-railbar-track">
+    {
+      SECTIONS.map((s) => (
+        <a class="nk-c-railbar-chip" href={s.href}>
+          <span aria-hidden="true">{s.n}</span>
+          {s.title}
+        </a>
+      ))
+    }
+  </div>
+</nav>

@@ -1,0 +1,52 @@
+---
+/**
+ * §02 — The project. Single-select cut-corner cards, one per row of
+ * `form.yaml`'s `intents` list — nothing here is hardcoded, so Nadia can add
+ * a fifth intent by editing the YAML alone. [P7]
+ */
+import type { IntentOption } from '../../lib/content/contact';
+import SectionHead from './SectionHead.astro';
+
+interface Props {
+  intents: IntentOption[];
+}
+
+const { intents } = Astro.props;
+---
+
+<section id="project" class="nk-c-section">
+  <SectionHead number="02" title="The project" note="Pick the closest fit" headingId="project-heading" />
+
+  <fieldset class="nk-c-fieldset">
+    <legend class="nk-c-legend">
+      What needs to move? <i class="nk-required-mark">*</i>
+    </legend>
+
+    <div class="nk-c-cards">
+      {
+        intents.map((intent) => (
+          <label class="nk-c-card">
+            <input
+              class="nk-vh-input"
+              type="radio"
+              name="intent"
+              value={intent.value}
+              required
+              aria-describedby="err-intent"
+            />
+            <span class="nk-c-card-face">
+              <span class="nk-c-card-corner" aria-hidden="true" />
+              <span class="nk-c-card-top">
+                <span class="nk-c-card-mark" aria-hidden="true" />
+                <span class="nk-c-card-label">{intent.label}</span>
+              </span>
+              <span class="nk-c-card-note">{intent.note}</span>
+            </span>
+          </label>
+        ))
+      }
+    </div>
+
+    <span class="nk-c-error" id="err-intent" role="alert"></span>
+  </fieldset>
+</section>

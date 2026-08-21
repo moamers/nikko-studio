@@ -1,0 +1,21 @@
+---
+/**
+ * The compact intro — kicker, H1, one paragraph, the required-field note.
+ * No gate, no CTA before the form: the header is visible immediately and
+ * the form starts right here. There is no opening sequence on this page —
+ * that belongs to the homepage only.
+ */
+import Reveal from '../../components/Reveal.astro';
+---
+
+<section id="top" class="nk-c-intro">
+  <Reveal as="p" class="nk-c-kicker" animation="fade">
+    Project enquiry · about four minutes
+  </Reveal>
+  <Reveal as="h1" class="nk-c-h1">Pitch us your project.</Reveal>
+  <Reveal as="p" class="nk-c-lead" delay={1}>
+    Tell us who you are, what you're making, what needs to change and what success looks like.
+    Answer in any order, change anything, come back to it.
+  </Reveal>
+  <p class="nk-c-required-note"><i class="nk-required-mark">*</i> Required</p>
+</section>

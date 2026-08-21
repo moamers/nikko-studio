@@ -1,0 +1,41 @@
+---
+/**
+ * The section rail — desktop (≥1080px) only: a sticky left-hand list of
+ * 01–05. Below 1080px `ContactRailBar.astro` takes over with the same list
+ * as a horizontal chip bar; the two live in separate files because they sit
+ * in different places in the DOM (this one inside the two-column shell, the
+ * bar full-bleed above it), so the five-line SECTIONS list is the one thing
+ * intentionally duplicated between them rather than reached for a shared
+ * `.ts` module outside this directory's ownership.
+ *
+ * The design's dynamic "gathered fragments" stamps (a chip per answered
+ * value, appearing as you fill the form) are NOT implemented here — they
+ * need live form state, and given this page's scope the trade was to keep
+ * the rail a plain, always-correct, no-JS navigation aid rather than ship a
+ * half-working dynamic feature. Logged in docs/19 as a deliberate cut, not
+ * a design gap.
+ */
+const SECTIONS = [
+  { n: '01', href: '#about', title: 'About you' },
+  { n: '02', href: '#project', title: 'The project' },
+  { n: '03', href: '#work', title: 'The work' },
+  { n: '04', href: '#reason', title: 'The reason' },
+  { n: '05', href: '#finish', title: 'The finish line' },
+] as const;
+---
+
+<aside class="nk-c-rail" aria-label="Enquiry sections">
+  <p class="nk-c-rail-eyebrow">The brief</p>
+  <nav class="nk-c-rail-list">
+    {
+      SECTIONS.map((s) => (
+        <a class="nk-c-rail-link" href={s.href}>
+          <span class="nk-c-rail-num" aria-hidden="true">
+            {s.n}
+          </span>
+          <span class="nk-c-rail-title">{s.title}</span>
+        </a>
+      ))
+    }
+  </nav>
+</aside>

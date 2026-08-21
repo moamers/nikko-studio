@@ -1,0 +1,141 @@
+---
+/**
+ * §05 — The finish line. Success textarea, target timing (year chips +
+ * month grid, both from `form.yaml`), ballpark budget, then the submit row
+ * directly after — no separate closing section, per the handoff.
+ *
+ * The year chips are computed at build time in `getContactFormOptions()`
+ * (this-year + `yearsAhead`), never a hardcoded list — a static list would
+ * quietly start offering a year that has already passed.
+ */
+import Pill from '../../components/Pill.astro';
+import type { Option, TimingOptions } from '../../lib/content/contact';
+import SectionHead from './SectionHead.astro';
+
+interface Props {
+  budgets: Option[];
+  timing: TimingOptions;
+}
+
+const { budgets, timing } = Astro.props;
+const FLEXIBLE_VALUE = 'flexible';
+---
+
+<section id="finish" class="nk-c-section">
+  <SectionHead number="05" title="The finish line" note="Success, timing, budget" headingId="finish-heading" />
+
+  <div class="nk-c-finish-stack">
+    <div class="nk-c-field">
+      <label class="nk-c-label" for="f-goals">
+        What does "this worked" look like? <i class="nk-required-mark">*</i>
+      </label>
+      <textarea
+        class="nk-c-textarea nk-c-textarea--ruled nk-c-textarea--goals"
+        id="f-goals"
+        name="goals"
+        required
+        minlength="8"
+        maxlength="4000"
+        placeholder="What changed? Who noticed?"
+        aria-describedby="err-goals"
+      ></textarea>
+      <span class="nk-c-error" id="err-goals" role="alert"></span>
+    </div>
+
+    <div>
+      <fieldset class="nk-c-fieldset" data-timing-fieldset>
+        <legend class="nk-c-legend">
+          Target timing <i class="nk-required-mark">*</i>
+        </legend>
+        <div class="nk-c-timing-box">
+          <div class="nk-c-year-row">
+            <span class="nk-c-label" id="year-label">Year</span>
+            <div class="nk-c-chip-list" role="group" aria-labelledby="year-label">
+              {
+                timing.years.map((y) => (
+                  <label class="nk-c-year-wrap">
+                    <input class="nk-vh-input" type="radio" name="year" value={y} required data-year-input />
+                    <span class="nk-c-year-chip">{y}</span>
+                  </label>
+                ))
+              }
+              <label class="nk-c-year-wrap">
+                <input
+                  class="nk-vh-input"
+                  type="radio"
+                  name="year"
+                  value={FLEXIBLE_VALUE}
+                  required
+                  data-year-input
+                  data-flexible
+                />
+                <span class="nk-c-year-chip">{timing.flexibleLabel}</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="nk-c-months" role="group" aria-label="Month" data-month-grid>
+            {
+              timing.months.map((m) => (
+                <label class="nk-c-month-wrap">
+                  <input class="nk-vh-input" type="radio" name="month" value={m} aria-label={m} />
+                  <span class="nk-c-month-chip" aria-hidden="true">
+                    {m.slice(0, 3)}
+                  </span>
+                </label>
+              ))
+            }
+          </div>
+
+          <p class="nk-c-timing-note" data-timing-note>Pick a year, then a month — or choose Flexible.</p>
+        </div>
+        <span class="nk-c-error" id="err-year" role="alert"></span>
+      </fieldset>
+    </div>
+
+    <fieldset class="nk-c-fieldset">
+      <legend class="nk-c-legend">
+        Ballpark budget <i class="nk-required-mark">*</i>
+      </legend>
+      <div class="nk-c-budgets">
+        {
+          budgets.map((b) => (
+            <label class="nk-c-budget-wrap">
+              <input
+                class="nk-vh-input"
+                type="radio"
+                name="budget"
+                value={b.value}
+                required
+                aria-describedby="err-budget"
+              />
+              <span class="nk-c-budget">{b.label}</span>
+            </label>
+          ))
+        }
+      </div>
+      <span class="nk-c-error" id="err-budget" role="alert"></span>
+    </fieldset>
+
+    <div class="nk-c-submit-row">
+      <div>
+        <p class="nk-c-submit-note">
+          We'll use these details only to respond to your enquiry. Nikko replies within two working
+          days.
+        </p>
+        <p class="nk-c-error-summary" id="form-error-summary" role="alert" aria-live="assertive"></p>
+      </div>
+      <Pill type="submit" size="lg" tone="ink">Send my brief</Pill>
+    </div>
+  </div>
+</section>
+
+<style>
+  @layer layout {
+    .nk-c-year-wrap,
+    .nk-c-month-wrap,
+    .nk-c-budget-wrap {
+      display: block;
+    }
+  }
+</style>

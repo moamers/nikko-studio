@@ -1,0 +1,104 @@
+---
+/**
+ * The enquiry form itself — one real `<form>` covering all five sections,
+ * plus the success/receipt state it swaps to once JavaScript confirms the
+ * submission. See `src/scripts/contact-form.ts` for the behaviour.
+ *
+ * `data-contact-root` / `data-sent` let the two states (form vs receipt)
+ * live side by side in the same document rather than behind a client
+ * router, so a crawler or a no-JS visitor only ever sees the one that
+ * matters: the form, fully present and postable. [P3]
+ */
+import AboutYouFields from './AboutYouFields.astro';
+import ProjectFields from './ProjectFields.astro';
+import WorkFields from './WorkFields.astro';
+import ReasonField from './ReasonField.astro';
+import FinishFields from './FinishFields.astro';
+import Pill from '../../components/Pill.astro';
+import type { ContactFormOptions } from '../../lib/content/contact';
+import { HONEYPOT_FIELD } from '../../lib/enquiry/validate';
+
+interface Props {
+  options: ContactFormOptions;
+}
+
+const { options } = Astro.props;
+const { intents, outputs, budgets, pronouns, timing } = options;
+
+// A code → label lookup for `contact-form.ts` to build the receipt from,
+// generated from the same content the fields themselves render — never a
+// second, hand-typed copy of the option labels. [P7]
+const optionMap = {
+  intent: Object.fromEntries(intents.map((o) => [o.value, o.label])),
+  outputs: Object.fromEntries(outputs.map((o) => [o.value, o.label])),
+  budget: Object.fromEntries(budgets.map((o) => [o.value, o.label])),
+  pronouns: Object.fromEntries(pronouns.map((o) => [o.value, o.label])),
+};
+
+// `</script>` inside a founder-edited label would otherwise close the tag
+// early. Content is untrusted at the boundary even when it's Nadia's own
+// YAML edit, not a stranger's form input. [P15]
+const optionMapJson = JSON.stringify(optionMap).replace(/</g, '\\u003c');
+---
+
+<div data-contact-root>
+  <form class="nk-c-form" action="/api/enquiry" method="post" novalidate data-contact-form>
+    <AboutYouFields pronouns={pronouns} />
+    <ProjectFields intents={intents} />
+    <WorkFields outputs={outputs} />
+    <ReasonField />
+    <FinishFields budgets={budgets} timing={timing} />
+
+    {/* Honeypot — off-screen, unreachable by keyboard, ignored by autofill.
+        Canonical name from `src/lib/enquiry/validate.ts`'s `HONEYPOT_FIELD`,
+        so a rename there can never silently desync the two. */}
+    <div class="nk-c-hp" aria-hidden="true">
+      <label for="f-hp">Leave this field blank</label>
+      <input id="f-hp" type="text" name={HONEYPOT_FIELD} tabindex="-1" autocomplete="off" />
+    </div>
+  </form>
+
+  <section class="nk-c-success" data-contact-success hidden aria-live="polite">
+    <p class="nk-c-kicker">Brief received</p>
+    <h1 class="nk-c-h1" tabindex="-1">Thank you, <span data-receipt-name>there</span>.</h1>
+    <p class="nk-c-lead">
+      Your fragments are with us. Nadia reads every one — expect a reply within two working days.
+    </p>
+
+    <div class="nk-c-receipt">
+      <div class="nk-c-receipt-head">
+        <span>Nikko Studio — enquiry receipt</span>
+        <span class="nk-c-receipt-ref" data-receipt-ref hidden></span>
+      </div>
+      <dl class="nk-c-receipt-list" data-receipt-list></dl>
+    </div>
+
+    <Pill type="button" size="lg" tone="ink" data-contact-reopen>Review your answers</Pill>
+  </section>
+
+  <p class="nk-c-status" data-contact-status role="status" aria-live="polite"></p>
+</div>
+
+<script type="application/json" id="nk-contact-options" set:html={optionMapJson} is:inline />
+
+<script>
+  import { initContactForm } from '../../scripts/contact-form';
+  initContactForm();
+</script>
+
+<style>
+  @layer layout {
+    .nk-c-form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* `display: flex` above otherwise beats the UA stylesheet's
+       `[hidden] { display: none }` — author CSS always wins over UA CSS
+       regardless of specificity, so the JS-driven hide/show of the form vs
+       the receipt needs to say so explicitly. */
+    .nk-c-form[hidden] {
+      display: none;
+    }
+  }
+</style>
