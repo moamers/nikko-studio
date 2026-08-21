@@ -175,6 +175,33 @@ New, arising from [16 — Forms & Data Capture](./16-forms-and-data-capture.md).
 
 ---
 
+## ⚪ Q14 — Trailing slashes: pick one form
+
+Found while verifying the Worker deploy (2026-08-21). The site is internally
+inconsistent about trailing slashes:
+
+- **Internal links** are written without one — `href="/privacy-policy"`.
+- **Canonical tags** are written with one — `<link rel="canonical"
+  href="https://nikkostudio.co/privacy-policy/">`.
+- `astro.config.mjs` sets `trailingSlash: 'ignore'`, which permits both.
+
+Cloudflare's asset server resolves this by 307-redirecting `/privacy-policy`
+to `/privacy-policy/`, so **every internal navigation costs a redirect hop**.
+Nothing is broken and the destination matches the canonical, so this was
+deliberately left alone rather than changed under deploy pressure — but it
+should be settled deliberately, because it touches SEO
+([09](./09-seo-and-llm-discoverability.md)) and every internal link.
+
+Two coherent options: make the links match the canonical (add the slash), or
+make the canonical match the links (drop it, and set `html_handling =
+"drop-trailing-slash"` in `wrangler.toml`'s `[assets]`). Either is fine; the
+current mixture is what is not.
+
+**Default:** add the trailing slash to internal links, matching the canonical
+that is already published.
+
+---
+
 ## Answer log
 
 | Q | Decision | Date |

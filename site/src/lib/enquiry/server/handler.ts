@@ -3,7 +3,7 @@
  *
  * SERVER ONLY — see `./README.md`.
  *
- * `functions/api/enquiry.ts` is a four-line adapter around `handleEnquiry` so
+ * `src/worker.ts` is a thin adapter around `handleEnquiry` so
  * that the behaviour here can be unit-tested with a plain `Request` and a fake
  * env, with no Cloudflare runtime involved.
  *
