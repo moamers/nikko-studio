@@ -335,6 +335,16 @@
     gap: 20px;
   }
 
+  /* The dial is the one item in this stack that is neither full-bleed nor
+     part of the left-aligned link column: the CTA below it stretches edge to
+     edge, and the nav above it hangs off the left margin, which left the
+     dial reading as a stray fragment pushed against the edge. Centred, it
+     sits on the CTA's own axis and the two read as a pair. Only here — the
+     desktop header's dial belongs to a horizontal row and is unaffected. */
+  .nk-menu__foot .nk-menu__dial {
+    align-self: center;
+  }
+
   /* Focus rings are coral on paper; on the ink panel coral is legible but
      the offset needs the darker ground to read, which it has. Nothing to
      override — noted so the next reader does not add an override. */

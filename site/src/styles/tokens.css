@@ -224,10 +224,17 @@
     --nk-tap-min: 44px;
 
     /* ── Analogue / digital mode ────────────────────────────────────────
-       `mode.ts` writes `data-mode` on <html>. Analogue is the resting state,
-       so a page with no JavaScript is analogue — which is what the source's
-       `auto: 'analogue'` initial state means. (handoff § Analogue / digital
-       mode.)
+       `mode.ts` writes `data-mode` on <html>. DIGITAL is the resting state:
+       the founder inverted the drift on 2026-08-21 so a fresh load is clean
+       and the analogue treatment arrives on scroll. The resting state has to
+       follow, or the page paints the grain from the stylesheet and then has
+       it removed the moment the script runs — a measured ~140ms flash of an
+       effect that is not supposed to be there yet.
+
+       It also means a page with no JavaScript is the clean page, which is
+       the cheaper render and the safer default for the one visitor who
+       cannot switch. (handoff § Analogue / digital mode; deviation in
+       docs/06.)
 
        Six things change between the modes. Three are the properties below,
        read by whoever needs them; the other three are switched by selector,
@@ -240,14 +247,13 @@
          5. the cursor pool's gradient and blend mode           → cursor.css
          6. the dial's own label, `aria-pressed` and title      → mode.ts
 
-       Every one of them keys off `:root` for analogue and
-       `:root[data-mode='digital']` for digital — never the other way round,
-       so the no-JS page is the analogue page and nothing is stranded. */
+       Every one of them keys off `:root` for digital and
+       `:root[data-mode='analogue']` for analogue — never the other way
+       round, so the no-JS page is the clean page and nothing is stranded. */
     --nk-mode-flip: 0.52;               /* scroll depth at which mode drifts */
-    --nk-grain: 0.13;
-    --nk-img-filter: saturate(0.94) contrast(0.97) sepia(0.09);
-    --nk-misreg: 1.4px 0 0 rgb(var(--nk-turquoise-rgb) / 0.42),
-      -1.4px 0 0 rgb(var(--nk-coral-rgb) / 0.26);
+    --nk-grain: 0;
+    --nk-img-filter: saturate(1.06) contrast(1.04);
+    --nk-misreg: 0 0 0 rgb(var(--nk-ink-rgb) / 0);
 
     /* ── Cursor residue (desktop, fine pointer, motion allowed) ─────────── */
     --nk-cursor-w: 340px;
@@ -296,9 +302,10 @@
   }
 
   /* The other half of the mode switch. Analogue lives on `:root` above. */
-  :root[data-mode='digital'] {
-    --nk-grain: 0;
-    --nk-img-filter: saturate(1.06) contrast(1.04);
-    --nk-misreg: 0 0 0 rgb(var(--nk-ink-rgb) / 0);
+  :root[data-mode='analogue'] {
+    --nk-grain: 0.13;
+    --nk-img-filter: saturate(0.94) contrast(0.97) sepia(0.09);
+    --nk-misreg: 1.4px 0 0 rgb(var(--nk-turquoise-rgb) / 0.42),
+      -1.4px 0 0 rgb(var(--nk-coral-rgb) / 0.26);
   }
 }
