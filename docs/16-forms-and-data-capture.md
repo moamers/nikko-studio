@@ -1,6 +1,6 @@
 # 16 — Forms & Data Capture
 
-> **Status:** Draft for review · **Owner:** Engineering · **Last updated:** 2026-08-17
+> **Status:** Part 2 implemented · **Owner:** Engineering · **Last updated:** 2026-08-21
 > **Related:** [Docs index](./README.md) · [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism) · [P15](./02-engineering-principles.md#p15--nothing-is-trusted-at-the-boundary) · [Plain English](./00-start-here.md#5-what-happens-to-the-forms)
 
 The site has exactly two places where a visitor hands over data, and they are the two most commercially important interactions on it. They have **different requirements and different architectures**, and conflating them would be a mistake.
@@ -140,6 +140,188 @@ Worth keeping if Nadia wants it — it is a decent lightweight CRM and it's alre
 
 ---
 
+---
+
+## As built — `/api/enquiry`
+
+> Added 2026-08-21. The architecture above was the decision; this section records
+> what implementing it settled that the decision did not.
+
+| Piece | Where |
+|---|---|
+| The endpoint | `site/functions/api/enquiry.ts` — a thin Pages Function adapter |
+| The pipeline | `site/src/lib/enquiry/server/handler.ts` |
+| Validation (shared with the page) | `site/src/lib/enquiry/validate.ts` |
+| The accept-list | `site/src/lib/enquiry/options.generated.ts`, compiled from `form.yaml` |
+| The schema | `site/migrations/0001_enquiries.sql` |
+| Tests | `site/tests/unit/enquiry-*.test.ts` — `npm run test:unit` |
+
+Nothing under `src/lib/enquiry/server/` may be imported by a page or a client
+script; it reads secrets. The two shared modules (`validate.ts`,
+`options.generated.ts`) hold neither secrets nor I/O.
+
+### The accept-list cannot drift from the YAML
+
+`src/content/contact/form.yaml` is Nadia's ([P7](./02-engineering-principles.md#p7--content-is-data-code-is-presentation)),
+but the validator runs in a Worker that cannot read YAML at request time. So
+`npm run build` regenerates `options.generated.ts` from the YAML *before* Astro
+runs, and `enquiry-options.test.ts` fails if the committed output has drifted.
+
+The consequence worth stating plainly: **an option code the UI does not offer is
+rejected by the server.** Nadia adding a budget band and rebuilding is all that
+is needed; nobody has to remember to update a second list, because there isn't one.
+
+### Deploying it unconfigured
+
+D1 is not provisioned, Resend has no account, and the notification address is
+undecided ([Q2](#open-questions)). The endpoint ships anyway and degrades in a
+defined order rather than an accidental one:
+
+| D1 bound | Nadia's email sent | Visitor sees | Why |
+|---|---|---|---|
+| ✅ | ✅ | Success | Normal |
+| ✅ | ❌ | **Success** | The record exists. An email failure is not the visitor's problem — this is the bug the whole design fixes |
+| ❌ | ✅ | **Success**, `stored: false` | The inbox is the only copy. Logged as degraded |
+| ❌ | ❌ | **503**, and an address to write to | Nothing recorded it. Saying "thank you" would be a lie |
+
+The 503 branch writes the entire submission to the Worker log as a single JSON
+line (`event: "submission_unrecorded"`), so it is recoverable by a human running
+`wrangler pages deployment tail`. That is not a system of record and is not
+treated as one — it is the floor under the floor. Every request also logs
+`event: "unconfigured"` listing exactly what is missing, so the degraded state is
+never silent.
+
+`stored` is returned in the JSON response on purpose. A `false` in production is
+the alarm that D1 needs binding.
+
+### Turning it on
+
+All configuration is environment-only; no variable is `PUBLIC_`-prefixed, so
+none of it can reach the browser ([P15](./02-engineering-principles.md#p15--nothing-is-trusted-at-the-boundary)).
+
+| Name | Kind | Absent means |
+|---|---|---|
+| `DB` | **D1 binding** | No durable record — email becomes the only copy |
+| `RESEND_API_KEY` | secret | No email is sent at all |
+| `ENQUIRY_NOTIFY_TO` | variable | Nobody is notified |
+| `ENQUIRY_FROM` | variable | Falls back to `Nikko Studio <hello@nikkostudio.co>` — must be a Resend-verified domain |
+| `TURNSTILE_SECRET` | secret | Spam check skipped; the honeypot still runs |
+| `ENQUIRY_IP_SALT` | secret | The IP hash is unsalted, and the row says so |
+| `ENQUIRY_FALLBACK_EMAIL` | variable | Defaults to `ENQUIRY_NOTIFY_TO`; shown only on the 503 page |
+| `ENQUIRY_RATE_LIMIT` | variable | 5 submissions per IP per hour |
+| `ENQUIRY_THANK_YOU_PATH` | variable | `/contact/thank-you` |
+| `ENQUIRY_FORM_PATH` | variable | `/contact` |
+
+Setup, in the order it can be done:
+
+1. **D1.** `npx wrangler d1 create nikko-enquiries`, then
+   `npx wrangler d1 migrations apply nikko-enquiries --remote` from `site/`.
+   Bind it as **`DB`** under Pages project → Settings → Functions → D1 bindings.
+   (There is deliberately no `wrangler.toml`: [18 — Staging & Deployment](./18-staging-and-deployment.md)
+   configures this project from the dashboard, and a `wrangler.toml` would
+   silently supersede those settings.)
+2. **Resend.** Create the account, verify the sending domain (SPF + DKIM on
+   `nikkostudio.co`), then set `RESEND_API_KEY` as an *encrypted* variable and
+   `ENQUIRY_FROM` to an address on that domain.
+3. **`ENQUIRY_NOTIFY_TO`** — pending [Q2](#open-questions).
+4. **`ENQUIRY_IP_SALT`** — any long random string, encrypted. Set it before the
+   first real submission; changing it later orphans earlier hashes.
+5. **Turnstile.** Create an invisible/managed widget, set `TURNSTILE_SECRET`
+   (encrypted) and give the page the site key.
+
+Nothing here blocks anything else. Each variable improves the endpoint the
+moment it appears, with no code change.
+
+### Turnstile vs. "no CAPTCHA"
+
+The design handoff says *no CAPTCHA*; this doc says Turnstile. They only conflict
+if Turnstile is read as a puzzle. It is configured invisible/managed — no images
+of traffic lights, nothing for a real visitor to do — and it is **optional**: with
+no secret set, the check is skipped and logged. If Cloudflare's `siteverify` is
+unreachable the submission is **allowed through**, because an outage at the spam
+checker must not take the enquiry form down. Spam is recoverable; a lost lead is not.
+
+### Works without JavaScript ([P3](./02-engineering-principles.md#p3--progressive-enhancement-in-layers-in-that-order))
+
+One endpoint, content-negotiated on `Accept` (with `Sec-Fetch-Mode` as the
+fallback signal for a `fetch` that sends no `Accept`):
+
+| Request | Success | Validation failure |
+|---|---|---|
+| Normal form POST | `303` → `/contact/thank-you?ref=NKO-482913` | `303` → `/contact?enquiry=invalid&fields=budget,email#enquiry` |
+| `Accept: application/json` | `201` with `{ ok, reference, stored, notified }` | `422` with `{ ok: false, error: "invalid", errors: [{ field, message }] }` |
+
+Other no-JS redirect states: `?enquiry=rate-limited`, `?enquiry=spam-check`,
+`?enquiry=error`. Only field names from `FIELDS` ever reach the URL, and the
+redirect paths are validated as same-origin relative paths so a mistyped env var
+cannot become an open redirect.
+
+**This is a contract with the contact page**, and two parts of it are not built
+yet by this work:
+
+- `/contact/thank-you` must exist, and should read `?ref=`.
+- `/contact` should render a message for each `?enquiry=` state and mark the
+  fields named in `?fields=`.
+
+Until the thank-you route exists, a no-JS success redirects to a 404 — visible
+and fixable, which is the failure mode to prefer over a silent one.
+
+### The reference
+
+The server generates `NKO-######` and returns it; the receipt renders what it is
+given rather than inventing its own, so the number on screen, the number in the
+enquirer's email and the row in D1 are the same number. Stored with an ASCII
+hyphen so it survives a Gmail search, a URL and a spreadsheet cell — the design
+is free to render the em dash.
+
+### Schema decisions
+
+- **`status`** is Nadia's workflow marker, defaulting to `new`. Deliberately
+  **not** constrained by a `CHECK`: a column that rejects a status she invents is
+  a column she stops using. Suggested vocabulary is in the migration's comments.
+  A free-text `notes` column sits beside it, never written by the endpoint.
+- **`outputs`** is a JSON array of codes, queryable with `json_each`.
+- **`ip_hash` + `ip_hash_alg`.** The address itself is never stored ([P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism)).
+  The algorithm column exists so a salt rotation is legible, and so an unsalted
+  hash is honestly labelled rather than mistaken for anonymised data.
+- **`notify_state`** records which emails went out. `SELECT * FROM enquiries
+  WHERE notify_state NOT LIKE '%"nadia":"sent"%'` is the "who was I never told
+  about" query, and is the reason the column exists.
+- **Rate limiting lives in its own table.** A blocked attempt is not an enquiry
+  and must not pollute the record table.
+
+### A tripped honeypot is quarantined, not deleted
+
+A honeypot trip returns a success to the sender — telling a bot otherwise only
+teaches it which field to leave alone. But the submission is still **written to
+D1 with `status = 'spam'`**, and no email is sent.
+
+The reason is narrow and worth stating: browsers do autofill hidden inputs. A
+false positive that silently deleted a real enquiry would be the exact failure
+this endpoint exists to prevent, dressed up as a spam filter.
+`SELECT * FROM enquiries WHERE status = 'spam'` recovers it. The cost of being
+wrong in this direction is some rows; the cost of being wrong in the other
+direction is a lost £5,000+ lead.
+
+The honeypot check runs *after* validation and rate limiting, so a flood of
+well-formed spam is capped and a flood of garbage never reaches the table.
+
+### Rate limiting is only as good as its backend
+
+Five submissions per IP hash per hour. With `DB` bound the counter is in D1 and
+is correct across every edge location. Without it there is an in-isolate memory
+counter — a speed bump, not a defence, since Cloudflare runs many short-lived
+isolates. It is logged as degraded rather than quietly treated as working. **This
+gets materially better the moment D1 is bound**, which is one more reason to do
+that first.
+
+### Retention
+
+The migration ships no scheduled deletion. Retention is a manual, documented
+procedure until Nadia confirms the period ([Q4](#open-questions)) — a cron job
+that deletes a five-figure lead on an unconfirmed policy is the wrong kind of
+automatic.
+
 ## Privacy & compliance ([P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism))
 
 UK GDPR applies to both forms.
@@ -185,13 +367,15 @@ Both submissions fire a conversion event. These are the only two numbers on the 
 
 ## Open questions
 
-| # | Question |
-|---|---|
-| 1 | Keep the Google Sheet as a working view, or email + periodic export? |
-| 2 | Where should enquiry notifications go — Nadia's Workspace address, or a shared `hello@`? |
-| 3 | What should the enquirer's confirmation email say about **when** they'll hear back? |
-| 4 | Retention period for enquiry data? |
-| 5 | Should the redesigned form keep all current fields, or is it being reworked? *(Coming in the updated handoff.)* |
+| # | Question | Status |
+|---|---|---|
+| 1 | Keep the Google Sheet as a working view, or email + periodic export? | **Open.** Step 7 is not built. D1 is authoritative either way, so this is additive whenever it is answered |
+| 2 | Where should enquiry notifications go — Nadia's Workspace address, or a shared `hello@`? | **Open, and blocking the notification email.** It is one env var (`ENQUIRY_NOTIFY_TO`), no code change |
+| 3 | What should the enquirer's confirmation email say about **when** they'll hear back? | **Open.** The email ships making *no* timing promise. `RESPONSE_TIME_PROMISE` in `server/copy.ts` is `null`; set it to her sentence and it appears in both bodies. A unit test fails if anyone invents one |
+| 4 | Retention period for enquiry data? | **Open.** No automatic deletion until it is answered |
+| 5 | Should the redesigned form keep all current fields, or is it being reworked? | **Answered** by the contact handoff. The fields are those in `src/content/contact/form.yaml`, and the server validates exactly them |
+| 6 | *(new)* Does Nadia want the whole confirmation email rewritten? | The current copy is a placeholder marked `TODO(nadia)` in `server/copy.ts`. It is deliberately voice-neutral-but-warm and promises nothing |
+| 7 | *(new)* Who owns `/contact/thank-you`? | The no-JS success redirect targets it. It does not exist yet |
 
 ---
 
