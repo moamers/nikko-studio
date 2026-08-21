@@ -15,3 +15,12 @@ scratchpad-*.mjs
 shot-*.png
 test-results/
 playwright-report/
+
+# Verification scratch left by build agents.
+# Everything real lives in src/, tests/, functions/ or public/, so a loose
+# script or screenshot at the project root is always throwaway. Negations keep
+# the two root files that are genuinely part of the project.
+/*.mjs
+!/astro.config.mjs
+/*.png
+/*.jpg
