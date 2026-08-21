@@ -23,16 +23,16 @@
 
 brand:
   name: "NIKKO STUDIO"
-  locations: "LONDON // DUBAI"
+  locations: "LONDON // UAE"
   # CORRECTED from the supplied design package, which read
   # "NIKKO STUDIO // LONDON // DUBAI" (double slash). The site's own
   # verbatim masthead — the corner note in the homepage's opening
   # sequence, `src/components/OpeningSequence.astro` — reads
-  # "A story studio / London / Dubai": a SINGLE forward slash with one
+  # "A story studio / London / UAE": a SINGLE forward slash with one
   # space either side. That is the site's one existing precedent for
   # this exact "NAME / PLACE / PLACE" construction, so the email
   # masthead now matches it rather than inventing its own separator.
-  masthead: "NIKKO STUDIO / LONDON / DUBAI"
+  masthead: "NIKKO STUDIO / LONDON / UAE"
   website_label: "NIKKOSTUDIO.CO"
 
 sections:

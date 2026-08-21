@@ -35,9 +35,10 @@ describe('enquiry email copy', () => {
     // "NIKKO STUDIO // LONDON // DUBAI" (double slash) and asked for the
     // correct separator per the site's own design system. The one existing
     // precedent for this exact construction is the homepage opening
-    // sequence's corner note, "A story studio / London / Dubai" — a single
-    // forward slash with one space either side.
-    assert.equal(EMAIL_COPY.brand.masthead, 'NIKKO STUDIO / LONDON / DUBAI');
+    // sequence's corner note, "A story studio / London / UAE" — a single
+    // forward slash with one space either side. (The city name later
+    // changed to "UAE"; this test guards the separator, not the place.)
+    assert.equal(EMAIL_COPY.brand.masthead, 'NIKKO STUDIO / LONDON / UAE');
     assert.doesNotMatch(EMAIL_COPY.brand.masthead, /\/\//, 'masthead must not use a double slash');
   });
 
