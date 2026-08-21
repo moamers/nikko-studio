@@ -38,7 +38,7 @@ For completeness, the local route is in [`site/README.md`](../site/README.md). F
 | Field | Value |
 |---|---|
 | Production branch | `main` |
-| **Deploy command** | `cd site && npm install && npm run build && npx wrangler pages deploy` |
+| **Deploy command** | `cd site && npm install && npm run build && npx wrangler deploy` |
 | **Root directory** | **Leave empty** |
 | Node version | `22` *(plain env var `NODE_VERSION=22`)* |
 
@@ -50,13 +50,22 @@ the command has to `cd` there itself. Setting **Root directory** *as well*
 double-applies the path and the build fails with `cd: can't cd to site` — it
 must be left empty.
 
-**It is `pages deploy`, not `deploy`.** This is a Pages project, and plain
-`wrangler deploy` targets Workers instead: it warns *"you have run
-`wrangler deploy` on a Pages project"*, auto-answers its own confirmation
-prompt in CI, then fails with `Missing entry-point to Worker script`. The
-`pages` subcommand needs no directory argument, because
-`pages_build_output_dir` in `site/wrangler.toml` already names `dist`, and it
-picks up `site/functions/` the standard Pages way.
+**This is a Worker, not a Pages project — and that is now the default.**
+Cloudflare creates Workers for new projects, so despite what earlier drafts of
+this document assumed, `nikkostudio` is a Worker serving static assets. The
+practical consequences:
+
+- The entry point is `site/src/worker.ts`, **not** a `functions/` directory.
+- `site/wrangler.toml` declares `main` and an `[assets]` block; Cloudflare
+  matches a static file first and only invokes the Worker when nothing
+  matches, so ordinary page requests cost nothing.
+- The deploy command is `wrangler deploy`. Running `wrangler pages deploy`
+  instead fails with a bare `Authentication error [code: 10000]`, because the
+  token Cloudflare injects into a *Worker* build has no permission on the
+  *Pages* API. That error names neither the project type nor the token scope,
+  which makes it far more confusing than it deserves to be.
+- Secrets are set on the Worker (**Settings → Variables and Secrets**), not on
+  a Pages project.
 
 **⚠️ The failure this actually causes, and how to recognise it.** Every
 misconfiguration here produces a *missing-files* error rather than a useful

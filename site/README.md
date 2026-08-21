@@ -27,7 +27,7 @@ serves it directly; no adapter is involved.
 ## Testing the Cloudflare Function locally
 
 `astro dev` only serves the Astro site — it does not run
-`functions/api/enquiry.ts`. That file only executes inside Cloudflare's
+`src/worker.ts`. That file only executes inside Cloudflare's
 Workers runtime, either in production or via **Wrangler**, Cloudflare's CLI
 (already a dev dependency here).
 

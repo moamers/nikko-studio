@@ -1,24 +1,29 @@
-# Used two ways:
+# Cloudflare Worker configuration — used both by `npm run preview:cf` locally
+# and by Cloudflare's own build pipeline on deploy.
 #
-# 1. Locally, by `wrangler pages dev` / `npm run preview:cf` — testing the
-#    Cloudflare Pages Function (functions/api/enquiry.ts) with real bindings
-#    and secrets before pushing. Secrets never go here — see .dev.vars
-#    (gitignored) and .dev.vars.example.
+# This project is a **Worker with static assets**, not a Pages project. See the
+# header comment in `src/worker.ts` for what that changes, and
+# `docs/18-staging-and-deployment.md` for the deploy settings that go with it.
 #
-# 2. By Cloudflare's own build pipeline. Its presence in the repo is why the
-#    dashboard's deploy command defaults to `npx wrangler deploy` — with
-#    `pages_build_output_dir` set below, that command deploys this as a Pages
-#    project (bundling the sibling `functions/` directory the normal Pages
-#    way), so nothing here needs to change to support that. `name` MUST match
-#    the exact Cloudflare project slug — check the dashboard if deploys ever
-#    seem to target the wrong project.
+# `name` MUST match the Cloudflare project slug exactly, or a deploy will
+# create a second, empty project rather than updating this one.
+#
+# Secrets never go here. Locally they live in `.dev.vars` (gitignored, see
+# `.dev.vars.example`); in production they are set on the Worker in the
+# Cloudflare dashboard.
 name = "nikkostudio"
+main = "src/worker.ts"
 compatibility_date = "2026-08-21"
-pages_build_output_dir = "dist"
+
+# The built Astro site. `binding` is what makes `env.ASSETS` exist in
+# `src/worker.ts`; without it the Worker has no way to serve a file.
+[assets]
+directory = "./dist"
+binding = "ASSETS"
 
 # D1 is not provisioned yet (docs/17 F1). Once it is, uncomment and fill in
 # database_id from `wrangler d1 create nikko-enquiries`, and add the same
-# binding as a D1 binding on the Cloudflare Pages project in the dashboard.
+# binding to the Worker in the Cloudflare dashboard.
 # [[d1_databases]]
 # binding = "DB"
 # database_name = "nikko-enquiries"
