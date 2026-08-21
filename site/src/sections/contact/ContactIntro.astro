@@ -1,9 +1,24 @@
 ---
 /**
- * The compact intro — kicker, H1, one paragraph, the required-field note.
+ * The compact intro — kicker, H1, one paragraph, then the status line:
+ * the required-field note on one side, the autosave switch on the other.
  * No gate, no CTA before the form: the header is visible immediately and
  * the form starts right here. There is no opening sequence on this page —
  * that belongs to the homepage only.
+ *
+ * The autosave switch ships `hidden`. Autosave is a JavaScript feature and
+ * cannot be anything else — `localStorage` is not reachable from markup —
+ * so with JavaScript off a rendered switch would be a control that lies
+ * about what it does. `contact-form.ts` unhides it as its first act, which
+ * makes the switch's visibility exactly the condition under which it is
+ * honest. [P3]
+ *
+ * It is a real `<input type="checkbox" role="switch">` behind the same
+ * `.nk-vh-input` + styled-<label> pattern every other choice control on
+ * this page uses: keyboard operable, focusable, named "Autosave", and its
+ * on/off state announced by the switch role rather than by the label text.
+ * The visible "ON"/"OFF" word is `aria-hidden` for that reason — it is the
+ * same state said twice, and a screen reader should hear it once. [P10]
  */
 import Reveal from '../../components/Reveal.astro';
 ---
@@ -17,5 +32,26 @@ import Reveal from '../../components/Reveal.astro';
     Tell us who you are, what you're making, what needs to change and what success looks like.
     Answer in any order, change anything, come back to it.
   </Reveal>
-  <p class="nk-c-required-note"><i class="nk-required-mark">*</i> Required</p>
+
+  <div class="nk-c-statusline">
+    <p class="nk-c-required-note"><i class="nk-required-mark">*</i> Required</p>
+
+    <div class="nk-c-autosave" data-autosave hidden>
+      <input
+        type="checkbox"
+        role="switch"
+        class="nk-vh-input"
+        id="f-autosave"
+        data-autosave-toggle
+        checked
+      />
+      <label class="nk-c-autosave-switch" for="f-autosave">
+        <span class="nk-c-autosave-lamp" aria-hidden="true"></span>
+        Autosave
+        <span class="nk-c-autosave-state" aria-hidden="true" data-autosave-state>on</span>
+      </label>
+    </div>
+  </div>
+
+  <p class="nk-c-autosave-note" role="status" data-autosave-note hidden></p>
 </section>

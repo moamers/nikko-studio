@@ -89,6 +89,139 @@
     font-style: normal;
   }
 
+  /* ── The status line: "* REQUIRED" and the autosave switch ──────────── */
+  /* One row, because they are one thought: the two standing facts about
+     this form, stated before it starts. Below 560px they stack rather than
+     wrap mid-control. */
+  .nk-c-statusline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px 20px;
+  }
+
+  /* ── Autosave switch ────────────────────────────────────────────────
+     Drawn in the same idiom as the header's analogue/digital mode button
+     in the design source: mono uppercase, a hairline ink box with square
+     corners, a live status lamp, and a hover that inverts to solid ink.
+     That control already exists on this site to say "here is a state you
+     can change", which is precisely what this is, so it borrows the
+     vocabulary rather than inventing a second one for the same job. [P7]
+
+     Shape follows R2: the box is radius 0, the lamp is a true 50% circle.
+     Nothing in between, and no 999px pill — a pill has straight sides and
+     would read as neither.
+
+     The lamp is `var(--nk-accent)`, read live, so it moves with the accent
+     cycle like every other accent-carrying mark on the page. Off, it is a
+     hollow ring in the muted ink: the same shape with the light out, which
+     is legible without relying on hue alone — the border, the text colour
+     and the ON/OFF word all move together. [P10]
+
+     Motion is one 120ms `steps(2)` cut, matching the chips. Nothing here
+     fades. */
+  .nk-c-autosave {
+    display: flex;
+    align-items: center;
+  }
+
+  .nk-c-autosave-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono-wide);
+    text-transform: uppercase;
+    padding: 9px 12px;
+    /* The control is small by design — a footnote, not a field — so the
+       44px tap target is opened up with padding on the row instead of by
+       inflating the box. */
+    min-height: var(--nk-tap-min);
+    box-sizing: border-box;
+    border: 1.5px solid var(--nk-line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--nk-ink-muted);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--nk-dur-step) var(--nk-ease-step),
+      color var(--nk-dur-step) var(--nk-ease-step),
+      border-color var(--nk-dur-step) var(--nk-ease-step);
+  }
+
+  .nk-c-autosave-lamp {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-radius: var(--nk-radius-oval);
+    border: 1.5px solid currentColor;
+    background: transparent;
+    transition: background var(--nk-dur-step) var(--nk-ease-step),
+      border-color var(--nk-dur-step) var(--nk-ease-step);
+  }
+
+  .nk-c-autosave-state {
+    font-weight: 700;
+    color: var(--nk-ink);
+  }
+
+  [data-autosave-toggle]:checked + .nk-c-autosave-switch {
+    border-color: var(--nk-ink);
+    color: var(--nk-ink);
+  }
+
+  [data-autosave-toggle]:checked + .nk-c-autosave-switch .nk-c-autosave-lamp {
+    background: var(--nk-accent);
+    border-color: var(--nk-ink);
+  }
+
+  [data-autosave-toggle]:focus-visible + .nk-c-autosave-switch {
+    outline: var(--nk-focus-width) solid var(--nk-focus-colour);
+    outline-offset: var(--nk-focus-offset);
+  }
+
+  @media (hover: hover) {
+    .nk-c-autosave-switch:hover {
+      background: var(--nk-ink);
+      color: var(--nk-paper);
+      border-color: var(--nk-ink);
+    }
+
+    .nk-c-autosave-switch:hover .nk-c-autosave-state {
+      color: var(--nk-paper);
+    }
+
+    .nk-c-autosave-switch:hover .nk-c-autosave-lamp {
+      border-color: var(--nk-paper);
+    }
+  }
+
+  /* The restored-draft note. Quiet by construction: mono, muted, one line,
+     set under the status line rather than over the form as a banner. It is
+     a `role="status"` region so the sentence that appears when the switch
+     is flipped is announced without stealing focus. */
+  .nk-c-autosave-note {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-xs);
+    letter-spacing: var(--nk-tracking-mono);
+    line-height: 1.6;
+    color: var(--nk-ink-muted);
+    margin: 10px 0 0;
+    padding-left: 11px;
+    border-left: 2px solid var(--nk-accent);
+    max-width: 62ch;
+    transition: border-color var(--nk-dur-accent) var(--nk-ease-accent);
+  }
+
+  @media (max-width: 560px) {
+    .nk-c-statusline {
+      justify-content: flex-start;
+      gap: 12px;
+    }
+  }
+
   /* ── Section rail (desktop, ≥1080px) ───────────────────────────────── */
   .nk-c-rail {
     flex: 0 0 244px;
