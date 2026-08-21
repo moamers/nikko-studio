@@ -191,7 +191,13 @@
     border: 1.5px solid rgb(var(--nk-ink-rgb) / 0.4);
     background: transparent;
     color: var(--nk-ink);
-    animation: nk-c-frag-in var(--nk-dur-step) var(--nk-ease-step) both;
+    /* The design's own chip stamp — a fade with an 8px slide and a 2° kick.
+       On the system's shutter curve, which is the same cubic-bezier the
+       design file uses, rather than the stepped hover easing: `steps(2)`
+       holds a fade at 50% opacity for half its run, which is both wrong for
+       this movement and long enough for an axe-core pass to sample the chip
+       mid-fade and fail it on contrast. */
+    animation: nk-c-frag-in var(--nk-dur-shutter) var(--nk-ease-shutter) both;
   }
 
   .nk-c-frag--cobalt {
@@ -209,7 +215,12 @@
   @keyframes nk-c-frag-in {
     from {
       opacity: 0;
-      transform: translateY(4px);
+      transform: translateX(-8px) rotate(-2deg);
+    }
+
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
 
@@ -661,8 +672,13 @@
     color: var(--nk-ink-muted);
   }
 
+  /* Full paper, not the handoff's `rgba(242,236,223,0.76)` (nor the 0.86
+     this build had): 14.5px text at either alpha over the cobalt fill
+     measures 3.17:1 against a 4.5:1 requirement, which axe-core fails on
+     `/contact` the moment a card is selected. At full opacity it is ~6:1.
+     P10 outranks the handoff's literal value; logged in docs/19. */
   .nk-vh-input:checked + .nk-c-card-face .nk-c-card-note {
-    color: rgb(var(--nk-paper-rgb) / 0.86);
+    color: var(--nk-paper);
   }
 
   /* ── Output boxes (checkbox, punched square) ────────────────────────── */
