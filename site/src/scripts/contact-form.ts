@@ -20,6 +20,8 @@
  *     endpoint's redirect contract) and rendering it the same way a client
  *     validation failure would, so a visitor without JavaScript still gets
  *     inline errors and a scroll-to-first-mistake, just one page load later;
+ *   - an autosave of every answer to `localStorage['nk-brief-draft']`,
+ *     restored on load, behind a switch the visitor owns and can see;
  *   - a live summary of the visitor's answers in the left rail, stamped one
  *     chip per value as the form fills in;
  *   - a live word count on "the reason", a deselectable pronoun chip, and a
@@ -31,7 +33,15 @@
  */
 
 const DRAFT_KEY = 'nk-brief-draft';
+/** The switch's own state. Absent means "never touched it", which is ON. */
+const AUTOSAVE_KEY = 'nk-brief-autosave';
+const PROBE_KEY = 'nk-storage-probe';
 const FORM_SELECTOR = '[data-contact-form]';
+
+const NOTE_RESTORED =
+  'Picked up where you left off — autosave is keeping this on your device only. Switch it off to clear it.';
+const NOTE_ON = 'Autosave on. Answers are kept on this device until you send them.';
+const NOTE_OFF = 'Autosave off. The saved copy has been deleted from this device.';
 
 interface FieldError {
   field: string;
@@ -82,7 +92,7 @@ export function initContactForm(): void {
   const reopen = document.querySelector<HTMLButtonElement>('[data-contact-reopen]');
   const options = readOptions();
 
-  clearStoredDraft();
+  wireAutosave(form);
   wireRailSummary(form, options);
   wireWordCount(form);
   wirePronounToggle(form);
@@ -113,28 +123,202 @@ export function initContactForm(): void {
   });
 }
 
-/* ── Draft storage: deliberately removed ───────────────────────── */
+/* ── Draft autosave, under a switch the visitor owns ──────────────────────
+ *
+ * History, because the comment that used to sit here said the opposite.
+ *
+ * This file autosaved the whole form to `localStorage['nk-brief-draft']` and
+ * restored it on load. That was removed in 9889221 for a real reason: a hard
+ * refresh is the one gesture a visitor has for "start again", and a form that
+ * silently repopulated itself had taken that away — with nothing on the page
+ * to say it had happened or to stop it.
+ *
+ * The fix for that was never to delete the feature; it was to stop it being
+ * silent. A four-minute form that quietly loses everything to a closed tab is
+ * its own kind of hostile. So autosave is back, and the invisible half is
+ * what is gone: there is a switch at the top of the page, it says whether
+ * autosave is on, and the visitor decides.
+ *
+ * The rules it keeps:
+ *   - ON by default, for a visitor who has never expressed a view;
+ *   - the switch's own state persists under its own key, so someone who
+ *     turns it off stays off on their next visit — the preference is not
+ *     part of the draft it controls, and must outlive it;
+ *   - turning it OFF deletes the stored draft in the same tick. Stopping the
+ *     writer but keeping the file is not what "off" means to anyone, and
+ *     leaving a copy of someone's answers behind after they opted out is the
+ *     wrong behaviour whatever the intent;
+ *   - turning it ON starts saving from that moment, with what is on screen;
+ *   - when a draft IS restored, the page says so, quietly, and says how to
+ *     get rid of it. Answers reappearing with no explanation is the original
+ *     complaint, and it is not fixed by a switch the visitor never read.
+ *
+ * Every storage call stays inside try/catch: Safari's private mode throws on
+ * `setItem`, and a form that cannot be filled in because saving it failed
+ * would be a far worse bug than not saving it. If storage is unavailable at
+ * all, the switch never unhides — see `wireAutosave`. [P3]
+ *
+ * `EnquiryForm.astro` keeps `autocomplete="off"` on the <form>. That is a
+ * different mechanism and still unwanted: the BROWSER's form-state
+ * restoration is untitled, unexplained and uncontrollable from here, which
+ * is exactly what this replaces it with the opposite of.
+ */
 
 /**
- * This file used to autosave every keystroke to `localStorage['nk-brief-draft']`
- * and restore it on load. That is gone by decision, not by accident: a hard
- * refresh is the one gesture a visitor has for "start again", and a form that
- * silently repopulates itself has taken that away. Nadia asked for a refresh
- * to start clean.
- *
- * Two consequences, both intended:
- *   - nothing is restored on load, and any draft an earlier build of this page
- *     left in storage is cleared once, on load, so returning visitors are not
- *     stuck carrying a stale copy of an answer they can no longer see;
- *   - autosave went with it. Keeping the writer with no reader would have left
- *     the page filling a visitor's storage with data nothing ever reads. [P13]
- *
- * `EnquiryForm.astro` also carries `autocomplete="off"` on the <form> for the
- * same reason — that is what stops the BROWSER's own form-state restoration
- * from doing the same thing on a soft reload. Individual fields keep their own
- * `autocomplete` values (`name`, `email`, `organization`), which still work:
- * this only turns off restore-on-reload, not autofill.
+ * Whether `localStorage` can actually be written. Reading alone is not
+ * enough of a test — Safari's private mode hands back a working-looking
+ * object that throws only on `setItem`, so the probe has to write. [P3]
  */
+function storageAvailable(): boolean {
+  try {
+    localStorage.setItem(PROBE_KEY, '1');
+    localStorage.removeItem(PROBE_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function autosaveEnabled(): boolean {
+  try {
+    return localStorage.getItem(AUTOSAVE_KEY) !== 'off';
+  } catch {
+    return false;
+  }
+}
+
+function wireAutosave(form: HTMLFormElement): void {
+  const panel = document.querySelector<HTMLElement>('[data-autosave]');
+  const toggle = document.querySelector<HTMLInputElement>('[data-autosave-toggle]');
+  const state = document.querySelector<HTMLElement>('[data-autosave-state]');
+  const note = document.querySelector<HTMLElement>('[data-autosave-note]');
+  if (!panel || !toggle) return;
+
+  // No storage, no feature, and therefore no control. The markup ships the
+  // switch `hidden`; not unhiding it here is the whole of the no-JS and
+  // no-storage story. A visible switch on this page is a promise that
+  // flipping it does something. [P3]
+  if (!storageAvailable()) return;
+
+  let on = autosaveEnabled();
+  toggle.checked = on;
+  if (state) state.textContent = on ? 'on' : 'off';
+  panel.hidden = false;
+
+  if (on) {
+    if (restoreDraft(form)) setNote(note, NOTE_RESTORED);
+  } else {
+    // Belt and braces for a draft written by an older build, or left by a
+    // tab that was open when the switch was turned off somewhere else.
+    clearStoredDraft();
+  }
+
+  const save = () => {
+    if (on) saveDraft(form);
+  };
+  form.addEventListener('input', save);
+  form.addEventListener('change', save);
+
+  // The switch lives in the intro, outside the <form>, so this listener and
+  // the two above can never see each other's events.
+  toggle.addEventListener('change', () => {
+    on = toggle.checked;
+    if (state) state.textContent = on ? 'on' : 'off';
+    try {
+      localStorage.setItem(AUTOSAVE_KEY, on ? 'on' : 'off');
+    } catch {
+      // Storage worked a moment ago (the probe passed) and has stopped. The
+      // switch still reflects what this page will do for the rest of the
+      // session, which is the honest thing to show.
+    }
+    if (on) {
+      saveDraft(form);
+      setNote(note, NOTE_ON);
+    } else {
+      clearStoredDraft();
+      setNote(note, NOTE_OFF);
+    }
+  });
+}
+
+/** Unhide first, then write: a `role="status"` region that was `hidden` at
+ * the moment of the change is not announced by every screen reader. */
+function setNote(note: HTMLElement | null, text: string): void {
+  if (!note) return;
+  note.hidden = false;
+  note.textContent = text;
+}
+
+function saveDraft(form: HTMLFormElement): void {
+  try {
+    const data = new FormData(form);
+    data.delete('nk_hp');
+    const draft: Record<string, string | string[]> = {};
+    for (const [key, value] of data.entries()) {
+      if (typeof value !== 'string') continue;
+      if (key in draft) {
+        const existing = draft[key];
+        draft[key] = Array.isArray(existing) ? [...existing, value] : [existing as string, value];
+      } else {
+        draft[key] = value;
+      }
+    }
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    // Private browsing / storage disabled — the form still works without it.
+  }
+}
+
+/** Returns whether anything was actually put back, so the caller knows
+ * whether there is something to explain to the visitor. */
+function restoreDraft(form: HTMLFormElement): boolean {
+  let raw: string | null = null;
+  try {
+    raw = localStorage.getItem(DRAFT_KEY);
+  } catch {
+    return false;
+  }
+  if (!raw) return false;
+
+  let draft: Record<string, string | string[]>;
+  try {
+    draft = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+
+  let applied = false;
+  for (const [key, value] of Object.entries(draft)) {
+    const values = Array.isArray(value) ? value : [value];
+    const fields = form.elements.namedItem(key);
+    if (!fields) continue;
+
+    if (fields instanceof RadioNodeList) {
+      for (const node of Array.from(fields)) {
+        if (node instanceof HTMLInputElement && values.includes(node.value)) {
+          node.checked = true;
+          applied = true;
+        }
+      }
+    } else if (fields instanceof HTMLInputElement) {
+      if (fields.type === 'checkbox' || fields.type === 'radio') {
+        fields.checked = values.includes(fields.value);
+        if (fields.checked) applied = true;
+      } else {
+        fields.value = values[0] ?? '';
+        if (fields.value) applied = true;
+      }
+    } else if (fields instanceof HTMLTextAreaElement) {
+      fields.value = values[0] ?? '';
+      if (fields.value) applied = true;
+    }
+  }
+
+  updateWordCount(form);
+  updateTimingGate(form);
+  return applied;
+}
+
 function clearStoredDraft(): void {
   try {
     localStorage.removeItem(DRAFT_KEY);
@@ -508,6 +692,9 @@ async function submit(
 
     if (response.ok && json?.ok !== false) {
       renderReceipt(form, data, options, json?.reference, success);
+      // Sent is the one unambiguous "done with this draft" — whether or not
+      // autosave is on, there is nothing left for it to be a draft OF.
+      clearStoredDraft();
       return;
     }
 

@@ -89,6 +89,152 @@
     font-style: normal;
   }
 
+  /* ── The status line: "* REQUIRED" and the autosave switch ──────────── */
+  /* One row, because they are one thought: the two standing facts about
+     this form, stated before it starts. They sit next to each other rather
+     than at opposite ends of the content width — pushed apart, the switch
+     read as loose page chrome that had drifted off to the right instead of
+     as the second half of a sentence the required-note starts. */
+  .nk-c-statusline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 22px;
+  }
+
+  /* ── Autosave switch ────────────────────────────────────────────────
+     Drawn in the same idiom as the header's analogue/digital mode button
+     in the design source: mono uppercase, a hairline ink box with square
+     corners, a live status lamp, and a hover that inverts to solid ink.
+     That control already exists on this site to say "here is a state you
+     can change", which is precisely what this is, so it borrows the
+     vocabulary rather than inventing a second one for the same job. [P7]
+
+     Shape follows R2: the box is radius 0, the lamp is a true 50% circle.
+     Nothing in between, and no 999px pill — a pill has straight sides and
+     would read as neither.
+
+     The lamp is `var(--nk-accent)`, read live, so it moves with the accent
+     cycle like every other accent-carrying mark on the page. Off, it is a
+     hollow ring in the muted ink: the same shape with the light out, which
+     is legible without relying on hue alone — the border, the text colour
+     and the ON/OFF word all move together. [P10]
+
+     Motion is one 120ms `steps(2)` cut, matching the chips. Nothing here
+     fades. */
+  .nk-c-autosave {
+    display: flex;
+    align-items: center;
+  }
+
+  /* The switch ships with the `hidden` attribute and `contact-form.ts`
+     removes it. That contract is only as good as this rule: an author
+     `display` declaration outranks the UA stylesheet's `[hidden] { display:
+     none }`, so the line above would have un-hidden the switch on every
+     no-JavaScript load and handed those visitors a control that does
+     nothing. Any element given a `display` here needs the same guard. [P3] */
+  .nk-c-autosave[hidden],
+  .nk-c-autosave-note[hidden] {
+    display: none;
+  }
+
+  .nk-c-autosave-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono-wide);
+    text-transform: uppercase;
+    padding: 9px 12px;
+    /* The control is small by design — a footnote, not a field — so the
+       44px tap target is opened up with padding on the row instead of by
+       inflating the box. */
+    min-height: var(--nk-tap-min);
+    box-sizing: border-box;
+    border: 1.5px solid var(--nk-line);
+    border-radius: 0;
+    background: transparent;
+    color: var(--nk-ink-muted);
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--nk-dur-step) var(--nk-ease-step),
+      border-color var(--nk-dur-step) var(--nk-ease-step),
+      transform var(--nk-dur-step) var(--nk-ease-step);
+  }
+
+  .nk-c-autosave-lamp {
+    width: 9px;
+    height: 9px;
+    flex: 0 0 auto;
+    border-radius: var(--nk-radius-oval);
+    border: 1.5px solid currentColor;
+    background: transparent;
+    transition: background var(--nk-dur-step) var(--nk-ease-step),
+      border-color var(--nk-dur-step) var(--nk-ease-step);
+  }
+
+  .nk-c-autosave-state {
+    font-weight: 700;
+    color: var(--nk-ink);
+  }
+
+  [data-autosave-toggle]:checked + .nk-c-autosave-switch {
+    border-color: var(--nk-ink);
+    color: var(--nk-ink);
+  }
+
+  [data-autosave-toggle]:checked + .nk-c-autosave-switch .nk-c-autosave-lamp {
+    background: var(--nk-accent);
+    border-color: var(--nk-ink);
+  }
+
+  [data-autosave-toggle]:focus-visible + .nk-c-autosave-switch {
+    outline: var(--nk-focus-width) solid var(--nk-focus-colour);
+    outline-offset: var(--nk-focus-offset);
+  }
+
+  /* Hover is the chips' hover — a 2px mechanical lift and a solid border —
+     and deliberately NOT the mode button's ink inversion. Inverting would
+     have been the closer quote of the design source, but on a control whose
+     whole job is to show a state it is the wrong borrowing: the pointer
+     rests on the switch straight after a click, so "off" would have painted
+     itself solid ink and read as the louder, more-on-looking of the two
+     states. Hover says touchable; the lamp, the border and the word say
+     which way it is set. */
+  @media (hover: hover) {
+    .nk-c-autosave-switch:hover {
+      border-color: var(--nk-ink);
+      color: var(--nk-ink);
+      transform: translateY(-2px);
+    }
+  }
+
+  /* The restored-draft note. Quiet by construction: mono, muted, one line,
+     set under the status line rather than over the form as a banner. It is
+     a `role="status"` region so the sentence that appears when the switch
+     is flipped is announced without stealing focus. */
+  .nk-c-autosave-note {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-xs);
+    letter-spacing: var(--nk-tracking-mono);
+    line-height: 1.6;
+    color: var(--nk-ink-muted);
+    margin: 10px 0 0;
+    padding-left: 11px;
+    border-left: 2px solid var(--nk-accent);
+    max-width: 62ch;
+    transition: border-color var(--nk-dur-accent) var(--nk-ease-accent);
+  }
+
+  @media (max-width: 560px) {
+    /* The pair still fits side by side at 320px; only the breathing room
+       between them comes in. */
+    .nk-c-statusline {
+      gap: 10px 14px;
+    }
+  }
+
   /* ── Section rail (desktop, ≥1080px) ───────────────────────────────── */
   .nk-c-rail {
     flex: 0 0 244px;
