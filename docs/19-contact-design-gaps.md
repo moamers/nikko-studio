@@ -42,7 +42,7 @@ The contact design (`Nikko Contact.dc.html`) was authored in a separate session 
 |---|---|---|
 | Card hover lift: `translateY(-2px)`/`(-3px)`, varying by control | Every existing card (`Services.astro`, `Founder.astro`) lifts a consistent `translateY(-4px)` on `--nk-dur-card`/`--nk-ease-card` | Card-scale controls (intent cards, output boxes, budget boxes) lift `-4px` on the system's own duration/easing; chip-scale controls (pronouns, year, month) keep the smaller `-2px` lift, matching `Pill.astro`'s own convention for a button that size |
 | Choice-control corners at a flat `2px` | The "R2" rule: radius is `0` or `50%`, with one documented exception — `--nk-radius-input: 3px`, "form inputs" | Every choice control (radio/checkbox card, chip, box) is styled as a real `<input>` behind a label, so it *is* a form input under that exception. Uses `var(--nk-radius-input)` (3px) rather than a new hard-coded `2px`, which is the one-pixel deviation from the source's literal value |
-| Focus state: native ring suppressed entirely, replaced by an ink border + 3px cobalt underbar | [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement): "visible focus (`3px solid #EE5439`, `outline-offset: 3px`)" stated as the floor, not a suggestion | The site-wide coral `:focus-visible` ring is **kept** (it costs nothing extra — `base.css` already applies it everywhere) and the cobalt underbar/ink border is layered on top as the decorative flourish the design wants. Belt and braces rather than a straight swap |
+| Focus state: native ring suppressed entirely, replaced by an ink border + 3px cobalt underbar | [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement): "visible focus (`3px solid #EE5439`, `outline-offset: 3px`)" stated as the floor, not a suggestion | The site-wide coral `:focus-visible` ring is **kept** (it costs nothing extra — `base.css` already applies it everywhere) and the cobalt underbar/ink border is layered on top as the decorative flourish the design wants. The underbar is drawn `inset` so the result is one ring, not two — see "Corrections to the handoff's own values" below |
 | The 18px "cut corner" on intent cards, drawn via a `background-image` mask trick keyed to the card's current border colour | No precedent elsewhere on the site | Reproduced with the same masking technique (a small corner `span` with a two-stop `linear-gradient`, reading `var(--nk-ground)` so it stays in sync with the live accent-tinted ground) rather than `clip-path`, which would leave the diagonal edge without a border stroke |
 | Receipt's scalloped foot, drawn with a masked `radial-gradient` | The exact same masking technique already exists in `Pitch.astro`'s `.nk-pitch__perforation` | Reused verbatim rather than reinvented — one fewer one-off pattern on the page |
 
@@ -60,10 +60,47 @@ Distinct from the above — these are scope trims made to ship a complete, corre
 
 | Feature in the source | What shipped instead | Why |
 |---|---|---|
-| The section rail's "gathered fragments" — a stamped chip per answered value, appearing live as the form fills in | A static rail: five section links, no live completion state | The fragment stamps need live form-wide state tracked in JS with no functional payoff (they don't affect validation or submission) — cut to keep the rail correct-and-boring rather than half-working. The rail's numbered links and "current section" navigation are fully present |
+| The section rail's "gathered fragments" — a stamped chip per answered value, appearing live as the form fills in | **Now shipped** — see "Reversed" below | Cut originally as live state with no functional payoff; the founder asked for it back, and it is in |
 | Per-section completion squares (cobalt = done, yellow = in view) in the rail | Not implemented | Same reasoning — purely a progress affordance, not load-bearing |
 | Cloudflare Turnstile widget in the form | Not embedded | Needs a live site key this task doesn't have. `src/lib/enquiry/server/turnstile.ts` already degrades gracefully with no token present ("Skipped… lets the enquiry through"), so the endpoint isn't blocked on it — it's a follow-up wiring task, not a functional gap in the form today |
 
 ## One thing built beyond the original file list: `/contact/thank-you`
 
 `src/lib/enquiry/server/env.ts` documents that a plain, no-JS form POST redirects to `ENQUIRY_THANK_YOU_PATH` (default `/contact/thank-you`) on success, with the note *"The contact page owns this route; if it is not built yet the redirect 404s."* That route did not exist. Built `src/pages/contact/thank-you.astro` so the no-JS path has somewhere real to land, verified end-to-end against the live endpoint via `wrangler pages dev` (see the build report). Because the site is fully static, that page cannot read its own `?ref=` query string without a small enhancement script — without JavaScript it still reads correctly, just without quoting the reference number back (which the visitor already has in the URL and in the confirmation email).
+
+## Reversed: the rail's selection summary is back
+
+The "gathered fragments" cut above did not survive review. The rail now shows a live summary of the visitor's picks, per the design: a `GATHERED nn` count over one stamped chip per answered value, in the design's own colour language — cobalt for the single-select intent, yellow for the multi-select deliverables, an outline chip for typed text. Labels are truncated at 17 characters exactly as `support.js` does it.
+
+Two implementation notes that matter:
+
+- **It degrades correctly.** The markup in `ContactRail.astro` ships empty and `hidden`; `contact-form.ts` fills and reveals it. With JavaScript off the rail is the five-line navigation aid it always was, not an empty box. [P3](./02-engineering-principles.md#p3--progressive-enhancement-in-layers-in-that-order)
+- **It is `aria-hidden`.** Every value in it mirrors a control the visitor has just filled in and can still reach. Announcing a business name again on every keystroke is noise, not information. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+
+Per-section completion squares in the rail are still not implemented.
+
+## Removed: the draft autosave and restore
+
+**This is a removed feature, not a bug fix.** The form used to autosave every keystroke to `localStorage['nk-brief-draft']` and restore it on the next load. Nadia asked for a hard refresh to start clean: a refresh is the one gesture a visitor has for "start again", and a form that silently repopulates itself has taken that away.
+
+What changed in `src/scripts/contact-form.ts`:
+
+- nothing is restored on load;
+- any draft an earlier build left in storage is cleared once, on load, so a returning visitor is not carrying a stale copy of an answer they can no longer see;
+- the autosave went with it. A writer with no reader would have left the page filling a visitor's storage with data nothing ever reads. [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism)
+
+`EnquiryForm.astro` also carries `autocomplete="off"` on the `<form>`, which is the part that stops the *browser's* own restore-form-state-on-reload from reproducing the same behaviour. Individual fields keep their `autocomplete` values (`organization`, `name`, `email`), so real autofill is untouched.
+
+**Cost of the removal, stated plainly:** a visitor who closes the tab mid-brief and comes back loses their answers. The form is four minutes long and single-page, and the design's own standalone prototype demonstrates draft restore, so this is a deliberate divergence from the handoff at the founder's request, not an oversight.
+
+## Corrections to the handoff's own values
+
+Three places where the source file's literal numbers are wrong and this build does not reproduce them. [P12](./02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged) requires them logged rather than quietly "improved".
+
+| Where | The source says | What ships | Why |
+|---|---|---|---|
+| Ruled textareas | `line-height: 28px`, rules every 28px, `padding: 13px 16px` | Same rules and line-height, `padding-top` one whole rule (28px), background offset 1px | 13px is not a multiple of the rule pitch, so text sat 15px off its own rules and every line landed at a different height in its band. The three numbers now agree |
+| Focused input/textarea | `box-shadow: 0 3px 0 #2B45F0` (outer) | The same bar, `inset` | The site keeps its coral `:focus-visible` ring (P10). An *outer* shadow lands in the gap `outline-offset` opens and reads as a second, blue ring around the field. Inset, it is a bar under the text and the field has exactly one ring |
+| Group label → controls | Fieldset `gap: 14px` | Legend `margin-bottom: 24px` | A rendered `<legend>` is excluded from its fieldset's flex layout, so the `gap` never applied — the measured clearance was 0px and a card's 4px hover lift covered the label above it. The lift is unchanged |
+
+One more, not a value but a placement: `.nk-c-intro` now states `max-width` / `margin` / `padding` matching `.nk-c-shell`. The design draws the intro inside the two-column shell, where it inherits that container; here it is a sibling above the shell, so without those three declarations it ran flush to the viewport edge.
