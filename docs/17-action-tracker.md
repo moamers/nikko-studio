@@ -48,12 +48,12 @@ Kit keeps doing everything it does today — list, double opt-in, confirmation e
 
 | | Task | Detail | Phase | Status |
 |---|---|---|---|---|
-| E1 | **Set up Resend** + verify the sending domain (DNS records) | Sends both form emails | 1 | ⬜ |
-| E2 | **Notification email to Nadia** on every enquiry | All fields, readable on a phone, `Reply-To` = the enquirer so replying just works | 1 | ⬜ |
-| E3 | **Confirmation email to the enquirer** | In Nikko's voice. Says what happens next **and when** | 1 | ⬜ |
-| E4 | Decide where notifications go | Nadia's Workspace address, or a shared `hello@`? | 1 | ⬜ **Nadia** |
-| E5 | Write the confirmation email copy | What do you want to promise about response time? | 1 | ⬜ **Nadia** |
-| E6 | Test both emails end-to-end, including spam-folder check | Before launch | 1 | ⬜ |
+| E1 | **Set up Resend** + verify the sending domain (DNS records) | Sends both form emails — `RESEND_API_KEY` is still unset, so sends are currently skipped, not failed | 1 | ⬜ |
+| E2 | **Notification email to Nadia** on every enquiry | Built to the approved Direction 01 design. All fields, readable on a phone, `Reply-To` = the enquirer. Blocked on E1 + E4 to actually send | 1 | ✅ |
+| E3 | **Confirmation email to the enquirer** | Built to the approved Direction 01 design. Says what happens next and when. Blocked on E1 to actually send | 1 | ✅ |
+| E4 | Decide where notifications go | Nadia's Workspace address, or a shared `hello@`? — `ENQUIRY_NOTIFY_TO` is still unset | 1 | ⬜ **Nadia** |
+| E5 | Write the confirmation email copy | **Done, 2026-08-21.** Nadia's Direction 01 copy commits to "within two working days" — see [20](./20-transactional-email-design.md) | 1 | ✅ |
+| E6 | Test both emails end-to-end, including spam-folder check | Before launch — needs E1 + E4 first | 1 | ⬜ |
 
 **Why this matters:** today a form submission that fails silently is simply lost. The new flow saves the submission **first**, then notifies — so a bounced email costs you a notification, not a £5,000 lead.
 

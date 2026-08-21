@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 import { handleEnquiry, handleNonPost } from '../../src/lib/enquiry/server/handler.ts';
 import type { EnquiryEnv } from '../../src/lib/enquiry/server/env.ts';
 import { resetMemoryLimiter } from '../../src/lib/enquiry/server/rate-limit.ts';
+import { EMAIL_COPY } from '../../src/lib/enquiry/server/email-copy.generated.ts';
 import {
   buildEnquirerEmail,
   buildNadiaEmail,
@@ -230,9 +231,10 @@ describe('POST /api/enquiry — fully configured', () => {
 
     // Reply-To is the enquirer, so replying just works.
     assert.equal((toNadia.body as { reply_to: string }).reply_to, 'sam@example.com');
+    // Handoff instruction 8: `copy.owner.subject_prefix + " " + form.business`.
     assert.equal(
       (toNadia.body as { subject: string }).subject,
-      'New enquiry — Fable & Co — £10k – £20k',
+      `${EMAIL_COPY.owner.subject_prefix} Fable & Co`,
     );
 
     // The notification outcome is written back against the row.
@@ -647,6 +649,15 @@ describe('content negotiation', () => {
 /* ── Escaping [P15] ───────────────────────────────────────────────────────── */
 
 describe('email escaping', () => {
+  // A fixed, deterministic stand-in for `EnquiryConfig`'s two URL fields —
+  // real values come from `readConfig()` (env.ts), exercised separately in
+  // the "fully configured" / "nothing configured" suites above. These tests
+  // are about the template, not the URL plumbing.
+  const TEST_ASSETS = {
+    siteUrl: 'https://nikkostudio.co',
+    logoUrl: 'https://nikkostudio.co/email/nikko-mark.png',
+  };
+
   function recordWith(overrides: Partial<EnquiryRecord>): EnquiryRecord {
     return {
       id: 'id-1',
@@ -685,8 +696,12 @@ describe('email escaping', () => {
       social: XSS,
     });
 
-    for (const built of [buildNadiaEmail(record), buildEnquirerEmail(record)]) {
-      assert.ok(!built.html.includes('<img'), 'raw tag survived into the HTML body');
+    for (const built of [buildNadiaEmail(record, TEST_ASSETS), buildEnquirerEmail(record, TEST_ASSETS)]) {
+      // The approved design has its own legitimate `<img>` — the logo — so a
+      // blanket "no <img anywhere" check is no longer valid. What must never
+      // survive is the *submitted* markup: the raw payload string itself, and
+      // the `onerror=` attribute it carries.
+      assert.ok(!built.html.includes('<img src=x'), 'raw tag survived into the HTML body');
       assert.ok(!built.html.includes('onerror='), 'raw attribute survived into the HTML body');
       // The subject is a mail header, rendered as plain text by every client —
       // escaping it would show Nadia `&lt;img&gt;` and hide nothing. What must
@@ -695,7 +710,7 @@ describe('email escaping', () => {
       assert.ok(!built.html.includes('<title><img'), 'the subject reached the title unescaped');
     }
 
-    const nadia = buildNadiaEmail(record);
+    const nadia = buildNadiaEmail(record, TEST_ASSETS);
     assert.ok(nadia.html.includes('&lt;img src&#61;x onerror&#61;&quot;alert(1)&quot;&gt;'));
     // Prose keeps its line breaks — after escaping, never before.
     assert.ok(nadia.html.includes('<br>'));
@@ -703,7 +718,7 @@ describe('email escaping', () => {
 
   test('a newline in a field cannot split a mail header', () => {
     const record = recordWith({ business: 'Acme\r\nBcc: victim@example.com' });
-    const built = buildNadiaEmail(record);
+    const built = buildNadiaEmail(record, TEST_ASSETS);
 
     assert.ok(!built.subject.includes('\n'));
     assert.ok(!built.subject.includes('\r'));
@@ -712,7 +727,7 @@ describe('email escaping', () => {
 
   test('Reply-To is the bare address, never a submitted display name', () => {
     const record = recordWith({ name: 'Sam" <attacker@example.com>, "' });
-    assert.equal(buildNadiaEmail(record).replyTo, 'sam@example.com');
+    assert.equal(buildNadiaEmail(record, TEST_ASSETS).replyTo, 'sam@example.com');
   });
 
   test('esc covers the characters that matter', () => {
@@ -720,23 +735,26 @@ describe('email escaping', () => {
     assert.equal(esc(null), '');
   });
 
-  test('the confirmation makes no promise about timing until Nadia gives us one', () => {
-    // RESPONSE_TIME_PROMISE is null on purpose (TODO(nadia), docs/16 Q3). If
-    // this test starts failing, someone invented a commitment the studio has
-    // not made — which is exactly what it is here to catch.
-    const built = buildEnquirerEmail(recordWith({}));
-    assert.ok(!/\b\d+\s*(hours?|days?|weeks?|working days?)\b/i.test(built.text), built.text);
+  test('the confirmation timing promise comes from the approved copy, not a hardcoded string', () => {
+    // Direction 01's approved `email-copy.yaml` (Nadia, 2026-08-21) commits to
+    // "within two working days" in `customer.intro` — superseding the earlier
+    // no-promise stance (docs/16 Q3). This asserts the sent text contains
+    // whatever that YAML says, so the promise can only change by editing the
+    // YAML, never by drifting silently in this file.
+    const built = buildEnquirerEmail(recordWith({}), TEST_ASSETS);
+    assert.ok(built.text.includes(EMAIL_COPY.customer.intro), built.text);
   });
 
   test('the greeting uses the first name', () => {
     assert.equal(firstName('Sam Okonkwo'), 'Sam');
     assert.equal(firstName('  Cher  '), 'Cher');
-    assert.ok(buildEnquirerEmail(recordWith({ name: 'Sam Okonkwo' })).text.startsWith('Thank you, Sam.'));
+    const built = buildEnquirerEmail(recordWith({ name: 'Sam Okonkwo' }), TEST_ASSETS);
+    assert.ok(built.text.includes(`${EMAIL_COPY.customer.greeting} Sam, ${EMAIL_COPY.customer.intro}`), built.text);
   });
 
   test('the reference reaches the enquirer and the studio', () => {
     const record = recordWith({ reference: 'NKO-123456' });
-    assert.ok(buildEnquirerEmail(record).text.includes('NKO-123456'));
-    assert.ok(buildNadiaEmail(record).text.includes('NKO-123456'));
+    assert.ok(buildEnquirerEmail(record, TEST_ASSETS).text.includes('NKO-123456'));
+    assert.ok(buildNadiaEmail(record, TEST_ASSETS).text.includes('NKO-123456'));
   });
 });

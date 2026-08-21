@@ -72,6 +72,8 @@ For **business context** — what Nikko Studio is, who it serves, how it makes m
 | **14** | [Design Source Conflicts](./14-design-source-conflicts.md) | Where the two design documents contradict each other |
 | **15** | [Migration & Cutover](./15-migration-and-cutover.md) | 🔴 Getting off Squarespace without breaking email or search |
 | **18** | [Staging & Deployment](./18-staging-and-deployment.md) | How to get a URL you can open on a phone — needs no DNS change |
+| **19** | [Contact Design Gaps](./19-contact-design-gaps.md) | Where the contact-page handoff was ambiguous or incomplete, and how it was resolved |
+| **20** | [Transactional Email Design](./20-transactional-email-design.md) | The two approved emails: field mapping, masthead correction, logo, and what was flagged rather than guessed at |
 | **17** | [Action Tracker](./17-action-tracker.md) | **The single checklist** — design tasks, Kit, email notifications, analytics, infra, legal |
 
 ### Decisions

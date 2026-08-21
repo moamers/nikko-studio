@@ -1,6 +1,6 @@
 # 16 — Forms & Data Capture
 
-> **Status:** Part 2 implemented · **Owner:** Engineering · **Last updated:** 2026-08-21
+> **Status:** Part 2 implemented, transactional email design approved and wired · **Owner:** Engineering · **Last updated:** 2026-08-21
 > **Related:** [Docs index](./README.md) · [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism) · [P15](./02-engineering-principles.md#p15--nothing-is-trusted-at-the-boundary) · [Plain English](./00-start-here.md#5-what-happens-to-the-forms)
 
 The site has exactly two places where a visitor hands over data, and they are the two most commercially important interactions on it. They have **different requirements and different architectures**, and conflating them would be a mistake.
@@ -371,10 +371,10 @@ Both submissions fire a conversion event. These are the only two numbers on the 
 |---|---|---|
 | 1 | Keep the Google Sheet as a working view, or email + periodic export? | **Open.** Step 7 is not built. D1 is authoritative either way, so this is additive whenever it is answered |
 | 2 | Where should enquiry notifications go — Nadia's Workspace address, or a shared `hello@`? | **Open, and blocking the notification email.** It is one env var (`ENQUIRY_NOTIFY_TO`), no code change |
-| 3 | What should the enquirer's confirmation email say about **when** they'll hear back? | **Open.** The email ships making *no* timing promise. `RESPONSE_TIME_PROMISE` in `server/copy.ts` is `null`; set it to her sentence and it appears in both bodies. A unit test fails if anyone invents one |
+| 3 | What should the enquirer's confirmation email say about **when** they'll hear back? | **Answered, 2026-08-21.** Nadia's approved `email-copy.yaml` (Direction 01) commits to "within two working days" in `customer.intro`. This supersedes the earlier no-promise stance — the wording now lives in `src/content/email/copy.yaml`, not code, and a drift test (`enquiry-email-copy.test.ts`) fails if the generated module and the YAML disagree. See [20 — Transactional Email Design](./20-transactional-email-design.md) |
 | 4 | Retention period for enquiry data? | **Open.** No automatic deletion until it is answered |
 | 5 | Should the redesigned form keep all current fields, or is it being reworked? | **Answered** by the contact handoff. The fields are those in `src/content/contact/form.yaml`, and the server validates exactly them |
-| 6 | *(new)* Does Nadia want the whole confirmation email rewritten? | The current copy is a placeholder marked `TODO(nadia)` in `server/copy.ts`. It is deliberately voice-neutral-but-warm and promises nothing |
+| 6 | *(new)* Does Nadia want the whole confirmation email rewritten? | **Answered, 2026-08-21.** Direction 01 is the approved design for both emails — see [20](./20-transactional-email-design.md) |
 | 7 | *(new)* Who owns `/contact/thank-you`? | The no-JS success redirect targets it. It does not exist yet |
 
 ---

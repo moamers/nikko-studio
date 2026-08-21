@@ -1,0 +1,78 @@
+# ─────────────────────────────────────────────────────────────────────
+#  TRANSACTIONAL EMAIL COPY — the words in the two enquiry-form emails
+#  (the "brief received" email a customer gets, and the notification
+#  Nadia gets).
+#
+#  This file is yours. Reword any sentence below and both emails pick
+#  it up the next time the site builds (about two minutes). You do not
+#  need an engineer.
+#
+#  A few things worth knowing before you edit:
+#
+#  • Keep the indentation exactly as you find it.
+#  • If your text contains a colon followed by a space, or starts with
+#    a quote, wrap the whole thing in "double quotes".
+#  • `{name}` in customer.greeting is replaced with the enquirer's
+#    first name automatically. Don't remove the braces.
+#  • Do not add arrow icons (→, ➔, ➺) to any line — the approved
+#    design keeps links plain. [instruction from Nadia, 2026-08-21]
+#
+#  Design source: nikko-email-handoff-direction-01 ("Direction 01 —
+#  restrained editorial receipt"), approved 2026-08-21.
+# ─────────────────────────────────────────────────────────────────────
+
+brand:
+  name: "NIKKO STUDIO"
+  locations: "LONDON // DUBAI"
+  # CORRECTED from the supplied design package, which read
+  # "NIKKO STUDIO // LONDON // DUBAI" (double slash). The site's own
+  # verbatim masthead — the corner note in the homepage's opening
+  # sequence, `src/components/OpeningSequence.astro` — reads
+  # "A story studio / London / Dubai": a SINGLE forward slash with one
+  # space either side. That is the site's one existing precedent for
+  # this exact "NAME / PLACE / PLACE" construction, so the email
+  # masthead now matches it rather than inventing its own separator.
+  masthead: "NIKKO STUDIO / LONDON / DUBAI"
+  website_label: "NIKKOSTUDIO.CO"
+
+sections:
+  about_you: "About you"
+  project: "The project"
+  reason: "The reason"
+  finish_line: "The finish line"
+
+fields:
+  business: "Business"
+  name: "Name"
+  email: "Email"
+  social: "Social / website"
+  pronouns: "Pronouns"
+  accessibility: "Access / adjustments"
+  movement: "Closest fit"
+  outputs: "What we're making"
+  why: "What's changing"
+  goals: "Success looks like"
+  target_timing: "Target timing"
+  budget: "Ballpark budget"
+  budget_short: "Budget"
+  intent: "Intent"
+  target_short: "Target"
+
+customer:
+  subject: "We’ve got your project brief"
+  preheader_prefix: "Thanks,"
+  preheader_suffix: "— here is a copy of the brief you sent to Nikko Studio."
+  status: "Brief received"
+  headline_line_1: "Your project"
+  headline_line_2: "brief is in."
+  greeting: "Hi"
+  intro: "thanks for taking the time to tell us what you’re working on. We’ll read through it properly and get back to you within two working days."
+  support: "Here’s a copy of everything you submitted. If something is wrong or you have more to add, just reply to this email."
+
+owner:
+  subject_prefix: "New project brief —"
+  preheader_suffix: "sent a new project brief."
+  status: "New enquiry"
+  headline_line_1: "A new brief"
+  headline_line_2: "just landed."
+  reply_label: "Reply to"

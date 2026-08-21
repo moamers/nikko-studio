@@ -385,14 +385,14 @@ export async function handleEnquiry(
       apiKey,
       from: config.from,
       to: config.notifyTo,
-      email: buildNadiaEmail(record),
+      email: buildNadiaEmail(record, config),
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     }),
     sendEmail({
       apiKey,
       from: config.from,
       to: record.email,
-      email: buildEnquirerEmail(record),
+      email: buildEnquirerEmail(record, config),
       ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
     }),
   ]);

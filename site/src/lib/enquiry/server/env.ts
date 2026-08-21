@@ -92,6 +92,17 @@ export interface EnquiryEnv {
    * their enquiry at all. Falls back to `ENQUIRY_NOTIFY_TO`.
    */
   ENQUIRY_FALLBACK_EMAIL?: string;
+
+  /**
+   * The public site, no trailing slash. Used to build the two absolute HTTPS
+   * URLs an email needs — the logo and the footer link — because an email
+   * client fetches images from the open internet, not from this repo.
+   * Falls back to {@link DEFAULT_SITE_URL}, which matches `astro.config.mjs`'s
+   * `site`. Override this on a staging deployment so its emails (if any are
+   * ever sent from staging) don't point ordinary web-standing links at the
+   * production domain.
+   */
+  SITE_URL?: string;
 }
 
 /**
@@ -111,6 +122,14 @@ export const DEFAULT_FORM_PATH = '/contact';
 
 export const DEFAULT_RATE_LIMIT = 5;
 
+/** Matches `site` in `astro.config.mjs`. Kept as a literal, not an import —
+ * this file is bundled into a Cloudflare Function, a different build target
+ * from the Astro site, and the two should not share a module graph. */
+export const DEFAULT_SITE_URL = 'https://nikkostudio.co';
+
+/** Where the generated mark lives — see `docs/20-transactional-email-design.md`. */
+export const LOGO_PATH = '/email/nikko-mark.png';
+
 /** How the endpoint reads its own configuration, once per request. */
 export interface EnquiryConfig {
   readonly hasStore: boolean;
@@ -124,6 +143,8 @@ export interface EnquiryConfig {
   readonly thankYouPath: string;
   readonly formPath: string;
   readonly rateLimitPerHour: number;
+  readonly siteUrl: string;
+  readonly logoUrl: string;
   /** Human-readable names of everything that is not wired up yet. */
   readonly missing: readonly string[];
 }
@@ -131,6 +152,12 @@ export interface EnquiryConfig {
 function trimmed(value: string | undefined): string | null {
   const v = typeof value === 'string' ? value.trim() : '';
   return v.length > 0 ? v : null;
+}
+
+/** Strips a trailing slash so `${siteUrl}${path}` never doubles one up. */
+function siteUrlOf(value: string | undefined): string {
+  const v = trimmed(value) ?? DEFAULT_SITE_URL;
+  return v.endsWith('/') ? v.slice(0, -1) : v;
 }
 
 /**
@@ -150,6 +177,7 @@ export function readConfig(env: EnquiryEnv): EnquiryConfig {
   const notifyTo = trimmed(env.ENQUIRY_NOTIFY_TO);
   const resendKey = trimmed(env.RESEND_API_KEY);
   const hasStore = Boolean(env.DB && typeof env.DB.prepare === 'function');
+  const siteUrl = siteUrlOf(env.SITE_URL);
 
   const missing: string[] = [];
   if (!hasStore) missing.push('D1 binding "DB" (the durable record)');
@@ -173,6 +201,8 @@ export function readConfig(env: EnquiryEnv): EnquiryConfig {
     formPath: safePath(env.ENQUIRY_FORM_PATH, DEFAULT_FORM_PATH),
     rateLimitPerHour:
       Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : DEFAULT_RATE_LIMIT,
+    siteUrl,
+    logoUrl: `${siteUrl}${LOGO_PATH}`,
     missing,
   };
 }
