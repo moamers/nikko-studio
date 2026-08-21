@@ -167,6 +167,13 @@
     --nk-pill-slot-xl: 9px;
     --nk-pill-slot-h-xl: 4px;
     --nk-header-pad: 16px var(--nk-gutter);
+    /* The sticky header's real height, republished by `SiteHeader.astro` on
+       resize. Anything that pins itself directly under the header reads
+       this rather than re-deriving it: the padding-plus-tap-target sum
+       below is only a pre-JS fallback, and it was 7px taller than the
+       header actually renders, which is exactly the sliver of page content
+       that showed between the header and the contact rail bar. [P11] */
+    --nk-header-h: calc(16px + var(--nk-tap-min) + 16px);
 
     /* ── Motion ─────────────────────────────────────────────────────────── */
     --nk-dur-step: 120ms;               /* stepped, mechanical button hover  */

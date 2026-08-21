@@ -105,4 +105,22 @@ const resolvedHomeHref = resolveNavHref(logo.homeHref, path);
   import { initMode } from '../scripts/mode';
 
   initMode();
+
+  /* Publish the header's real height as `--nk-header-h`, so anything that
+     sticks directly beneath it sits flush instead of guessing. The CSS
+     fallback is a sum of the padding and the tap target, which overshoots
+     the rendered height — the gap that leaves is small, but page content
+     scrolls through it. Observed rather than measured once, because the
+     header re-wraps at narrow widths and changes height when it does. */
+  const header = document.querySelector('.nk-header');
+  if (header instanceof HTMLElement && 'ResizeObserver' in window) {
+    const publish = (): void => {
+      document.documentElement.style.setProperty(
+        '--nk-header-h',
+        `${Math.round(header.getBoundingClientRect().height)}px`,
+      );
+    };
+    publish();
+    new ResizeObserver(publish).observe(header);
+  }
 </script>

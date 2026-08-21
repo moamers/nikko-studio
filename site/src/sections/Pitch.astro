@@ -311,6 +311,12 @@ function autocompleteFor(field: { name: string; type: 'text' | 'email' }): strin
 
     .nk-pitch__submit {
       align-self: flex-start;
+      /* The form's 16px gap is the gap between a field and the LABEL of the
+         next one, so between two fields the eye reads 40px. The button has
+         no label above it, so the same 16px put it visibly tighter to the
+         email field than the fields are to each other. This makes up the
+         difference, so the rhythm down the form is even. */
+      margin-top: calc(40px - 16px);
     }
 
     .nk-pitch__consent {

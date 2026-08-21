@@ -254,7 +254,7 @@
     position: sticky;
     /* header.css exposes no single "header height" token; this is the sum
        of --nk-header-pad's 16px and --nk-tap-min spelled out. docs/19. */
-    top: calc(16px + var(--nk-tap-min) + 16px);
+    top: var(--nk-header-h);
     align-self: flex-start;
     padding-top: clamp(52px, 6vw, 92px);
   }
@@ -436,7 +436,7 @@
   /* ── Mobile chip bar (<1080px) ──────────────────────────────────────── */
   .nk-c-railbar {
     position: sticky;
-    top: calc(16px + var(--nk-tap-min) + 16px);
+    top: var(--nk-header-h);
     z-index: var(--nk-z-rail);
     /* `--nk-veil`, not a paper literal: the page ground cycles with the
        accent (horizon → last light → offshore), and a bar pinned over it
@@ -501,7 +501,7 @@
 
   /* ── Section heading row (repeats 01–05) ────────────────────────────── */
   .nk-c-section {
-    scroll-margin-top: calc(16px + var(--nk-tap-min) + 32px);
+    scroll-margin-top: calc(var(--nk-header-h) + 16px);
     padding: clamp(46px, 6vw, 84px) 0 0;
   }
 
@@ -612,19 +612,31 @@
     opacity: 1;
   }
 
-  /* Focus is ONE ring, not two. The design suppresses the native ring and
-     marks focus with an ink border plus a cobalt underbar; base.css adds
-     the site-wide 3px coral :focus-visible ring, which P10 states as the
-     floor and which stays. The original underbar was an OUTER shadow
-     (`0 3px 0`), so it sat in the gap the 3px outline-offset opens up and
-     read as a second, blue ring around the field — the doubled-ring bug.
-     Inset, it reads as what the design means it to be: a bar under the
-     text, inside the field, with exactly one ring around the outside.
-     Logged as a deviation in docs/19. */
+  /* Focus is ONE mark, not two — and this rule has now been wrong twice in
+     the same way, so the reasoning is worth keeping.
+
+     The design suppresses the native ring and marks focus with an ink
+     border plus a cobalt underbar, while `base.css` adds the site-wide
+     `:focus-visible` ring that [P10] makes the floor. First time round the
+     underbar was an OUTER shadow, so it sat in the gap the outline-offset
+     opens and read as a second ring; moving it inset fixed that while the
+     site ring was still coral and the two marks were plainly different
+     things.
+
+     Then the site ring became cobalt (docs/14 § C9). Two cobalt marks
+     3px apart read as one doubled blue ring again — which is exactly what
+     the founder reported, and why the newsletter field, which has no
+     underbar, looked correct all along.
+
+     So the underbar goes. The site ring is now the same cobalt the design
+     asked the underbar to be, in the same place the design wanted the eye
+     drawn; drawing it twice adds no information. The ink border stays,
+     because that is the design's non-colour signal. One ring, and a text
+     field on this page now looks exactly like a text field anywhere else
+     on the site. */
   .nk-c-input:focus-visible,
   .nk-c-textarea:focus-visible {
     border-color: var(--nk-ink);
-    box-shadow: inset 0 -3px 0 var(--nk-cobalt);
   }
 
   .nk-c-input[aria-invalid='true'],
