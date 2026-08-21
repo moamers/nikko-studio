@@ -26,7 +26,7 @@ Per [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-
 
 ## The conflicts
 
-### C1 — The turquoise licence 🔴
+### C1 — The turquoise licence ✅ *(ruled 2026-08-21)*
 
 | | |
 |---|---|
@@ -43,7 +43,17 @@ Per [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-
 
 The contact page's selected timing chips were briefly built turquoise and are not: they **reuse yellow**, the same fill the deliverables boxes already carry, and the selected budget box uses coral. No new colour was introduced and the reserve was not spent. (docs/19 has the detail and the contrast numbers.)
 
-What still needs a ruling under C1 is only the original question — whether the *homepage's* §5 turquoise ground and ticket shadow are licensed by "may be a surface inside a picture", or are the same violation at a larger size. The chip case is closed.
+**Ruling, 2026-08-21 — C1 is closed.** Asked the remaining question directly, the founder licensed the homepage's existing uses: the §5 turquoise ground stays ("counts as a background colour panel, that's fine") and the ticket-bar drop shadow stays. So the reserve is not "imagery only" as B words it — it is **surface only**, and a background panel and a drop shadow are surfaces.
+
+The operative rule, as it now stands:
+
+| Turquoise **may** be | Turquoise **may not** be |
+|---|---|
+| A background or ground panel | A chip or control fill |
+| A drop shadow | A rule or divider |
+| A surface inside a picture — plaster, tile, thread, a mount | A link, a word, or any text |
+
+That is a narrowing of B's prohibition ("may never be a fill, a rule, a chip, a link or a word") on its first clause only: a *background* fill is licensed, a *component* fill is not. B should be amended to this wording so the next page does not revert to the stricter reading. **No code change follows from this ruling** — the homepage already ships both uses, and the contact chips already avoid turquoise.
 
 ---
 
