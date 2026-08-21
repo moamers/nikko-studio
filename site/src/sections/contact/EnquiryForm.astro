@@ -42,7 +42,20 @@ const optionMapJson = JSON.stringify(optionMap).replace(/</g, '\\u003c');
 ---
 
 <div data-contact-root>
-  <form class="nk-c-form" action="/api/enquiry" method="post" novalidate data-contact-form>
+  {/* `autocomplete="off"` is here for one specific reason: it turns off the
+      BROWSER's own restore-form-state-on-reload, which would otherwise put
+      the visitor's previous answers back after a refresh even now that the
+      localStorage draft is gone (see `contact-form.ts`). A refresh starts
+      clean. Fields keep their own `autocomplete` values — `name`, `email`,
+      `organization` — so real autofill is untouched. */}
+  <form
+    class="nk-c-form"
+    action="/api/enquiry"
+    method="post"
+    novalidate
+    autocomplete="off"
+    data-contact-form
+  >
     <AboutYouFields pronouns={pronouns} />
     <ProjectFields intents={intents} />
     <WorkFields outputs={outputs} />
