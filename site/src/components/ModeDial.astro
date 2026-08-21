@@ -132,7 +132,16 @@ const { copy, tone = 'ink', class: className } = Astro.props;
     }
 
     .nk-dial__state {
-      opacity: 0.5;
+      /* NOT `opacity: 0.5`. Half-opacity ink over the accent ground composites
+         to #848070, which is 3.41:1 — a WCAG AA failure at 10px, caught by
+         axe on /contact. It went unnoticed on the homepage only because the
+         opening sequence hides the header at first paint, and at 390px the
+         dial moves into the ink menu panel. [P10]
+
+         Mixing toward the ground keeps the dimmed look and stays legible.
+         65% ink measures ~5.6:1 on Horizon and holds on all three accent
+         grounds, whose luminances sit within a few percent of each other. */
+      color: color-mix(in srgb, var(--nk-ink) 65%, var(--nk-ground));
     }
 
     /* An empty "Auto" span would still contribute the flex gap once the mode
