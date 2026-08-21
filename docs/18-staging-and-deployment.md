@@ -37,12 +37,29 @@ For completeness, the local route is in [`site/README.md`](../site/README.md). F
 
 | Field | Value |
 |---|---|
-| Production branch | `claude/nikko-studio-architecture-z0twrt` *(for now — change to `main` after merge)* |
-| Framework preset | **Astro** |
-| Build command | `npm run build` |
-| Build output directory | `dist` |
-| **Root directory** | **`site`** ← easy to miss, and it fails without it |
-| Node version | `22` *(env var `NODE_VERSION=22`)* |
+| Production branch | `main` |
+| **Deploy command** | `cd site && npm install && npm run build && npx wrangler deploy` |
+| **Root directory** | **Leave empty** |
+| Node version | `22` *(plain env var `NODE_VERSION=22`)* |
+
+**Why a single deploy command rather than the usual framework preset.** Once
+`site/wrangler.toml` existed, Cloudflare switched this project to the
+Wrangler deploy path, which runs one command from the **repository root** and
+ignores the separate "build command" field. The website lives in `site/`, so
+the command has to `cd` there itself. Setting **Root directory** *as well*
+double-applies the path and the build fails with `cd: can't cd to site` — it
+must be left empty.
+
+**⚠️ The failure this actually causes, and how to recognise it.** Every
+misconfiguration here produces a *missing-files* error rather than a useful
+one — `Could not detect a directory containing static files`, `cd: can't cd to
+site`, or `Could not read package.json`. All three mean the same thing: the
+build is looking somewhere that has no website in it. Check, in this order:
+1. **Is it building the right branch?** `main` carried no `site/` directory
+   until the 2026-08-21 merge. Building a branch without the site produces
+   all three errors above and none of them mention the branch.
+2. Is **Root directory** empty?
+3. Does the deploy command start with `cd site`?
 
 Leave `PUBLIC_ALLOW_INDEXING` **unset**. See [indexing](#indexing-is-off-by-default) below.
 
