@@ -1,0 +1,59 @@
+/* grain.css — the full-page grain overlay, the loudest tell of analogue mode.
+
+   Source: `Nikko Homepage.dc.html` line 343 —
+
+     position:fixed; inset:0; z-index:90; pointer-events:none;
+     mix-blend-mode:multiply; opacity:{{ grainOpacity }};
+     background-image:
+       repeating-linear-gradient(0deg,  rgba(17,17,16,0.55) 0 1px, transparent 1px 3px),
+       repeating-linear-gradient(90deg, rgba(17,17,16,0.30) 0 1px, transparent 1px 4px)
+
+   `grainOpacity` is 0.13 in analogue and 0 in digital, which is exactly what
+   `--nk-grain` holds — so the layer ships once, in the HTML, and the mode
+   switch is a single custom property. No JavaScript is involved in drawing
+   it. [P3, P11]
+
+   It is a sibling of the shell rather than a child of it, because the shell
+   is `overflow-x: clip` and a clipped ancestor would trap a `position: fixed`
+   layer inside the scroll box.
+
+   TWO GATES, both deliberate:
+
+   1. `@supports (mix-blend-mode: multiply)`. Without the blend mode the two
+      gradients stop being a grade over the page and become a hairline mesh
+      painted on top of the type. The effect is progressive; its absence is
+      silence, not a degraded version. [P3]
+
+   2. R6 (docs/06): below 768px and on coarse pointers the layer is removed
+      entirely. A viewport-sized `multiply` layer makes the compositor blend
+      the whole screen every frame, and at 0.13 opacity a 1px/3px gradient on
+      a 3x display is sub-pixel — we would be paying the most expensive thing
+      in the design for something nobody can see. Analogue keeps its other
+      tells there (image grade, hero signal, misregistration), so the mode
+      still means something on a phone. [P4]
+
+   It carries `data-nk-chrome`, so the opening sequence holds it back with the
+   header and the cursor layer and it fades in at handoff. */
+
+@layer components {
+  .nk-grain {
+    display: none;
+  }
+
+  @supports (mix-blend-mode: multiply) {
+    @media (min-width: 768px) and (pointer: fine) {
+      .nk-grain {
+        display: block;
+        position: fixed;
+        inset: 0;
+        z-index: var(--nk-z-grain);
+        pointer-events: none;
+        mix-blend-mode: multiply;
+        opacity: var(--nk-grain);
+        background-image:
+          repeating-linear-gradient(0deg, rgb(var(--nk-ink-rgb) / 0.55) 0 1px, transparent 1px 3px),
+          repeating-linear-gradient(90deg, rgb(var(--nk-ink-rgb) / 0.3) 0 1px, transparent 1px 4px);
+      }
+    }
+  }
+}

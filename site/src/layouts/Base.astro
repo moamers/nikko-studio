@@ -86,6 +86,14 @@ const allowIndexing = import.meta.env.PUBLIC_ALLOW_INDEXING === 'true';
       <slot />
     </div>
 
+    {/* Analogue mode's full-page grain. Ships in the HTML because it is pure
+        CSS — `--nk-grain` is 0.13 in analogue and 0 in digital, so no script
+        draws it and no script is needed to switch it off. A SIBLING of the
+        shell, never a child: the shell is `overflow-x: clip`, which would
+        trap a `position: fixed` layer inside it. Decorative, so `aria-hidden`
+        and `pointer-events: none`. See `styles/grain.css`. [P3, P10] */}
+    <span class="nk-grain" aria-hidden="true" data-nk-chrome="true"></span>
+
     {/* The site's one client entry point. Mounts the reveal fallback, the
         accent cycle, the analogue/digital drift and the cursor residue.
 
