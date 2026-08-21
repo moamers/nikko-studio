@@ -333,7 +333,7 @@ interface Fragment {
   /** Stable identity, so a chip that hasn't changed is never re-stamped. */
   key: string;
   label: string;
-  tone: 'ink' | 'cobalt' | 'yellow';
+  tone: 'ink' | 'cobalt' | 'yellow' | 'turquoise' | 'coral';
 }
 
 const FRAG_MAX = 17;
@@ -344,7 +344,9 @@ const FRAG_MAX = 17;
  *
  * Tones carry the same meaning they do on the controls themselves: cobalt
  * for the single-select intent, yellow for the multi-select deliverables,
- * outline for typed-in text. Values are read straight out of the form on
+ * turquoise for the timing chips, coral for the budget box, outline for
+ * typed-in text. One colour language, said twice — in the control and in
+ * the rail — so a glance at the rail is a glance at the form. Values are read straight out of the form on
  * every input and change, so the summary cannot drift from the fields, and
  * option codes resolve to their founder-authored labels through the same
  * `#nk-contact-options` map the receipt uses — never a second hand-typed
@@ -392,10 +394,10 @@ function collectFragments(form: HTMLFormElement, options: OptionGroups): Fragmen
   if (year) {
     const month = get('month');
     const label = year === 'flexible' ? 'Flexible' : [month, year].filter(Boolean).join(' ');
-    push('timing', label, 'ink');
+    push('timing', label, 'turquoise');
   }
 
-  if (get('budget')) push('budget', labelFor(options, 'budget', get('budget')), 'ink');
+  if (get('budget')) push('budget', labelFor(options, 'budget', get('budget')), 'coral');
 
   return frags;
 }

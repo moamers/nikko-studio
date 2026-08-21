@@ -385,6 +385,21 @@
     color: var(--nk-ink);
   }
 
+  /* The rail's chips speak the controls' own colour language, so timing and
+     budget follow their groups. Ink text on both, for the same contrast
+     reason the controls carry it. */
+  .nk-c-frag--turquoise {
+    background: var(--nk-turquoise);
+    border-color: var(--nk-ink);
+    color: var(--nk-ink);
+  }
+
+  .nk-c-frag--coral {
+    background: var(--nk-coral);
+    border-color: var(--nk-ink);
+    color: var(--nk-ink);
+  }
+
   @keyframes nk-c-frag-in {
     from {
       opacity: 0;
@@ -999,11 +1014,32 @@
     transition: background var(--nk-dur-colour) ease, color var(--nk-dur-colour) ease;
   }
 
+  /* Selected: a turquoise fill with ink text, an ink border and a paper
+     keyline stamped inside it.
+
+     Turquoise is this group's own colour, not a repeat of one already in
+     use: intent is cobalt, deliverables are yellow, budget is coral, and a
+     chosen month has to be as legible at a glance as any of them. The
+     direction board reserves turquoise for imagery — see docs/14 § C1;
+     the founder asked for these chips coloured and named turquoise, and a
+     founder instruction outranks the board [P0], so this is deliberate and
+     logged, not an oversight.
+
+     Ink text, never paper: paper on turquoise is 2.25:1 and fails outright.
+     Ink on turquoise is 7.14:1. Same reasoning as the yellow deliverable
+     boxes, which is why they read the same way. [P10]
+
+     The state is not carried by hue alone. The fill drops the chip's
+     luminance from 0.90 to 0.35 — a chosen chip is unmistakably the dark
+     one in greyscale — and the inset paper keyline is a shape that is
+     simply not there when the chip is unselected. Both survive any colour
+     vision, any monitor and a photocopier. [P10] */
   .nk-vh-input:checked + .nk-c-year-chip,
   .nk-vh-input:checked + .nk-c-month-chip {
-    background: var(--nk-cobalt);
-    border-color: var(--nk-cobalt);
-    color: var(--nk-paper);
+    background: var(--nk-turquoise);
+    border-color: var(--nk-ink);
+    color: var(--nk-ink);
+    box-shadow: inset 0 0 0 2px var(--nk-paper);
   }
 
   .nk-vh-input:focus-visible + .nk-c-year-chip,
@@ -1063,10 +1099,18 @@
       transform var(--nk-dur-lift) var(--nk-ease-step);
   }
 
+  /* Selected: coral, ink text, ink border, paper keyline — the same
+     construction as the timing chips above, in this group's own colour.
+     Ink on coral is 5.36:1; paper on coral is 2.99:1 and was never an
+     option. [P10] The design source fills this box with flat ink, which
+     reads as chrome rather than as an answer once every other group on the
+     page carries a colour — the founder asked for coral here and coral is
+     what ships. Logged in docs/19. */
   .nk-vh-input:checked + .nk-c-budget {
-    background: var(--nk-ink);
-    color: var(--nk-paper);
+    background: var(--nk-coral);
+    color: var(--nk-ink);
     border-color: var(--nk-ink);
+    box-shadow: inset 0 0 0 2px var(--nk-paper);
   }
 
   .nk-vh-input:focus-visible + .nk-c-budget {

@@ -154,6 +154,30 @@ Three reasons this is the right way round, beyond following each page's own sour
 
 Held by `focus is one ring on every kind of control [D3]` in `tests/e2e/contact.spec.ts`, which now asserts the ring's colour as well as its geometry, and by a companion test that focuses a control on `/` and asserts it is still coral — so the cheap fix (moving the global token) fails the suite rather than shipping.
 
+## Selected budget and timing chips: coral and turquoise, not the source's ink and cobalt
+
+The founder reported that a selected chip in **ballpark budget** and in the **timing** group did not read as chosen next to the groups that carry colour (intent fills cobalt, deliverables fill yellow).
+
+**What the design source actually says**, checked before changing anything — `Nikko Contact.dc.html`'s render function:
+
+| Group | Source's selected fill | Source's selected text |
+|---|---|---|
+| Budget | `#111110` (ink) | `#F2ECDF` |
+| Month | `#2B45F0` (cobalt) | `#F2ECDF` |
+| Year | `#111110` (ink) | `#F2ECDF` |
+
+So the fills were never missing, and this build was already drawing them — a selected budget box was solid ink and a selected month chip was solid cobalt, both verified in the browser. What the founder is describing is real all the same: ink reads as chrome rather than as an answer, and cobalt on the timing chips is the intent cards' colour said a second time, so the page had two groups sharing one "chosen" colour and one group answering in monochrome.
+
+**What ships, at the founder's instruction:** budget fills `--nk-coral`, timing (year and month) fills `--nk-turquoise`, both with **ink** text, an ink border and a paper keyline stamped inside. Each of the four choice groups now has its own colour: intent cobalt, deliverables yellow, timing turquoise, budget coral. The rail's "gathered" chips follow their groups, so the summary speaks the same language as the controls.
+
+Three things worth stating plainly, per [P12](./02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged):
+
+1. **This is a deviation from the contact design source, not fidelity to it.** The source's ink and cobalt are what the table above says. A founder instruction outranks a design document under [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess), which is the whole basis for the change.
+2. **It breaks the turquoise reserve**, and that is logged where it belongs — [docs/14 § C1](./14-design-source-conflicts.md#c1--the-turquoise-licence-), the unresolved conflict about whether *"never a fill, a rule, a chip, a link or a word"* still holds. It now does not, in a chip, deliberately.
+3. **Text is ink on both fills, and that is not a stylistic preference.** Measured: ink on coral **5.36:1**, ink on turquoise **7.14:1** — both clear AA for normal text. Paper on coral is **2.99:1** and paper on turquoise is **2.25:1**; either would have shipped the same class of defect as the intent card's 3.17:1 note. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+
+Selection is never carried by hue alone. The fill drops a chip's luminance from 0.90 to 0.25 (coral) or 0.35 (turquoise) — in greyscale the chosen chip is simply the dark one — and the inset paper keyline is a shape that is absent when the chip is unselected. Both survive any colour vision and a photocopier.
+
 ## Corrections to the handoff's own values
 
 Three places where the source file's literal numbers are wrong and this build does not reproduce them. [P12](./02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged) requires them logged rather than quietly "improved".

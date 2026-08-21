@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /**
  * /contact — the eight defects the founder reported, each pinned by the
@@ -35,6 +35,12 @@ import { expect, test, type Page } from '@playwright/test';
  *       visitor's say-so": on by default and honest about it, off on
  *       request, and off means the stored copy is gone.
  *
+ *   D9  a selected budget box and a selected timing chip did not read as
+ *       chosen next to the groups that carry colour. The fills existed —
+ *       ink and cobalt, exactly as the design source draws them — but ink
+ *       reads as chrome and cobalt was already the intent cards' colour.
+ *       Budget now fills coral and timing turquoise, both with ink labels.
+ *
  * D5 — the 18px cut corner drawn on the wrong diagonal — is a paint-only
  * defect with no property to assert against, so it is verified by eye
  * against the design instead. See docs/19.
@@ -44,8 +50,41 @@ const RULE_PITCH = 28;
 
 /** `--nk-cobalt`. The focus ring on THIS page only — see D3 and docs/19. */
 const COBALT = 'rgb(43, 69, 240)';
-/** `--nk-coral`. The active section's mark in the rail and the chip bar. */
+/** `--nk-coral`. The selected budget box, and the active section's mark. */
 const CORAL = 'rgb(238, 84, 57)';
+/** `--nk-turquoise`. The selected year and month chips. */
+const TURQUOISE = 'rgb(0, 178, 169)';
+/** `--nk-ink`. The text on every one of those fills. */
+const INK = 'rgb(17, 17, 16)';
+
+/**
+ * WCAG 2.x relative luminance and contrast, computed from the two colours
+ * the browser actually painted rather than from the hexes we hoped it would
+ * paint. The intent card's note shipped at 3.17:1 precisely because the
+ * ratio was reasoned about rather than measured. [P10]
+ */
+function contrast(a: string, b: string): number {
+  const channel = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const luminance = (colour: string) => {
+    const [r, g, b_] = (colour.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number).map((v) => v / 255);
+    return 0.2126 * channel(r ?? 0) + 0.7152 * channel(g ?? 0) + 0.0722 * channel(b_ ?? 0);
+  };
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+}
+
+/** Everything the eye uses to tell a chosen chip from an unchosen one. */
+async function chipState(chip: Locator) {
+  return chip.evaluate((node) => {
+    const styles = getComputedStyle(node as Element);
+    return {
+      fill: styles.backgroundColor,
+      text: styles.color,
+      border: styles.borderColor,
+      keyline: styles.boxShadow,
+    };
+  });
+}
 
 async function fillEnough(page: Page): Promise<void> {
   await page.locator('#f-business').fill('Dunder Mifflin Paper Company');
@@ -139,6 +178,69 @@ test.describe('the enquiry form', () => {
       return el ? getComputedStyle(el).outlineColor : '';
     });
     expect(ring).toBe(CORAL);
+  });
+
+  /* ── The selected-chip fills [D9] ─────────────────────────────────────
+   *
+   * D9: a selected chip in "ballpark budget" and in the timing group did
+   * not read as chosen beside the groups that carry colour. The fills were
+   * there — the design source fills budget with flat ink and month with
+   * cobalt, and so did this build — but ink reads as chrome, and cobalt was
+   * the intent cards' colour said twice. Each group now answers in its own
+   * colour: intent cobalt, deliverables yellow, timing turquoise, budget
+   * coral. The turquoise is a deliberate, founder-instructed break with the
+   * direction board's reserve — docs/14 § C1, docs/19.
+   *
+   * What is actually asserted here is the part that can rot silently: the
+   * contrast of the label against its own fill, measured from what the
+   * browser painted, and the existence of a cue that is not hue.
+   */
+  test('a selected budget or timing chip fills, legibly and not by hue alone [D9]', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/contact');
+
+    const groups = [
+      { name: 'budget', selector: '.nk-c-budget', fill: CORAL },
+      { name: 'year', selector: '.nk-c-year-chip', fill: TURQUOISE },
+      { name: 'month', selector: '.nk-c-month-chip', fill: TURQUOISE },
+    ];
+
+    for (const group of groups) {
+      const chip = page.locator(group.selector).first();
+      const before = await chipState(chip);
+
+      await chip.click();
+      // The fill crossfades on --nk-dur-colour; sample it at rest.
+      await page.waitForTimeout(400);
+      const after = await chipState(chip);
+
+      expect(after.fill, `${group.name} selected fill`).toBe(group.fill);
+      expect(after.text, `${group.name} selected label`).toBe(INK);
+      expect(contrast(after.fill, after.text), `${group.name} label on its fill`).toBeGreaterThanOrEqual(4.5);
+
+      // Not hue alone: the fill is far darker than the unselected chip, and
+      // the inset keyline is a shape that was not there before.
+      expect(contrast(after.fill, before.fill), `${group.name} selected vs unselected`).toBeGreaterThan(2);
+      expect(after.keyline, `${group.name} keyline`).toContain('inset');
+      expect(before.keyline, `${group.name} unselected keyline`).not.toContain('inset');
+    }
+  });
+
+  test('the rail chips speak the controls\' colours [D9]', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/contact');
+
+    await page.locator('.nk-c-budget').first().click();
+    await page.locator('.nk-c-year-chip').first().click();
+    await expect(page.locator('[data-rail-frag-list] .nk-c-frag--coral')).toHaveCount(1);
+    await expect(page.locator('[data-rail-frag-list] .nk-c-frag--turquoise')).toHaveCount(1);
+
+    for (const tone of ['coral', 'turquoise']) {
+      const chip = await chipState(page.locator(`[data-rail-frag-list] .nk-c-frag--${tone}`));
+      expect(contrast(chip.fill, chip.text), `${tone} rail chip`).toBeGreaterThanOrEqual(4.5);
+    }
   });
 
   test("a ruled textarea's rules land on its own line grid [D4]", async ({ page }) => {

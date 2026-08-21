@@ -39,6 +39,16 @@ Per [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-
 
 **Our read:** the homepage's use of turquoise is confident and works. It looks like a deliberate evolution rather than an oversight — but we cannot assume that. If it is intentional, B should be amended so the next page does not revert.
 
+**Update, 2026-08-21 — the reserve has now been superseded in practice, at the founder's instruction.** The contact page's target-timing chips (year and month) fill **turquoise** when selected, which is precisely the *"never a fill… never a chip"* case B rules out. This was not an oversight and it was not our call:
+
+- the founder reported that the selected timing and budget chips did not read as chosen, asked for both groups to carry a colour of their own, and named turquoise's family as one of the two remaining options (coral went to budget, turquoise to timing);
+- [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess) ranks a founder instruction above the direction board, so the instruction was followed rather than escalated;
+- the alternative was a third group filling cobalt, which the intent cards already own — the page would then have had two "chosen" colours doing the same job and one group with none.
+
+So B is now contradicted by **two** documents and one live instruction: the homepage (a turquoise ground, a turquoise ticket shadow, a turquoise perforation) and now the contact page (a turquoise chip). The chip is the more consequential of the two for B's purposes, because a ground is arguably still "a surface" while a chip is the exact thing the rule names.
+
+**This raises the priority of the C1 ruling rather than settling it.** Every additional page shipped against the reserve makes reinstating it more expensive, and the reserve is currently a rule the codebase breaks in two places while still carrying it in the docs. Either amend B to license turquoise as a fill, or tell us and both uses come out.
+
 ---
 
 ### C4 — Motion grammar 🔴
