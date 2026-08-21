@@ -8,12 +8,17 @@
  * intentionally duplicated between them rather than reached for a shared
  * `.ts` module outside this directory's ownership.
  *
- * The design's dynamic "gathered fragments" stamps (a chip per answered
- * value, appearing as you fill the form) are NOT implemented here — they
- * need live form state, and given this page's scope the trade was to keep
- * the rail a plain, always-correct, no-JS navigation aid rather than ship a
- * half-working dynamic feature. Logged in docs/19 as a deliberate cut, not
- * a design gap.
+ * The design's "gathered fragments" — one stamped chip per answered value,
+ * appearing live as the form fills in — hang off the bottom of the rail.
+ * The markup for them is deliberately empty and `hidden` in the document:
+ * `contact-form.ts` fills and reveals it from live form state, so with
+ * JavaScript off the rail degrades to exactly what it was before, a
+ * five-line navigation aid with nothing blank or broken showing. [P3]
+ *
+ * The summary is `aria-hidden` on purpose. Every value in it is a mirror of
+ * a form control the visitor has just filled in and can still reach, so
+ * announcing it a second time — on every keystroke of a business name —
+ * would be noise, not information. [P10]
  */
 const SECTIONS = [
   { n: '01', href: '#about', title: 'About you' },
@@ -38,4 +43,11 @@ const SECTIONS = [
       ))
     }
   </nav>
+
+  <div class="nk-c-rail-frags" data-rail-frags aria-hidden="true" hidden>
+    <p class="nk-c-rail-frags-head">
+      Gathered <span class="nk-c-rail-frags-count" data-rail-frag-count>00</span>
+    </p>
+    <div class="nk-c-rail-frag-list" data-rail-frag-list></div>
+  </div>
 </aside>

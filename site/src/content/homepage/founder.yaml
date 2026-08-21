@@ -19,7 +19,7 @@ body:
 
 cta:
   label: "Pitch your project"
-  href: "#pitch"
+  href: "/contact"
 
 portrait:
   image: "nadia-portrait.png"

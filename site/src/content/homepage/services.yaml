@@ -37,7 +37,7 @@ items:
       or event.
     cta:
       label: "Grab a seat"
-      href: "#pitch"
+      href: "https://docs.google.com/forms/d/e/1FAIpQLSdfwTN1py0LTWQ0R4Jl0dbpAO3onkYc709mQeRZo6b5u5m8Ew/viewform"
     serial: "SER. NKO—01—STL"
     figure:
       image: "workshop-proof.png"
@@ -67,7 +67,7 @@ items:
     priceNote: "Scoped around the challenge, not a retainer you grow out of."
     cta:
       label: "Pitch your project"
-      href: "#pitch"
+      href: "/contact"
     serial: "SER. NKO—02—DDO"
     figure:
       image: "collage-artefacts.png"

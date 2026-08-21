@@ -20,8 +20,8 @@
  *     endpoint's redirect contract) and rendering it the same way a client
  *     validation failure would, so a visitor without JavaScript still gets
  *     inline errors and a scroll-to-first-mistake, just one page load later;
- *   - a draft autosave to `localStorage['nk-brief-draft']`, restored on
- *     load and cleared on a successful submit;
+ *   - a live summary of the visitor's answers in the left rail, stamped one
+ *     chip per value as the form fills in;
  *   - a live word count on "the reason", a deselectable pronoun chip, and a
  *     cosmetic grey-out of the month grid when "Flexible" is chosen (purely
  *     visual — the server already discards `month` whenever `year` is
@@ -82,7 +82,8 @@ export function initContactForm(): void {
   const reopen = document.querySelector<HTMLButtonElement>('[data-contact-reopen]');
   const options = readOptions();
 
-  wireDraft(form);
+  clearStoredDraft();
+  wireRailSummary(form, options);
   wireWordCount(form);
   wirePronounToggle(form);
   wireTimingGate(form);
@@ -112,72 +113,134 @@ export function initContactForm(): void {
   });
 }
 
-/* ── Draft autosave ──────────────────────────────────────────────────────── */
+/* ── Draft storage: deliberately removed ───────────────────────── */
 
-function wireDraft(form: HTMLFormElement): void {
-  restoreDraft(form);
-  form.addEventListener('input', () => saveDraft(form));
-  form.addEventListener('change', () => saveDraft(form));
+/**
+ * This file used to autosave every keystroke to `localStorage['nk-brief-draft']`
+ * and restore it on load. That is gone by decision, not by accident: a hard
+ * refresh is the one gesture a visitor has for "start again", and a form that
+ * silently repopulates itself has taken that away. Nadia asked for a refresh
+ * to start clean.
+ *
+ * Two consequences, both intended:
+ *   - nothing is restored on load, and any draft an earlier build of this page
+ *     left in storage is cleared once, on load, so returning visitors are not
+ *     stuck carrying a stale copy of an answer they can no longer see;
+ *   - autosave went with it. Keeping the writer with no reader would have left
+ *     the page filling a visitor's storage with data nothing ever reads. [P13]
+ *
+ * `EnquiryForm.astro` also carries `autocomplete="off"` on the <form> for the
+ * same reason — that is what stops the BROWSER's own form-state restoration
+ * from doing the same thing on a soft reload. Individual fields keep their own
+ * `autocomplete` values (`name`, `email`, `organization`), which still work:
+ * this only turns off restore-on-reload, not autofill.
+ */
+function clearStoredDraft(): void {
+  try {
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    // Private browsing / storage disabled — nothing to clear, nothing to do.
+  }
 }
 
-function saveDraft(form: HTMLFormElement): void {
-  try {
-    const data = new FormData(form);
-    data.delete('nk_hp');
-    const draft: Record<string, string | string[]> = {};
-    for (const [key, value] of data.entries()) {
-      if (typeof value !== 'string') continue;
-      if (key in draft) {
-        const existing = draft[key];
-        draft[key] = Array.isArray(existing) ? [...existing, value] : [existing as string, value];
-      } else {
-        draft[key] = value;
-      }
-    }
-    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
-  } catch {
-    // Private browsing / storage disabled — the form still works without it.
-  }
+/* ── Rail selection summary ("gathered fragments") ─────────────────────── */
+
+interface Fragment {
+  /** Stable identity, so a chip that hasn't changed is never re-stamped. */
+  key: string;
+  label: string;
+  tone: 'ink' | 'cobalt' | 'yellow';
 }
 
-function restoreDraft(form: HTMLFormElement): void {
-  let raw: string | null = null;
-  try {
-    raw = localStorage.getItem(DRAFT_KEY);
-  } catch {
-    return;
+const FRAG_MAX = 17;
+
+/**
+ * The left rail's live summary of what the visitor has picked so far — the
+ * design's "gathered fragments", one stamped chip per answered value.
+ *
+ * Tones carry the same meaning they do on the controls themselves: cobalt
+ * for the single-select intent, yellow for the multi-select deliverables,
+ * outline for typed-in text. Values are read straight out of the form on
+ * every input and change, so the summary cannot drift from the fields, and
+ * option codes resolve to their founder-authored labels through the same
+ * `#nk-contact-options` map the receipt uses — never a second hand-typed
+ * copy of the labels. [P7]
+ *
+ * The rail markup ships empty and `hidden`. Nothing here runs without
+ * JavaScript, and without it the rail is still the five-line navigation aid
+ * it has always been rather than an empty box. [P3]
+ */
+function wireRailSummary(form: HTMLFormElement, options: OptionGroups): void {
+  const region = document.querySelector<HTMLElement>('[data-rail-frags]');
+  const list = document.querySelector<HTMLElement>('[data-rail-frag-list]');
+  const count = document.querySelector<HTMLElement>('[data-rail-frag-count]');
+  if (!region || !list) return;
+
+  const render = () => renderRailSummary(form, options, region, list, count);
+  form.addEventListener('input', render);
+  form.addEventListener('change', render);
+  render();
+}
+
+function collectFragments(form: HTMLFormElement, options: OptionGroups): Fragment[] {
+  const data = new FormData(form);
+  const get = (name: string) => String(data.get(name) ?? '').trim();
+  const frags: Fragment[] = [];
+
+  const push = (key: string, label: string, tone: Fragment['tone']) => {
+    const text = label.trim();
+    if (!text) return;
+    frags.push({
+      key,
+      label: text.length > FRAG_MAX ? `${text.slice(0, FRAG_MAX - 1)}…` : text,
+      tone,
+    });
+  };
+
+  push('business', get('business'), 'ink');
+  push('name', get('name'), 'ink');
+  if (get('intent')) push('intent', labelFor(options, 'intent', get('intent')), 'cobalt');
+  for (const value of data.getAll('outputs')) {
+    push(`outputs:${String(value)}`, labelFor(options, 'outputs', String(value)), 'yellow');
   }
-  if (!raw) return;
 
-  let draft: Record<string, string | string[]>;
-  try {
-    draft = JSON.parse(raw);
-  } catch {
-    return;
+  const year = get('year');
+  if (year) {
+    const month = get('month');
+    const label = year === 'flexible' ? 'Flexible' : [month, year].filter(Boolean).join(' ');
+    push('timing', label, 'ink');
   }
 
-  for (const [key, value] of Object.entries(draft)) {
-    const values = Array.isArray(value) ? value : [value];
-    const fields = form.elements.namedItem(key);
-    if (!fields) continue;
+  if (get('budget')) push('budget', labelFor(options, 'budget', get('budget')), 'ink');
 
-    if (fields instanceof RadioNodeList) {
-      for (const node of Array.from(fields)) {
-        if (node instanceof HTMLInputElement && values.includes(node.value)) node.checked = true;
-      }
-    } else if (fields instanceof HTMLInputElement) {
-      if (fields.type === 'checkbox' || fields.type === 'radio') {
-        fields.checked = values.includes(fields.value);
-      } else {
-        fields.value = values[0] ?? '';
-      }
-    } else if (fields instanceof HTMLTextAreaElement) {
-      fields.value = values[0] ?? '';
+  return frags;
+}
+
+function renderRailSummary(
+  form: HTMLFormElement,
+  options: OptionGroups,
+  region: HTMLElement,
+  list: HTMLElement,
+  count: HTMLElement | null,
+): void {
+  const frags = collectFragments(form, options);
+  region.hidden = frags.length === 0;
+  if (count) count.textContent = String(frags.length).padStart(2, '0');
+
+  // Reconcile rather than rebuild: a chip whose key and text are unchanged
+  // keeps its DOM node, so the stamp-in animation plays for a genuinely new
+  // answer instead of replaying across the whole rail on every keystroke.
+  const existing = Array.from(list.children) as HTMLElement[];
+  frags.forEach((frag, index) => {
+    const node = existing[index] ?? document.createElement('span');
+    if (node.dataset['fragKey'] !== frag.key || node.textContent !== frag.label) {
+      node.dataset['fragKey'] = frag.key;
+      node.textContent = frag.label;
+      node.className = frag.tone === 'ink' ? 'nk-c-frag' : `nk-c-frag nk-c-frag--${frag.tone}`;
     }
-  }
-
-  updateWordCount(form);
-  updateTimingGate(form);
+    if (!node.isConnected) list.append(node);
+  });
+  existing.slice(frags.length).forEach((node) => node.remove());
 }
 
 /* ── Word count ("the reason") ──────────────────────────────────────────── */
@@ -198,23 +261,56 @@ function updateWordCount(form: HTMLFormElement): void {
 
 /* ── Deselectable pronoun chips ────────────────────────────────────────── */
 
+/**
+ * Pronouns is optional, so a visitor has to be able to clear it again — a
+ * plain radio group can't be un-checked once one is picked.
+ *
+ * The previous version of this read `radio.checked` inside the click
+ * listener and treated `true` as "was already selected, so deselect it".
+ * That premise is backwards. HTML's activation behaviour for a radio runs
+ * its PRE-click steps — which set checkedness — before the click event is
+ * dispatched, so `checked` is always `true` by the time a click listener
+ * sees it. Every click therefore matched the "clicked the current one"
+ * branch and immediately unchecked it: pronouns could not be selected at
+ * all, from any input method. This is the functional bug that made the
+ * whole group look dead.
+ *
+ * The pre-click state is not recoverable from the event, so it is
+ * remembered instead: `selected` tracks the last radio the browser told us
+ * was chosen, via `change` (which fires for every route into a selection —
+ * pointer, arrow keys, space — and always AFTER click).
+ *
+ * Deselection is restricted to genuine pointer activations, marked by a
+ * `pointerdown` on the chip immediately before the click. The obvious test
+ * — `event.detail > 0` — is wrong here: the input is visually hidden, so
+ * every real click lands on the <label> and arrives at the input as a
+ * forwarded click with `detail === 0`, indistinguishable from a keyboard
+ * one. Arrow-key navigation through the group must never silently clear
+ * it. [P10]
+ */
 function wirePronounToggle(form: HTMLFormElement): void {
-  const radios = form.querySelectorAll<HTMLInputElement>('input[name="pronouns"]');
+  const radios = Array.from(form.querySelectorAll<HTMLInputElement>('input[name="pronouns"]'));
+  let selected: HTMLInputElement | null = radios.find((radio) => radio.checked) ?? null;
+  let pointerOn: HTMLInputElement | null = null;
+
   radios.forEach((radio) => {
+    // On the label, not the input: the input is 1px and clipped, so a
+    // pointer never touches it directly.
+    radio.closest('label')?.addEventListener('pointerdown', () => {
+      pointerOn = radio;
+    });
+
+    radio.addEventListener('change', () => {
+      if (radio.checked) selected = radio;
+    });
+
     radio.addEventListener('click', () => {
-      // `checked` still reflects the PRE-click state here: click listeners
-      // run before the browser applies the native activation behaviour, so
-      // "already checked" means "this is the one the visitor just clicked
-      // again" — deselect it. A different, unchecked radio is unaffected
-      // and selects normally.
-      if (radio.checked) {
-        // Deferred one tick so the native check-then-uncheck sequence
-        // settles before we intervene, keeping this robust across engines.
-        requestAnimationFrame(() => {
-          radio.checked = false;
-          radio.dispatchEvent(new Event('change', { bubbles: true }));
-        });
-      }
+      const byPointer = pointerOn === radio;
+      pointerOn = null;
+      if (!byPointer || selected !== radio) return;
+      radio.checked = false;
+      selected = null;
+      radio.dispatchEvent(new Event('change', { bubbles: true }));
     });
   });
 }
@@ -412,11 +508,6 @@ async function submit(
 
     if (response.ok && json?.ok !== false) {
       renderReceipt(form, data, options, json?.reference, success);
-      try {
-        localStorage.removeItem(DRAFT_KEY);
-      } catch {
-        /* ignore */
-      }
       return;
     }
 

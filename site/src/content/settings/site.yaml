@@ -31,7 +31,7 @@ nav:
 # The button at the right of the header, and in the mobile menu.
 cta:
   label: "Pitch your project"
-  href: "#pitch"
+  href: "/contact"
 
 logo:
   wordmark: "Nikko"
@@ -76,9 +76,9 @@ footerColumns:
   - title: "Follow"
     items:
       - label: "Threads"
-        href: "#pitch"
+        href: "https://www.threads.com/@im.nadia.amer"
       - label: "Substack"
-        href: "#pitch"
+        href: "https://substack.com/@itsnadiaamer"
   - title: "Legal"
     items:
       - label: "Privacy Policy"

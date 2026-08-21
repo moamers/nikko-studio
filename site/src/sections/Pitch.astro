@@ -21,6 +21,7 @@
 import Reveal from '../components/Reveal.astro';
 import Pill from '../components/Pill.astro';
 import { getPitch, getSiteSettings } from '../lib/content';
+import { isExternalHref } from '../lib/links';
 
 const pitch = await getPitch();
 const settings = await getSiteSettings();
@@ -114,7 +115,21 @@ function autocompleteFor(field: { name: string; type: 'text' | 'email' }): strin
           <ul class="nk-pitch__col-list">
             {column.items.map((item) => (
               <li>
-                {item.href ? <a href={item.href}>{item.label}</a> : item.label}
+                {item.href ? (
+                  // Not `<Pill>` — these are footer text links, not buttons —
+                  // so the "external gets a new tab" rule from `Pill.astro`
+                  // is repeated here via the same `isExternalHref` helper
+                  // rather than skipped. Threads and Substack both qualify.
+                  isExternalHref(item.href) ? (
+                    <a href={item.href} target="_blank" rel="noopener noreferrer">
+                      {item.label}
+                    </a>
+                  ) : (
+                    <a href={item.href}>{item.label}</a>
+                  )
+                ) : (
+                  item.label
+                )}
               </li>
             ))}
           </ul>

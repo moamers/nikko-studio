@@ -25,7 +25,7 @@ subLead: >
 
 cta:
   label: "Pitch your project"
-  href: "#pitch"
+  href: "/contact"
 
 collage:
   image: "collage-hero.png"
