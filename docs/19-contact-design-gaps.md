@@ -81,7 +81,7 @@ Two implementation notes that matter:
 
 Per-section completion squares in the rail are still not implemented.
 
-## Removed: the draft autosave and restore
+## Removed, then restored under a switch: the draft autosave
 
 **This is a removed feature, not a bug fix.** The form used to autosave every keystroke to `localStorage['nk-brief-draft']` and restore it on the next load. Nadia asked for a hard refresh to start clean: a refresh is the one gesture a visitor has for "start again", and a form that silently repopulates itself has taken that away.
 
@@ -94,6 +94,36 @@ What changed in `src/scripts/contact-form.ts`:
 `EnquiryForm.astro` also carries `autocomplete="off"` on the `<form>`, which is the part that stops the *browser's* own restore-form-state-on-reload from reproducing the same behaviour. Individual fields keep their `autocomplete` values (`organization`, `name`, `email`), so real autofill is untouched.
 
 **Cost of the removal, stated plainly:** a visitor who closes the tab mid-brief and comes back loses their answers. The form is four minutes long and single-page, and the design's own standalone prototype demonstrates draft restore, so this is a deliberate divergence from the handoff at the founder's request, not an oversight.
+
+### Reversed: the autosave is back, with a control on it
+
+**The paragraphs above are the record of what happened, not the current behaviour.** That cost was the one that mattered, and Nadia asked for the feature back on the condition that it is visible and the visitor can turn it off. It is, and they can.
+
+The re-reading of the original complaint that this rests on: the defect was never that the form remembered. It was that the form remembered *silently* — nothing on the page said a draft existed, nothing explained why yesterday's answers were in today's fields, and nothing short of guessing offered a way out. Removing the memory fixed the symptom by removing the feature. Naming the memory fixes it by removing the silence.
+
+What `src/scripts/contact-form.ts` does now:
+
+- `saveDraft` and `restoreDraft` are back as they were before 9889221 — the whole form via `new FormData(form)`, so every text answer, radio and checkbox comes back, not only the card choices. All storage access stays inside `try`/`catch` for private browsing;
+- a `nk-brief-autosave` key holds the switch's own state, deliberately separate from the `nk-brief-draft` key it controls: a preference has to outlive the thing it is a preference about, or turning autosave off would erase the record of the decision to turn it off;
+- **on** is the default for a visitor who has never expressed a view;
+- **off deletes the stored draft in the same tick**, not on the next load. Stopping the writer while keeping the file is not what "off" means to anyone, and a copy of somebody's answers left behind after they opted out is the wrong behaviour whatever the intent. [P13](./02-engineering-principles.md#p13--privacy-and-data-minimalism)
+- **on** starts saving immediately from what is already on screen, rather than waiting for the next keystroke;
+- when a draft *is* restored, a quiet mono line under the status row says so and says how to clear it. Not a banner, and not a dismissable one — it is one sentence in the page's own voice, and it is the part that actually answers the original complaint.
+
+The control itself, in `ContactIntro.astro` and `contact.css`:
+
+- a real `<input type="checkbox" role="switch">` behind the same `.nk-vh-input` + styled-`<label>` pattern every other choice control on this page uses. Focusable, Space-operable, carries the page's 3px coral `:focus-visible` ring, accessible name "Autosave". The visible ON/OFF word is `aria-hidden`, because the switch role already announces the state and a screen reader should hear it once. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+- drawn in the idiom the handoff already uses for the header's analogue/digital mode button — mono uppercase, hairline ink box, square corners, a status lamp, a 120ms `steps(2)` cut. That control exists to say "here is a state you can change", which is this control's job too, so it borrows rather than inventing a second vocabulary for one idea;
+- R2 holds: the box is radius `0`, the lamp is `--nk-radius-oval` (a true 50%). No pill;
+- the lamp is `var(--nk-accent)` read live, so it moves with the accent cycle. Off, it is a hollow ring in muted ink — the state is carried by lamp fill, border weight, text colour and the word together, never by hue alone;
+- no new token was needed and no hex literal was introduced. [P11](./02-engineering-principles.md#p11--one-source-of-truth-per-fact)
+- **one deliberate deviation from the handoff's idiom:** the mode button inverts to solid ink on hover; this switch lifts 2px and firms its border instead, like the choice chips. The pointer rests on the switch straight after a click, so an inverting hover made "off" paint itself solid black and read as the louder, more-engaged-looking of the two states. Hover says touchable; state is said by the switch. [P12](./02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged)
+
+Progressive enhancement: autosave is a JavaScript feature and cannot be anything else, so the switch ships `hidden` in the markup and `contact-form.ts` unhides it as its first act. Its visibility is exactly the condition under which it is honest. The same gate covers storage that exists but throws — `storageAvailable()` probes with a real write, because Safari's private mode returns a working-looking object that only fails on `setItem` — and if the probe fails the switch never appears. With JavaScript off the form posts exactly as it always has. [P3](./02-engineering-principles.md#p3--progressive-enhancement-in-layers-in-that-order)
+
+`autocomplete="off"` on the `<form>` stays. It is a different mechanism and still unwanted: the *browser's* form-state restoration is untitled, unexplained and not controllable from this page, which is precisely the property this feature was rebuilt to not have.
+
+The e2e test `nothing survives a reload [D8]` was repointed rather than deleted — its subject was never "the form must forget" but "the form must not remember behind the visitor's back", and five tests in `tests/e2e/contact.spec.ts` now hold both halves of that. See the D8 note in that file's header.
 
 ## Corrections to the handoff's own values
 

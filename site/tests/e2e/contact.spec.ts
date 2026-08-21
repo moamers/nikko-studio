@@ -25,7 +25,12 @@ import { expect, test, type Page } from '@playwright/test';
  *       label above it.
  *   D7  the rail's live selection summary was missing.
  *   D8  answers survived a refresh, from a localStorage draft and from the
- *       browser's own form-state restoration.
+ *       browser's own form-state restoration — silently, with nothing on
+ *       the page to say so and nothing to turn it off. The autosave was
+ *       later restored under a visible switch, so what D8 pins now is not
+ *       "nothing is remembered" but "nothing is remembered without the
+ *       visitor's say-so": on by default and honest about it, off on
+ *       request, and off means the stored copy is gone.
  *
  * D5 — the 18px cut corner drawn on the wrong diagonal — is a paint-only
  * defect with no property to assert against, so it is verified by eye
@@ -77,6 +82,7 @@ test.describe('the enquiry form', () => {
       '.nk-c-outputs input',
       '.nk-c-cards input',
       '.nk-c-budgets input',
+      '#f-autosave',
     ];
 
     for (const selector of controls) {
@@ -111,12 +117,21 @@ test.describe('the enquiry form', () => {
       return {
         lineHeight: parseFloat(styles.lineHeight),
         paddingTop: parseFloat(styles.paddingTop),
+        originY: parseFloat(styles.backgroundPositionY),
         image: styles.backgroundImage,
       };
     });
     expect(geometry.image).toContain('repeating-linear-gradient');
+
+    // Two things have to hold, and only two. The gradient's period must equal
+    // the line-height, or text drifts across its own rules as it wraps; and
+    // the grid must START where the text starts, or the first line sits on
+    // the wrong rule. An earlier version of this test demanded the padding be
+    // a whole multiple of the pitch — which does align, but only by pushing
+    // the first line onto rule two and leaving rule one empty, which is the
+    // bug the founder reported. The padding itself is free.
     expect(geometry.lineHeight).toBe(RULE_PITCH);
-    expect(geometry.paddingTop % geometry.lineHeight).toBe(0);
+    expect(geometry.originY).toBe(geometry.paddingTop);
   });
 
   test('a hovered card cannot reach the label above it [D6]', async ({ page }) => {
@@ -155,24 +170,127 @@ test.describe('the enquiry form', () => {
     await expect(page.locator('[data-rail-frag-count]')).toHaveText('03');
   });
 
-  test('nothing survives a reload [D8]', async ({ page }) => {
+  /* ── Autosave, and the switch that owns it [D8] ─────────────────────
+   *
+   * The original D8 asserted that nothing survived a reload. That was the
+   * right assertion for a build with no control on the page, and it is the
+   * wrong one now: the autosave is back and a visitor can see it, so what
+   * has to hold is that BOTH answers are true on demand — remembered when
+   * the switch is on, forgotten the instant it goes off. Deleting the test
+   * would have thrown away the coverage that caught the original defect. */
+
+  const DRAFT_KEY = 'nk-brief-draft';
+
+  const storedDraft = (page: Page) =>
+    page.evaluate((key) => localStorage.getItem(key), DRAFT_KEY);
+
+  test('autosave is on for a first-time visitor, and says so [D8]', async ({ page }) => {
+    await page.goto('/contact');
+
+    const toggle = page.locator('#f-autosave');
+    await expect(toggle).toBeVisible();
+    await expect(toggle).toBeChecked();
+    // A switch, not a checkbox with a picture on it: the state has to reach
+    // a screen reader as state, and the name must not carry it a second
+    // time. [P10]
+    await expect(toggle).toHaveRole('switch');
+    await expect(toggle).toHaveAccessibleName('Autosave');
+    await expect(page.locator('[data-autosave-state]')).toHaveText('on');
+  });
+
+  test('with autosave on, a draft survives a reload [D8]', async ({ page }) => {
     await page.goto('/contact');
     await fillEnough(page);
-    await page.locator('#f-why').fill('Something worth remembering, if anything were.');
+    await page.locator('#f-why').fill('Something worth remembering, and now it is.');
+    expect(await storedDraft(page)).toContain('Dunder Mifflin');
 
     await page.reload();
 
+    // Everything, not only the card choices: the point of saving the whole
+    // FormData is that a four-minute form comes back whole.
+    await expect(page.locator('#f-business')).toHaveValue('Dunder Mifflin Paper Company');
+    await expect(page.locator('#f-name')).toHaveValue('Michael Scott');
+    await expect(page.locator('#f-why')).toHaveValue('Something worth remembering, and now it is.');
+    const checked = await page.evaluate(
+      () =>
+        [...document.querySelectorAll('[data-contact-form] input[type="radio"], [data-contact-form] input[type="checkbox"]')].filter(
+          (input) => (input as HTMLInputElement).checked,
+        ).length,
+    );
+    expect(checked).toBe(2);
+    await expect(page.locator('[data-rail-frags]')).toBeVisible();
+
+    // And the page volunteers why the answers are there. Silence about it
+    // is the defect the original removal was reacting to.
+    const note = page.locator('[data-autosave-note]');
+    await expect(note).toBeVisible();
+    await expect(note).toContainText(/autosave/i);
+  });
+
+  test('turning autosave off clears the stored draft on the spot [D8]', async ({ page }) => {
+    await page.goto('/contact');
+    await fillEnough(page);
+    await page.locator('#f-why').fill('This should not outlive the switch.');
+    expect(await storedDraft(page)).not.toBeNull();
+
+    await page.locator('.nk-c-autosave-switch').click();
+
+    await expect(page.locator('#f-autosave')).not.toBeChecked();
+    await expect(page.locator('[data-autosave-state]')).toHaveText('off');
+    // Immediately — not on the next load. Leaving the copy behind after
+    // someone opts out is the behaviour this is here to prevent.
+    expect(await storedDraft(page)).toBeNull();
+    await expect(page.locator('[data-autosave-note]')).toContainText(/deleted/i);
+
+    // Off stops the writer too: typing after the switch flips writes nothing.
+    await page.locator('#f-business').fill('Something typed after opting out');
+    expect(await storedDraft(page)).toBeNull();
+
+    // And what was already typed is still on screen. "Off" is about storage,
+    // not about wiping the form out from under the visitor.
+    await expect(page.locator('#f-why')).toHaveValue('This should not outlive the switch.');
+  });
+
+  test('the off choice survives a reload, and nothing comes back with it [D8]', async ({ page }) => {
+    await page.goto('/contact');
+    await page.locator('.nk-c-autosave-switch').click();
+    await fillEnough(page);
+    await page.locator('#f-why').fill('Typed while autosave was off.');
+
+    await page.reload();
+
+    // The preference outlives the draft it controls — a separate key, or
+    // clearing the draft would clear the decision to clear the draft.
+    await expect(page.locator('#f-autosave')).not.toBeChecked();
+    await expect(page.locator('[data-autosave-state]')).toHaveText('off');
     await expect(page.locator('#f-business')).toHaveValue('');
     await expect(page.locator('#f-why')).toHaveValue('');
     await expect(page.locator('[data-rail-frags]')).toBeHidden();
-    const state = await page.evaluate(() => ({
-      checked: [...document.querySelectorAll('input[type="radio"], input[type="checkbox"]')].filter(
-        (input) => (input as HTMLInputElement).checked,
-      ).length,
-      keys: Object.keys(localStorage).filter((key) => key.includes('brief')),
-    }));
-    expect(state.checked).toBe(0);
-    expect(state.keys).toEqual([]);
+    expect(await storedDraft(page)).toBeNull();
+
+    // Turning it back on starts saving from what is on screen now, rather
+    // than waiting for the next keystroke to make the switch true.
+    await page.locator('#f-business').fill('Vance Refrigeration');
+    await page.locator('.nk-c-autosave-switch').click();
+    await expect(page.locator('#f-autosave')).toBeChecked();
+    expect(await storedDraft(page)).toContain('Vance Refrigeration');
+  });
+
+  test('the autosave switch works from the keyboard alone [P10]', async ({ page }) => {
+    await page.goto('/contact');
+    await fillEnough(page);
+
+    const toggle = page.locator('#f-autosave');
+    await toggle.focus();
+    await expect(toggle).toBeFocused();
+
+    await page.keyboard.press('Space');
+    await expect(toggle).not.toBeChecked();
+    expect(await storedDraft(page)).toBeNull();
+
+    await page.keyboard.press('Space');
+    await expect(toggle).toBeChecked();
+    expect(await storedDraft(page)).not.toBeNull();
   });
 });
 
@@ -215,5 +333,41 @@ test.describe('the contact page shell', () => {
     await page.waitForTimeout(600);
     const after = await new AxeBuilder({ page }).withTags(tags).analyze();
     expect(after.violations).toEqual([]);
+  });
+});
+
+/**
+ * With JavaScript off, autosave cannot exist: `localStorage` is not
+ * reachable from markup. The switch therefore ships `hidden` and
+ * `contact-form.ts` is the only thing that unhides it — a visible switch is
+ * a promise that flipping it does something, and here there would be
+ * nothing behind it. [P3]
+ *
+ * This is a live trap, not a formality. `.nk-c-autosave { display: flex }`
+ * is an author declaration and outranks the UA stylesheet's
+ * `[hidden] { display: none }`, so the switch rendered on every no-JS load
+ * until an explicit `[hidden]` guard was added next to it. The same mistake
+ * is one `display` declaration away at any time.
+ */
+test.describe('the contact page without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('the autosave switch does not render, and the form still does [P3]', async ({ page }) => {
+    await page.goto('/contact');
+
+    await expect(page.locator('#f-autosave')).toBeHidden();
+    await expect(page.locator('.nk-c-autosave-switch')).toBeHidden();
+    await expect(page.locator('[data-autosave-note]')).toBeHidden();
+
+    // The form is untouched by any of it and still posts the plain way.
+    await expect(page.locator('[data-contact-form]')).toBeVisible();
+    await expect(page.locator('[data-contact-form]')).toHaveAttribute('action', /enquiry/);
+    await expect(page.locator('#f-business')).toBeVisible();
+    await expect(page.locator('.nk-c-required-note')).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
   });
 });
