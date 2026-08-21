@@ -127,6 +127,17 @@
     align-items: center;
   }
 
+  /* The switch ships with the `hidden` attribute and `contact-form.ts`
+     removes it. That contract is only as good as this rule: an author
+     `display` declaration outranks the UA stylesheet's `[hidden] { display:
+     none }`, so the line above would have un-hidden the switch on every
+     no-JavaScript load and handed those visitors a control that does
+     nothing. Any element given a `display` here needs the same guard. [P3] */
+  .nk-c-autosave[hidden],
+  .nk-c-autosave-note[hidden] {
+    display: none;
+  }
+
   .nk-c-autosave-switch {
     display: inline-flex;
     align-items: center;

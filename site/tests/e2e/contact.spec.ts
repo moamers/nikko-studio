@@ -326,3 +326,39 @@ test.describe('the contact page shell', () => {
     expect(after.violations).toEqual([]);
   });
 });
+
+/**
+ * With JavaScript off, autosave cannot exist: `localStorage` is not
+ * reachable from markup. The switch therefore ships `hidden` and
+ * `contact-form.ts` is the only thing that unhides it — a visible switch is
+ * a promise that flipping it does something, and here there would be
+ * nothing behind it. [P3]
+ *
+ * This is a live trap, not a formality. `.nk-c-autosave { display: flex }`
+ * is an author declaration and outranks the UA stylesheet's
+ * `[hidden] { display: none }`, so the switch rendered on every no-JS load
+ * until an explicit `[hidden]` guard was added next to it. The same mistake
+ * is one `display` declaration away at any time.
+ */
+test.describe('the contact page without JavaScript', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('the autosave switch does not render, and the form still does [P3]', async ({ page }) => {
+    await page.goto('/contact');
+
+    await expect(page.locator('#f-autosave')).toBeHidden();
+    await expect(page.locator('.nk-c-autosave-switch')).toBeHidden();
+    await expect(page.locator('[data-autosave-note]')).toBeHidden();
+
+    // The form is untouched by any of it and still posts the plain way.
+    await expect(page.locator('[data-contact-form]')).toBeVisible();
+    await expect(page.locator('[data-contact-form]')).toHaveAttribute('action', /enquiry/);
+    await expect(page.locator('#f-business')).toBeVisible();
+    await expect(page.locator('.nk-c-required-note')).toBeVisible();
+
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
