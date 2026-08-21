@@ -1,0 +1,5 @@
+# Transient agent worktrees. Each is a full checkout of this repository
+# created for an isolated subagent task and removed afterwards — committing
+# one would nest the repo inside itself. `.claude/hooks/` and
+# `.claude/settings.json` are real project config and stay tracked.
+.claude/worktrees/
