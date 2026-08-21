@@ -111,12 +111,21 @@ test.describe('the enquiry form', () => {
       return {
         lineHeight: parseFloat(styles.lineHeight),
         paddingTop: parseFloat(styles.paddingTop),
+        originY: parseFloat(styles.backgroundPositionY),
         image: styles.backgroundImage,
       };
     });
     expect(geometry.image).toContain('repeating-linear-gradient');
+
+    // Two things have to hold, and only two. The gradient's period must equal
+    // the line-height, or text drifts across its own rules as it wraps; and
+    // the grid must START where the text starts, or the first line sits on
+    // the wrong rule. An earlier version of this test demanded the padding be
+    // a whole multiple of the pitch — which does align, but only by pushing
+    // the first line onto rule two and leaving rule one empty, which is the
+    // bug the founder reported. The padding itself is free.
     expect(geometry.lineHeight).toBe(RULE_PITCH);
-    expect(geometry.paddingTop % geometry.lineHeight).toBe(0);
+    expect(geometry.originY).toBe(geometry.paddingTop);
   });
 
   test('a hovered card cannot reach the label above it [D6]', async ({ page }) => {

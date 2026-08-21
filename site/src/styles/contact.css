@@ -235,9 +235,16 @@
     position: sticky;
     top: calc(16px + var(--nk-tap-min) + 16px);
     z-index: var(--nk-z-rail);
-    background: rgb(var(--nk-paper-rgb) / 0.94);
-    backdrop-filter: blur(6px);
+    /* `--nk-veil`, not a paper literal: the page ground cycles with the
+       accent (horizon → last light → offshore), and a bar pinned over it
+       has to cycle with it or it reads as a foreign panel sitting on the
+       page. The veil token is the current ground at 0.74, redefined
+       alongside `--nk-ground` for every accent, so this follows for free
+       and keeps the one-source-of-truth rule. [P11] */
+    background: var(--nk-veil);
+    backdrop-filter: blur(var(--nk-veil-blur));
     border-bottom: var(--nk-rule-hair);
+    transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
   }
 
   @media (min-width: 1080px) {
@@ -412,24 +419,27 @@
     min-height: 112px;
   }
 
-  /* Ruled paper. Three numbers have to agree or the text crosses its own
-     rules: the gradient's period, the line-height, and the top padding.
-     The handoff's own values don't agree — it rules every 28px but pads
-     13px, so the first line of text lands 15px off the grid and drifts
-     visibly by the third line. Corrected here rather than reproduced:
-     the period is exactly --nk-line-ruled (= the textarea's line-height),
-     the top padding is one whole rule of it, and the 1px offset lands each
-     rule on a line-box boundary. Every line of text then sits in its own
-     ruled band at the same height, at any length, instead of drifting
-     across the rules. Logged as a deviation in docs/19. */
+  /* Ruled paper. What has to be true is narrower than it first looks: the
+     gradient's period must equal the line-height, or text drifts across
+     its own rules by the third line. The top padding is then free — it
+     only decides where the ruled grid *starts*, so it just has to be the
+     value the rules are offset by.
+
+     An earlier fix padded by one whole rule to guarantee alignment. It
+     did align, but at the cost of the first ruled band: the text began on
+     rule two and left rule one visibly empty. Padding is now the
+     handoff's own 13px inset, with the gradient origin moved to match, so
+     the first line of text sits on the first rule. `--nk-ruled-inset`
+     drives both — they cannot drift apart. [P11] */
   .nk-c-textarea--ruled {
-    padding-top: var(--nk-line-ruled);
+    --nk-ruled-inset: 13px;
+    padding-top: var(--nk-ruled-inset);
     background-image: repeating-linear-gradient(
       to bottom,
       transparent 0 calc(var(--nk-line-ruled) - 1px),
       rgb(var(--nk-cobalt-rgb) / 0.16) calc(var(--nk-line-ruled) - 1px) var(--nk-line-ruled)
     );
-    background-position: 0 1px;
+    background-position: 0 var(--nk-ruled-inset);
     background-attachment: local;
     border-left: 4px solid var(--nk-coral);
   }
