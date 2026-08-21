@@ -82,6 +82,6 @@ footerColumns:
   - title: "Legal"
     items:
       - label: "Privacy Policy"
-        href: "#pitch"
+        href: "/privacy-policy"
       - label: "Terms & Conditions"
-        href: "#pitch"
+        href: "/terms-and-conditions"

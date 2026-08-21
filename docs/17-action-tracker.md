@@ -1,7 +1,7 @@
 # 17 — Action Tracker
 
 > **The single checklist.** Everything that must not be forgotten, with an owner.
-> **Last updated:** 2026-08-17 · [Docs index](./README.md) · [Roadmap](./12-roadmap.md)
+> **Last updated:** 2026-08-21 · [Docs index](./README.md) · [Roadmap](./12-roadmap.md)
 
 Living document — tick things off as they're done. If it isn't here, it will get forgotten.
 
@@ -151,10 +151,10 @@ Full sequence and rollback: [15 — Migration & Cutover](./15-migration-and-cuto
 
 | | Task | Detail | Status |
 |---|---|---|---|
-| L1 | Migrate Privacy Policy from the live site | Already exists | ⬜ |
-| L2 | **Update it** for the new processors — Cloudflare, Resend, Kit, Google, GA4 | Required before either form ships | ⬜ |
+| L1 | Migrate Privacy Policy from the live site | Built at `/privacy-policy`, content verbatim | ✅ |
+| L2 | **Update it** for the new processors — Cloudflare, Resend, Kit, Google, GA4 | Required before either form ships. L1 migrated the supplied text as-is, unchanged — this rewrite is still outstanding | ⬜ |
 | L3 | Add a cookies section covering GTM/GA4 | Required | ⬜ |
-| L4 | Migrate Terms & Conditions | Already exists | ⬜ |
+| L4 | Migrate Terms & Conditions | Built at `/terms-and-conditions`, content verbatim | ✅ |
 | L5 | Fix the `irnnadiaamer.com` → `imnadiaamer.com` typo in the footer copy | `rn` misread as `m` | ⬜ |
 | L6 | Confirm which social links are current | Live site has 5; design footer shows 2 | ⬜ **Nadia** |
 | L7 | Replace the corrupt `chips-pattern.png` (2 bytes) | Referenced twice in the design | ⬜ **Nadia** |

@@ -1,0 +1,32 @@
+---
+/**
+ * The Terms & Conditions page. Same shape as `privacy-policy.astro` —
+ * see that file for the composition notes.
+ */
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Pitch from '../sections/Pitch.astro';
+import { getSiteSettings, getLegalPage } from '../lib/content';
+import '../styles/legal.css';
+
+const settings = await getSiteSettings();
+const { description, Content } = await getLegalPage('terms-and-conditions');
+---
+
+<Base title="Terms & Conditions" description={description}>
+  <SiteHeader nav={settings.nav} cta={settings.cta} logo={settings.logo} />
+
+  <main id="main" class="nk-legal">
+    <div class="nk-legal__intro">
+      <p class="nk-legal__kicker">Legal</p>
+    </div>
+
+    <div class="nk-legal__shell">
+      <article class="nk-legal__article">
+        <Content />
+      </article>
+    </div>
+
+    <Pitch />
+  </main>
+</Base>

@@ -384,6 +384,21 @@ const contactFormSchema = z.object({
   }),
 });
 
+/* ── Legal pages (Privacy Policy, Terms & Conditions) ─────────────────────── */
+
+/**
+ * Long-form prose, unlike every other collection above, so it is Markdown
+ * rather than YAML — an editor can write naturally with headings, links and
+ * emphasis. (docs/04-content-architecture.md § "Long-form prose")
+ *
+ * The schema only covers frontmatter; the body is rendered verbatim via
+ * `render()` in `src/lib/content/legal.ts`, heading and all — these are
+ * legal documents, not marketing copy the schema should be shaping.
+ */
+const legalSchema = z.object({
+  description: z.string().min(1).max(160),
+});
+
 /* ── Collections ─────────────────────────────────────────────────────────── */
 
 /** Every homepage section is one YAML file in the same founder-facing folder. */
@@ -408,5 +423,10 @@ export const collections = {
   contactForm: defineCollection({
     loader: glob({ pattern: 'form.yaml', base: './src/content/contact' }),
     schema: contactFormSchema,
+  }),
+
+  legal: defineCollection({
+    loader: glob({ pattern: '*.md', base: './src/content/legal' }),
+    schema: legalSchema,
   }),
 };

@@ -13,6 +13,7 @@
 export { getSiteSettings } from './settings';
 export { resolveImage } from './images';
 export { getContactFormOptions } from './contact';
+export { getLegalPage } from './legal';
 export {
   getHero,
   getMarquee,
@@ -49,3 +50,4 @@ export type {
   Option,
   TimingOptions,
 } from './contact';
+export type { LegalPage, LegalSlug } from './legal';
