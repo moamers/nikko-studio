@@ -207,9 +207,24 @@
     --nk-rule-dotted-coral: 3px dotted rgb(var(--nk-coral-rgb) / 0.55);
     --nk-rail: rgb(var(--nk-ink-rgb) / 0.12);
 
-    /* ── Focus [P10] ────────────────────────────────────────────────────── */
+    /* ── Focus [P10] ────────────────────────────────────────────────────
+       One ring for the whole site, on the founder's instruction: every
+       input should look the same wherever it is. Cobalt, not the coral the
+       homepage source specifies — and this is a correction, not only a
+       preference. Measured against the two grounds the ring is ever drawn
+       on (WCAG 2.4.11 wants 3:1 against what sits next to it):
+
+           cobalt on paper  5.55:1  ✓      cobalt on ink  2.89:1  ✗
+           coral  on paper  2.99:1  ✗      coral  on ink  5.36:1  ✓
+           yellow on paper  1.22:1  ✗      yellow on ink 13.20:1  ✓
+
+       Coral was therefore failing on paper — which is nearly every input on
+       the site — so the ring people actually meet is now the compliant one.
+       Cobalt fails on ink by the same measure, so the two ink grounds we
+       have (the mobile menu panel and the footer) override to yellow rather
+       than inherit a ring nobody can see. See the override below. */
     --nk-focus-width: 3px;
-    --nk-focus-colour: var(--nk-coral);
+    --nk-focus-colour: var(--nk-cobalt);
     --nk-focus-offset: 3px;
 
     /* ── Stacking order ─────────────────────────────────────────────────── */
@@ -273,6 +288,17 @@
     --nk-bp-md: 768px;
     --nk-bp-lg: 1024px;
     --nk-bp-xl: 1280px;
+  }
+
+  /* ── Focus on ink ───────────────────────────────────────────────────
+     The two places the site draws a focus ring on its ink ground. Cobalt
+     measures 2.89:1 there and fails; yellow measures 13.20:1. Scoped to
+     the containers rather than set per-control, so any control added to
+     either of them inherits a legible ring without anyone remembering to
+     ask. [P10] */
+  .nk-menu,
+  .nk-pitch {
+    --nk-focus-colour: var(--nk-yellow);
   }
 
   /* On coral and cobalt the on-accent text flips to paper. These two rules
