@@ -18,30 +18,16 @@
 @layer components {
   .nk-contact {
     --nk-field: color-mix(in srgb, var(--nk-paper) 65%, white 35%);
-    --nk-error: color-mix(in srgb, var(--nk-coral) 70%, black);
+    /* Coral, dropped far enough to be readable as small text on the page
+       ground. Plain `--nk-coral` is 3.03:1 at 10px against the accent-tinted
+       ground and fails AA outright; this is 4.66:1. It was introduced for
+       the handoff's validation red (docs/19) and is named separately from
+       `--nk-error` because the colour and the meaning are two different
+       facts: the active section marker is not an error, but it is the same
+       ink. One derivation, two names, no second `color-mix`. [P11] */
+    --nk-coral-deep: color-mix(in srgb, var(--nk-coral) 70%, black);
+    --nk-error: var(--nk-coral-deep);
     --nk-line: rgb(var(--nk-ink-rgb) / 0.28);
-
-    /* The focus ring is cobalt on this page and coral everywhere else,
-       because the two design sources genuinely disagree and each is right
-       about its own page:
-
-         homepage/Nikko Homepage.dc.html  →  outline: 3px solid #EE5439
-         contact/Nikko Contact.dc.html    →  outline: 3px solid #2B45F0
-
-       This is a scoped override of `--nk-focus-colour`, never a change to
-       the token itself: the global value in tokens.css stays coral so the
-       homepage is untouched, and every focus rule on this page already
-       reads the property rather than a literal, so one line moves all of
-       them. Logged as a source conflict — see
-       docs/14-design-source-conflicts.md and docs/19-contact-design-gaps.md.
-
-       Coral on this page was also the worse of the two on its own terms:
-       the form's error state is coral, and a coral ring around a valid
-       field being typed into reads as the field complaining. Cobalt is
-       already the page's "this one is chosen" colour — the intent card and
-       the month chip both fill with it — and it clears 3:1 against both the
-       field fill (5.9:1) and the page ground (5.6:1). [P10] */
-    --nk-focus-colour: var(--nk-cobalt);
   }
 
   /* ── Shell ──────────────────────────────────────────────────────────── */
@@ -294,19 +280,37 @@
     border-top: var(--nk-rule-hair);
   }
 
+  /* Every link reserves the active mark's 3px channel and paints it
+     transparent, so becoming the current section changes a colour and
+     nothing else — no reflow, and no 3px jump down the rail as the visitor
+     scrolls. The design's own inactive/active pair is muted ink → full ink
+     (`railFg` in the source), and that is kept: the coral bar is the
+     founder's ask, the ink move is the design's, and between them the state
+     is legible without relying on either one alone. [P10] */
   .nk-c-rail-link {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 13px 4px;
+    padding: 13px 4px 13px 11px;
     border-bottom: var(--nk-rule-hair);
-    color: var(--nk-ink);
-    transition: color var(--nk-dur-colour) ease;
+    color: var(--nk-ink-muted);
+    box-shadow: inset 3px 0 0 transparent;
+    transition: color var(--nk-dur-colour) ease, box-shadow var(--nk-dur-colour) ease;
   }
 
   .nk-c-rail-link:hover,
   .nk-c-rail-link:focus-visible {
     color: var(--nk-coral);
+  }
+
+  /* The current section. `aria-current` is the state — the attribute IS the
+     selector, so the coral cannot appear without the announcement or the
+     announcement without the coral. Written by `contact-form.ts`; with
+     JavaScript off no link carries it and the rail is the plain five-line
+     navigation aid it has always been. [P3] */
+  .nk-c-rail-link[aria-current] {
+    color: var(--nk-ink);
+    box-shadow: inset 3px 0 0 var(--nk-coral-deep);
   }
 
   .nk-c-rail-num {
@@ -315,9 +319,25 @@
     color: var(--nk-ink-muted);
   }
 
+  /* The deep coral, not the flat one. This is 10px mono on the tinted
+     ground, where plain `--nk-coral` measures 3.03:1 — axe-core fails the
+     page for it, correctly. The mark's own 3px bar takes the same value:
+     if the number beside it needs the darker ink to be legible, a 3px rule
+     on the same ground needs it to be visible. [P10] */
+  .nk-c-rail-link[aria-current] .nk-c-rail-num {
+    color: var(--nk-coral-deep);
+  }
+
   .nk-c-rail-title {
     font-size: 14.5px;
     line-height: 1.3;
+  }
+
+  /* 600 is a real face here (`fonts.css` imports latin-400 and latin-600),
+     not a synthesised bold, so the weight move costs nothing and carries
+     the state for anyone who cannot see the coral at all. */
+  .nk-c-rail-link[aria-current] .nk-c-rail-title {
+    font-weight: 600;
   }
 
   /* ── Rail selection summary ("gathered fragments") ──────────────────── */
@@ -385,15 +405,10 @@
     color: var(--nk-ink);
   }
 
-  /* The rail's chips speak the controls' own colour language, so timing and
-     budget follow their groups. Ink text on both, for the same contrast
-     reason the controls carry it. */
-  .nk-c-frag--turquoise {
-    background: var(--nk-turquoise);
-    border-color: var(--nk-ink);
-    color: var(--nk-ink);
-  }
-
+  /* The rail's chips speak the controls' own colour language, so budget
+     follows its group. Timing needs no new class: its group is yellow now,
+     which `--yellow` above already draws. Ink text throughout, for the same
+     contrast reason the controls carry it. */
   .nk-c-frag--coral {
     background: var(--nk-coral);
     border-color: var(--nk-ink);
@@ -462,7 +477,26 @@
     text-transform: uppercase;
     padding: 8px 12px;
     border: 1.5px solid var(--nk-line);
+    color: var(--nk-ink-muted);
+    transition: background var(--nk-dur-colour) ease, color var(--nk-dur-colour) ease,
+      border-color var(--nk-dur-colour) ease;
+  }
+
+  /* The same state as the rail's, in the form this bar can carry: a chip in
+     a scrolling row has no margin to hang a bar off, so it fills instead —
+     which is also what the design source does with the active chip, in ink.
+     Coral is the founder's colour for "you are here", and the label stays
+     INK on it: ink on coral is 5.36:1, paper on coral is 2.99:1. [P10]
+     The fill, the border going solid and the weight all move together, so
+     the state is never hue alone. */
+  .nk-c-railbar-chip[aria-current] {
+    background: var(--nk-coral);
+    border-color: var(--nk-ink);
     color: var(--nk-ink);
+    /* 500 is the heaviest DM Mono face `fonts.css` ships, and DM Mono is
+       monospaced — the advance width is identical to 400, so the weight
+       moves without the chip changing size or the row reflowing. */
+    font-weight: 500;
   }
 
   /* ── Section heading row (repeats 01–05) ────────────────────────────── */
@@ -1014,32 +1048,37 @@
     transition: background var(--nk-dur-colour) ease, color var(--nk-dur-colour) ease;
   }
 
-  /* Selected: a turquoise fill with ink text, an ink border and a paper
+  /* Selected: a yellow fill with an ink label, an ink border and a paper
      keyline stamped inside it.
 
-     Turquoise is this group's own colour, not a repeat of one already in
-     use: intent is cobalt, deliverables are yellow, budget is coral, and a
-     chosen month has to be as legible at a glance as any of them. The
-     direction board reserves turquoise for imagery — see docs/14 § C1;
-     the founder asked for these chips coloured and named turquoise, and a
-     founder instruction outranks the board [P0], so this is deliberate and
-     logged, not an oversight.
+     Yellow is not a new colour here — it is the exact fill the deliverable
+     boxes already carry, reused rather than spent. The two remaining
+     palette colours were coral, which went to budget, and turquoise, which
+     the direction board reserves for imagery and the founder has
+     reaffirmed as reserved (docs/14 § C1). Sharing yellow with the
+     deliverables costs nothing: they are different questions in different
+     sections, and neither is ever read against the other.
 
-     Ink text, never paper: paper on turquoise is 2.25:1 and fails outright.
-     Ink on turquoise is 7.14:1. Same reasoning as the yellow deliverable
-     boxes, which is why they read the same way. [P10]
+     Ink label, never paper: ink on yellow is 13.19:1, paper on yellow is
+     1.24:1 and is not a colour combination, it is a blank chip. [P10]
 
-     The state is not carried by hue alone. The fill drops the chip's
-     luminance from 0.90 to 0.35 — a chosen chip is unmistakably the dark
-     one in greyscale — and the inset paper keyline is a shape that is
-     simply not there when the chip is unselected. Both survive any colour
-     vision, any monitor and a photocopier. [P10] */
+     Yellow is a LIGHT fill, which is why the state cannot lean on the fill
+     alone: a yellow chip and an unselected chip are close in luminance
+     (1.29:1), so in greyscale the fill barely moves. Three things move with
+     it, none of them hue — the border goes from a 28%-alpha hairline to
+     solid ink, a paper keyline appears inside the chip where there was
+     none, and the label steps to the heaviest mono weight the site ships.
+     Any one of them identifies the chosen chip on its own. [P10] */
   .nk-vh-input:checked + .nk-c-year-chip,
   .nk-vh-input:checked + .nk-c-month-chip {
-    background: var(--nk-turquoise);
+    background: var(--nk-yellow);
     border-color: var(--nk-ink);
     color: var(--nk-ink);
     box-shadow: inset 0 0 0 2px var(--nk-paper);
+    /* DM Mono is monospaced and `fonts.css` ships 400 and 500, so this is a
+       real face at an identical advance width — the weight moves without
+       the chip resizing or the grid reflowing. */
+    font-weight: 500;
   }
 
   .nk-vh-input:focus-visible + .nk-c-year-chip,
@@ -1102,7 +1141,9 @@
   /* Selected: coral, ink text, ink border, paper keyline — the same
      construction as the timing chips above, in this group's own colour.
      Ink on coral is 5.36:1; paper on coral is 2.99:1 and was never an
-     option. [P10] The design source fills this box with flat ink, which
+     option. [P10] Coral IS a strong luminance move on its own (0.90 → 0.25),
+     so here the keyline and the ink border are reinforcement rather than
+     the load-bearing cue they are on yellow. The design source fills this box with flat ink, which
      reads as chrome rather than as an answer once every other group on the
      page carries a colour — the founder asked for coral here and coral is
      what ships. Logged in docs/19. */

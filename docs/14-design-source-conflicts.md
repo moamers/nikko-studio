@@ -1,6 +1,6 @@
 # 14 — Design Source Conflicts
 
-> **Status:** ⚠️ Needs a ruling · **Owner:** Design / Nadia · **Last updated:** 2026-08-17
+> **Status:** ⚠️ Needs a ruling · **Owner:** Design / Nadia · **Last updated:** 2026-08-21
 > **Related:** [Docs index](./README.md) · [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess) · [P12](./02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged) · [Q10](./13-open-questions.md#-q10--which-design-document-wins)
 
 The handoff bundle contains **two design documents that disagree with each other** on load-bearing points. This was not obvious until both were read closely, and it is the single most important thing surfaced in this review.
@@ -39,15 +39,11 @@ Per [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-
 
 **Our read:** the homepage's use of turquoise is confident and works. It looks like a deliberate evolution rather than an oversight — but we cannot assume that. If it is intentional, B should be amended so the next page does not revert.
 
-**Update, 2026-08-21 — the reserve has now been superseded in practice, at the founder's instruction.** The contact page's target-timing chips (year and month) fill **turquoise** when selected, which is precisely the *"never a fill… never a chip"* case B rules out. This was not an oversight and it was not our call:
+**Update, 2026-08-21 — the founder has reaffirmed the reserve.** Asked directly, while colouring the contact page's choice groups: turquoise is for imagery, backgrounds and drop shadows only — never a chip. B's rule stands as written, and the homepage's ground, ticket shadow and perforation all sit on the "surface" side of it.
 
-- the founder reported that the selected timing and budget chips did not read as chosen, asked for both groups to carry a colour of their own, and named turquoise's family as one of the two remaining options (coral went to budget, turquoise to timing);
-- [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess) ranks a founder instruction above the direction board, so the instruction was followed rather than escalated;
-- the alternative was a third group filling cobalt, which the intent cards already own — the page would then have had two "chosen" colours doing the same job and one group with none.
+The contact page's selected timing chips were briefly built turquoise and are not: they **reuse yellow**, the same fill the deliverables boxes already carry, and the selected budget box uses coral. No new colour was introduced and the reserve was not spent. (docs/19 has the detail and the contrast numbers.)
 
-So B is now contradicted by **two** documents and one live instruction: the homepage (a turquoise ground, a turquoise ticket shadow, a turquoise perforation) and now the contact page (a turquoise chip). The chip is the more consequential of the two for B's purposes, because a ground is arguably still "a surface" while a chip is the exact thing the rule names.
-
-**This raises the priority of the C1 ruling rather than settling it.** Every additional page shipped against the reserve makes reinstating it more expensive, and the reserve is currently a rule the codebase breaks in two places while still carrying it in the docs. Either amend B to license turquoise as a fill, or tell us and both uses come out.
+What still needs a ruling under C1 is only the original question — whether the *homepage's* §5 turquoise ground and ticket shadow are licensed by "may be a surface inside a picture", or are the same violation at a larger size. The chip case is closed.
 
 ---
 
@@ -156,33 +152,27 @@ B's rule is almost certainly about *variants per page*, not *instances* — six 
 
 ---
 
-### C9 — Focus ring colour: coral or cobalt? 🟠
+### C9 — Focus ring colour: coral or cobalt? ✅ RULED
 
-*Not an A-vs-B conflict. This one is A against A: the two page designs in the handoff bundle disagree with each other.*
+*Not an A-vs-B conflict. This one was A against A: the two page designs in the handoff bundle disagree with each other.*
 
 | | |
 |---|---|
-| **Homepage says** | `Nikko Homepage.dc.html` — `outline: 3px solid #EE5439` (coral), and `homepage/README.md`'s token table names coral as the focus colour. This is what `--nk-focus-colour` in `tokens.css` was built from |
+| **Homepage says** | `Nikko Homepage.dc.html` — `outline: 3px solid #EE5439` (coral), and `homepage/README.md`'s token table names coral as the focus colour. This is what `--nk-focus-colour` in `tokens.css` was originally built from |
 | **Contact says** | `Nikko Contact.dc.html` — `outline: 3px solid #2B45F0` (cobalt), consistently, on every control |
-| **Impact** | Site-wide if resolved the obvious way. `--nk-focus-colour` is one token read by every `:focus-visible` rule on the site, so repointing it to cobalt for the contact page would silently recolour the homepage too |
-| **Cost to change** | Nil either way. One token, or one scoped override |
 
-**What this build does, pending a ruling:** the global token stays coral, and `.nk-contact` overrides `--nk-focus-colour` to `var(--nk-cobalt)` for the contact page only. Each page therefore matches its own design source, and neither source has been overruled by the other.
+**Ruling, 2026-08-21 (founder): cobalt, globally.** One token, one ring, every input on the site identical. `--nk-focus-colour` moves to `var(--nk-cobalt)` in `tokens.css`; the contact page carries no scoped override, and the homepage's coral ring is superseded.
 
-Measured, against the two grounds a ring on this page is ever drawn over — the field fill (`#F7F3EA`) and the accent-tinted page ground:
+The measurements behind it, against the two grounds a ring is drawn over:
 
-| Ring | vs field fill | vs page ground | 3:1 non-text floor |
+| Ring | vs paper ground (`#F2ECDF`) | vs field fill (`#F7F3EA`) | vs ink (`#111110`) |
 |---|---|---|---|
-| Coral `#EE5439` | 3.17:1 | **2.99:1** | fails on the ground |
-| Cobalt `#2B45F0` | 5.89:1 | 5.56:1 | passes on both |
+| Coral `#EE5439` | **2.99:1** | 3.17:1 | 5.36:1 |
+| Cobalt `#2B45F0` | 5.56:1 | 5.89:1 | **2.89:1** |
 
-So this is not purely a taste decision. Coral is a marginal ring at best and an under-floor one around the controls that sit directly on the page ground (the pronoun chips, the year chips, the autosave switch). [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+This was never purely a taste decision. Coral on the paper ground is under the 3:1 floor a focus indicator has to clear, which made the *homepage's* ring a live [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement) defect, not just the contact page's. Cobalt fails the same floor the other way — on ink grounds (the mobile menu, the ink footer) — so the ruling comes with a companion dark-ground override rather than a single unconditional value.
 
-**Our read:** cobalt is the better value on the contact page specifically, and the reason is not aesthetic. That page's error state is coral — coral text, a coral invalid-icon square, a coral field border — so a coral ring around a *valid* field the visitor is typing into is the same colour saying two opposite things. Cobalt is already the page's "chosen" colour there (the selected intent card and the selected month chip both fill with it). On the homepage, with no form and no error state to collide with, coral is unambiguous.
-
-**One thing this measurement says about the homepage, flagged not fixed:** coral's 2.99:1 against the paper ground is not a contact-page property. The homepage draws the same coral ring over the same ground, so its focus ring is fractionally under the same floor. Nothing on the homepage was touched here — that page is out of this task's ownership and the ruling below may moot it — but if the answer to C9 is "coral everywhere", the ring needs a darker coral or a companion inner stroke to clear 3:1.
-
-**Question for design:** is cobalt the contact page's own accent, or should focus be one colour site-wide? If it should be one colour, we need to know which — and if the answer is cobalt everywhere, say so explicitly, because that is a one-line change to `tokens.css` that moves every ring on the site.
+Two supporting reasons on the contact page specifically: its error state is coral (coral text, coral invalid-icon square, coral field border), so a coral ring around a *valid* field being typed into was one colour saying two opposite things — which is exactly what "the fields ring red" described.
 
 ---
 
@@ -227,4 +217,5 @@ One item from B is worth adopting early regardless, because it is a good target 
 
 | # | Conflict | Ruling | Date | By |
 |---|---|---|---|---|
-| *(populated as rulings arrive)* | | | | |
+| C1 | The turquoise licence | **Reserve stands.** Turquoise is imagery, backgrounds and drop shadows only — never a chip. The contact page's timing chips reuse yellow instead. The homepage's §5 ground and ticket shadow are still open under C1 | 2026-08-21 | Founder |
+| C9 | Focus ring colour | **Cobalt, globally.** One token for the whole site; coral is superseded. A separate override covers dark grounds | 2026-08-21 | Founder |

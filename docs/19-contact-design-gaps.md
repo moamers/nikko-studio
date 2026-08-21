@@ -63,7 +63,7 @@ Distinct from the above — these are scope trims made to ship a complete, corre
 | Feature in the source | What shipped instead | Why |
 |---|---|---|
 | The section rail's "gathered fragments" — a stamped chip per answered value, appearing live as the form fills in | **Now shipped** — see "Reversed" below | Cut originally as live state with no functional payoff; the founder asked for it back, and it is in |
-| Per-section completion squares (cobalt = done, yellow = in view) in the rail | Not implemented | Same reasoning — purely a progress affordance, not load-bearing |
+| Per-section completion squares (cobalt = done, yellow = in view) in the rail | Partly shipped: the *in view* half is the current-section mark, in coral (see "Restored: the rail's current-section mark"). The *done* half — a cobalt square per completed section — is still not implemented | The done-square is a progress affordance with no navigational job; the in-view mark was a design regression and is back |
 | Cloudflare Turnstile widget in the form | Not embedded | Needs a live site key this task doesn't have. `src/lib/enquiry/server/turnstile.ts` already degrades gracefully with no token present ("Skipped… lets the enquiry through"), so the endpoint isn't blocked on it — it's a follow-up wiring task, not a functional gap in the form today |
 
 ## One thing built beyond the original file list: `/contact/thank-you`
@@ -125,36 +125,24 @@ Progressive enhancement: autosave is a JavaScript feature and cannot be anything
 
 The e2e test `nothing survives a reload [D8]` was repointed rather than deleted — its subject was never "the form must forget" but "the form must not remember behind the visitor's back", and five tests in `tests/e2e/contact.spec.ts` now hold both halves of that. See the D8 note in that file's header.
 
-## New source conflict: the focus ring is cobalt here and coral everywhere else
+## The focus ring: ruled, and no longer this page's problem
 
-Logged in full as [C9 in docs/14](./14-design-source-conflicts.md#c9--focus-ring-colour-coral-or-cobalt-) — this is the contact-page half of it.
+The founder reported form fields ringing red on focus. They were: `--nk-focus-colour` was `var(--nk-coral)`, and the contact design source asks for `3px solid #2B45F0`.
 
-The two page designs in the handoff bundle state different focus rings, in as many words:
+This was briefly built as a `.nk-contact`-scoped override of `--nk-focus-colour`, on the reasoning that the homepage source says coral in as many words and neither page should overrule the other. **That is not what shipped.** The founder ruled on 2026-08-21 that focus is one colour site-wide — cobalt — so every input on the site looks identical. The scoped override was removed and the token itself moves, in `tokens.css`, which this task does not own.
 
-| Source | Says |
-|---|---|
-| `design-handoff/homepage/Nikko Homepage.dc.html` | `outline: 3px solid #EE5439` — coral |
-| `design-handoff/contact/Nikko Contact.dc.html` | `outline: 3px solid #2B45F0` — cobalt |
+The measurements that informed the ruling, recorded because they are the reason it went the way it did:
 
-`--nk-focus-colour` in `tokens.css` was built from the homepage and is coral, which is why the founder is seeing form fields ring red. **The token has not been changed** — one token feeds every `:focus-visible` rule on the site, so repointing it would have recoloured the homepage to match a design the homepage does not have. Instead `.nk-contact` overrides the property for this page alone:
+| Ring | vs page ground (`#F2ECDF`) | vs field fill (`#F7F3EA`) |
+|---|---|---|
+| Coral `#EE5439` | **2.99:1** — under the 3:1 floor for a focus indicator | 3.17:1 |
+| Cobalt `#2B45F0` | 5.56:1 | 5.89:1 |
 
-```css
-.nk-contact {
-  --nk-focus-colour: var(--nk-cobalt);
-}
-```
+Coral was not merely the wrong colour for this page; it was a live [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement) defect anywhere a control sits directly on the paper ground — the pronoun chips, the year chips, the autosave switch, and every focusable thing on the homepage. Cobalt fails the other way round on dark grounds (2.89:1 on ink), which is handled by a separate dark-ground override outside this task.
 
-Every focus rule on the page already read `var(--nk-focus-colour)` rather than a literal, so the override reaches all of them — inputs, textareas, chips, cards, budget boxes and the autosave switch — and nothing else on the page (header, footer, newsletter) changes, because those sit outside `.nk-contact` and are shared chrome.
+Nothing in `contact.css` names a focus colour: every focus rule on the page reads `var(--nk-focus-colour)`, so the page follows the token wherever it goes. `focus is one ring on every kind of control [D3]` asserts that the painted ring matches the token's own computed value rather than a hardcoded hex, so it holds whichever colour the token carries and fails if a rule ever hardcodes one.
 
-Three reasons this is the right way round, beyond following each page's own source:
-
-- **Contrast.** Cobalt is 5.89:1 against the field fill and 5.56:1 against the page ground. Coral is 3.17:1 and 2.99:1 — the second of those is under the 3:1 non-text floor, and controls that sit directly on the ground (pronoun chips, year chips, the autosave switch) are exactly where the ring was weakest. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
-- **Coral already means "wrong" on this page.** The error text, the invalid-icon square and the invalid field border are all coral. A coral ring around a valid field being typed into is the same colour saying two opposite things — which is what the founder's "fields ringing red" report is describing.
-- **Cobalt already means "chosen" on this page.** The selected intent card and the selected month chip both fill cobalt.
-
-Held by `focus is one ring on every kind of control [D3]` in `tests/e2e/contact.spec.ts`, which now asserts the ring's colour as well as its geometry, and by a companion test that focuses a control on `/` and asserts it is still coral — so the cheap fix (moving the global token) fails the suite rather than shipping.
-
-## Selected budget and timing chips: coral and turquoise, not the source's ink and cobalt
+## Selected budget and timing chips: coral and yellow, not the source's ink and cobalt
 
 The founder reported that a selected chip in **ballpark budget** and in the **timing** group did not read as chosen next to the groups that carry colour (intent fills cobalt, deliverables fill yellow).
 
@@ -168,15 +156,42 @@ The founder reported that a selected chip in **ballpark budget** and in the **ti
 
 So the fills were never missing, and this build was already drawing them — a selected budget box was solid ink and a selected month chip was solid cobalt, both verified in the browser. What the founder is describing is real all the same: ink reads as chrome rather than as an answer, and cobalt on the timing chips is the intent cards' colour said a second time, so the page had two groups sharing one "chosen" colour and one group answering in monochrome.
 
-**What ships, at the founder's instruction:** budget fills `--nk-coral`, timing (year and month) fills `--nk-turquoise`, both with **ink** text, an ink border and a paper keyline stamped inside. Each of the four choice groups now has its own colour: intent cobalt, deliverables yellow, timing turquoise, budget coral. The rail's "gathered" chips follow their groups, so the summary speaks the same language as the controls.
+**What ships:** budget fills `--nk-coral`, timing (year and month) fills `--nk-yellow` — the same fill the deliverable boxes already carry — both with **ink** labels, an ink border and a paper keyline stamped inside. The rail's "gathered" chips follow their groups, so the summary speaks the same language as the controls.
+
+Timing was briefly built turquoise and is not. The direction board reserves turquoise for imagery — *"never a fill, a rule, a chip, a link or a word"* — and the founder reaffirmed that reserve on 2026-08-21 ([docs/14 § C1](./14-design-source-conflicts.md#c1--the-turquoise-licence-), now recorded in that document's ruling log). Reusing yellow spends no new colour and breaks no rule; the two groups are different questions in different sections and are never read against each other.
 
 Three things worth stating plainly, per [P12](./02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged):
 
-1. **This is a deviation from the contact design source, not fidelity to it.** The source's ink and cobalt are what the table above says. A founder instruction outranks a design document under [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess), which is the whole basis for the change.
-2. **It breaks the turquoise reserve**, and that is logged where it belongs — [docs/14 § C1](./14-design-source-conflicts.md#c1--the-turquoise-licence-), the unresolved conflict about whether *"never a fill, a rule, a chip, a link or a word"* still holds. It now does not, in a chip, deliberately.
-3. **Text is ink on both fills, and that is not a stylistic preference.** Measured: ink on coral **5.36:1**, ink on turquoise **7.14:1** — both clear AA for normal text. Paper on coral is **2.99:1** and paper on turquoise is **2.25:1**; either would have shipped the same class of defect as the intent card's 3.17:1 note. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+1. **This is a deviation from the contact design source, not fidelity to it.** The source's ink and cobalt are what the table above says. A founder instruction outranks a design document under [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess), which is the basis for the change.
+2. **Text is ink on both fills, and that is not a stylistic preference.** Measured from what the browser painted: ink on coral **5.36:1**, ink on yellow **13.19:1** — both clear AA for normal text. Paper on coral is 2.99:1 and paper on yellow is 1.24:1; either would have shipped the same class of defect as the intent card's 3.17:1 note. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+3. **Selection is never carried by hue alone, and the two groups need different amounts of help.** Coral is a heavy luminance move (0.90 → 0.25), so a selected budget box is unmistakably the dark one in greyscale. Yellow is a *light* fill — a selected timing chip is only 1.29:1 away from an unselected one — so there the state rests on three non-colour changes instead: the border goes from a 28%-alpha hairline to solid ink, a paper keyline appears inside the chip where there was none, and the label steps from mono 400 to mono 500. Any one of them identifies the chip without colour vision.
 
-Selection is never carried by hue alone. The fill drops a chip's luminance from 0.90 to 0.25 (coral) or 0.35 (turquoise) — in greyscale the chosen chip is simply the dark one — and the inset paper keyline is a shape that is absent when the chip is unselected. Both survive any colour vision and a photocopier.
+## Restored: the rail's current-section mark
+
+**A design regression, not a missing feature.** The design highlights whichever of the five sections the visitor is reading, in both places the section list appears, and updates it as they scroll. Nothing was drawn: the five links never changed.
+
+`Nikko Contact.dc.html` keeps `state.active` (defaulting to `'about'`) and moves it from an `IntersectionObserver` with `rootMargin: '-140px 0px -55% 0px'`, then draws:
+
+| Where | Source's inactive | Source's active |
+|---|---|---|
+| Rail link | text `#4A463C` | text `#111110`, plus a yellow dot |
+| Chip bar | text `#4A463C`, `rgba(17,17,16,0.3)` border | ink fill, paper text, ink border |
+
+**What ships**, per the founder's ask for the mark to read coral:
+
+- **Desktop rail** — a 3px coral bar inset on the leading edge of the current link, its number in the same coral, its title stepping from muted ink to full ink at weight 600. Every link reserves the bar's 3px channel and paints it transparent, so becoming current changes colours and nothing else: no reflow, and no 3px jump travelling down the rail as the page scrolls. The muted → ink text move is the design's own `railFg` pair, kept.
+- **Mobile chip bar** — the current chip fills coral with an ink label and an ink border. A bar off a chip's edge is not available in a scrolling row, so it fills, which is what the source does too, in ink rather than coral.
+- **The coral is `--nk-coral-deep`**, not flat coral, wherever it is used as small text or a thin rule. Flat `--nk-coral` is **3.03:1** at 10px against the accent-tinted ground and axe-core fails the page for it — 58 instances, caught only because the scan was re-run with a section actually marked. The deeper mix (`color-mix(in srgb, var(--nk-coral) 70%, black)`, the same derivation the page already uses for validation red) is **5.51:1**. On the mobile chip coral stays flat, because there it is a *fill* under an ink label: 5.36:1. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+- **Not colour alone.** The rail moves text weight and text colour with the bar; the chip moves its border from a hairline to solid ink. Either would identify the current section in greyscale.
+
+Four implementation notes, in `contact-form.ts`:
+
+1. **`IntersectionObserver`, never a scroll handler.** The observer speaks when a section crosses a line; a scroll handler would measure five elements on every frame for the life of the page. [P4](./02-engineering-principles.md#p4--performance-is-a-feature)
+2. **The observer is only the trigger.** Acting on what it *reports* is what makes a scrollspy flicker: at a boundary two sections are in the band at once, the last entry in the batch wins, and batch order is not document order. Each callback instead recomputes the answer from geometry — the last section whose top has passed the reading line (140px, clear of the header and the sticky bar). The answer depends only on where the page is, not on scroll direction or on report order.
+3. **Both ends behave.** Above the first section every top is still below the line, so the first section is marked from first paint rather than the rail arriving blank. Past the last section every top is above it, so the last section stays marked over the footer instead of blinking out — including after an instant jump, where "remember the last answer" would have gone stale.
+4. **The mobile bar scrolls itself, never the page.** When the marked chip is out of the track's view, the *track* is scrolled — `scrollIntoView({ block: 'nearest' })` is entitled to scroll any ancestor, including the document, and a vertical nudge here would fight the scroll that caused it. It is a no-op on desktop for free (the rail has nothing to scroll sideways), and it respects `prefers-reduced-motion` by jumping instead of gliding.
+
+With JavaScript off no link carries `aria-current`, nothing is marked, and both lists are what they always were. [P3](./02-engineering-principles.md#p3--progressive-enhancement-in-layers-in-that-order) Five e2e tests hold it (D10), including one that asserts the page's own scroll position is untouched by the chip bar's, and one that runs with JavaScript disabled.
 
 ## Corrections to the handoff's own values
 

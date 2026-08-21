@@ -15,6 +15,14 @@
  * JavaScript off the rail degrades to exactly what it was before, a
  * five-line navigation aid with nothing blank or broken showing. [P3]
  *
+ * The current section is marked with `aria-current="true"`, written by
+ * `contact-form.ts` from an `IntersectionObserver` as the visitor scrolls.
+ * The attribute is the whole state: `contact.css` selects on it, so the
+ * coral mark and the announcement are the same fact and cannot drift apart.
+ * Nothing is marked in the document as shipped — with JavaScript off there
+ * is no current section to know about, and the rail is five links that
+ * navigate, exactly as before. [P3]
+ *
  * The summary is `aria-hidden` on purpose. Every value in it is a mirror of
  * a form control the visitor has just filled in and can still reach, so
  * announcing it a second time — on every keystroke of a business name —
