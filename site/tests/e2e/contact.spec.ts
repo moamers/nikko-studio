@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 /**
  * /contact — the eight defects the founder reported, each pinned by the
@@ -16,8 +16,10 @@ import { expect, test, type Page } from '@playwright/test';
  *       `radio.checked` as the PRE-click state, which it never is, and
  *       unchecked every radio the instant it was chosen.
  *   D3  the design's cobalt underbar was an OUTER shadow, so it sat in the
- *       gap the coral focus ring's `outline-offset` opens and read as a
- *       second blue ring.
+ *       gap the focus ring's `outline-offset` opens and read as a second
+ *       ring. The ring's own colour is `--nk-focus-colour`, ruled cobalt
+ *       site-wide (docs/14 § C9) — asserted here as "whatever the token
+ *       resolves to", never as a hex.
  *   D4  the ruled textarea's top padding was not a whole multiple of its own
  *       rule pitch, so text crossed its rules.
  *   D6  a rendered <legend> is outside its fieldset's flex layout, so the
@@ -32,12 +34,86 @@ import { expect, test, type Page } from '@playwright/test';
  *       visitor's say-so": on by default and honest about it, off on
  *       request, and off means the stored copy is gone.
  *
+ *   D9  a selected budget box and a selected timing chip did not read as
+ *       chosen next to the groups that carry colour. The fills existed —
+ *       ink and cobalt, exactly as the design source draws them — but ink
+ *       reads as chrome and cobalt was already the intent cards' colour.
+ *       Budget now fills coral and timing yellow, both with ink labels.
+ *
+ *  D10  the section rail's current-section mark was missing altogether, in
+ *       both the desktop rail and the mobile chip bar. It is an
+ *       `IntersectionObserver` and an `aria-current` attribute the CSS
+ *       selects on, so the announcement and the colour cannot drift apart.
+ *
  * D5 — the 18px cut corner drawn on the wrong diagonal — is a paint-only
  * defect with no property to assert against, so it is verified by eye
  * against the design instead. See docs/19.
  */
 
 const RULE_PITCH = 28;
+
+/** `--nk-coral`. The selected budget box, and the active section's mark. */
+const CORAL = 'rgb(238, 84, 57)';
+/** `--nk-yellow`. The selected deliverable boxes, and the timing chips. */
+const YELLOW = 'rgb(255, 212, 0)';
+/** `--nk-ink`. The text on every one of those fills. */
+const INK = 'rgb(17, 17, 16)';
+
+/**
+ * A custom property's value, resolved exactly as the page resolves it —
+ * inside `.nk-contact`, through whatever `var()` and `color-mix()` chain it
+ * is built from — rather than restated here as a literal.
+ *
+ * Two of the colours these tests care about cannot be written down honestly
+ * any other way. `--nk-focus-colour` has already changed once (coral →
+ * cobalt, docs/14 § C9) and a test that hardcodes it turns a design ruling
+ * into a test failure. `--nk-coral-deep` is a `color-mix()`, which Chromium
+ * reports as `color(srgb …)`, not `rgb()`. What must hold is that the page
+ * paints THE token, not that the token holds any particular value.
+ */
+async function tokenColour(page: Page, property: string): Promise<string> {
+  return page.evaluate((name) => {
+    const probe = document.createElement('span');
+    probe.style.color = `var(${name})`;
+    (document.querySelector('.nk-contact') ?? document.body).append(probe);
+    const resolved = getComputedStyle(probe).color;
+    probe.remove();
+    return resolved;
+  }, property);
+}
+
+/**
+ * WCAG 2.x relative luminance and contrast, computed from the two colours
+ * the browser actually painted rather than from the hexes we hoped it would
+ * paint. The intent card's note shipped at 3.17:1 precisely because the
+ * ratio was reasoned about rather than measured. [P10]
+ */
+function contrast(a: string, b: string): number {
+  const channel = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const luminance = (colour: string) => {
+    const parts = (colour.match(/[\d.]+/g) ?? []).slice(0, 3).map(Number);
+    // Chromium reports a `color-mix()` result as `color(srgb 0.65 0.23 …)`,
+    // already 0–1, and everything else as `rgb(166, 59, …)`, 0–255. Dividing
+    // the first form by 255 is how a real ratio silently becomes 1.0:1.
+    const [r, g, b_] = colour.startsWith('color(') ? parts : parts.map((v) => v / 255);
+    return 0.2126 * channel(r ?? 0) + 0.7152 * channel(g ?? 0) + 0.0722 * channel(b_ ?? 0);
+  };
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+}
+
+/** Everything the eye uses to tell a chosen chip from an unchosen one. */
+async function chipState(chip: Locator) {
+  return chip.evaluate((node) => {
+    const styles = getComputedStyle(node as Element);
+    return {
+      fill: styles.backgroundColor,
+      text: styles.color,
+      border: styles.borderColor,
+      keyline: styles.boxShadow,
+    };
+  });
+}
 
 async function fillEnough(page: Page): Promise<void> {
   await page.locator('#f-business').fill('Dunder Mifflin Paper Company');
@@ -75,6 +151,9 @@ test.describe('the enquiry form', () => {
 
   test('focus is one ring on every kind of control [D3]', async ({ page }) => {
     await page.goto('/contact');
+    const expected = await tokenColour(page, '--nk-focus-colour');
+    expect(expected, 'the focus token resolves to a real colour').toMatch(/^rgb/);
+
     const controls = [
       '#f-business',
       '#f-why',
@@ -100,13 +179,89 @@ test.describe('the enquiry form', () => {
           focusVisible: (node as Element).matches(':focus-visible'),
           width: parseFloat(paint.outlineWidth || styles.outlineWidth),
           style: paint.outlineStyle,
+          colour: paint.outlineColor,
           shadow: paint.boxShadow,
         };
       });
       expect(ring.focusVisible, `${selector} :focus-visible`).toBe(true);
       expect(ring.width, `${selector} outline width`).toBeGreaterThanOrEqual(3);
       expect(ring.style, `${selector} outline style`).not.toBe('none');
+      // The ring is the token, whatever the token currently is. This fails
+      // if a rule ever hardcodes a colour of its own, or paints no ring at
+      // all — and passes through a re-ruling of C9 without an edit.
+      expect(ring.colour, `${selector} outline colour`).toBe(expected);
       expect(ring.shadow, `${selector} must not add an outer shadow`).not.toMatch(/^rgb.*\)\s+0px\s+3px\s+0px\s+0px$/);
+    }
+  });
+
+  /* ── The selected-chip fills [D9] ─────────────────────────────────────
+   *
+   * D9: a selected chip in "ballpark budget" and in the timing group did
+   * not read as chosen beside the groups that carry colour. The fills were
+   * there — the design source fills budget with flat ink and month with
+   * cobalt, and so did this build — but ink reads as chrome, and cobalt was
+   * the intent cards' colour said twice. Budget now fills coral; timing
+   * reuses the deliverables' yellow rather than spending turquoise, which
+   * the direction board reserves and the founder has reaffirmed as
+   * reserved. docs/14 § C1, docs/19.
+   *
+   * What is asserted is the part that can rot silently: the contrast of the
+   * label against the fill it was actually painted on, and the presence of
+   * a cue that is not hue — which matters most on yellow, where the fill
+   * itself is barely a luminance move.
+   */
+  test('a selected budget or timing chip fills, legibly and not by hue alone [D9]', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/contact');
+
+    const groups = [
+      { name: 'budget', selector: '.nk-c-budget', fill: CORAL },
+      { name: 'year', selector: '.nk-c-year-chip', fill: YELLOW },
+      { name: 'month', selector: '.nk-c-month-chip', fill: YELLOW },
+    ];
+
+    for (const group of groups) {
+      const chip = page.locator(group.selector).first();
+      const before = await chipState(chip);
+
+      await chip.click();
+      // The fill crossfades on --nk-dur-colour; sample it at rest.
+      await page.waitForTimeout(400);
+      const after = await chipState(chip);
+
+      expect(after.fill, `${group.name} selected fill`).toBe(group.fill);
+      expect(after.text, `${group.name} selected label`).toBe(INK);
+      expect(
+        contrast(after.fill, after.text),
+        `${group.name} label on its own fill`,
+      ).toBeGreaterThanOrEqual(4.5);
+
+      // Not hue alone. The keyline is a shape that was not there before and
+      // the border goes solid; on coral the fill's luminance carries it too,
+      // but on yellow — a light fill — these are the whole signal.
+      expect(after.keyline, `${group.name} keyline`).toContain('inset');
+      expect(before.keyline, `${group.name} unselected keyline`).not.toContain('inset');
+      expect(after.border, `${group.name} selected border`).toBe(INK);
+      expect(before.border, `${group.name} unselected border`).not.toBe(INK);
+    }
+  });
+
+  test("the rail chips speak the controls' colours [D9]", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await page.goto('/contact');
+
+    await page.locator('.nk-c-budget').first().click();
+    await page.locator('.nk-c-year-chip').first().click();
+    await expect(page.locator('[data-rail-frag-list] .nk-c-frag--coral')).toHaveCount(1);
+    // Timing's chip is yellow, the same class the deliverables use — so with
+    // a deliverable also picked there would be two. Here there is one.
+    await expect(page.locator('[data-rail-frag-list] .nk-c-frag--yellow')).toHaveCount(1);
+
+    for (const tone of ['coral', 'yellow']) {
+      const chip = await chipState(page.locator(`[data-rail-frag-list] .nk-c-frag--${tone}`));
+      expect(contrast(chip.fill, chip.text), `${tone} rail chip`).toBeGreaterThanOrEqual(4.5);
     }
   });
 
@@ -294,6 +449,163 @@ test.describe('the enquiry form', () => {
   });
 });
 
+/* ── The current-section mark [D10] ───────────────────────────────────────
+ *
+ * D10: the design highlights the section being read, in the rail and in the
+ * mobile chip bar, and the highlight was missing entirely — the five links
+ * never changed whatever the visitor did.
+ *
+ * These tests scroll with `behavior: 'instant'` on purpose. `base.css` sets
+ * `scroll-behavior: smooth` on the root, so a plain `window.scrollTo` glides
+ * for hundreds of milliseconds and any assertion made straight afterwards is
+ * measuring a page in mid-flight. That cost an afternoon; it is written down
+ * here so it does not cost a second one.
+ */
+const SECTION_IDS = ['about', 'project', 'work', 'reason', 'finish'];
+
+/** The href of whichever link in `group` currently carries the mark. */
+async function markedSection(page: Page, group: string): Promise<string | null> {
+  return page.evaluate((selector) => {
+    const marked = document.querySelectorAll(`${selector}[aria-current]`);
+    // Exactly one, always: two marks is a bug this returns as a failure.
+    if (marked.length !== 1) return `${marked.length} marked`;
+    return marked[0]?.getAttribute('href') ?? null;
+  }, group);
+}
+
+async function scrollToSection(page: Page, id: string): Promise<void> {
+  await page.evaluate((sectionId) => {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    // Put the section's top just inside the observer's band (140px down).
+    window.scrollTo({ top: window.scrollY + section.getBoundingClientRect().top - 100, behavior: 'instant' });
+  }, id);
+  await page.waitForTimeout(250);
+}
+
+test.describe('the section rail follows the reader [D10]', () => {
+  for (const [label, width] of [
+    ['the desktop rail', 1440],
+    ['the mobile chip bar', 390],
+  ] as const) {
+    const group = width >= 1080 ? '.nk-c-rail-link' : '.nk-c-railbar-chip';
+
+    test(`${label} marks the section in view, scrolling down and back up [D10]`, async ({
+      page,
+    }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/contact');
+      await page.waitForTimeout(300);
+
+      // Something is marked before a single scroll — the first section.
+      expect(await markedSection(page, group)).toBe('#about');
+
+      for (const id of SECTION_IDS) {
+        await scrollToSection(page, id);
+        expect(await markedSection(page, group), `scrolling down to #${id}`).toBe(`#${id}`);
+      }
+
+      for (const id of [...SECTION_IDS].reverse()) {
+        await scrollToSection(page, id);
+        expect(await markedSection(page, group), `scrolling back up to #${id}`).toBe(`#${id}`);
+      }
+
+      // Past the end of the form, the last answer stands rather than
+      // blinking out — a mark that disappears reads as broken.
+      await page.evaluate(() =>
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }),
+      );
+      await page.waitForTimeout(250);
+      expect(await markedSection(page, group)).toBe('#finish');
+    });
+  }
+
+  test('the mark is `aria-current`, and it moves — not just a colour [D10]', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto('/contact');
+    await page.waitForTimeout(300);
+
+    const about = page.locator('.nk-c-rail-link[href="#about"]');
+    const work = page.locator('.nk-c-rail-link[href="#work"]');
+    await expect(about).toHaveAttribute('aria-current', 'true');
+    await expect(work).not.toHaveAttribute('aria-current', /.*/);
+
+    await scrollToSection(page, 'work');
+    await expect(work).toHaveAttribute('aria-current', 'true');
+    // The old mark is REMOVED, not merely restyled.
+    await expect(about).not.toHaveAttribute('aria-current', /.*/);
+
+    // And the paint follows the attribute, in the page's deep coral — the
+    // darker derivation, because 10px of flat coral on the tinted ground is
+    // 3.03:1 and axe-core fails the page for it.
+    const coralDeep = await tokenColour(page, '--nk-coral-deep');
+    const marked = await work.evaluate((node) => {
+      const styles = getComputedStyle(node);
+      const num = node.querySelector('.nk-c-rail-num');
+      const title = node.querySelector('.nk-c-rail-title');
+      return {
+        bar: styles.boxShadow,
+        num: num ? getComputedStyle(num).color : '',
+        weight: title ? getComputedStyle(title).fontWeight : '',
+      };
+    });
+    expect(marked.bar).toContain('inset');
+    expect(marked.bar).toBe(`${coralDeep} 3px 0px 0px 0px inset`);
+    expect(marked.num).toBe(coralDeep);
+    // 10px mono, so the 4.5:1 threshold is the one that applies. The ground
+    // is read from `--nk-ground` because it is painted above <body>, which
+    // is itself transparent.
+    const ground = await tokenColour(page, '--nk-ground');
+    expect(
+      contrast(marked.num, ground),
+      'the mark on the accent-tinted ground',
+    ).toBeGreaterThanOrEqual(4.5);
+    // Not colour alone: the title's weight moves with it.
+    expect(marked.weight).toBe('600');
+  });
+
+  test('the mobile bar scrolls the marked chip into view, and never the page [D10]', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/contact');
+    await page.waitForTimeout(300);
+
+    const track = page.locator('.nk-c-railbar-track');
+    expect(await track.evaluate((node) => node.scrollLeft)).toBe(0);
+
+    // #finish's chip is the last of five in a row 390px wide: it starts out
+    // of sight, which is the whole point of this behaviour.
+    await scrollToSection(page, 'finish');
+    const pageY = await page.evaluate(() => window.scrollY);
+    await page.waitForTimeout(700); // the smooth track scroll
+
+    expect(await track.evaluate((node) => node.scrollLeft)).toBeGreaterThan(0);
+    const visible = await page.locator('.nk-c-railbar-chip[aria-current]').evaluate((node) => {
+      const chip = node.getBoundingClientRect();
+      const bar = (node.parentElement as HTMLElement).getBoundingClientRect();
+      return chip.left >= bar.left - 1 && chip.right <= bar.right + 1;
+    });
+    expect(visible, 'the marked chip is inside the bar').toBe(true);
+
+    // The page did not move underneath the visitor to achieve it.
+    expect(await page.evaluate(() => window.scrollY)).toBe(pageY);
+  });
+
+  test('the marked chip fills coral, with a label that reads on it [D10]', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/contact');
+    await scrollToSection(page, 'work');
+
+    const chip = await chipState(page.locator('.nk-c-railbar-chip[aria-current]'));
+    expect(chip.fill).toBe(CORAL);
+    expect(chip.text).toBe(INK);
+    // 10px mono on a coral fill: this is the pairing that has to be right.
+    expect(contrast(chip.fill, chip.text)).toBeGreaterThanOrEqual(4.5);
+    expect(chip.border).toBe(INK);
+  });
+});
+
 test.describe('the contact page shell', () => {
   test('the intro sits in the same container as everything else [D1]', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -334,6 +646,33 @@ test.describe('the contact page shell', () => {
     const after = await new AxeBuilder({ page }).withTags(tags).analyze();
     expect(after.violations).toEqual([]);
   });
+
+  /*
+   * The pass above runs at the top of an empty page, and two of this page's
+   * contrast bugs have hidden from exactly that: the intent card's note only
+   * exists once a card is chosen, and the rail's current-section number only
+   * exists once a section is current. A scan of the resting state is a scan
+   * of the state nobody stays in.
+   */
+  test('axe-core is clean with chips selected and a section marked [P10]', async ({ page }) => {
+    const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
+
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.goto('/contact');
+      await fillEnough(page);
+      await page.locator('.nk-c-budget').first().click();
+      await page.locator('.nk-c-year-chip').first().click();
+      await page.locator('.nk-c-month-chip').nth(2).click();
+      await page.locator('.nk-c-chip').first().click();
+      // Mid-page, so the mark is on a section rather than on the default.
+      await scrollToSection(page, 'work');
+      await page.waitForTimeout(700);
+
+      const result = await new AxeBuilder({ page }).withTags(tags).analyze();
+      expect(result.violations, `axe at ${width}px, filled and mid-scroll`).toEqual([]);
+    }
+  });
 });
 
 /**
@@ -369,5 +708,23 @@ test.describe('the contact page without JavaScript', () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+  });
+
+  test('the section rail has no mark, and its links still work [D10, P3]', async ({ page }) => {
+    // Narrow, so the chip bar is the visible half of the pair.
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/contact');
+
+    // No mark at all, rather than a mark stuck on the first section — the
+    // attribute is written by script and there is no script.
+    await expect(page.locator('.nk-c-rail-link[aria-current]')).toHaveCount(0);
+    await expect(page.locator('.nk-c-railbar-chip[aria-current]')).toHaveCount(0);
+
+    // Five links that navigate, which is what they were before any of this.
+    const links = page.locator('.nk-c-railbar-chip');
+    await expect(links).toHaveCount(5);
+    await links.nth(2).click();
+    await expect(page).toHaveURL(/#work$/);
+    await expect(page.locator('#work')).toBeInViewport();
   });
 });

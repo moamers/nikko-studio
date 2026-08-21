@@ -3,6 +3,13 @@
  * The horizontal section chip bar — below 1080px only. See
  * `ContactRail.astro` for why the SECTIONS list is duplicated here rather
  * than shared.
+ *
+ * It carries the same `aria-current` mark as the rail, from the same
+ * observer, drawn as a coral fill because a chip in a scrolling row has no
+ * margin to hang a bar off. When the marked chip is outside the bar's own
+ * horizontal scroll, `contact-form.ts` scrolls the TRACK to bring it back —
+ * never `scrollIntoView`, which is free to scroll the page vertically to
+ * satisfy the request and would fight the scroll that triggered it.
  */
 const SECTIONS = [
   { n: '01', href: '#about', title: 'About you' },
