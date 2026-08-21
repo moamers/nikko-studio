@@ -309,6 +309,25 @@
     --nk-focus-colour: var(--nk-yellow);
   }
 
+  /* …except a text field, which is exempt on the founder's instruction:
+     every input on the site gets the SAME ring, newsletter or enquiry form,
+     so a visitor never meets two different focus treatments on what is
+     visibly the same control.
+
+     That is affordable here because these fields are paper, not ink. The
+     ring is pulled flush to the field's own edge (offset 0) so the colour
+     it sits against is the field's paper at 5.55:1, rather than the ink
+     behind it at 2.89:1. Uniform to look at, and legible where it lands.
+
+     Non-input controls on these ink grounds keep the yellow above — a
+     footer link has no paper field to sit against, so cobalt there really
+     would be a ring nobody can see. [P10] */
+  .nk-menu :is(input, textarea, select),
+  .nk-pitch :is(input, textarea, select) {
+    --nk-focus-colour: var(--nk-cobalt);
+    --nk-focus-offset: 0px;
+  }
+
   /* On coral and cobalt the on-accent text flips to paper. These two rules
      exist so `accent.ts` only has to write `--nk-accent` and `--nk-ground`
      plus the matching `data-accent` attribute — the pairings live here. */
