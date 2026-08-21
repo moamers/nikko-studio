@@ -38,7 +38,7 @@ For completeness, the local route is in [`site/README.md`](../site/README.md). F
 | Field | Value |
 |---|---|
 | Production branch | `main` |
-| **Deploy command** | `cd site && npm install && npm run build && npx wrangler deploy` |
+| **Deploy command** | `cd site && npm install && npm run build && npx wrangler pages deploy` |
 | **Root directory** | **Leave empty** |
 | Node version | `22` *(plain env var `NODE_VERSION=22`)* |
 
@@ -49,6 +49,14 @@ ignores the separate "build command" field. The website lives in `site/`, so
 the command has to `cd` there itself. Setting **Root directory** *as well*
 double-applies the path and the build fails with `cd: can't cd to site` — it
 must be left empty.
+
+**It is `pages deploy`, not `deploy`.** This is a Pages project, and plain
+`wrangler deploy` targets Workers instead: it warns *"you have run
+`wrangler deploy` on a Pages project"*, auto-answers its own confirmation
+prompt in CI, then fails with `Missing entry-point to Worker script`. The
+`pages` subcommand needs no directory argument, because
+`pages_build_output_dir` in `site/wrangler.toml` already names `dist`, and it
+picks up `site/functions/` the standard Pages way.
 
 **⚠️ The failure this actually causes, and how to recognise it.** Every
 misconfiguration here produces a *missing-files* error rather than a useful
