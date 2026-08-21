@@ -43,11 +43,16 @@
      above the shell as its own <section>, which means it has to state the
      container itself — without it the intro ran flush to the viewport edge
      while every other block on the page was inset. Same three declarations
-     as `.nk-c-shell` so the two can never drift apart. */
+     as `.nk-c-shell` so the two can never drift apart.
+
+     The bottom padding is what separates the status line from what comes
+     next. On desktop that is the shell, whose first section brings its own
+     top padding; on mobile it is `ContactRailBar`, which brings none and
+     sat directly against the switch. [P2] */
   .nk-c-intro {
     max-width: var(--nk-content-max);
     margin: 0 auto;
-    padding: clamp(48px, 6vw, 92px) var(--nk-gutter) 0;
+    padding: clamp(48px, 6vw, 92px) var(--nk-gutter) var(--nk-gap-block);
   }
 
   .nk-c-kicker {
@@ -90,16 +95,23 @@
   }
 
   /* ── The status line: "* REQUIRED" and the autosave switch ──────────── */
-  /* One row, because they are one thought: the two standing facts about
-     this form, stated before it starts. They sit next to each other rather
-     than at opposite ends of the content width — pushed apart, the switch
-     read as loose page chrome that had drifted off to the right instead of
-     as the second half of a sentence the required-note starts. */
+  /* A stack, not a row, at every width. The two are one thought — the
+     standing facts about this form, stated before it starts — but they are
+     not the same KIND of thing: the required note is a sentence to read
+     once, the switch is a control to operate. Sharing a row made the
+     switch read as a footnote pinned to the end of the sentence, and on a
+     narrow screen it put a 44px tap target immediately beside body text
+     and immediately above the sticky section bar, with nothing between any
+     of them.
+     Stacked, each gets its own line and the page's own rhythm around it:
+     `--nk-gap-stack` between the note and the switch, `--nk-gap-block`
+     below the switch before the form begins — which on mobile is the
+     sticky chip bar, the thing that was sitting hard against it. */
   .nk-c-statusline {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px 22px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--nk-gap-stack);
   }
 
   /* ── Autosave switch ────────────────────────────────────────────────
@@ -227,13 +239,6 @@
     transition: border-color var(--nk-dur-accent) var(--nk-ease-accent);
   }
 
-  @media (max-width: 560px) {
-    /* The pair still fits side by side at 320px; only the breathing room
-       between them comes in. */
-    .nk-c-statusline {
-      gap: 10px 14px;
-    }
-  }
 
   /* ── Section rail (desktop, ≥1080px) ───────────────────────────────── */
   .nk-c-rail {
@@ -929,7 +934,7 @@
   .nk-c-finish-stack {
     display: flex;
     flex-direction: column;
-    gap: clamp(26px, 3.4vw, 40px);
+    gap: var(--nk-gap-block);
   }
 
   /* ── Timing ─────────────────────────────────────────────────────────── */

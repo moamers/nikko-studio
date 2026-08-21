@@ -141,6 +141,14 @@
     --nk-measure-heading: 32ch;
     --nk-measure-heading-tight: 24ch;
     --nk-gap-cards: clamp(20px, 2.6vw, 34px);
+    /* The two rhythms a stacked column of form furniture is built from: a
+       note and the control under it (`--nk-gap-stack`), and one block of
+       the form and the next (`--nk-gap-block`, already the gap between the
+       fields of §05). Named here so the contact page's status line stacks
+       on the same scale as everything below it rather than on a one-off
+       pixel value. */
+    --nk-gap-stack: clamp(12px, 1.5vw, 18px);
+    --nk-gap-block: clamp(26px, 3.4vw, 40px);
 
     /* Pill geometry. Four sizes exist in the source and each is used by a
        different part of the page — see the size table in `Pill.astro`. The
