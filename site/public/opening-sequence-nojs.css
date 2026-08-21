@@ -1,0 +1,28 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   opening-sequence-nojs.css
+
+   Loaded ONLY from inside <noscript> in Base.astro, so it never costs a
+   request to a browser that can run the sequence.
+
+   Without the scroll driver the 320vh runway is three screens of nothing:
+   `--nkhero-opening`, `--nkhero-resolve` and `--nkhero-handoff` all stay at
+   0, which means the mark, the title and the resolution line are all at
+   opacity 0. That is motion standing between the reader and the content,
+   which P1 forbids outright.
+
+   So with JavaScript off the stage collapses to exactly the single static
+   frame the handoff already specifies for `prefers-reduced-motion`: 100vh
+   tall, mark / title / resolution forced visible, band reduced to a 5px
+   strip. The site proper — header included — then begins one screen down.
+
+   Selectors are doubled so this file wins regardless of where the browser
+   places it relative to the bundled stylesheet. No !important needed.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.nkhero-stage.nkhero-stage { height: 100vh; }
+
+.nkhero-origin-mark.nkhero-origin-mark,
+.nkhero-title.nkhero-title,
+.nkhero-resolution.nkhero-resolution { opacity: 1; }
+
+.nkhero-image-band.nkhero-image-band { height: 5px; }

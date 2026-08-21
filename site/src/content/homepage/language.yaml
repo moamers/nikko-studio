@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────
+#  LANGUAGE — the turquoise section.
+#
+#  Arabic is always set in Noto Kufi and reads right-to-left.
+#  Never retype it in the Latin display face.
+# ─────────────────────────────────────────────────────────────
+
+heading: "Where culture and commerce rub noses like Bedouins"
+
+editorial: "Khashmak, khashmak."
+arabic: "خشمك. خشمك."
+
+# The paper panel. The sentence is split around the counting number.
+panel:
+  before: >
+    From Assalamu Alaikum to Sayonara, we've worked with businesses across
+  counter:
+    key: "countries"
+    value: 12
+    suffix: "+"
+  after: >
+    countries and four continents. Whether it's meal plans or management
+    consulting, we'll gather your people, find the story that sticks, and make
+    your brand memorable.
+
+# The three tiles. Hover or tap one and a paper shutter wipes up over it,
+# carrying the step label and the line.
+steps:
+  - label: "Step 01"
+    headline: "Gather your people — the room, the history, the in-jokes."
+    image: "nadia-child.png"
+    alt: "Archive photograph, mirrored wall"
+    pattern: "dots"
+  - label: "Step 02"
+    headline: "Find the story that sticks, in whichever language it lands."
+    image: "workshop-proof.png"
+    alt: "Workshop in progress"
+    pattern: "crosshatch"
+  - label: "Step 03"
+    headline: "Make the brand the one they bring up unprompted."
+    image: "collage-artefacts.png"
+    alt: "Client artefacts"
+    pattern: "hatch"

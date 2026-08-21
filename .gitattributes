@@ -1,0 +1,3 @@
+# The standalone prototype is a ~20MB single file with every image base64-inlined.
+# Mark it binary so diffs/merges don't try to process it.
+"design-handoff/homepage/Nikko Homepage (standalone).html" -diff -merge linguist-generated

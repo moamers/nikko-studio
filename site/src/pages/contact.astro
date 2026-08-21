@@ -1,0 +1,45 @@
+---
+/**
+ * The contact / project-enquiry page.
+ *
+ * Composed exactly as `index.astro` composes the homepage: `<Base>`,
+ * `<SiteHeader>`, `<main>`. The header, footer and newsletter block are the
+ * homepage's own components, imported and left untouched — this page's only
+ * job is what sits inside `<main>`. There is no opening sequence here; the
+ * header is visible immediately.
+ */
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Pitch from '../sections/Pitch.astro';
+import ContactIntro from '../sections/contact/ContactIntro.astro';
+import ContactRail from '../sections/contact/ContactRail.astro';
+import ContactRailBar from '../sections/contact/ContactRailBar.astro';
+import EnquiryForm from '../sections/contact/EnquiryForm.astro';
+import { getSiteSettings } from '../lib/content';
+import { getContactFormOptions } from '../lib/content/contact';
+import '../styles/contact.css';
+
+const settings = await getSiteSettings();
+const options = await getContactFormOptions();
+---
+
+<Base
+  title="Pitch your project"
+  description="Tell Nikko Studio who you are, what you're making and what success looks like. A project enquiry takes about four minutes."
+>
+  <SiteHeader nav={settings.nav} cta={settings.cta} logo={settings.logo} />
+
+  <main id="main" class="nk-contact">
+    <ContactIntro />
+    <ContactRailBar />
+
+    <div class="nk-c-shell">
+      <ContactRail />
+      <div class="nk-c-main">
+        <EnquiryForm options={options} />
+      </div>
+    </div>
+
+    <Pitch />
+  </main>
+</Base>

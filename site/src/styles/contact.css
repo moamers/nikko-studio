@@ -1,0 +1,881 @@
+/* contact.css — the shared visual language for /contact's enquiry form.
+   [P11] Every value here composes tokens already defined in tokens.css. No
+   new hex literal is introduced. Two colours the design needs have no
+   matching custom property in tokens.css at all — "field paper" (#F7F3E8,
+   the fill under every input/textarea/unselected control) and a darker,
+   AA-safe validation red (#C2381F) — see docs/19-contact-design-gaps.md.
+   Both are approximated below via `color-mix()` off an existing token
+   rather than a hardcoded hex, and scoped to `.nk-contact` so they never
+   leak onto the rest of the site.
+
+   Deliberately ONE stylesheet for several small sub-components
+   (AboutYouFields, ProjectFields, WorkFields, ReasonField, FinishFields):
+   they share one vocabulary of choice-chip, choice-card and field classes,
+   and five separate scoped <style> blocks would each hold a fragment of the
+   same rule. [P14] Layout that is genuinely private to one section still
+   lives in that section's own file. */
+
+@layer components {
+  .nk-contact {
+    --nk-field: color-mix(in srgb, var(--nk-paper) 65%, white 35%);
+    --nk-error: color-mix(in srgb, var(--nk-coral) 70%, black);
+    --nk-line: rgb(var(--nk-ink-rgb) / 0.28);
+  }
+
+  /* ── Shell ──────────────────────────────────────────────────────────── */
+  .nk-c-shell {
+    max-width: var(--nk-content-max);
+    margin: 0 auto;
+    padding: 0 var(--nk-gutter) clamp(70px, 9vw, 120px);
+    display: flex;
+    gap: clamp(30px, 4vw, 64px);
+    align-items: flex-start;
+  }
+
+  .nk-c-main {
+    flex: 1 1 640px;
+    min-width: 0;
+  }
+
+  /* ── Intro ──────────────────────────────────────────────────────────── */
+  .nk-c-intro {
+    padding: clamp(48px, 6vw, 92px) 0 0;
+  }
+
+  .nk-c-kicker {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono);
+    letter-spacing: var(--nk-tracking-mono-wide);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+    margin: 0 0 20px;
+  }
+
+  .nk-c-h1 {
+    font-family: var(--nk-font-display);
+    font-size: var(--nk-size-h1);
+    line-height: var(--nk-leading-h1);
+    letter-spacing: var(--nk-tracking-h1);
+    margin: 0 0 22px;
+    max-width: 18ch;
+  }
+
+  .nk-c-lead {
+    font-size: var(--nk-size-lead);
+    line-height: var(--nk-leading-body);
+    margin: 0 0 14px;
+    max-width: 52ch;
+  }
+
+  .nk-c-required-note {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-md);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+    margin: 0;
+  }
+
+  .nk-required-mark {
+    color: var(--nk-coral);
+    font-style: normal;
+  }
+
+  /* ── Section rail (desktop, ≥1080px) ───────────────────────────────── */
+  .nk-c-rail {
+    flex: 0 0 244px;
+    position: sticky;
+    /* header.css exposes no single "header height" token; this is the sum
+       of --nk-header-pad's 16px and --nk-tap-min spelled out. docs/19. */
+    top: calc(16px + var(--nk-tap-min) + 16px);
+    align-self: flex-start;
+    padding-top: clamp(52px, 6vw, 92px);
+  }
+
+  @media (max-width: 1079px) {
+    .nk-c-rail {
+      display: none;
+    }
+  }
+
+  .nk-c-rail-eyebrow {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono-wide);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+    margin: 0 0 14px;
+  }
+
+  .nk-c-rail-list {
+    display: flex;
+    flex-direction: column;
+    border-top: var(--nk-rule-hair);
+  }
+
+  .nk-c-rail-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 4px;
+    border-bottom: var(--nk-rule-hair);
+    color: var(--nk-ink);
+    transition: color var(--nk-dur-colour) ease;
+  }
+
+  .nk-c-rail-link:hover,
+  .nk-c-rail-link:focus-visible {
+    color: var(--nk-coral);
+  }
+
+  .nk-c-rail-num {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-c-rail-title {
+    font-size: 14.5px;
+    line-height: 1.3;
+  }
+
+  /* ── Mobile chip bar (<1080px) ──────────────────────────────────────── */
+  .nk-c-railbar {
+    position: sticky;
+    top: calc(16px + var(--nk-tap-min) + 16px);
+    z-index: var(--nk-z-rail);
+    background: rgb(var(--nk-paper-rgb) / 0.94);
+    backdrop-filter: blur(6px);
+    border-bottom: var(--nk-rule-hair);
+  }
+
+  @media (min-width: 1080px) {
+    .nk-c-railbar {
+      display: none;
+    }
+  }
+
+  .nk-c-railbar-track {
+    max-width: var(--nk-content-max);
+    margin: 0 auto;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 11px var(--nk-gutter);
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .nk-c-railbar-chip {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    padding: 8px 12px;
+    border: 1.5px solid var(--nk-line);
+    color: var(--nk-ink);
+  }
+
+  /* ── Section heading row (repeats 01–05) ────────────────────────────── */
+  .nk-c-section {
+    scroll-margin-top: calc(16px + var(--nk-tap-min) + 32px);
+    padding: clamp(46px, 6vw, 84px) 0 0;
+  }
+
+  .nk-c-section-head {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 16px;
+    border-bottom: var(--nk-rule);
+    margin-bottom: clamp(24px, 3vw, 34px);
+  }
+
+  .nk-c-section-num {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono);
+    letter-spacing: var(--nk-tracking-mono);
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-c-section-title {
+    font-family: var(--nk-font-display);
+    font-size: clamp(24px, 3.2vw, 42px);
+    line-height: 1;
+    letter-spacing: var(--nk-tracking-h1);
+    margin: 0;
+  }
+
+  .nk-c-section-note {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-md);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+    margin: 0 0 0 auto;
+  }
+
+  .nk-c-fieldset {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .nk-c-legend {
+    padding: 0;
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-c-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  .nk-c-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr));
+    gap: 22px;
+  }
+
+  /* ── Field primitives ───────────────────────────────────────────────── */
+  .nk-c-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .nk-c-label {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-c-input,
+  .nk-c-textarea {
+    width: 100%;
+    font-family: var(--nk-font-body);
+    font-size: var(--nk-size-input); /* 16px floor — never lower [P2] */
+    padding: 14px 16px;
+    background: var(--nk-field);
+    border: 2px solid var(--nk-line);
+    border-radius: var(--nk-radius-input);
+    color: var(--nk-ink);
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+  }
+
+  .nk-c-input::placeholder,
+  .nk-c-textarea::placeholder {
+    color: var(--nk-ink-muted);
+    font-style: italic;
+    opacity: 1;
+  }
+
+  /* The design suppresses the native ring for this ink-border + cobalt
+     underbar treatment. The site-wide 3px coral :focus-visible ring
+     (base.css) is kept rather than removed — P10 states it as the floor —
+     so focus here gets both. docs/19. */
+  .nk-c-input:focus-visible,
+  .nk-c-textarea:focus-visible {
+    border-color: var(--nk-ink);
+    box-shadow: 0 3px 0 var(--nk-cobalt);
+  }
+
+  .nk-c-input[aria-invalid='true'],
+  .nk-c-textarea[aria-invalid='true'] {
+    border-color: var(--nk-error);
+  }
+
+  .nk-c-textarea {
+    line-height: 28px;
+    resize: vertical;
+    min-height: 112px;
+  }
+
+  .nk-c-textarea--ruled {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0 27px,
+      rgb(var(--nk-cobalt-rgb) / 0.16) 27px 28px
+    );
+    background-position: 0 -1px;
+    background-attachment: local;
+    border-left: 4px solid var(--nk-coral);
+  }
+
+  .nk-c-textarea--why {
+    min-height: 196px;
+  }
+
+  .nk-c-textarea--goals {
+    min-height: 168px;
+  }
+
+  .nk-c-count {
+    display: block;
+    text-align: right;
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-c-error {
+    display: none;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--nk-font-mono);
+    font-size: 10.5px;
+    letter-spacing: var(--nk-tracking-mono-tight);
+    text-transform: uppercase;
+    color: var(--nk-error);
+  }
+
+  .nk-c-error:not(:empty) {
+    display: flex;
+  }
+
+  .nk-c-error::before {
+    content: '!';
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    background: var(--nk-coral);
+    color: var(--nk-paper);
+    font-size: 9px;
+  }
+
+  /* ── Visually-hidden input (powers every card/chip below) ───────────── */
+  .nk-vh-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* honeypot — off-screen, unreachable by keyboard or autofill; same
+     pattern as `.nk-pitch__hp` in Pitch.astro. */
+  .nk-c-hp {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* ── Pronoun chips ──────────────────────────────────────────────────── */
+  .nk-c-chiprow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .nk-c-chip {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--nk-font-mono);
+    font-size: 10.5px;
+    letter-spacing: var(--nk-tracking-mono-tight);
+    text-transform: uppercase;
+    padding: 11px 15px;
+    min-height: var(--nk-tap-min);
+    border: 2px solid var(--nk-line);
+    background: var(--nk-field);
+    color: var(--nk-ink);
+    border-radius: var(--nk-radius-input);
+    cursor: pointer;
+    transition: background var(--nk-dur-colour) ease, color var(--nk-dur-colour) ease,
+      transform var(--nk-dur-step) var(--nk-ease-step);
+  }
+
+  .nk-vh-input:checked + .nk-c-chip {
+    background: var(--nk-ink);
+    color: var(--nk-paper);
+    border-color: var(--nk-ink);
+  }
+
+  .nk-vh-input:focus-visible + .nk-c-chip {
+    outline: var(--nk-focus-width) solid var(--nk-focus-colour);
+    outline-offset: var(--nk-focus-offset);
+  }
+
+  @media (hover: hover) {
+    .nk-vh-input:not(:disabled) + .nk-c-chip:hover {
+      transform: translateY(-2px);
+    }
+  }
+
+  .nk-c-chip-dot {
+    width: 9px;
+    height: 9px;
+    border: 1.5px solid var(--nk-paper);
+    background: var(--nk-yellow);
+    display: none;
+  }
+
+  .nk-vh-input:checked + .nk-c-chip .nk-c-chip-dot {
+    display: block;
+  }
+
+  /* ── Intent cards (radio, cut corner) ───────────────────────────────── */
+  .nk-c-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 262px), 1fr));
+    gap: 14px;
+  }
+
+  .nk-c-card {
+    position: relative;
+    display: block;
+    cursor: pointer;
+  }
+
+  .nk-c-card-face {
+    position: relative;
+    display: block;
+    padding: 20px 20px 18px;
+    border: 2px solid var(--nk-line);
+    background: var(--nk-field);
+    color: var(--nk-ink);
+    transition: background var(--nk-dur-card) var(--nk-ease-card),
+      border-color var(--nk-dur-card) var(--nk-ease-card),
+      transform var(--nk-dur-lift) var(--nk-ease-step);
+    --nk-corner: var(--nk-line);
+  }
+
+  .nk-vh-input:checked + .nk-c-card-face {
+    background: var(--nk-cobalt);
+    border-color: var(--nk-cobalt);
+    color: var(--nk-paper);
+    --nk-corner: var(--nk-cobalt);
+  }
+
+  .nk-vh-input:focus-visible + .nk-c-card-face {
+    outline: var(--nk-focus-width) solid var(--nk-focus-colour);
+    outline-offset: var(--nk-focus-offset);
+  }
+
+  @media (hover: hover) {
+    .nk-vh-input:not(:disabled) + .nk-c-card-face:hover {
+      transform: translateY(-4px);
+    }
+  }
+
+  /* A decorative diagonal cut, redrawn per the handoff decisions note (18px
+     true diagonal). The corner shows the live page ground through the mask,
+     so it stays in sync with the accent cycle without extra wiring. */
+  .nk-c-card-corner {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 20px;
+    height: 20px;
+    background-image: linear-gradient(
+      135deg,
+      transparent 0 calc(50% - 1.4px),
+      var(--nk-corner) calc(50% - 1.4px) calc(50% + 1.4px),
+      var(--nk-ground) calc(50% + 1.4px) 100%
+    );
+    transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+  }
+
+  .nk-c-card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .nk-c-card-mark {
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    border-radius: var(--nk-radius-oval);
+    border: 2px solid currentColor;
+    background: transparent;
+  }
+
+  .nk-vh-input:checked + .nk-c-card-face .nk-c-card-mark {
+    background: var(--nk-paper);
+    border-color: var(--nk-paper);
+  }
+
+  .nk-c-card-label {
+    font-family: var(--nk-font-display);
+    font-size: clamp(17px, 1.7vw, 21px);
+    line-height: 1;
+    letter-spacing: var(--nk-tracking-display);
+  }
+
+  .nk-c-card-note {
+    display: block;
+    margin-top: 11px;
+    font-size: 14.5px;
+    line-height: 1.45;
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-vh-input:checked + .nk-c-card-face .nk-c-card-note {
+    color: rgb(var(--nk-paper-rgb) / 0.86);
+  }
+
+  /* ── Output boxes (checkbox, punched square) ────────────────────────── */
+  .nk-c-outputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 196px), 1fr));
+    gap: 10px;
+  }
+
+  .nk-c-output {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    cursor: pointer;
+    border: 2px solid var(--nk-line);
+    background: var(--nk-field);
+    color: var(--nk-ink);
+    border-radius: var(--nk-radius-input);
+    transition: background var(--nk-dur-colour) ease, border-color var(--nk-dur-colour) ease,
+      transform var(--nk-dur-lift) var(--nk-ease-step);
+  }
+
+  .nk-vh-input:checked + .nk-c-output {
+    background: var(--nk-yellow);
+    border-color: var(--nk-ink);
+  }
+
+  .nk-vh-input:focus-visible + .nk-c-output {
+    outline: var(--nk-focus-width) solid var(--nk-focus-colour);
+    outline-offset: var(--nk-focus-offset);
+  }
+
+  @media (hover: hover) {
+    .nk-vh-input:not(:disabled) + .nk-c-output:hover {
+      transform: translateY(-4px);
+    }
+  }
+
+  .nk-c-output-mark {
+    position: relative;
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    border: 2px solid var(--nk-ink);
+  }
+
+  .nk-c-output-mark::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    top: 5px;
+    height: 2px;
+    background: transparent;
+  }
+
+  .nk-vh-input:checked + .nk-c-output .nk-c-output-mark::after {
+    background: var(--nk-ink);
+  }
+
+  .nk-c-output-label {
+    font-size: 15.5px;
+    line-height: 1.25;
+  }
+
+  /* ── Reason aside (Newsreader italic — editorial interruption) ──────── */
+  .nk-c-reason-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(20px, 3vw, 40px);
+    align-items: flex-start;
+  }
+
+  .nk-c-reason-field {
+    flex: 1 1 420px;
+    min-width: 280px;
+  }
+
+  .nk-c-aside {
+    flex: 0 1 250px;
+    font-family: var(--nk-font-editorial);
+    font-style: italic;
+    font-size: var(--nk-size-editorial);
+    line-height: 1.25;
+    margin: 0;
+    color: var(--nk-ink-muted);
+  }
+
+  /* ── Finish line stack ──────────────────────────────────────────────── */
+  .nk-c-finish-stack {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(26px, 3.4vw, 40px);
+  }
+
+  /* ── Timing ─────────────────────────────────────────────────────────── */
+  .nk-c-timing-box {
+    border: 2px solid var(--nk-line);
+    border-radius: var(--nk-radius-input);
+    background: var(--nk-field);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .nk-c-year-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .nk-c-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+
+  .nk-c-year-chip,
+  .nk-c-month-chip {
+    display: block;
+    font-family: var(--nk-font-mono);
+    font-size: 11px;
+    letter-spacing: var(--nk-tracking-mono-tight);
+    text-transform: uppercase;
+    padding: 9px 13px;
+    cursor: pointer;
+    border: 2px solid var(--nk-line);
+    background: var(--nk-paper);
+    color: var(--nk-ink);
+    border-radius: var(--nk-radius-input);
+    transition: background var(--nk-dur-colour) ease, color var(--nk-dur-colour) ease;
+  }
+
+  .nk-vh-input:checked + .nk-c-year-chip,
+  .nk-vh-input:checked + .nk-c-month-chip {
+    background: var(--nk-cobalt);
+    border-color: var(--nk-cobalt);
+    color: var(--nk-paper);
+  }
+
+  .nk-vh-input:focus-visible + .nk-c-year-chip,
+  .nk-vh-input:focus-visible + .nk-c-month-chip {
+    outline: var(--nk-focus-width) solid var(--nk-focus-colour);
+    outline-offset: var(--nk-focus-offset);
+  }
+
+  .nk-c-months {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+    gap: 7px;
+  }
+
+  .nk-c-month-chip {
+    padding: 12px 6px;
+    text-align: center;
+  }
+
+  /* Flexible-year selected: grey the month grid. Progressive enhancement
+     only — validate.ts already discards `month` server-side whenever
+     `year=flexible`, so this is cosmetic, not load-bearing. [P3] */
+  .nk-c-months[data-disabled='true'] .nk-c-month-chip {
+    opacity: 0.45;
+  }
+
+  .nk-c-timing-note {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+    margin: 0;
+  }
+
+  /* ── Budget ─────────────────────────────────────────────────────────── */
+  .nk-c-budgets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+    gap: 8px;
+  }
+
+  .nk-c-budget {
+    display: block;
+    text-align: left;
+    width: 100%;
+    font-family: var(--nk-font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    padding: 15px 12px;
+    cursor: pointer;
+    border: 2px solid var(--nk-line);
+    background: var(--nk-field);
+    color: var(--nk-ink);
+    border-radius: var(--nk-radius-input);
+    transition: background var(--nk-dur-colour) ease, color var(--nk-dur-colour) ease,
+      transform var(--nk-dur-lift) var(--nk-ease-step);
+  }
+
+  .nk-vh-input:checked + .nk-c-budget {
+    background: var(--nk-ink);
+    color: var(--nk-paper);
+    border-color: var(--nk-ink);
+  }
+
+  .nk-vh-input:focus-visible + .nk-c-budget {
+    outline: var(--nk-focus-width) solid var(--nk-focus-colour);
+    outline-offset: var(--nk-focus-offset);
+  }
+
+  @media (hover: hover) {
+    .nk-vh-input:not(:disabled) + .nk-c-budget:hover {
+      transform: translateY(-4px);
+    }
+  }
+
+  /* ── Submit row ─────────────────────────────────────────────────────── */
+  .nk-c-submit-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding-top: clamp(10px, 2vw, 20px);
+    border-top: var(--nk-rule-hair);
+  }
+
+  .nk-c-submit-note {
+    flex: 1 1 300px;
+    max-width: 46ch;
+    font-size: 14px;
+    line-height: 1.55;
+    margin: 0;
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-c-error-summary {
+    font-family: var(--nk-font-mono);
+    font-size: 10.5px;
+    letter-spacing: var(--nk-tracking-mono-tight);
+    text-transform: uppercase;
+    color: var(--nk-error);
+    margin: 12px 0 0;
+  }
+
+  .nk-c-error-summary:empty {
+    display: none;
+  }
+
+  /* ── Success / receipt state ───────────────────────────────────────── */
+  .nk-c-success {
+    padding: clamp(60px, 8vw, 120px) 0 clamp(30px, 4vw, 60px);
+    max-width: 720px;
+  }
+
+  .nk-c-receipt {
+    position: relative;
+    background: var(--nk-field);
+    border: 2px solid var(--nk-ink);
+    padding: clamp(22px, 3vw, 34px) clamp(22px, 3vw, 34px) clamp(34px, 4vw, 46px);
+    margin-bottom: clamp(20px, 3vw, 32px);
+  }
+
+  /* A scalloped foot — the same masked radial-gradient technique as
+     `.nk-pitch__perforation` (Pitch.astro), reused rather than reinvented. */
+  .nk-c-receipt::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 14px;
+    background: var(--nk-ground);
+    transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+    -webkit-mask-image: radial-gradient(circle 8px at 8px 0, black 0 6px, transparent 6.4px);
+    mask-image: radial-gradient(circle 8px at 8px 0, black 0 6px, transparent 6.4px);
+    -webkit-mask-size: 16px 16px;
+    mask-size: 16px 16px;
+    -webkit-mask-repeat: repeat-x;
+    mask-repeat: repeat-x;
+  }
+
+  .nk-c-receipt-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding-bottom: 14px;
+    border-bottom: var(--nk-rule);
+    margin-bottom: 18px;
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+  }
+
+  .nk-c-receipt-ref {
+    color: var(--nk-ink-muted);
+  }
+
+  .nk-c-receipt-list {
+    margin: 0;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 12px 22px;
+  }
+
+  .nk-c-receipt-list dt {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+    padding-top: 3px;
+  }
+
+  .nk-c-receipt-list dd {
+    margin: 0;
+    font-size: 15.5px;
+    line-height: 1.45;
+  }
+
+  .nk-c-status {
+    margin: 0 0 16px;
+    min-height: 1.4em;
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono);
+    letter-spacing: var(--nk-tracking-mono);
+  }
+
+  .nk-c-status[data-state='error'] {
+    color: var(--nk-error);
+  }
+}

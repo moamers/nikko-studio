@@ -1,0 +1,42 @@
+---
+/**
+ * The scroll reveal.
+ *
+ * Wrap anything that should arrive rather than simply be there. It is a thin
+ * wrapper over the `.nk-reveal` class in `src/styles/reveal.css` — if you are
+ * already writing a `<div>` or a `<section>`, put the class on that element
+ * instead of nesting one of these; the behaviour is identical and the DOM is
+ * shallower.
+ *
+ * READ `src/styles/reveal.css` BEFORE CHANGING ANYTHING HERE. The resting
+ * state is the FINAL state, the native `animation-timeline` path is preferred,
+ * and the hidden state exists only inside `.is-armed`, which only a running
+ * script can set. Content can never be stranded invisible. [P1, P3]
+ */
+import type { HTMLAttributes, HTMLTag } from 'astro/types';
+
+// NOTE: deliberately NOT the generic `Polymorphic<{ as: Tag }>` pattern.
+// A generic type parameter on Props crashes @astrojs/compiler's TSX scanner
+// (GetPropsType, "slice bounds out of range") and takes `astro check` down
+// with it. A concrete Props type costs a little inference on `...rest` and
+// keeps the build standing. [P14]
+type Props = HTMLAttributes<'div'> & {
+  /** Element to render. Defaults to `div`. */
+  as?: HTMLTag;
+  /** `rise` (default, 30px), `rise-sm` (14px) or `fade`. */
+  animation?: 'rise' | 'rise-sm' | 'fade';
+  /** 0-3. Staggers a group that arrives together. */
+  delay?: 0 | 1 | 2 | 3;
+};
+
+const { as: Tag = 'div', animation = 'rise', delay = 0, class: className, ...rest } = Astro.props;
+---
+
+<Tag
+  class:list={['nk-reveal', className]}
+  data-reveal={animation}
+  data-reveal-delay={delay > 0 ? String(delay) : undefined}
+  {...rest}
+>
+  <slot />
+</Tag>

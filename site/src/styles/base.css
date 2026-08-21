@@ -1,0 +1,69 @@
+/* base.css — element defaults expressed entirely in tokens. */
+
+@layer base {
+  html {
+    background: var(--nk-ground);
+    transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+  }
+
+  /* Smooth anchor scrolling is motion, so it is opt-in, not opt-out. [P1] */
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+
+  body {
+    margin: 0;
+    background: transparent;
+    color: var(--nk-ink);
+    font-family: var(--nk-font-body);
+    font-size: var(--nk-size-body);
+    font-weight: 400;
+    line-height: var(--nk-leading-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--nk-font-display);
+    font-weight: 400;
+    letter-spacing: var(--nk-tracking-display);
+    line-height: var(--nk-leading-flat);
+  }
+
+  a {
+    color: var(--nk-ink);
+    text-decoration: none;
+  }
+
+  a:hover { color: var(--nk-coral); }
+
+  :focus-visible {
+    outline: var(--nk-focus-width) solid var(--nk-focus-colour);
+    outline-offset: var(--nk-focus-offset);
+  }
+
+  ::selection {
+    background: var(--nk-yellow);
+    color: var(--nk-ink);
+  }
+
+  [dir='rtl'][lang='ar'],
+  [lang='ar'] {
+    font-family: var(--nk-font-arabic);
+    font-weight: 700;
+    line-height: var(--nk-leading-arabic);
+  }
+
+  /* The blanket reduced-motion gate from the handoff. Individual components
+     still declare their own reduced-motion behaviour where a static frame
+     needs composing rather than merely freezing. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

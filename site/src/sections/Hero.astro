@@ -1,0 +1,391 @@
+---
+/**
+ * Hero section.
+ *
+ * Spec section 2 (design-handoff/homepage/README.md § "2. Hero (`#top`)",
+ * `Nikko Homepage.dc.html` lines 363-397). NO id="top" — that belongs to the
+ * opening sequence; this uses id="hero" instead.
+ *
+ * MOBILE DEVIATION — R4 (docs/06-responsive-and-mobile-risks.md).
+ * The source reserves `calc(100% + 56px - min(38vw,430px))` on the ticket,
+ * H1 and body row so they never run under the collage. At 390px that
+ * resolves to ~218px and crushes the headline to a handful of characters per
+ * line. Below 900px this build drops the reservation entirely and takes the
+ * collage out of the overlap — it becomes a full-width figure in normal flow
+ * after the CTA row instead of an absolutely-positioned corner element.
+ * Logged in docs/06 § Deviations log.
+ *
+ * MOBILE DEVIATION — R7. The three ticket cells need ~363px in a 310px row.
+ * Below 480px the highlighted "Creative design studio" cell is forced onto
+ * its own full-width row so the hard offset shadow reads as a deliberate
+ * two-row stub rather than a ragged wrap.
+ *
+ * Build rules:
+ *   - Copy comes from `src/lib/content`, never a string literal here. [P7]
+ *   - Colours/timings come from `--nk-*` tokens, never a hex literal. [P11]
+ *   - Reveals use <Reveal> / `.nk-reveal` — resting state is the FINAL
+ *     state, so content is never stranded invisible. [P1, P3]
+ *   - Must hold at 390px with no horizontal overflow. [P2]
+ */
+import { getHero } from '../lib/content';
+import ArchImage from '../components/ArchImage.astro';
+import Pill from '../components/Pill.astro';
+import Reveal from '../components/Reveal.astro';
+
+const hero = await getHero();
+---
+
+<section id="hero" class="nk-hero">
+  <Reveal as="div" animation="fade" class="nk-hero__ticket-wrap">
+    <div class="nk-hero__ticket">
+      {
+        hero.ticket.map((cell) => (
+          <span
+            class:list={['nk-hero__ticket-cell', { 'nk-hero__ticket-cell--accent': cell.highlight }]}
+          >
+            {cell.label}
+          </span>
+        ))
+      }
+    </div>
+  </Reveal>
+
+  <Reveal as="h1" class="nk-hero__heading">{hero.heading}</Reveal>
+
+  <div class="nk-hero__body">
+    <Reveal as="div" delay={1} class="nk-hero__copy">
+      <p class="nk-hero__lead">{hero.lead}</p>
+      {hero.subLead && <p class="nk-hero__sub">{hero.subLead}</p>}
+    </Reveal>
+
+    <Reveal as="div" delay={2} class="nk-hero__cta-wrap">
+      <Pill href={hero.cta.href} size="xl" tone="ink">{hero.cta.label}</Pill>
+    </Reveal>
+  </div>
+
+  <div class="nk-hero__collage" aria-hidden="true">
+    <div class="nk-para">
+      <div class="nk-hero__card">
+        <div class="nk-hero__frame">
+          <ArchImage
+            image={hero.collage.image}
+            alt={hero.collage.alt}
+            variant="frame"
+            ratio="4 / 5"
+            sizes="(min-width: 900px) 46vw, 100vw"
+            loading="eager"
+            fetchpriority="high"
+          />
+          <span class="nk-hero__scan-lines" aria-hidden="true"></span>
+          <span class="nk-hero__scan-sweep" aria-hidden="true"></span>
+          <span class="nk-hero__tint" aria-hidden="true"></span>
+          <span class="nk-hero__tear" aria-hidden="true"></span>
+          <span class="nk-hero__perf" aria-hidden="true"></span>
+        </div>
+        <div class="nk-hero__card-foot"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  @layer layout {
+    /* ── Frame ────────────────────────────────────────────────────────── */
+    .nk-hero {
+      position: relative;
+      max-width: var(--nk-content-max);
+      margin: 0 auto;
+      padding: 48px var(--nk-gutter) var(--nk-gutter);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    /* ── Ticket bar ───────────────────────────────────────────────────── */
+    .nk-hero__ticket-wrap {
+      position: relative;
+      z-index: 1;
+      margin: 0 0 30px;
+      max-width: 540px;
+    }
+
+    .nk-hero__ticket {
+      display: inline-flex;
+      flex-wrap: wrap;
+      align-items: stretch;
+      gap: 2px;
+      border: var(--nk-rule);
+      background: var(--nk-ink);
+      box-shadow: var(--nk-shadow-ticket);
+    }
+
+    .nk-hero__ticket-cell {
+      display: block;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      line-height: 1.6;
+      padding: 10px 16px;
+      background: var(--nk-paper);
+      color: var(--nk-ink-muted);
+      transition:
+        background-color var(--nk-dur-step) var(--nk-ease-step),
+        color var(--nk-dur-step) var(--nk-ease-step);
+    }
+
+    @media (hover: hover) {
+      .nk-hero__ticket-cell:not(.nk-hero__ticket-cell--accent):hover {
+        background: var(--nk-ink);
+        color: var(--nk-paper);
+      }
+    }
+
+    .nk-hero__ticket-cell--accent {
+      background: var(--nk-accent);
+      color: var(--nk-on-accent);
+      transition:
+        background-color var(--nk-dur-accent) var(--nk-ease-accent),
+        color var(--nk-dur-accent) var(--nk-ease-accent);
+    }
+
+    /* R7 — below 480px the accent cell takes its own full-width row so the
+       hard offset shadow reads as a deliberate two-row stub. */
+    @media (max-width: 479px) {
+      .nk-hero__ticket-cell--accent {
+        flex: 1 1 100%;
+      }
+    }
+
+    /* ── Heading ──────────────────────────────────────────────────────── */
+    .nk-hero__heading {
+      position: relative;
+      z-index: 1;
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-h1);
+      line-height: var(--nk-leading-h1);
+      letter-spacing: var(--nk-tracking-h1);
+      margin: 0 0 26px;
+      text-wrap: pretty;
+      text-shadow: var(--nk-misreg);
+    }
+
+    /* ── Body row ─────────────────────────────────────────────────────── */
+    .nk-hero__body {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--nk-gutter);
+      align-items: flex-end;
+    }
+
+    .nk-hero__copy {
+      flex: 1 1 420px;
+      max-width: 52ch;
+    }
+
+    .nk-hero__lead {
+      font-size: var(--nk-size-lead);
+      line-height: 1.5;
+      margin: 0 0 16px;
+      text-wrap: pretty;
+    }
+
+    .nk-hero__sub {
+      font-size: 16px;
+      line-height: var(--nk-leading-body);
+      margin: 0;
+      color: var(--nk-ink-muted);
+      text-wrap: pretty;
+    }
+
+    .nk-hero__cta-wrap {
+      flex: 0 0 auto;
+    }
+
+    /* ── Collage ──────────────────────────────────────────────────────
+       Mobile-first: a normal-flow, full-width figure after the copy — the
+       R4 fix. `nk-para` (motion.css) supplies the parallax and already
+       resolves to `transform: none` under reduced motion / no JS. */
+    .nk-hero__collage {
+      z-index: var(--nk-z-collage);
+      margin: 34px 0 0;
+      /* Decorative and aria-hidden, so it never intercepts pointer events —
+         a deliberate drop of the source's hover-settle micro-interaction on
+         this element. Logged in docs/06 § Deviations log. */
+      pointer-events: none;
+    }
+
+    .nk-hero__card {
+      padding: 14px 14px 0;
+      background: var(--nk-paper);
+      border: var(--nk-rule);
+      border-radius: var(--nk-radius-arch-frame);
+    }
+
+    .nk-hero__card-foot {
+      height: 14px;
+    }
+
+    .nk-hero__frame {
+      position: relative;
+      overflow: hidden;
+      border: var(--nk-rule);
+      border-radius: var(--nk-radius-arch-frame);
+    }
+
+    /* ── Analogue tells ───────────────────────────────────────────────
+       Analogue is the resting state (tokens.css), so these are visible by
+       default and switched off under `[data-mode='digital']` — the same
+       inversion the rest of the site uses, and the one that keeps a
+       no-JS page showing the same analogue world it opens with. */
+    .nk-hero__scan-lines,
+    .nk-hero__scan-sweep,
+    .nk-hero__tint,
+    .nk-hero__tear {
+      position: absolute;
+      pointer-events: none;
+    }
+
+    .nk-hero__scan-lines {
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        rgb(var(--nk-ink-rgb) / 0.3) 0 1px,
+        transparent 1px 3px
+      );
+    }
+
+    .nk-hero__scan-sweep {
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 26%;
+      background-image: linear-gradient(to bottom, transparent, rgb(var(--nk-paper-rgb) / 0.26), transparent);
+    }
+
+    .nk-hero__tint {
+      inset: 0;
+      background: var(--nk-cobalt);
+      mix-blend-mode: screen;
+      opacity: 0.09;
+    }
+
+    .nk-hero__tear {
+      left: 0;
+      right: 0;
+      top: 44%;
+      height: 5px;
+      background: rgb(var(--nk-coral-rgb) / 0.55);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .nk-hero__scan-lines {
+        animation: nk-flick 2.6s ease-in-out infinite;
+      }
+
+      .nk-hero__scan-sweep {
+        animation: nk-scan 5.2s linear infinite;
+      }
+
+      .nk-hero__tear {
+        animation: nk-tear 9s steps(2) infinite;
+      }
+    }
+
+    :root[data-mode='digital'] .nk-hero__scan-lines,
+    :root[data-mode='digital'] .nk-hero__scan-sweep,
+    :root[data-mode='digital'] .nk-hero__tint,
+    :root[data-mode='digital'] .nk-hero__tear {
+      display: none;
+    }
+
+    @keyframes nk-flick {
+      0%,
+      100% {
+        opacity: 0.46;
+      }
+      50% {
+        opacity: 0.3;
+      }
+    }
+
+    @keyframes nk-scan {
+      from {
+        transform: translateY(-40%);
+      }
+      to {
+        transform: translateY(140%);
+      }
+    }
+
+    @keyframes nk-tear {
+      0%,
+      90%,
+      100% {
+        transform: translateX(0);
+        opacity: 0;
+      }
+      92% {
+        transform: translateX(-10px);
+        opacity: 1;
+      }
+      95% {
+        transform: translateX(8px);
+        opacity: 1;
+      }
+      98% {
+        transform: translateX(0);
+        opacity: 0;
+      }
+    }
+
+    /* Turquoise perforation strip along the image's bottom edge. */
+    .nk-hero__perf {
+      position: absolute;
+      pointer-events: none;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 16px;
+      background-color: var(--nk-turquoise);
+      background-image: radial-gradient(circle 9px at 9px 0, var(--nk-paper) 0 8px, transparent 8.5px);
+      background-size: 18px 18px;
+      background-position: 0 0;
+      background-repeat: repeat-x;
+    }
+
+    /* ── Desktop: overlap ─────────────────────────────────────────────
+       At 900px+ the reservation formula fits and the collage becomes the
+       absolutely-positioned corner element the design specifies. */
+    @media (min-width: 900px) {
+      .nk-hero__ticket-wrap,
+      .nk-hero__heading,
+      .nk-hero__body {
+        max-width: calc(100% + 56px - min(38vw, 430px));
+      }
+
+      .nk-hero__ticket-wrap {
+        max-width: min(540px, calc(100% + 56px - min(38vw, 430px)));
+      }
+
+      .nk-hero__heading {
+        max-width: min(24ch, calc(100% + 56px - min(38vw, 430px)));
+      }
+
+      .nk-hero__body {
+        max-width: max(420px, calc(100% + 56px - min(38vw, 430px)));
+      }
+
+      .nk-hero__collage {
+        position: absolute;
+        right: clamp(-140px, -7vw, -60px);
+        top: 24px;
+        width: min(46vw, 530px);
+        margin: 0;
+        transform: rotate(2.6deg);
+      }
+    }
+  }
+</style>

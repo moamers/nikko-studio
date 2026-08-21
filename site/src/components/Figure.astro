@@ -1,0 +1,52 @@
+---
+/**
+ * An arch-cropped image with its mono caption — "Fig. 01 — attention,
+ * mid-flight".
+ *
+ * The captions are part of the studio's archive-and-artefact voice: every
+ * image is presented as a numbered exhibit. Because the caption is real,
+ * visible prose it belongs in a `<figcaption>` inside a `<figure>`, not in a
+ * `<div>` that happens to sit underneath. [P5]
+ *
+ * A captioned image is never decorative, so `alt` must be a real description.
+ */
+import ArchImage from './ArchImage.astro';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  image: string | ImageMetadata;
+  /** Required and non-empty: a captioned image is content. */
+  alt: string;
+  /** The mono line beneath, e.g. "Fig. 01 — attention, mid-flight". */
+  caption: string;
+  variant?: 'arch' | 'frame' | 'service' | 'tile' | 'figure' | undefined;
+  ratio?: string | undefined;
+  sizes?: string | undefined;
+  loading?: 'lazy' | 'eager' | undefined;
+  class?: string | undefined;
+}
+
+const { image, alt, caption, variant, ratio, sizes, loading, class: className } = Astro.props;
+---
+
+<figure class:list={['nk-figure', className]}>
+  <ArchImage image={image} alt={alt} variant={variant} ratio={ratio} sizes={sizes} loading={loading} />
+  <figcaption class="nk-figure__caption">{caption}</figcaption>
+</figure>
+
+<style>
+  @layer components {
+    .nk-figure {
+      margin: 0;
+    }
+
+    .nk-figure__caption {
+      margin: 14px 0 0;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+  }
+</style>

@@ -1,0 +1,54 @@
+---
+/**
+ * §03 — The work. Multi-select square boxes, at least one required. Every
+ * box comes from `form.yaml`'s `outputs` list. [P7]
+ */
+import type { Option } from '../../lib/content/contact';
+import SectionHead from './SectionHead.astro';
+
+interface Props {
+  outputs: Option[];
+}
+
+const { outputs } = Astro.props;
+---
+
+<section id="work" class="nk-c-section">
+  <SectionHead number="03" title="The work" note="Select as many as you need" headingId="work-heading" />
+
+  <fieldset class="nk-c-fieldset">
+    <legend class="nk-c-legend">
+      What are we making? <i class="nk-required-mark">*</i>
+    </legend>
+
+    <div class="nk-c-outputs">
+      {
+        outputs.map((o) => (
+          <label class="nk-c-output-wrap">
+            <input
+              class="nk-vh-input"
+              type="checkbox"
+              name="outputs"
+              value={o.value}
+              aria-describedby="err-outputs"
+            />
+            <span class="nk-c-output">
+              <span class="nk-c-output-mark" aria-hidden="true" />
+              <span class="nk-c-output-label">{o.label}</span>
+            </span>
+          </label>
+        ))
+      }
+    </div>
+
+    <span class="nk-c-error" id="err-outputs" role="alert"></span>
+  </fieldset>
+</section>
+
+<style>
+  @layer layout {
+    .nk-c-output-wrap {
+      display: block;
+    }
+  }
+</style>

@@ -1,0 +1,28 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   fonts.css — self-hosted @fontsource faces. No fonts.googleapis.com. [P4]
+
+   Only the subsets and weights the homepage actually uses are imported;
+   every file carries `font-display: swap`. Preload hints for the two faces
+   the first viewport needs live in `Base.astro`.
+
+   Newsreader is used ITALIC ONLY (handoff: "Editorial — Newsreader italic"),
+   so only the italic axis is imported — the upright range is never shipped.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Display — every h1/h2/h3 and big numeral, plus the header lockup. */
+@import '@fontsource/archivo-black/latin-400.css';
+
+/* Body — Archivo 400/600 (handoff § Typography). */
+@import '@fontsource/archivo/latin-400.css';
+@import '@fontsource/archivo/latin-600.css';
+
+/* Mono — all metadata, eyebrows, labels, serials, nav. */
+@import '@fontsource/dm-mono/latin-400.css';
+@import '@fontsource/dm-mono/latin-500.css';
+
+/* Editorial — italic axis only; `unicode-range` keeps non-latin subsets
+   present but never fetched. */
+@import '@fontsource-variable/newsreader/wght-italic.css';
+
+/* Arabic — two short strings only (خشمك. خشمك. and خرا), 700 weight. */
+@import '@fontsource/noto-kufi-arabic/arabic-700.css';

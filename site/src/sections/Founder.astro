@@ -1,0 +1,134 @@
+---
+/**
+ * Founder section.
+ *
+ * Spec section 6 (design-handoff/homepage/README.md § 6; dc.html lines
+ * 476-491). Portrait, mono caption, eyebrow, heading, two paragraphs
+ * (second muted), ink pill CTA.
+ *
+ * The source wires a `markFounder()` click handler on the portrait that
+ * writes to `localStorage['nk-marks']`. That is NOT implemented here — the
+ * handoff is explicit that a dead localStorage write with no UI to read it
+ * back must not ship. [P13] The portrait is a plain, non-interactive image;
+ * only its `:hover` lift is decorative chrome, gated on `(hover: hover)` so
+ * it never turns into a stuck touch state.
+ *
+ * Build rules:
+ *   - Copy comes from `src/lib/content`, never a string literal here. [P7]
+ *   - Colours/timings come from `--nk-*` tokens, never a hex literal. [P11]
+ *   - Resting state is the FINAL state — nothing is stranded invisible. [P1, P3]
+ *   - Must hold at 390px with no horizontal overflow. [P2]
+ */
+import { getFounder } from '../lib/content';
+import Figure from '../components/Figure.astro';
+import Pill from '../components/Pill.astro';
+
+const founder = await getFounder();
+---
+
+<section id="founder" class="nk-founder">
+  <div class="nk-founder__row">
+    <div class="nk-founder__portrait nk-para">
+      <Figure
+        image={founder.portrait.image}
+        alt={founder.portrait.alt}
+        caption={founder.portrait.caption}
+        variant="service"
+        ratio="4 / 3"
+        sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 100vw"
+      />
+    </div>
+
+    <div class="nk-founder__text">
+      <p class="nk-founder__eyebrow nk-reveal" data-reveal="fade">{founder.eyebrow}</p>
+      <h2 class="nk-founder__heading nk-reveal">{founder.heading}</h2>
+      {
+        founder.body.map((paragraph, i) => (
+          <p class:list={['nk-founder__body', { 'nk-founder__body--muted': i > 0 }, 'nk-reveal']}>
+            {paragraph}
+          </p>
+        ))
+      }
+      <Pill href={founder.cta.href} size="lg" tone="ink" class="nk-reveal">
+        {founder.cta.label}
+      </Pill>
+    </div>
+  </div>
+</section>
+
+<style>
+  @layer layout {
+    .nk-founder {
+      max-width: var(--nk-content-max);
+      margin: 0 auto;
+      padding: var(--nk-section-pad);
+      position: relative;
+    }
+
+    .nk-founder__row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: clamp(34px, 5vw, 80px);
+    }
+
+    /* ── Portrait ─────────────────────────────────────────────────────── */
+    .nk-founder__portrait {
+      flex: 0 1 380px;
+      min-width: min(280px, 100%);
+    }
+
+    /* The lift applies to the image only — the caption stays put — and
+       only where a pointer can actually hover, so a tap never leaves a
+       stuck offset. The portrait carries no click handler: it is not
+       interactive, so no focus-visible equivalent is required. [P13] */
+    .nk-founder__portrait :global(.nk-arch) {
+      transition:
+        transform var(--nk-dur-lift) var(--nk-ease-step),
+        filter var(--nk-dur-ground) var(--nk-ease-accent);
+    }
+
+    @media (hover: hover) {
+      .nk-founder__portrait:hover :global(.nk-arch) {
+        transform: translateY(-4px);
+      }
+    }
+
+    /* ── Text column ──────────────────────────────────────────────────── */
+    .nk-founder__text {
+      flex: 1 1 440px;
+      min-width: min(320px, 100%);
+    }
+
+    .nk-founder__eyebrow {
+      margin: 0 0 16px;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+
+    .nk-founder__heading {
+      margin: 0 0 26px;
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-h2-founder);
+      line-height: var(--nk-leading-flat);
+      letter-spacing: var(--nk-tracking-h1);
+      text-wrap: pretty;
+    }
+
+    .nk-founder__body {
+      margin: 0 0 20px;
+      max-width: var(--nk-measure-prose);
+      font-size: var(--nk-size-body);
+      line-height: var(--nk-leading-body);
+      text-wrap: pretty;
+    }
+
+    .nk-founder__body--muted {
+      margin-bottom: 34px;
+      color: var(--nk-ink-muted);
+    }
+  }
+</style>

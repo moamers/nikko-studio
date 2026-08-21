@@ -1,0 +1,37 @@
+---
+/**
+ * The Privacy Policy page.
+ *
+ * Composed exactly as `contact.astro` composes the enquiry page: `<Base>`,
+ * `<SiteHeader>`, `<main>`, the homepage's own `<Pitch>` as the footer — all
+ * three untouched. This page's only job is what sits inside `<main>`: the
+ * legal body, rendered verbatim from `src/content/legal/privacy-policy.md`
+ * via the `legal` content collection. (docs/12-roadmap.md task 1.21)
+ */
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Pitch from '../sections/Pitch.astro';
+import { getSiteSettings, getLegalPage } from '../lib/content';
+import '../styles/legal.css';
+
+const settings = await getSiteSettings();
+const { description, Content } = await getLegalPage('privacy-policy');
+---
+
+<Base title="Privacy Policy" description={description}>
+  <SiteHeader nav={settings.nav} cta={settings.cta} logo={settings.logo} />
+
+  <main id="main" class="nk-legal">
+    <div class="nk-legal__intro">
+      <p class="nk-legal__kicker">Legal</p>
+    </div>
+
+    <div class="nk-legal__shell">
+      <article class="nk-legal__article">
+        <Content />
+      </article>
+    </div>
+
+    <Pitch />
+  </main>
+</Base>

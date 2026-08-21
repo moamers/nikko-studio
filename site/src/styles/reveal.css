@@ -1,0 +1,71 @@
+/* reveal.css — the scroll reveal, and the one pattern on this site that is
+   worth reading twice.
+
+   THE RULE (docs/05 § "The governing idea", docs/07 § "The one real risk"):
+   an element's RESTING state in the stylesheet is its FINAL state. Motion is
+   added by a capability check; it is never removed by one.
+
+   Three paths, in order of preference:
+
+     1. Native. `@supports (animation-timeline: view())` drives the entrance
+        off the scroll position, off the main thread, with no JavaScript.
+     2. Fallback. `reveal.ts` adds `.is-armed` to <html> ONLY after confirming
+        `CSS.supports('animation-timeline: view()') === false`. An
+        IntersectionObserver then adds `.is-visible` as each element arrives.
+     3. Nothing. No JavaScript, no `animation-timeline`, or reduced motion —
+        the content is simply there, in its final state, from the first paint.
+
+   The hidden state exists ONLY inside `.is-armed`, which can only be set by a
+   script that is already running and able to reveal it again. That inversion
+   is the whole reason this is safe: content can never be stranded invisible.
+   Writing `.reveal { opacity: 0 }` in the stylesheet is how animated
+   marketing sites ship blank pages, and it is forbidden here. [P1, P3] */
+
+@layer components {
+  .nk-reveal {
+    opacity: 1;
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    /* ── 1. Native scroll-driven path ─────────────────────────────────── */
+    @supports (animation-timeline: view()) {
+      .nk-reveal {
+        animation: nk-rise 0.9s linear both;
+        animation-timeline: view();
+        animation-range: entry 10% entry 90%;
+      }
+
+      .nk-reveal[data-reveal='rise-sm'] { animation-name: nk-rise-sm; }
+
+      .nk-reveal[data-reveal='fade'] {
+        animation-name: nk-fade;
+        animation-duration: 1.2s;
+        animation-timing-function: ease;
+      }
+    }
+
+    /* ── 2. IntersectionObserver fallback ─────────────────────────────── */
+    :root.is-armed .nk-reveal {
+      opacity: 0;
+      transform: translateY(30px);
+      transition:
+        opacity 0.9s var(--nk-ease-card),
+        transform 0.9s var(--nk-ease-card);
+    }
+
+    :root.is-armed .nk-reveal[data-reveal='rise-sm'] { transform: translateY(14px); }
+    :root.is-armed .nk-reveal[data-reveal='fade']    { transform: none; }
+
+    :root.is-armed .nk-reveal.is-visible {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* A stagger for groups that arrive together. The delay only ever applies
+       to the entrance, never to the resting state. */
+    .nk-reveal[data-reveal-delay='1'] { animation-delay: 0.15s; transition-delay: 0.15s; }
+    .nk-reveal[data-reveal-delay='2'] { animation-delay: 0.28s; transition-delay: 0.28s; }
+    .nk-reveal[data-reveal-delay='3'] { animation-delay: 0.42s; transition-delay: 0.42s; }
+  }
+}

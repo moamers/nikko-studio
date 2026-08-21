@@ -1,0 +1,75 @@
+# ─────────────────────────────────────────────────────────────
+#  PUT US TO WORK — the two service cards.
+#
+#  Prices and what they include are business facts. If you change
+#  one here, change it in the README too, so the site never
+#  contradicts itself.
+# ─────────────────────────────────────────────────────────────
+
+heading: "Put us to work"
+kicker: "Two ways in"
+
+# The little eyebrow above the price on both cards.
+investmentLabel: "Investment"
+
+items:
+  # ── 01 ─────────────────────────────────────────────────────
+  - n: "01"
+    colour: "coral"
+    title: "Show&Tell — workshops & talks"
+    stamp: "Limited drop"
+    lead: >
+      A workshop and talks series for founders, creatives, copywriters and
+      anyone else who wants to be relentlessly entertained into better
+      marketing.
+    body: >
+      From emails that turn tales into sales, to microcopy on a 404 page that
+      feels like a secret door rather than a dead end, we pull apart the
+      stories, strategies and creative decisions that market you for
+      memorability, turn attention into affection, and conversion into loyalty.
+    body2: >
+      Limited like a merch drop, each Show&Tell is delivered live, yours to
+      keep on replay, then vanished off the internet.
+    kicker: "No reruns. No shop."
+    price: "From £35"
+    priceNote: >
+      to catch a public drop, or £500+ to bring Show&Tell directly to your team
+      or event.
+    cta:
+      label: "Grab a seat"
+      href: "#pitch"
+    serial: "SER. NKO—01—STL"
+    figure:
+      image: "workshop-proof.png"
+      alt: "A Show&Tell workshop in progress"
+      caption: "Fig. 03 — the room, mid-session"
+
+  # ── 02 ─────────────────────────────────────────────────────
+  - n: "02"
+    colour: "cobalt"
+    title: "Dream&Do — projects"
+    stamp: "Scoped, not retained"
+    lead: >
+      Founder-led project work built on 3 principles: know the customer, market
+      for memorability, become the go-to.
+    body: >
+      From messaging that turns heads and changes minds, to bingeable
+      newsletters, growth strategies, launches and the occasional act of
+      guerrilla marketing on the Central Line.
+    body2: >
+      Every project begins with the sort of curiosity you’d expect from someone
+      who nearly became a philosopher, then nearly became a psychologist
+      instead. We gather the right people around the right idea: copywriters,
+      designers, product thinkers, technical experts, depending on what the
+      work demands.
+    kicker: "Payment plans available."
+    price: "From £5,000+"
+    priceNote: "Scoped around the challenge, not a retainer you grow out of."
+    cta:
+      label: "Pitch your project"
+      href: "#pitch"
+    serial: "SER. NKO—02—DDO"
+    figure:
+      image: "collage-artefacts.png"
+      alt: "Artefacts from client projects"
+      caption: "Fig. 04 — what leaves the studio"

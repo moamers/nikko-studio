@@ -1,0 +1,99 @@
+/* legal.css — the shared visual language for /privacy-policy and
+   /terms-and-conditions. [P11] Every value composes tokens already defined
+   in tokens.css.
+
+   The Markdown body (rendered via `<Content />` in `src/lib/content/legal.ts`)
+   ships as plain semantic HTML with no classes of its own, so this styles
+   bare elements scoped under `.nk-legal__article` — the same approach
+   contact.css takes for the enquiry form's own unclassed form controls. */
+
+@layer components {
+  .nk-legal__intro {
+    max-width: var(--nk-content-max);
+    margin: 0 auto;
+    padding: clamp(48px, 6vw, 92px) var(--nk-gutter) 0;
+  }
+
+  .nk-legal__kicker {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono);
+    letter-spacing: var(--nk-tracking-mono-wide);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+    margin: 0 0 20px;
+  }
+
+  .nk-legal__shell {
+    max-width: var(--nk-content-max);
+    margin: 0 auto;
+    padding: clamp(28px, 4vw, 44px) var(--nk-gutter) clamp(70px, 9vw, 120px);
+  }
+
+  .nk-legal__article {
+    max-width: var(--nk-measure-prose);
+  }
+
+  /* ── Markdown body ─────────────────────────────────────────────────── */
+  .nk-legal__article :is(h1) {
+    font-size: var(--nk-size-h1);
+    line-height: var(--nk-leading-h1);
+    letter-spacing: var(--nk-tracking-h1);
+    margin: 0 0 28px;
+    max-width: 22ch;
+    text-wrap: pretty;
+  }
+
+  .nk-legal__article :is(h2) {
+    font-size: clamp(22px, 2.6vw, 34px);
+    line-height: 1.1;
+    letter-spacing: var(--nk-tracking-h1);
+    margin: clamp(48px, 6vw, 72px) 0 18px;
+    padding-top: clamp(28px, 3.4vw, 40px);
+    border-top: var(--nk-rule-hair);
+    text-wrap: pretty;
+  }
+
+  .nk-legal__article p {
+    font-size: var(--nk-size-body);
+    line-height: var(--nk-leading-body);
+    margin: 0 0 20px;
+    text-wrap: pretty;
+  }
+
+  .nk-legal__article p:last-child,
+  .nk-legal__article ul:last-child {
+    margin-bottom: 0;
+  }
+
+  .nk-legal__article ul,
+  .nk-legal__article ol {
+    margin: 0 0 20px;
+    padding-left: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .nk-legal__article li {
+    font-size: var(--nk-size-body);
+    line-height: var(--nk-leading-body);
+  }
+
+  .nk-legal__article a {
+    color: var(--nk-ink);
+    text-decoration: underline;
+    text-decoration-color: rgb(var(--nk-ink-rgb) / 0.35);
+    text-underline-offset: 3px;
+    transition: color var(--nk-dur-colour) ease, text-decoration-color var(--nk-dur-colour) ease;
+  }
+
+  .nk-legal__article a:hover,
+  .nk-legal__article a:focus-visible {
+    color: var(--nk-coral);
+    text-decoration-color: currentColor;
+  }
+
+  .nk-legal__article strong {
+    font-weight: 700;
+  }
+}

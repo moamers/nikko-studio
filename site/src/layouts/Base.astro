@@ -1,0 +1,121 @@
+---
+/**
+ * The page shell. Everything a document needs before a single script runs. [P5]
+ */
+import { getSiteSettings } from '../lib/content';
+import '../styles/global.css';
+
+// Preload only what the first viewport needs: the display face (the header
+// wordmark and the H1) and the body regular. Everything else loads normally.
+// docs/08-performance.md § "Fonts: the biggest lever".
+import archivoBlackUrl from '@fontsource/archivo-black/files/archivo-black-latin-400-normal.woff2?url';
+import archivoUrl from '@fontsource/archivo/files/archivo-latin-400-normal.woff2?url';
+
+interface Props {
+  /** Page title. The site name is appended. Omit on the homepage. */
+  title?: string | undefined;
+  description?: string | undefined;
+}
+
+const settings = await getSiteSettings();
+const { title, description } = Astro.props;
+
+const pageTitle = title
+  ? `${title} | ${settings.title}`
+  : `${settings.title} | ${settings.tagline}`;
+const pageDescription = description ?? settings.description;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+
+/* Indexing is OFF unless a deployment explicitly turns it on.
+ *
+ * Deliberately fail-safe: a staging or preview build that forgets to set
+ * anything is noindex, which is the harmless mistake. The dangerous mistake —
+ * a *.pages.dev copy of the site competing with the real domain in search —
+ * can only happen if someone opts in on purpose. [P5]
+ *
+ * Set PUBLIC_ALLOW_INDEXING=true on the production deployment ONLY. */
+const allowIndexing = import.meta.env.PUBLIC_ALLOW_INDEXING === 'true';
+---
+
+<!doctype html>
+<html lang={settings.locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>{pageTitle}</title>
+    <meta name="description" content={pageDescription} />
+    <link rel="canonical" href={canonical} />
+    {!allowIndexing && <meta name="robots" content="noindex, nofollow" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={settings.title} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={pageDescription} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={settings.locale.replace('-', '_')} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    {/* Mirrors --nk-paper. A meta attribute cannot read a custom property, so
+        this literal is the third documented exception to P11 — see the header
+        of tokens.css. */}
+    <meta name="theme-color" content="#F2ECDF" />
+
+    <link rel="preload" href={archivoBlackUrl} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={archivoUrl} as="font" type="font/woff2" crossorigin />
+
+    {/* Without JavaScript the opening sequence's 320vh runway is three screens
+        of nothing, because every beat is driven from scroll position. This
+        collapses it to the same single static frame `prefers-reduced-motion`
+        gets, so the site starts immediately. Costs nothing to a browser that
+        can run the sequence. [P1, P3] */}
+    <noscript><link rel="stylesheet" href="/opening-sequence-nojs.css" /></noscript>
+  </head>
+
+  <body>
+    {/* The shell is the opening sequence's `parentElement` — the driver sets
+        `data-nkhero-live` on it. Keep <OpeningSequence /> a direct child.
+
+        `overflow-x: clip`, never `hidden`: `hidden` creates a scroll container
+        and breaks `position: sticky` on the header. [P2] */}
+    <div class="nk-shell">
+      <slot />
+    </div>
+
+    {/* The site's one client entry point. Mounts the reveal fallback, the
+        accent cycle, the analogue/digital drift and the cursor residue.
+
+        Deferred by default (module scripts are), so it never competes with
+        LCP. Every module inside is independently optional and each bails on
+        its own conditions — reduced motion, coarse pointer, small viewport.
+        Nothing here is required for the page to be readable. [P3, P4] */}
+    <script>
+      import { initSite } from '../scripts/site';
+      initSite();
+    </script>
+  </body>
+</html>
+
+<style>
+  @layer layout {
+    .nk-shell {
+      position: relative;
+      min-height: 100svh;
+      overflow-x: clip;
+      background: var(--nk-ground);
+      transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+    }
+
+    /* `svh` is baseline everywhere we support, but the fallback costs one line
+       and removes any chance of a zero-height shell. [P3] */
+    @supports not (min-height: 100svh) {
+      .nk-shell {
+        min-height: 100vh;
+      }
+    }
+  }
+</style>

@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<title>Nikko Studio | Pitch your project</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400..700;1,400..600&family=Archivo+Black&family=DM+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,300..600;1,6..72,300..500&display=swap" rel="stylesheet" />
+<style>
+  html { scroll-behavior:smooth; }
+  html, body { margin:0; padding:0; background:#F2ECDF; }
+  body { font-family:'Archivo', Helvetica, Arial, sans-serif; color:#111110; -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  * { box-sizing:border-box; }
+  a { color:#111110; text-decoration:none; }
+  a:hover { color:#EE5439; }
+  ::selection { background:#FFD400; color:#111110; }
+  :focus-visible { outline:3px solid #2B45F0; outline-offset:3px; }
+  input, textarea, button, select { font-family:inherit; }
+  input:focus, textarea:focus, input:focus-visible, textarea:focus-visible { outline:none; }
+  input::placeholder, textarea::placeholder, input::-webkit-input-placeholder, textarea::-webkit-input-placeholder {
+    color:#7A7365 !important; font-style:italic !important; font-weight:400 !important;
+    font-family:'Archivo', Helvetica, Arial, sans-serif !important; font-size:16px !important; line-height:inherit; opacity:1;
+  }
+  @keyframes nk-rise { from { opacity:0; transform:translateY(22px) } to { opacity:1; transform:translateY(0) } }
+  @keyframes nk-fade { from { opacity:0 } to { opacity:1 } }
+  @keyframes nk-chip { from { opacity:0; transform:translateX(-8px) rotate(-2deg) } to { opacity:1; transform:none } }
+  @keyframes nk-stamp { 0%{transform:scale(1.5) rotate(-10deg);opacity:0} 100%{transform:scale(1) rotate(-1.5deg);opacity:1} }
+  @keyframes nk-blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  @keyframes nk-progress-bar { from { transform:scaleY(0) } to { transform:scaleY(1) } }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important } }
+  @media (max-width: 1079px) { [data-nk-rail] { display:none !important } [data-nk-navlinks] { display:none !important } }
+  @media (min-width: 1080px) { [data-nk-railbar] { display:none !important } }
+</style>
+</helmet>
+
+<div style="position:relative;background:{{ ground }};min-height:100vh;transition:background-color 3400ms cubic-bezier(0.4,0,0.2,1)">
+  <template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="#111110"/><ellipse cx="50" cy="45" rx="27" ry="19" fill="#F2ECDF"/><rect x="23" y="45" width="54" height="6" fill="#111110"/><rect x="23" y="51" width="54" height="4" fill="#2B45F0"/><rect x="30" y="70" width="40" height="5" fill="#F2ECDF"/></svg></template>
+
+  <span aria-hidden="true" style="position:fixed;inset:0;z-index:90;pointer-events:none;mix-blend-mode:multiply;opacity:{{ grainOpacity }};transition:opacity 700ms ease;background-image:repeating-linear-gradient(0deg, rgba(17,17,16,0.55) 0 1px, transparent 1px 3px),repeating-linear-gradient(90deg, rgba(17,17,16,0.3) 0 1px, transparent 1px 4px)"></span>
+
+  <div aria-hidden="true" style="position:fixed;left:0;top:0;bottom:0;width:3px;background:rgba(17,17,16,0.12);z-index:60"><span style="display:block;width:100%;height:100%;background:{{ accent }};transform-origin:top;transition:background 2600ms cubic-bezier(0.4,0,0.2,1);animation:nk-progress-bar 1s linear both;animation-timeline:scroll(root)"></span></div>
+
+  <header style="position:sticky;top:0;z-index:50;backdrop-filter:blur(9px);background:{{ veil }};transition:background-color 3400ms cubic-bezier(0.4,0,0.2,1);border-bottom:1.5px solid rgba(17,17,16,0.14)">
+    <div style="max-width:1280px;margin:0 auto;padding:14px clamp(20px,4vw,40px);display:flex;align-items:center;gap:16px">
+      <a href="./Nikko%20Homepage.dc.html#top" title="Nikko Studio — home" style="display:flex;align-items:center;gap:12px">
+        <span aria-hidden="true" style="display:block;width:44px;height:30px;border-radius:50%;background:#111110;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:16px;height:5px;background:{{ ground }};transition:background-color 3400ms cubic-bezier(0.4,0,0.2,1)"></span><span style="position:absolute;left:0;right:0;top:21px;height:3px;background:{{ accent }};transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span></span>
+        <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:22px;letter-spacing:-0.05em;text-transform:uppercase">NIKKO</span>
+      </a>
+      <nav style="margin-left:auto;display:flex;align-items:center;gap:clamp(14px,2.4vw,30px);font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.14em;text-transform:uppercase">
+        <span data-nk-navlinks="true" style="display:flex;align-items:center;gap:clamp(14px,2.4vw,30px)">
+          <a href="./Nikko%20Homepage.dc.html#work" style="color:#4A463C;white-space:nowrap" style-hover="color:#EE5439">The work</a>
+          <a href="./Nikko%20Homepage.dc.html#services" style="color:#4A463C;white-space:nowrap" style-hover="color:#EE5439">Put us to work</a>
+          <a href="./Nikko%20Homepage.dc.html#founder" style="color:#4A463C;white-space:nowrap" style-hover="color:#EE5439">Founder</a>
+        </span>
+        <button type="button" onClick="{{ toggleMode }}" aria-pressed="{{ isAnalogue }}" title="{{ modeNote }}" style="display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;background:transparent;border:1.5px solid #111110;color:#111110;padding:9px 12px;cursor:pointer;transition:background 120ms steps(2), color 120ms steps(2)" style-hover="background:#111110;color:#F2ECDF"><span aria-hidden="true" style="width:8px;height:8px;border-radius:50%;background:{{ accent }};animation:nk-blink 1.6s steps(1) infinite"></span>{{ modeLabel }}<span style="opacity:0.5">{{ modeState }}</span></button>
+        <span aria-current="page" style="display:inline-flex;align-items:center;gap:9px;white-space:nowrap;flex:0 0 auto;background:#111110;color:#F2ECDF;padding:14px 24px;border-radius:50%;position:relative;overflow:hidden"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:7px;height:3px;background:{{ accent }};transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span>Pitch your project</span>
+      </nav>
+    </div>
+  </header>
+
+  <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+  <div data-nk-railbar="true" style="position:sticky;top:59px;z-index:45;background:rgba(242,236,223,0.94);backdrop-filter:blur(6px);border-bottom:1.5px solid rgba(17,17,16,0.14)">
+    <div style="display:flex;gap:8px;overflow-x:auto;padding:11px clamp(20px,4vw,40px)">
+      <sc-for list="{{ sections }}" as="s" hint-placeholder-count="5">
+        <a href="{{ s.href }}" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;padding:8px 12px;border:1.5px solid {{ s.bc }};background:{{ s.bg }};color:{{ s.fg }}">{{ s.n }} {{ s.short }}<span aria-hidden="true" style="width:7px;height:7px;background:{{ s.dot }};border:1.5px solid {{ s.dotBc }}"></span></a>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <div style="max-width:1280px;margin:0 auto;padding:0 clamp(20px,4vw,40px) clamp(70px,9vw,120px);display:flex;gap:clamp(30px,4vw,64px);align-items:flex-start">
+
+    <sc-if value="{{ showRail }}" hint-placeholder-val="{{ true }}">
+    <aside data-nk-rail="true" style="flex:0 0 244px;position:sticky;top:96px;align-self:flex-start;padding-top:clamp(52px,6vw,92px)">
+      <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#4A463C;margin:0 0 14px">The brief</p>
+      <div style="display:flex;flex-direction:column;border-top:1.5px solid rgba(17,17,16,0.2)">
+        <sc-for list="{{ sections }}" as="s" hint-placeholder-count="5">
+          <a href="{{ s.href }}" style="display:flex;align-items:center;gap:12px;padding:13px 4px;border-bottom:1.5px solid rgba(17,17,16,0.2);color:{{ s.railFg }}" style-hover="color:#EE5439">
+            <span aria-hidden="true" style="width:11px;height:11px;flex:0 0 auto;background:{{ s.dot }};border:1.5px solid {{ s.dotBc }}"></span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;color:#4A463C">{{ s.n }}</span>
+            <span style="font-size:14.5px;line-height:1.3">{{ s.title }}</span>
+          </a>
+        </sc-for>
+      </div>
+      <sc-if value="{{ hasFrags }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:26px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.18em;text-transform:uppercase;color:#4A463C;margin:0 0 12px">Gathered <span style="color:#111110">{{ fragCount }}</span></p>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <sc-for list="{{ frags }}" as="f" hint-placeholder-count="3">
+              <span style="font-family:'DM Mono',monospace;font-size:9.5px;letter-spacing:0.1em;text-transform:uppercase;padding:5px 8px;background:{{ f.bg }};color:{{ f.fg }};border:1.5px solid {{ f.bc }};animation:nk-chip 260ms cubic-bezier(0.3,1,0.4,1) both">{{ f.label }}</span>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+    </aside>
+    </sc-if>
+
+    <div style="flex:1 1 640px;min-width:0">
+
+      <sc-if value="{{ open }}" hint-placeholder-val="{{ true }}">
+      <div>
+        <section id="top" style="padding:clamp(48px,6vw,92px) 0 0">
+          <p style="display:flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#4A463C;margin:0 0 20px;animation:nk-fade 0.8s ease both"><span aria-hidden="true" style="width:26px;height:18px;border-radius:50%;background:#111110;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:9px;height:3px;background:{{ ground }};transition:background-color 3400ms cubic-bezier(0.4,0,0.2,1)"></span><span style="position:absolute;left:0;right:0;top:12px;height:2px;background:{{ accent }};transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span></span>Project enquiry · about four minutes</p>
+          <h1 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(38px,6vw,84px);line-height:0.9;letter-spacing:-0.04em;margin:0 0 22px;max-width:18ch;text-wrap:pretty;animation:nk-rise 0.9s cubic-bezier(0.2,0.7,0.2,1) both">Pitch us your project.</h1>
+          <p style="font-size:clamp(17px,1.5vw,21px);line-height:1.5;margin:0 0 14px;max-width:52ch;text-wrap:pretty;animation:nk-rise 0.9s 0.1s cubic-bezier(0.2,0.7,0.2,1) both">Tell us who you are, what you're making, what needs to change and what success looks like. Answer in any order, change anything, come back to it.</p>
+          <p style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0"><i style="font-style:normal;color:#EE5439">*</i> Required</p>
+        </section>
+
+        <form noValidate onSubmit="{{ submit }}">
+          <section id="about" data-section="about" style="scroll-snap-align:start;padding:clamp(46px,6vw,84px) 0 0">
+            <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:2px solid #111110;margin-bottom:clamp(24px,3vw,34px)">
+              <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;color:#4A463C">01</span>
+              <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(24px,3.2vw,42px);line-height:1;letter-spacing:-0.035em;margin:0">About you</h2>
+              <p style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 0 auto">The useful details</p>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:22px">
+              <label data-nk-err="{{ flag.business }}" style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">Business name <i style="font-style:normal;color:#EE5439">*</i></span>
+                <input type="text" value="{{ v.business }}" onChange="{{ on.business }}" placeholder="e.g. Dunder Mifflin Paper Company" aria-invalid="{{ inv.business }}" style="width:100%;font-size:16px;padding:14px 16px;background:#F7F3E8;border:2px solid {{ bc.business }};border-radius:2px;color:#111110;transition:border-color 140ms ease" style-focus="border-color:#111110;box-shadow:0 3px 0 #2B45F0" />
+                <sc-if value="{{ err.business }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.business }}</span></sc-if>
+              </label>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:22px">
+                <label data-nk-err="{{ flag.name }}" style="display:flex;flex-direction:column;gap:8px">
+                  <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">Your name <i style="font-style:normal;color:#EE5439">*</i></span>
+                  <input type="text" value="{{ v.name }}" onChange="{{ on.name }}" placeholder="Your full name" aria-invalid="{{ inv.name }}" style="width:100%;font-size:16px;padding:14px 16px;background:#F7F3E8;border:2px solid {{ bc.name }};border-radius:2px;color:#111110;transition:border-color 140ms ease" style-focus="border-color:#111110;box-shadow:0 3px 0 #2B45F0" />
+                  <sc-if value="{{ err.name }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.name }}</span></sc-if>
+                </label>
+                <label data-nk-err="{{ flag.email }}" style="display:flex;flex-direction:column;gap:8px">
+                  <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">Email <i style="font-style:normal;color:#EE5439">*</i></span>
+                  <input type="email" value="{{ v.email }}" onChange="{{ on.email }}" placeholder="you@studio.co" aria-invalid="{{ inv.email }}" style="width:100%;font-size:16px;padding:14px 16px;background:#F7F3E8;border:2px solid {{ bc.email }};border-radius:2px;color:#111110;transition:border-color 140ms ease" style-focus="border-color:#111110;box-shadow:0 3px 0 #2B45F0" />
+                  <sc-if value="{{ err.email }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.email }}</span></sc-if>
+                </label>
+              </div>
+
+              <label style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">Social / website</span>
+                <input type="text" value="{{ v.social }}" onChange="{{ on.social }}" placeholder="@handle or URL" style="width:100%;font-size:16px;padding:14px 16px;background:#F7F3E8;border:2px solid rgba(17,17,16,0.28);border-radius:2px;color:#111110;transition:border-color 140ms ease" style-focus="border-color:#111110;box-shadow:0 3px 0 #2B45F0" />
+              </label>
+
+              <div role="group" aria-labelledby="nk-pronouns-label" style="display:flex;flex-direction:column;gap:10px">
+                <span id="nk-pronouns-label" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">Pronouns</span>
+                <div style="display:flex;flex-wrap:wrap;gap:8px">
+                  <sc-for list="{{ pronouns }}" as="p" hint-placeholder-count="5">
+                    <button type="button" onClick="{{ p.on }}" aria-pressed="{{ p.sel }}" style="display:inline-flex;align-items:center;gap:9px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;padding:11px 15px;cursor:pointer;border:2px solid {{ p.bc }};background:{{ p.bg }};color:{{ p.fg }};border-radius:2px;transition:background 150ms ease,color 150ms ease,transform 120ms steps(2)" style-hover="transform:translateY(-2px)"><sc-if value="{{ p.sel }}" hint-placeholder-val="{{ false }}"><span aria-hidden="true" style="width:9px;height:9px;background:{{ p.dot }};border:1.5px solid {{ p.dotBc }}"></span></sc-if>{{ p.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+
+              <label style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">Accessibility requirements or call adjustments</span>
+                <textarea rows="3" value="{{ v.access }}" onChange="{{ on.access }}" placeholder="Anything that would make the process work better for you" style="width:100%;font-size:16px;line-height:28px;padding:13px 16px;background-color:#F7F3E8;background-image:repeating-linear-gradient(to bottom, transparent 0 27px, rgba(43,69,240,0.16) 27px 28px);background-position:0 -1px;background-attachment:local;border:2px solid rgba(17,17,16,0.28);border-left:4px solid #EE5439;border-radius:2px;color:#111110;resize:vertical;min-height:112px" style-focus="box-shadow:0 3px 0 #2B45F0"></textarea>
+              </label>
+            </div>
+          </section>
+
+          <section id="project" data-section="project" style="scroll-snap-align:start;padding:clamp(46px,6vw,84px) 0 0">
+            <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:2px solid #111110;margin-bottom:clamp(24px,3vw,34px)">
+              <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;color:#4A463C">02</span>
+              <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(24px,3.2vw,42px);line-height:1;letter-spacing:-0.035em;margin:0">The project</h2>
+              <p style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 0 auto">Pick the closest fit</p>
+            </div>
+            <div data-nk-err="{{ flag.intent }}" role="group" aria-labelledby="nk-intent-label" style="display:flex;flex-direction:column;gap:14px">
+              <span id="nk-intent-label" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">What needs to move? <i style="font-style:normal;color:#EE5439">*</i></span>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,262px),1fr));gap:14px">
+                <sc-for list="{{ intents }}" as="i" hint-placeholder-count="4">
+                  <button type="button" onClick="{{ i.on }}" aria-pressed="{{ i.sel }}" style="position:relative;display:block;text-align:left;padding:0;border:2px solid {{ i.bc }};cursor:pointer;background:{{ i.bg }};transition:background 160ms ease,border-color 160ms ease,transform 140ms steps(2)" style-hover="transform:translateY(-3px)">
+                    <span aria-hidden="true" style="position:absolute;top:-2px;right:-2px;width:20px;height:20px;background-image:linear-gradient(45deg, transparent 0 calc(50% - 1.4px), {{ i.bc }} calc(50% - 1.4px) calc(50% + 1.4px), {{ ground }} calc(50% + 1.4px) 100%)"></span>
+                    <span style="display:block;padding:20px 20px 18px">
+                      <span style="display:flex;align-items:center;gap:12px">
+                        <span aria-hidden="true" style="flex:0 0 auto;width:15px;height:15px;border-radius:50%;border:2px solid {{ i.markBc }};background:{{ i.markBg }}"></span>
+                        <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(17px,1.7vw,21px);line-height:1;letter-spacing:-0.03em;color:{{ i.fg }}">{{ i.label }}</span>
+                      </span>
+                      <span style="display:block;margin-top:11px;font-size:14.5px;line-height:1.45;color:{{ i.noteFg }};text-wrap:pretty">{{ i.note }}</span>
+                    </span>
+                  </button>
+                </sc-for>
+              </div>
+              <sc-if value="{{ err.intent }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.intent }}</span></sc-if>
+            </div>
+          </section>
+
+          <section id="work" data-section="work" style="scroll-snap-align:start;padding:clamp(46px,6vw,84px) 0 0">
+            <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:2px solid #111110;margin-bottom:clamp(24px,3vw,34px)">
+              <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;color:#4A463C">03</span>
+              <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(24px,3.2vw,42px);line-height:1;letter-spacing:-0.035em;margin:0">The work</h2>
+              <p style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 0 auto">Select as many as you need</p>
+            </div>
+            <div data-nk-err="{{ flag.outputs }}" role="group" aria-labelledby="nk-outputs-label" style="display:flex;flex-direction:column;gap:14px">
+              <span id="nk-outputs-label" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">What are we making? <i style="font-style:normal;color:#EE5439">*</i></span>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,196px),1fr));gap:10px">
+                <sc-for list="{{ outputs }}" as="o" hint-placeholder-count="7">
+                  <button type="button" onClick="{{ o.on }}" aria-pressed="{{ o.sel }}" style="display:flex;align-items:center;gap:12px;text-align:left;padding:16px 16px;cursor:pointer;border:2px solid {{ o.bc }};background:{{ o.bg }};color:{{ o.fg }};border-radius:2px;transition:background 150ms ease,transform 120ms steps(2)" style-hover="transform:translateY(-2px)">
+                    <span aria-hidden="true" style="flex:0 0 auto;width:15px;height:15px;border:2px solid #111110;background:{{ o.box }};position:relative"><span style="position:absolute;left:2px;right:2px;top:5px;height:2px;background:{{ o.slot }}"></span></span>
+                    <span style="font-size:15.5px;line-height:1.25">{{ o.label }}</span>
+                  </button>
+                </sc-for>
+              </div>
+              <sc-if value="{{ err.outputs }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.outputs }}</span></sc-if>
+            </div>
+          </section>
+
+          <section id="reason" data-section="reason" style="scroll-snap-align:start;padding:clamp(46px,6vw,84px) 0 0">
+            <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:2px solid #111110;margin-bottom:clamp(24px,3vw,34px)">
+              <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;color:#4A463C">04</span>
+              <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(24px,3.2vw,42px);line-height:1;letter-spacing:-0.035em;margin:0">The reason</h2>
+              <p style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 0 auto">Why does this need to exist?</p>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:clamp(20px,3vw,40px);align-items:flex-start">
+              <label data-nk-err="{{ flag.why }}" style="flex:1 1 420px;min-width:280px;display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">What's broken, missing or holding things back? <i style="font-style:normal;color:#EE5439">*</i></span>
+                <textarea value="{{ v.why }}" onChange="{{ on.why }}" placeholder="Start anywhere." aria-invalid="{{ inv.why }}" style="width:100%;font-size:16px;line-height:28px;padding:13px 16px;background-color:#F7F3E8;background-image:repeating-linear-gradient(to bottom, transparent 0 27px, rgba(43,69,240,0.16) 27px 28px);background-position:0 -1px;background-attachment:local;border:2px solid {{ bc.why }};border-left:4px solid #EE5439;border-radius:2px;color:#111110;resize:vertical;min-height:196px;transition:border-color 140ms ease" style-focus="box-shadow:0 3px 0 #2B45F0"></textarea>
+                <span style="display:flex;justify-content:space-between;gap:12px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#4A463C"><span>{{ whyCount }}</span></span>
+                <sc-if value="{{ err.why }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.why }}</span></sc-if>
+              </label>
+              <p style="flex:0 1 250px;font-family:'Newsreader',Georgia,serif;font-style:italic;font-size:clamp(19px,2vw,26px);line-height:1.25;margin:0;color:#4A463C;text-wrap:pretty">Half-formed is fine. We're after the shape of the problem, not a polished brief.</p>
+            </div>
+          </section>
+
+          <section id="finish" data-section="finish" style="scroll-snap-align:start;padding:clamp(46px,6vw,84px) 0 0">
+            <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;padding-bottom:16px;border-bottom:2px solid #111110;margin-bottom:clamp(24px,3vw,34px)">
+              <span style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.16em;color:#4A463C">05</span>
+              <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(24px,3.2vw,42px);line-height:1;letter-spacing:-0.035em;margin:0">The finish line</h2>
+              <p style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;margin:0 0 0 auto">Success, timing, budget</p>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:clamp(26px,3.4vw,40px)">
+              <label data-nk-err="{{ flag.goals }}" style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">What does “this worked” look like? <i style="font-style:normal;color:#EE5439">*</i></span>
+                <textarea value="{{ v.goals }}" onChange="{{ on.goals }}" placeholder="What changed? Who noticed?" aria-invalid="{{ inv.goals }}" style="width:100%;font-size:16px;line-height:28px;padding:13px 16px;background-color:#F7F3E8;background-image:repeating-linear-gradient(to bottom, transparent 0 27px, rgba(43,69,240,0.16) 27px 28px);background-position:0 -1px;background-attachment:local;border:2px solid {{ bc.goals }};border-left:4px solid #EE5439;border-radius:2px;color:#111110;resize:vertical;min-height:168px;transition:border-color 140ms ease" style-focus="box-shadow:0 3px 0 #2B45F0"></textarea>
+                <sc-if value="{{ err.goals }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.goals }}</span></sc-if>
+              </label>
+
+              <div data-nk-err="{{ flag.timing }}" role="group" aria-labelledby="nk-timing-label" style="display:flex;flex-direction:column;gap:12px">
+                <span id="nk-timing-label" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">Target timing <i style="font-style:normal;color:#EE5439">*</i></span>
+                <div style="border:2px solid rgba(17,17,16,0.28);border-radius:2px;background:#F7F3E8;padding:16px">
+                  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+                    <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C">Year</span>
+                    <div style="display:flex;flex-wrap:wrap;gap:7px">
+                      <sc-for list="{{ years }}" as="y" hint-placeholder-count="4">
+                        <button type="button" onClick="{{ y.on }}" aria-pressed="{{ y.sel }}" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;padding:9px 13px;cursor:pointer;border:2px solid {{ y.bc }};background:{{ y.bg }};color:{{ y.fg }};border-radius:2px;transition:background 150ms ease">{{ y.label }}</button>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(72px,1fr));gap:7px">
+                    <sc-for list="{{ months }}" as="m" hint-placeholder-count="12">
+                      <button type="button" onClick="{{ m.on }}" aria-pressed="{{ m.sel }}" aria-label="{{ m.full }}" disabled="{{ m.off }}" style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.1em;text-transform:uppercase;padding:12px 6px;cursor:{{ m.cursor }};border:2px solid {{ m.bc }};background:{{ m.bg }};color:{{ m.fg }};border-radius:2px;opacity:{{ m.op }};transition:background 150ms ease">{{ m.label }}</button>
+                    </sc-for>
+                  </div>
+                  <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#4A463C;margin:14px 0 0">{{ timingLabel }}</p>
+                </div>
+                <sc-if value="{{ err.timing }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.timing }}</span></sc-if>
+              </div>
+
+              <div data-nk-err="{{ flag.budget }}" role="group" aria-labelledby="nk-budget-label" style="display:flex;flex-direction:column;gap:12px">
+                <span id="nk-budget-label" style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">Ballpark budget <i style="font-style:normal;color:#EE5439">*</i></span>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:8px">
+                  <sc-for list="{{ budgets }}" as="b" hint-placeholder-count="6">
+                    <button type="button" onClick="{{ b.on }}" aria-pressed="{{ b.sel }}" style="font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.08em;padding:15px 12px;cursor:pointer;border:2px solid {{ b.bc }};background:{{ b.bg }};color:{{ b.fg }};border-radius:2px;transition:background 150ms ease,transform 120ms steps(2)" style-hover="transform:translateY(-2px)">{{ b.label }}</button>
+                  </sc-for>
+                </div>
+                <sc-if value="{{ err.budget }}" hint-placeholder-val="{{ false }}"><span role="alert" style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F"><span aria-hidden="true" style="width:14px;height:14px;background:#EE5439;color:#F2ECDF;display:grid;place-items:center;font-size:9px">!</span>{{ err.budget }}</span></sc-if>
+              </div>
+
+              <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:flex-end;justify-content:space-between;padding-top:clamp(10px,2vw,20px);border-top:1.5px solid rgba(17,17,16,0.2)">
+                <div style="flex:1 1 300px;max-width:46ch">
+                  <p style="font-size:14px;line-height:1.55;margin:0;color:#4A463C;text-wrap:pretty">We'll use these details only to respond to your enquiry. Nikko replies within two working days.</p>
+                  <sc-if value="{{ hasErrors }}" hint-placeholder-val="{{ false }}"><p role="alert" style="font-family:'DM Mono',monospace;font-size:10.5px;letter-spacing:0.1em;text-transform:uppercase;color:#C2381F;margin:12px 0 0">{{ errorSummary }}</p></sc-if>
+                </div>
+                <button type="submit" style="flex:0 0 auto;display:inline-flex;align-items:center;gap:12px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;background:#111110;color:#F2ECDF;border:0;padding:21px 40px;border-radius:50%;cursor:pointer;position:relative;overflow:hidden;transition:background 200ms ease,transform 120ms steps(2)" style-hover="background:#2B45F0;transform:translateY(-2px)"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:9px;height:4px;background:{{ accent }};transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span>Send my brief</button>
+              </div>
+            </div>
+          </section>
+        </form>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+      <section style="padding:clamp(60px,8vw,120px) 0 clamp(30px,4vw,60px);max-width:720px">
+        <p style="display:flex;align-items:center;gap:10px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:#4A463C;margin:0 0 22px"><span aria-hidden="true" style="width:26px;height:18px;border-radius:50%;background:#111110;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:9px;height:3px;background:#F2ECDF"></span><span style="position:absolute;left:0;right:0;top:12px;height:2px;background:#FFD400"></span></span>Brief received</p>
+        <h1 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(38px,6vw,80px);line-height:0.9;letter-spacing:-0.04em;margin:0 0 20px;animation:nk-rise 0.8s cubic-bezier(0.2,0.7,0.2,1) both">Thank you, {{ firstName }}.</h1>
+        <p style="font-size:clamp(17px,1.5vw,21px);line-height:1.5;margin:0 0 34px;max-width:46ch;text-wrap:pretty">Your fragments are with us. Nadia reads every one — expect a reply within two working days.</p>
+
+        <div style="position:relative;background:#F7F3E8;border:2px solid #111110;padding:clamp(22px,3vw,34px) clamp(22px,3vw,34px) clamp(34px,4vw,46px);animation:nk-rise 0.8s 0.12s cubic-bezier(0.2,0.7,0.2,1) both">
+          <span aria-hidden="true" style="position:absolute;left:-2px;right:-2px;bottom:-15px;height:16px;background-color:#111110;-webkit-mask-image:radial-gradient(circle 8px at 8px 0, #000 0 7px, transparent 7.4px);mask-image:radial-gradient(circle 8px at 8px 0, #000 0 7px, transparent 7.4px);-webkit-mask-size:16px 16px;mask-size:16px 16px;-webkit-mask-repeat:repeat-x;mask-repeat:repeat-x"></span>
+          <span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:-13px;height:14px;background-color:#F7F3E8;-webkit-mask-image:radial-gradient(circle 8px at 8px 0, #000 0 5.6px, transparent 6px);mask-image:radial-gradient(circle 8px at 8px 0, #000 0 5.6px, transparent 6px);-webkit-mask-size:16px 16px;mask-size:16px 16px;-webkit-mask-repeat:repeat-x;mask-repeat:repeat-x"></span>
+          <div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-bottom:14px;border-bottom:2px solid #111110;margin-bottom:18px">
+            <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase">Nikko Studio — enquiry receipt</span>
+            <span style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#4A463C">{{ ref }}</span>
+          </div>
+          <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;gap:12px 22px">
+            <sc-for list="{{ receipt }}" as="r" hint-placeholder-count="6">
+              <dt style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:#4A463C;padding-top:3px">{{ r.k }}</dt>
+              <dd style="margin:0;font-size:15.5px;line-height:1.45;text-wrap:pretty">{{ r.v }}</dd>
+            </sc-for>
+          </dl>
+        </div>
+
+        <button type="button" onClick="{{ reopen }}" style="margin-top:clamp(34px,4vw,48px);display:inline-flex;align-items:center;gap:12px;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;background:transparent;border:2px solid #111110;color:#111110;padding:17px 32px;border-radius:50%;cursor:pointer;transition:background 180ms ease,color 180ms ease" style-hover="background:#111110;color:#F2ECDF">Review your answers</button>
+      </section>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <footer style="position:relative;margin:clamp(40px,6vw,90px) 0 0;padding:clamp(56px,7vw,100px) 0 clamp(40px,5vw,64px);background-color:#111110;background-image:radial-gradient(circle 2px at 5px 5px, rgba(242,236,223,0.10) 0 100%, transparent 0),radial-gradient(circle 3.6px at 16px 13px, rgba(238,84,57,0.30) 0 100%, transparent 0),radial-gradient(circle 1.6px at 19px 17px, rgba(238,84,57,0.30) 0 100%, transparent 0);background-size:24px 24px, 24px 24px, 24px 24px;border-radius:50% 50% 0 0 / clamp(36px,5vw,80px) clamp(36px,5vw,80px) 0 0;overflow:hidden">
+    <span aria-hidden="true" style="position:absolute;left:0;right:0;top:0;height:34px;background-image:radial-gradient(circle 12px at 12px 0, transparent 0 9px, rgba(242,236,223,0.14) 9px 12px, transparent 12px);background-size:24px 34px;background-repeat:repeat-x"></span>
+    <div style="position:relative;max-width:1280px;margin:0 auto;padding:0 clamp(20px,4vw,40px)">
+      <div style="display:flex;flex-wrap:wrap;gap:clamp(34px,5vw,80px);align-items:flex-start">
+        <div style="flex:1 1 430px;min-width:300px">
+          <h2 style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:clamp(28px,3.8vw,56px);line-height:0.94;letter-spacing:-0.035em;margin:0 0 20px;color:#F2ECDF;max-width:20ch;text-wrap:pretty">A messy kebab of an email, dripping with sauce</h2>
+          <p style="font-size:clamp(16px,1.35vw,19px);line-height:1.55;margin:0 0 16px;color:#F2ECDF;max-width:50ch;text-wrap:pretty">Like a cough on a packed tube carriage, each season is a petri dish of business-building ideas that stick to the inside of your brain (like bogeys).</p>
+          <p style="font-size:16px;line-height:1.55;margin:0;color:#F2ECDF;max-width:50ch;text-wrap:pretty">Subscribe for the antidote to an inbox filled with pee-warm hot takes and the best and worst of internet culture and marketing. Members get first dibs on Show&amp;Tell workshops and exclusive access to book a 1:1 with Nadia.</p>
+        </div>
+        <div style="flex:1 1 360px;min-width:290px;display:flex;flex-direction:column;gap:16px">
+          <label style="display:block">
+            <span style="display:block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#B5AC98;margin-bottom:8px">First name</span>
+            <input type="text" placeholder="Nadia" style="width:100%;font-size:16px;padding:15px;background:#F2ECDF;border:2px solid #F2ECDF;border-radius:3px;color:#111110" />
+          </label>
+          <label style="display:block">
+            <span style="display:block;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#B5AC98;margin-bottom:8px">Email address</span>
+            <input type="email" placeholder="you@studio.co" style="width:100%;font-size:16px;padding:15px;background:#F2ECDF;border:2px solid #F2ECDF;border-radius:3px;color:#111110" />
+          </label>
+          <button type="button" style="align-self:flex-start;display:inline-flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:12px;letter-spacing:0.12em;text-transform:uppercase;background:#F2ECDF;color:#111110;border:0;padding:19px 36px;border-radius:50%;cursor:pointer;position:relative;overflow:hidden;transition:background 200ms ease" style-hover="background:#FFD400"><span aria-hidden="true" style="position:absolute;left:0;right:0;bottom:9px;height:4px;background:{{ accent }};transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span>Get inside</button>
+          <p style="font-size:13px;line-height:1.5;margin:0;color:#F2ECDF;max-width:46ch">By subscribing, you agree to get emails from Nikko Studio. Unsubscribe whenever you damn well please. We'll look after your data in accordance with our Privacy Policy.</p>
+        </div>
+      </div>
+
+      <div style="margin-top:clamp(60px,8vw,110px);padding-top:clamp(34px,4vw,54px);border-top:1.5px solid #4A463C;display:flex;flex-wrap:wrap;gap:clamp(30px,5vw,70px)">
+        <div style="flex:1 1 300px">
+          <div style="display:flex;align-items:center;gap:13px;margin-bottom:20px">
+            <span aria-hidden="true" style="display:block;width:48px;height:32px;border-radius:50%;background:#F2ECDF;position:relative;overflow:hidden;flex:0 0 auto"><span style="position:absolute;left:0;right:0;top:17px;height:5px;background:#111110"></span><span style="position:absolute;left:0;right:0;top:22px;height:3px;background:{{ accent }};transition:background 2600ms cubic-bezier(0.4,0,0.2,1)"></span></span>
+            <span style="font-family:'Archivo Black',Helvetica,sans-serif;font-size:26px;letter-spacing:-0.05em;text-transform:uppercase;color:#F2ECDF">NIKKO</span>
+          </div>
+          <p style="font-size:15px;line-height:1.6;margin:0;color:#F2ECDF;max-width:42ch;text-wrap:pretty">People before personas isn't just a marketing philosophy. Nikko Studio is an anti-racist, anti-genocide, pro-equity business. If your work is about making life fairer, safer or just plain better for people, we should make sweet, sweet business together.</p>
+        </div>
+        <div style="flex:0 1 170px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#B5AC98;margin:0 0 14px">About</p>
+          <p style="font-size:15px;line-height:1.9;margin:0;color:#F2ECDF">London-based 🇬🇧<br />Lebanese bread 🫓</p>
+        </div>
+        <div style="flex:0 1 170px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#B5AC98;margin:0 0 14px">Follow</p>
+          <p style="font-size:15px;line-height:1.9;margin:0"><a href="./Nikko%20Homepage.dc.html#pitch" style="color:#F2ECDF" style-hover="color:#FFD400">Threads</a><br /><a href="./Nikko%20Homepage.dc.html#pitch" style="color:#F2ECDF" style-hover="color:#FFD400">Substack</a></p>
+        </div>
+        <div style="flex:0 1 200px">
+          <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#B5AC98;margin:0 0 14px">Legal</p>
+          <p style="font-size:15px;line-height:1.9;margin:0"><a href="./Nikko%20Homepage.dc.html#pitch" style="color:#F2ECDF" style-hover="color:#FFD400">Privacy Policy</a><br /><a href="./Nikko%20Homepage.dc.html#pitch" style="color:#F2ECDF" style-hover="color:#FFD400">Terms &amp; Conditions</a></p>
+        </div>
+      </div>
+      <div style="margin-top:clamp(30px,4vw,50px);display:flex;flex-wrap:wrap;gap:20px;align-items:flex-end;justify-content:space-between">
+        <p style="font-size:14.5px;line-height:1.6;margin:0;color:#F2ECDF;max-width:54ch;text-wrap:pretty">Prefer email? <a href="./Nikko%20Homepage.dc.html#pitch" style="color:#FFD400;border-bottom:1.5px solid #FFD400">hello@nikko.studio</a> — though the form gets you a sharper reply.</p>
+        <p style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.16em;text-transform:uppercase;color:#F2ECDF;margin:0">© Nikko Studio 2026</p>
+      </div>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280},&quot;accentCycle&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;cycleSeconds&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:12,&quot;min&quot;:4,&quot;max&quot;:24,&quot;step&quot;:1,&quot;unit&quot;:&quot;s&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;tintDepth&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0,&quot;max&quot;:1.6,&quot;step&quot;:0.1,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Motion&quot;},&quot;fragmentRail&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Experience&quot;},&quot;proximitySnap&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Experience&quot;},&quot;selectionColour&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Cobalt&quot;,&quot;Ink&quot;,&quot;Teal&quot;],&quot;default&quot;:&quot;Cobalt&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Experience&quot;}}">
+class Component extends DCLogic {
+  state = {
+    d: { business:'', name:'', email:'', social:'', pronouns:'', access:'', intent:'', outputs:[], why:'', goals:'', month:'', year:'', budget:'' },
+    err: {}, sent: false, active: 'about', ref: '', accent: 0, mode: null, auto: 'analogue'
+  };
+
+  // ── accent cycle + analogue/digital drift (site-wide behaviour) ─────
+  accentList() {
+    return [
+      { hex:'#FFD400', name:'Horizon',    ground:'#F7EED0' },
+      { hex:'#EE5439', name:'Last light', ground:'#F9E9DF' },
+      { hex:'#2B45F0', name:'Offshore',   ground:'#EAEDF8' }
+    ];
+  }
+  paper(hex, depth) {
+    const base = [242, 236, 223];
+    const to = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    return base.map((b, i) => Math.max(0, Math.min(255, Math.round(b + (to[i] - b) * depth))));
+  }
+  startCycle() {
+    clearInterval(this._accent);
+    if (this.props.accentCycle === false) return;
+    const secs = Math.max(4, Number(this.props.cycleSeconds) || 12);
+    this._accent = setInterval(() => {
+      this.setState(s => ({ accent: (s.accent + 1) % this.accentList().length }));
+    }, secs * 1000);
+  }
+  initDrift() {
+    let raf = 0;
+    this._drift = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        if (this.state.mode) return;
+        const max = document.documentElement.scrollHeight - window.innerHeight;
+        const f = max > 0 ? window.scrollY / max : 0;
+        const auto = f > 0.52 ? 'digital' : 'analogue';
+        if (auto !== this.state.auto) this.setState({ auto: auto });
+      });
+    };
+    window.addEventListener('scroll', this._drift, { passive: true });
+    this._drift();
+  }
+  setMode(m) {
+    try { localStorage.setItem('nk-mode', m); } catch (e) {}
+    this.setState({ mode: m });
+  }
+
+  // ── data ────────────────────────────────────────────────────────────
+  intentList() {
+    return [
+      { label:'Launch something', note:"It doesn't exist yet. It needs a story before it has a shape." },
+      { label:'Grow something',   note:'It works. It should be reaching further than it does.' },
+      { label:'Fix something',    note:"It's there, but the words aren't landing." },
+      { label:'Learn something',  note:'You want the thinking in the room, not just the deliverable.' }
+    ];
+  }
+  outputList() {
+    return ['Website','Email','Customer journey','Campaign','Workshop / talk','Growth strategy','Messaging & positioning','Surprise me'];
+  }
+  pronounList() { return ['She / her','He / him','They / them','Use my name','Prefer not to say']; }
+  budgetList() { return ['Under £2k','£2k – £5k','£5k – £10k','£10k – £20k','£20k+','Not sure yet']; }
+  monthList() {
+    return ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  }
+  yearList() {
+    const y = new Date().getFullYear();
+    return [String(y), String(y + 1), String(y + 2), 'Flexible'];
+  }
+
+  // ── state helpers ───────────────────────────────────────────────────
+  set(key, value) {
+    this.setState(s => {
+      const d = Object.assign({}, s.d); d[key] = value;
+      const err = Object.assign({}, s.err); delete err[key];
+      if (key === 'month' || key === 'year') delete err.timing;
+      this.saveDraft(d);
+      return { d: d, err: err };
+    });
+  }
+  toggleOutput(label) {
+    this.setState(s => {
+      const has = s.d.outputs.indexOf(label) > -1;
+      const outputs = has ? s.d.outputs.filter(x => x !== label) : s.d.outputs.concat([label]);
+      const d = Object.assign({}, s.d, { outputs: outputs });
+      const err = Object.assign({}, s.err); delete err.outputs;
+      this.saveDraft(d);
+      return { d: d, err: err };
+    });
+  }
+  saveDraft(d) { try { localStorage.setItem('nk-brief-draft', JSON.stringify(d)); } catch (e) {} }
+
+  validate(d) {
+    const e = {};
+    if (!d.business.trim()) e.business = 'Add your business name.';
+    if (!d.name.trim()) e.name = 'Add your name.';
+    if (!/^\S+@\S+\.\S+$/.test(d.email)) e.email = 'Enter a valid email address.';
+    if (!d.intent) e.intent = 'Choose the closest fit.';
+    if (!d.outputs.length) e.outputs = 'Choose at least one.';
+    if (d.why.trim().length < 12) e.why = 'Give us a little more to work with.';
+    if (d.goals.trim().length < 8) e.goals = 'Tell us what success would look like.';
+    if (!d.year || (d.year !== 'Flexible' && !d.month)) e.timing = 'Choose a month and year, or flexible.';
+    if (!d.budget) e.budget = 'Choose a ballpark.';
+    return e;
+  }
+
+  submit(ev) {
+    ev.preventDefault();
+    const err = this.validate(this.state.d);
+    if (Object.keys(err).length) {
+      this.setState({ err: err });
+      requestAnimationFrame(() => {
+        const root = this.rootEl || document;
+        const first = root.querySelector('[data-nk-err="1"]');
+        if (!first) return;
+        const top = first.getBoundingClientRect().top + window.scrollY - 150;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+        const focusable = first.querySelector('input, textarea, button');
+        if (focusable) setTimeout(() => focusable.focus({ preventScroll: true }), 420);
+      });
+      return;
+    }
+    const ref = 'NKO—' + String(Date.now()).slice(-6);
+    this.setState({ err: {}, sent: true, ref: ref });
+    try { localStorage.removeItem('nk-brief-draft'); } catch (e) {}
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // ── section progress ────────────────────────────────────────────────
+  done(id, d) {
+    if (id === 'about') return !!(d.business.trim() && d.name.trim() && /^\S+@\S+\.\S+$/.test(d.email));
+    if (id === 'project') return !!d.intent;
+    if (id === 'work') return d.outputs.length > 0;
+    if (id === 'reason') return d.why.trim().length >= 12;
+    return !!(d.goals.trim().length >= 8 && d.budget && d.year && (d.year === 'Flexible' || d.month));
+  }
+
+  applySnap() {
+    const html = document.documentElement;
+    html.style.scrollPaddingTop = '132px';
+    const wide = window.innerWidth >= 900;
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    html.style.scrollSnapType = (this.props.proximitySnap !== false && wide && !reduce) ? 'y proximity' : '';
+  }
+
+  componentDidMount() {
+    this.startCycle();
+    this.initDrift();
+    try { const m = localStorage.getItem('nk-mode'); if (m) this.setState({ mode: m }); } catch (e) {}
+    try {
+      const saved = JSON.parse(localStorage.getItem('nk-brief-draft') || 'null');
+      if (saved && typeof saved === 'object') {
+        const d = Object.assign({}, this.state.d, saved);
+        d.outputs = Array.isArray(saved.outputs) ? saved.outputs : [];
+        this.setState({ d: d });
+      }
+    } catch (e) {}
+
+    this.applySnap();
+    this._resize = () => this.applySnap();
+    window.addEventListener('resize', this._resize);
+
+    const root = this.rootEl || document;
+    this._io = new IntersectionObserver(entries => {
+      entries.forEach(en => {
+        if (en.isIntersecting) this.setState({ active: en.target.getAttribute('data-section') });
+      });
+    }, { rootMargin: '-140px 0px -55% 0px' });
+    root.querySelectorAll('[data-section]').forEach(el => this._io.observe(el));
+  }
+  componentDidUpdate(prev) {
+    if (prev.proximitySnap !== this.props.proximitySnap) this.applySnap();
+    if (prev.accentCycle !== this.props.accentCycle || prev.cycleSeconds !== this.props.cycleSeconds) this.startCycle();
+  }
+  componentWillUnmount() {
+    if (this._io) this._io.disconnect();
+    clearInterval(this._accent);
+    if (this._drift) window.removeEventListener('scroll', this._drift);
+    if (this._resize) window.removeEventListener('resize', this._resize);
+    const html = document.documentElement;
+    html.style.scrollSnapType = ''; html.style.scrollPaddingTop = '';
+  }
+
+  selectFill() {
+    const c = this.props.selectionColour || 'Cobalt';
+    if (c === 'Ink') return { bg:'#111110', fg:'#F2ECDF', note:'rgba(242,236,223,0.72)', slot:'#FFD400' };
+    if (c === 'Teal') return { bg:'#00B2A9', fg:'#111110', note:'rgba(17,17,16,0.7)', slot:'#111110' };
+    return { bg:'#2B45F0', fg:'#F2ECDF', note:'rgba(242,236,223,0.76)', slot:'#FFD400' };
+  }
+
+  renderVals() {
+    const d = this.state.d, err = this.state.err, sel = this.selectFill();
+    const idle = 'rgba(17,17,16,0.28)';
+    const bcFor = k => err[k] ? '#EE5439' : idle;
+    const flag = k => err[k] ? '1' : '0';
+    const on = k => (e => this.set(k, e.target.value));
+
+    const sections = [
+      { id:'about', n:'01', title:'About you', short:'You' },
+      { id:'project', n:'02', title:'The project', short:'Project' },
+      { id:'work', n:'03', title:'The work', short:'Work' },
+      { id:'reason', n:'04', title:'The reason', short:'Reason' },
+      { id:'finish', n:'05', title:'The finish line', short:'Finish' }
+    ].map(s => {
+      const isDone = this.done(s.id, d);
+      const isActive = this.state.active === s.id;
+      return {
+        n: s.n, title: s.title, short: s.short, href: '#' + s.id,
+        dot: isDone ? '#2B45F0' : (isActive ? '#FFD400' : 'transparent'),
+        dotBc: isDone ? '#2B45F0' : '#111110',
+        railFg: isActive ? '#111110' : '#4A463C',
+        bg: isActive ? '#111110' : 'transparent',
+        fg: isActive ? '#F2ECDF' : '#4A463C',
+        bc: isActive ? '#111110' : 'rgba(17,17,16,0.3)'
+      };
+    });
+
+    const frags = [];
+    const push = (label, tone) => {
+      const t = String(label).trim();
+      if (!t) return;
+      const short = t.length > 17 ? t.slice(0, 16) + '…' : t;
+      if (tone === 'cobalt') frags.push({ label: short, bg:'#2B45F0', fg:'#F2ECDF', bc:'#2B45F0' });
+      else if (tone === 'yellow') frags.push({ label: short, bg:'#FFD400', fg:'#111110', bc:'#111110' });
+      else frags.push({ label: short, bg:'transparent', fg:'#111110', bc:'rgba(17,17,16,0.4)' });
+    };
+    push(d.business, 'ink');
+    push(d.name, 'ink');
+    if (d.intent) push(d.intent, 'cobalt');
+    d.outputs.forEach(o => push(o, 'yellow'));
+    if (d.year) push(d.year === 'Flexible' ? 'Flexible' : ((d.month ? this.monthList()[Number(d.month) - 1] + ' ' : '') + d.year), 'ink');
+    if (d.budget) push(d.budget, 'ink');
+
+    const timingLabel = d.year === 'Flexible'
+      ? 'Flexible — we will find a window together'
+      : (d.month && d.year ? 'Targeting ' + this.monthList()[Number(d.month) - 1] + ' ' + d.year : 'Pick a year, then a month');
+
+    const receipt = [
+      { k:'Business', v: d.business },
+      { k:'Contact', v: d.name + ' · ' + d.email + (d.pronouns ? ' · ' + d.pronouns : '') },
+      { k:'Intent', v: d.intent },
+      { k:'Work', v: d.outputs.join(', ') },
+      { k:'Timing', v: d.year === 'Flexible' ? 'Flexible' : this.monthList()[Number(d.month) - 1] + ' ' + d.year },
+      { k:'Budget', v: d.budget },
+      { k:'The reason', v: d.why },
+      { k:'Success', v: d.goals }
+    ].concat(d.access.trim() ? [{ k:'Adjustments', v: d.access }] : []).concat(d.social.trim() ? [{ k:'Online', v: d.social }] : []);
+
+    const a = this.accentList()[this.state.accent];
+    const depth = this.props.tintDepth == null ? 1 : Number(this.props.tintDepth);
+    const rgb = this.paper(a.ground, depth).join(',');
+    const pinned = this.state.mode;
+    const isAnalogue = (pinned || this.state.auto || 'analogue') === 'analogue';
+
+    return {
+      accent: a.hex,
+      ground: 'rgb(' + rgb + ')',
+      veil: 'rgba(' + rgb + ',0.78)',
+      isAnalogue: isAnalogue,
+      modeLabel: isAnalogue ? 'Analogue' : 'Digital',
+      modeState: pinned ? '' : 'Auto',
+      modeNote: (pinned ? 'Pinned — click to switch. ' : 'Drifting with your scroll — click to pin. ') + (isAnalogue ? 'grain · signal · warmth' : 'crisp · flat · cobalt'),
+      toggleMode: () => this.setMode(isAnalogue ? 'digital' : 'analogue'),
+      grainOpacity: isAnalogue ? 0.13 : 0,
+
+      open: !this.state.sent,
+      sent: this.state.sent,
+      showRail: this.props.fragmentRail !== false && !this.state.sent,
+      sections: sections,
+      frags: frags, hasFrags: frags.length > 0, fragCount: String(frags.length).padStart(2, '0'),
+
+      v: d,
+      on: {
+        business: on('business'), name: on('name'), email: on('email'), social: on('social'),
+        access: on('access'), why: on('why'), goals: on('goals')
+      },
+      err: { business: err.business || '', name: err.name || '', email: err.email || '', intent: err.intent || '', outputs: err.outputs || '', why: err.why || '', goals: err.goals || '', timing: err.timing || '', budget: err.budget || '' },
+      bc: { business: bcFor('business'), name: bcFor('name'), email: bcFor('email'), why: bcFor('why'), goals: bcFor('goals') },
+      inv: { business: !!err.business, name: !!err.name, email: !!err.email, why: !!err.why, goals: !!err.goals },
+      flag: { business: flag('business'), name: flag('name'), email: flag('email'), intent: flag('intent'), outputs: flag('outputs'), why: flag('why'), goals: flag('goals'), timing: flag('timing'), budget: flag('budget') },
+
+      whyCount: d.why.trim().length ? d.why.trim().split(/\s+/).length + ' words' : 'A sentence or two is plenty',
+
+      intents: this.intentList().map(i => {
+        const isSel = d.intent === i.label;
+        return {
+          label: i.label, note: i.note, sel: isSel, on: () => this.set('intent', i.label),
+          bg: isSel ? sel.bg : '#F7F3E8',
+          fg: isSel ? sel.fg : '#111110',
+          noteFg: isSel ? sel.note : '#4A463C',
+          bc: isSel ? sel.bg : (err.intent ? '#EE5439' : '#111110'),
+          markBc: isSel ? sel.fg : '#111110',
+          markBg: isSel ? sel.fg : 'transparent'
+        };
+      }),
+
+      outputs: this.outputList().map(label => {
+        const isSel = d.outputs.indexOf(label) > -1;
+        return {
+          label: label, sel: isSel, on: () => this.toggleOutput(label),
+          bg: isSel ? '#FFD400' : '#F7F3E8',
+          fg: '#111110',
+          bc: isSel ? '#111110' : (err.outputs ? '#EE5439' : 'rgba(17,17,16,0.28)'),
+          box: isSel ? '#111110' : 'transparent',
+          slot: isSel ? '#FFD400' : 'transparent'
+        };
+      }),
+
+      pronouns: this.pronounList().map(label => {
+        const isSel = d.pronouns === label;
+        return {
+          label: label, sel: isSel, on: () => this.set('pronouns', isSel ? '' : label),
+          bg: isSel ? '#111110' : 'transparent', fg: isSel ? '#F2ECDF' : '#4A463C',
+          bc: isSel ? '#111110' : 'rgba(17,17,16,0.28)',
+          dot: isSel ? '#FFD400' : 'transparent', dotBc: isSel ? '#FFD400' : 'rgba(242,236,223,0.6)'
+        };
+      }),
+
+      years: this.yearList().map(y => {
+        const isSel = d.year === y;
+        return {
+          label: y, sel: isSel, on: () => this.set('year', isSel ? '' : y),
+          bg: isSel ? '#111110' : 'transparent', fg: isSel ? '#F2ECDF' : '#4A463C',
+          bc: isSel ? '#111110' : 'rgba(17,17,16,0.28)'
+        };
+      }),
+
+      months: this.monthList().map((m, idx) => {
+        const val = String(idx + 1).padStart(2, '0');
+        const off = d.year === 'Flexible';
+        const isSel = !off && d.month === val;
+        return {
+          label: m.slice(0, 3), full: m, sel: isSel, off: off,
+          on: () => { if (!off) this.set('month', isSel ? '' : val); },
+          bg: isSel ? '#2B45F0' : 'transparent',
+          fg: isSel ? '#F2ECDF' : '#111110',
+          bc: isSel ? '#2B45F0' : 'rgba(17,17,16,0.24)',
+          op: off ? '0.34' : '1',
+          cursor: off ? 'not-allowed' : 'pointer'
+        };
+      }),
+      timingLabel: timingLabel,
+
+      budgets: this.budgetList().map(label => {
+        const isSel = d.budget === label;
+        return {
+          label: label, sel: isSel, on: () => this.set('budget', isSel ? '' : label),
+          bg: isSel ? '#111110' : '#F7F3E8', fg: isSel ? '#F2ECDF' : '#111110',
+          bc: isSel ? '#111110' : (err.budget ? '#EE5439' : 'rgba(17,17,16,0.28)')
+        };
+      }),
+
+      hasErrors: Object.keys(err).length > 0,
+      errorSummary: Object.keys(err).length + ' detail' + (Object.keys(err).length === 1 ? '' : 's') + ' need your attention — the first is marked above.',
+      submit: e => this.submit(e),
+
+      firstName: (d.name.trim().split(/\s+/)[0] || 'friend'),
+      ref: this.state.ref,
+      receipt: receipt,
+      reopen: () => { this.setState({ sent: false }); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

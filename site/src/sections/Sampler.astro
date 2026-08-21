@@ -1,0 +1,437 @@
+---
+/**
+ * Sampler section — §8, work sampler + testimonial.
+ *
+ * The projector swap. All eight fragments render in the HTML, one visible
+ * (`hidden` absent) and seven inert (`hidden` present) — never a JS array
+ * standing in for markup, so every one of them is there for a crawler or a
+ * language model to read before `sampler.ts` ever runs. [P6]
+ *
+ * The resting state — fragment one, static, no animation classes applied —
+ * is already the FINAL state a no-JS reader gets. `sampler.ts` only ever
+ * adds the projector motion on top of a page that already works. [P1, P3]
+ *
+ * Copy comes from `getSampler()`, never a string literal here. [P7]
+ */
+import Reveal from '../components/Reveal.astro';
+import Figure from '../components/Figure.astro';
+import { getSampler } from '../lib/content';
+
+const sampler = await getSampler();
+
+// `status` carries a "{n}" placeholder for the two-digit fragment number.
+// Splitting it here means the running number is the only thing `sampler.ts`
+// ever has to touch — the sentence around it stays exactly what the content
+// file wrote. [P7]
+const [statusPrefix = '', statusSuffix = ''] = sampler.status.split('{n}');
+const initialNumber = '01';
+---
+
+<section class="nk-sampler" aria-labelledby="sampler-heading">
+  <Reveal as="h2" id="sampler-heading" class="nk-sampler__heading">
+    {sampler.heading}
+  </Reveal>
+
+  <div class="nk-sampler__top">
+    <Reveal class="nk-sampler__reel-col">
+      <p class="nk-sampler__status">
+        <span class="nk-sampler__dot" aria-hidden="true"></span>
+        <span>{statusPrefix}<span class="nk-sampler__no" data-sampler-no>{initialNumber}</span>{statusSuffix}</span>
+      </p>
+
+      <button type="button" class="nk-sampler__pull" data-sampler-pull>
+        {sampler.fragments.map((fragment, index) => (
+          <span class="nk-sampler__frag" data-sampler-frag hidden={index === 0 ? undefined : true}>
+            <span class="nk-sampler__tag" data-sampler-tag>{fragment.tag}</span>
+            <span class="nk-sampler__gate">
+              <span class="nk-sampler__text" data-sampler-text>{fragment.text}</span>
+              <span class="nk-sampler__burn" aria-hidden="true"></span>
+              <span class="nk-sampler__scanlines" aria-hidden="true"></span>
+            </span>
+          </span>
+        ))}
+        <span class="nk-sampler__pull-label">{sampler.pullLabel}</span>
+      </button>
+
+      <p class="nk-sampler__note">{sampler.note}</p>
+
+      <p class="nk-sampler__live" data-sampler-live aria-live="polite"></p>
+    </Reveal>
+
+    <Reveal class="nk-sampler__figure-col" animation="fade">
+      <Figure
+        image={sampler.figure.image}
+        alt={sampler.figure.alt}
+        caption={sampler.figure.caption}
+      />
+    </Reveal>
+  </div>
+
+  <Reveal as="p" class="nk-sampler__eyebrow" animation="fade">
+    {sampler.testimonial.eyebrow}
+  </Reveal>
+
+  <div class="nk-sampler__testimonial">
+    <Reveal as="blockquote" class="nk-sampler__quote">
+      <p>{sampler.testimonial.pullQuote}</p>
+    </Reveal>
+
+    <Reveal class="nk-sampler__quote-body">
+      {sampler.testimonial.body.map((paragraph) => <p>{paragraph}</p>)}
+      <p class="nk-sampler__attribution">
+        {sampler.testimonial.authorName} <span>{sampler.testimonial.authorRole}</span>
+      </p>
+    </Reveal>
+  </div>
+</section>
+
+<script>
+  import { initSampler } from '../scripts/sampler';
+
+  initSampler();
+</script>
+
+<style>
+  @layer layout {
+    .nk-sampler {
+      max-width: var(--nk-content-max);
+      margin: 0 auto;
+      padding: var(--nk-section-pad);
+    }
+
+    .nk-sampler__heading {
+      max-width: 22ch;
+      margin: 0 0 34px;
+      font-size: var(--nk-size-h2);
+      line-height: 0.93;
+      letter-spacing: var(--nk-tracking-h1);
+      text-wrap: pretty;
+    }
+
+    .nk-sampler__top {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: clamp(28px, 4vw, 56px);
+      margin-bottom: clamp(34px, 4vw, 56px);
+    }
+
+    .nk-sampler__reel-col {
+      display: flex;
+      flex: 1 1 400px;
+      min-width: 300px;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    /* ── Status line ──────────────────────────────────────────────────── */
+    .nk-sampler__status {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 0;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+
+    .nk-sampler__dot {
+      width: 8px;
+      height: 8px;
+      flex: 0 0 auto;
+      border-radius: var(--nk-radius-oval);
+      background: var(--nk-coral);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .nk-sampler__dot {
+        animation: nk-blink 1.6s steps(1) infinite;
+      }
+    }
+
+    .nk-sampler__no {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ── The pull control ─────────────────────────────────────────────── */
+    .nk-sampler__pull {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      width: 100%;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      transition: opacity var(--nk-dur-colour) ease;
+    }
+
+    @media (hover: hover) {
+      .nk-sampler__pull:hover {
+        opacity: 0.82;
+      }
+    }
+
+    .nk-sampler__tag {
+      align-self: flex-start;
+      padding: 6px 12px;
+      border-radius: var(--nk-radius-oval);
+      background: var(--nk-yellow);
+      color: var(--nk-ink);
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      text-transform: uppercase;
+    }
+
+    /* ── The projector gate ───────────────────────────────────────────── */
+    .nk-sampler__gate {
+      position: relative;
+      display: block;
+      width: 100%;
+      min-height: 3.6em;
+      overflow: hidden;
+    }
+
+    .nk-sampler__text {
+      display: block;
+      font-family: var(--nk-font-body);
+      font-weight: 600;
+      font-size: var(--nk-size-sampler);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+      text-wrap: pretty;
+    }
+
+    .nk-sampler__burn {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(
+        120% 70% at 50% 45%,
+        rgb(var(--nk-yellow-rgb) / 0.42),
+        rgb(var(--nk-coral-rgb) / 0.18) 55%,
+        transparent 78%
+      );
+      mix-blend-mode: multiply;
+      opacity: 0;
+    }
+
+    .nk-sampler__scanlines {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.5;
+      background-image: repeating-linear-gradient(
+        to bottom,
+        rgb(var(--nk-ink-rgb) / 0.1) 0 1px,
+        transparent 1px 4px
+      );
+    }
+
+    /* The projector re-trigger: `sampler.ts` alternates which of these two
+       (identical) animation names it applies, because re-applying the same
+       name to an already-settled element does not restart it. */
+    @media (prefers-reduced-motion: no-preference) {
+      .nk-sampler__frag[data-parity='a'] .nk-sampler__gate {
+        animation: nk-gate-a var(--nk-dur-sampler) steps(8) both;
+      }
+
+      .nk-sampler__frag[data-parity='b'] .nk-sampler__gate {
+        animation: nk-gate-b var(--nk-dur-sampler) steps(8) both;
+      }
+
+      .nk-sampler__frag[data-parity='a'] .nk-sampler__text {
+        animation:
+          nk-reel-a var(--nk-dur-sampler) var(--nk-ease-sampler) both,
+          nk-weave 2.4s steps(3) infinite var(--nk-dur-sampler);
+      }
+
+      .nk-sampler__frag[data-parity='b'] .nk-sampler__text {
+        animation:
+          nk-reel-b var(--nk-dur-sampler) var(--nk-ease-sampler) both,
+          nk-weave 2.4s steps(3) infinite var(--nk-dur-sampler);
+      }
+
+      .nk-sampler__frag[data-parity='a'] .nk-sampler__burn {
+        animation: nk-burn-a var(--nk-dur-sampler) steps(5) both;
+      }
+
+      .nk-sampler__frag[data-parity='b'] .nk-sampler__burn {
+        animation: nk-burn-b var(--nk-dur-sampler) steps(5) both;
+      }
+    }
+
+    @keyframes nk-reel-a {
+      0% { transform: translateY(118%) skewY(1.6deg); }
+      6% { transform: translateY(74%); }
+      20% { transform: translateY(-7%) skewY(-0.5deg); }
+      30% { transform: translateY(3%); }
+      40% { transform: translateY(-1.4%); }
+      50% { transform: translateY(0) skewY(0); }
+      62% { transform: translateY(0.8%); }
+      70% { transform: translateY(0); }
+      84% { transform: translateY(0.5%); }
+      100% { transform: translateY(0); }
+    }
+
+    @keyframes nk-reel-b {
+      0% { transform: translateY(118%) skewY(1.6deg); }
+      6% { transform: translateY(74%); }
+      20% { transform: translateY(-7%) skewY(-0.5deg); }
+      30% { transform: translateY(3%); }
+      40% { transform: translateY(-1.4%); }
+      50% { transform: translateY(0) skewY(0); }
+      62% { transform: translateY(0.8%); }
+      70% { transform: translateY(0); }
+      84% { transform: translateY(0.5%); }
+      100% { transform: translateY(0); }
+    }
+
+    @keyframes nk-gate-a {
+      0% { opacity: 0.85; }
+      8% { opacity: 0.2; }
+      14% { opacity: 0.95; }
+      22% { opacity: 0.45; }
+      30% { opacity: 1; }
+      44% { opacity: 0.78; }
+      56% { opacity: 1; }
+      74% { opacity: 0.9; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes nk-gate-b {
+      0% { opacity: 0.85; }
+      8% { opacity: 0.2; }
+      14% { opacity: 0.95; }
+      22% { opacity: 0.45; }
+      30% { opacity: 1; }
+      44% { opacity: 0.78; }
+      56% { opacity: 1; }
+      74% { opacity: 0.9; }
+      100% { opacity: 1; }
+    }
+
+    @keyframes nk-burn-a {
+      0% { opacity: 0.55; }
+      30% { opacity: 0.12; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes nk-burn-b {
+      0% { opacity: 0.55; }
+      30% { opacity: 0.12; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes nk-weave {
+      0%, 100% { transform: translateX(0); }
+      33% { transform: translateX(0.6px); }
+      66% { transform: translateX(-0.5px); }
+    }
+
+    .nk-sampler__pull-label {
+      align-self: flex-start;
+      padding-bottom: 3px;
+      border-bottom: 1.5px solid var(--nk-coral);
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+
+    .nk-sampler__note {
+      max-width: 30ch;
+      margin: 6px 0 0;
+      font-family: var(--nk-font-editorial);
+      font-style: italic;
+      font-size: var(--nk-size-editorial);
+      line-height: 1.25;
+      color: var(--nk-coral);
+      text-wrap: pretty;
+    }
+
+    /* Visually hidden but present for assistive tech — announces the manual
+       pull only, per the "calmer" option [P10]. */
+    .nk-sampler__live {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      padding: 0;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .nk-sampler__figure-col {
+      flex: 0 1 300px;
+      min-width: 260px;
+    }
+
+    /* ── Testimonial ──────────────────────────────────────────────────── */
+    .nk-sampler__eyebrow {
+      margin: 0 0 26px;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+
+    .nk-sampler__testimonial {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: clamp(30px, 5vw, 70px);
+    }
+
+    .nk-sampler__quote {
+      flex: 1 1 480px;
+      min-width: 280px;
+      margin: 0;
+    }
+
+    .nk-sampler__quote p {
+      margin: 0;
+      font-family: var(--nk-font-editorial);
+      font-style: italic;
+      font-size: var(--nk-size-quote);
+      line-height: 1.08;
+      text-wrap: pretty;
+    }
+
+    .nk-sampler__quote-body {
+      flex: 1 1 420px;
+      min-width: 280px;
+      padding-top: clamp(6px, 1vw, 14px);
+    }
+
+    .nk-sampler__quote-body p {
+      margin: 0 0 18px;
+      font-size: clamp(16px, 1.35vw, 18px);
+      line-height: 1.6;
+      text-wrap: pretty;
+    }
+
+    .nk-sampler__attribution {
+      margin: 0;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+      color: var(--nk-ink);
+    }
+
+    .nk-sampler__attribution span {
+      color: var(--nk-ink-muted);
+    }
+  }
+</style>

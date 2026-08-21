@@ -1,0 +1,113 @@
+---
+/**
+ * The arch. Every content image on this site is cropped into one.
+ *
+ * The shape is an elliptical `border-radius` — a dome on top, a small square
+ * foot — and it is the design's signature. The five variants are the five that
+ * exist in the design source; there is no sixth, and a plain rounded corner is
+ * not an option (the "R2" rule).
+ *
+ * The crop is `aspect-ratio` on the frame plus `object-fit: cover` on the
+ * image, so the box never changes height when the art is swapped — which is
+ * also what keeps CLS at zero. [P4]
+ *
+ * ALT TEXT. `alt` is required and may be empty. Empty means decorative, and a
+ * decorative image gets `alt=""` AND `aria-hidden="true"` on the frame, so it
+ * is absent from the accessibility tree rather than announced as "image".
+ * Invented alt text on decorative art is forbidden. [P5, P10]
+ *
+ * Images are named by filename in the content files; `resolveImage` turns that
+ * into an optimisable asset. Callers may pass an `ImageMetadata` directly when
+ * they already have one. [P7]
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+import { resolveImage } from '../lib/content';
+
+type Variant = 'arch' | 'frame' | 'service' | 'tile' | 'figure';
+
+interface Props {
+  /** Filename from `src/assets/images/`, or an already-imported asset. */
+  image: string | ImageMetadata;
+  /** Real description, or `""` for decorative. Required either way. */
+  alt: string;
+  /**
+   * arch     50%/26% — the generic dome
+   * frame    50%/26%, 10px foot — the hero collage's double frame
+   * service  50%/22% — service card images
+   * tile     50%/30%, 6px foot — the three language tiles
+   * figure   50%/24% — captioned figures (the default; what `Figure` uses)
+   */
+  variant?: Variant | undefined;
+  /** CSS `aspect-ratio` for the crop. */
+  ratio?: string | undefined;
+  /** `sizes` for the srcset. Default assumes a half-width column on desktop. */
+  sizes?: string | undefined;
+  loading?: 'lazy' | 'eager' | undefined;
+  /** Set `high` on the LCP image only. */
+  fetchpriority?: 'high' | 'auto' | 'low' | undefined;
+  class?: string | undefined;
+}
+
+const {
+  image,
+  alt,
+  variant = 'figure',
+  ratio = '4 / 3',
+  sizes = '(min-width: 1024px) 50vw, 100vw',
+  loading = 'lazy',
+  fetchpriority = 'auto',
+  class: className,
+} = Astro.props;
+
+const asset = typeof image === 'string' ? await resolveImage(image) : image;
+const decorative = alt === '';
+
+// Ask for the sizes a phone, a tablet and a desktop actually need, capped at
+// the source's own width — upscaling produces a bigger file and no detail.
+const widths = [400, 800, 1200, 1600].filter((w) => w < asset.width).concat(asset.width);
+---
+
+<div
+  class:list={['nk-arch', `nk-arch--${variant}`, className]}
+  style={`--nk-arch-ratio: ${ratio}`}
+  aria-hidden={decorative ? 'true' : undefined}
+>
+  <Image
+    class="nk-arch__img"
+    src={asset}
+    alt={alt}
+    widths={widths}
+    sizes={sizes}
+    layout="none"
+    loading={loading}
+    fetchpriority={fetchpriority}
+    decoding="async"
+  />
+</div>
+
+<style>
+  @layer components {
+    .nk-arch {
+      overflow: hidden;
+      aspect-ratio: var(--nk-arch-ratio);
+      border-radius: var(--nk-radius-arch-figure);
+      /* The mode's warm / crisp grade. One property, set in `tokens.css`. */
+      filter: var(--nk-img-filter);
+      transition: filter var(--nk-dur-ground) var(--nk-ease-accent);
+    }
+
+    .nk-arch--arch    { border-radius: var(--nk-radius-arch); }
+    .nk-arch--frame   { border-radius: var(--nk-radius-arch-frame); }
+    .nk-arch--service { border-radius: var(--nk-radius-arch-service); }
+    .nk-arch--tile    { border-radius: var(--nk-radius-arch-tile); }
+    .nk-arch--figure  { border-radius: var(--nk-radius-arch-figure); }
+
+    .nk-arch__img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+</style>

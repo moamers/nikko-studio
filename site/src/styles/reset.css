@@ -1,0 +1,43 @@
+/* reset.css — minimal, opinionated, and nothing that fights the design.
+
+   The cascade-layer order is declared here because this is the first layered
+   stylesheet in the bundle, and the order statement must precede any use of
+   a layer (docs/03-tech-stack.md, ADR-0004). */
+
+@layer reset, tokens, base, layout, components, utilities, overrides;
+
+@layer reset {
+  *,
+  *::before,
+  *::after { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body,
+  h1, h2, h3, h4, h5, h6,
+  p, figure, blockquote, dl, dd, ul, ol { margin: 0; }
+
+  ul[role='list'],
+  ol[role='list'] { padding: 0; list-style: none; }
+
+  /* Content starts visible. Motion is added by a capability check, never
+     removed by its absence. [P1] */
+  img, picture, svg, video, canvas {
+    display: block;
+    max-width: 100%;
+  }
+
+  img { height: auto; }
+
+  input, button, textarea, select {
+    font: inherit;
+    color: inherit;
+  }
+
+  button { background: none; }
+
+  /* Long words never force a horizontal scrollbar. [P2] */
+  p, li, h1, h2, h3, h4 { overflow-wrap: break-word; }
+
+  :where(h1, h2, h3, h4, p, li) { text-wrap: pretty; }
+}

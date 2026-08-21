@@ -1,0 +1,134 @@
+---
+/**
+ * §01 — About you. Business name, your name, email and social are plain
+ * labelled inputs — not a choice group, so no fieldset is needed for them.
+ * Pronouns IS a choice group and gets a real `<fieldset>`/`<legend>`. [P10]
+ *
+ * Pronouns is optional and deselectable: a real radio group cannot be
+ * un-checked by clicking the checked one again, so `contact-form.ts` adds
+ * that one behaviour back as an enhancement. Without JavaScript the group
+ * still works exactly like any other radio group — you can only pick a
+ * different pronoun, not clear back to none, which is a fair trade for a
+ * field that was never required. [P3]
+ */
+import type { Option } from '../../lib/content/contact';
+import SectionHead from './SectionHead.astro';
+
+interface Props {
+  pronouns: Option[];
+}
+
+const { pronouns } = Astro.props;
+---
+
+<section id="about" class="nk-c-section">
+  <SectionHead number="01" title="About you" note="The useful details" headingId="about-heading" />
+
+  <div class="nk-c-stack">
+    <div class="nk-c-field">
+      <label class="nk-c-label" for="f-business">
+        Business name <i class="nk-required-mark">*</i>
+      </label>
+      <input
+        class="nk-c-input"
+        type="text"
+        id="f-business"
+        name="business"
+        required
+        maxlength="120"
+        autocomplete="organization"
+        placeholder="e.g. Dunder Mifflin Paper Company"
+        aria-describedby="err-business"
+      />
+      <span class="nk-c-error" id="err-business" role="alert"></span>
+    </div>
+
+    <div class="nk-c-row">
+      <div class="nk-c-field">
+        <label class="nk-c-label" for="f-name">
+          Your name <i class="nk-required-mark">*</i>
+        </label>
+        <input
+          class="nk-c-input"
+          type="text"
+          id="f-name"
+          name="name"
+          required
+          maxlength="120"
+          autocomplete="name"
+          placeholder="Your full name"
+          aria-describedby="err-name"
+        />
+        <span class="nk-c-error" id="err-name" role="alert"></span>
+      </div>
+
+      <div class="nk-c-field">
+        <label class="nk-c-label" for="f-email">
+          Email <i class="nk-required-mark">*</i>
+        </label>
+        <input
+          class="nk-c-input"
+          type="email"
+          id="f-email"
+          name="email"
+          required
+          maxlength="254"
+          autocomplete="email"
+          placeholder="you@studio.co"
+          aria-describedby="err-email"
+        />
+        <span class="nk-c-error" id="err-email" role="alert"></span>
+      </div>
+    </div>
+
+    <div class="nk-c-field">
+      <label class="nk-c-label" for="f-social">Social / website</label>
+      <input
+        class="nk-c-input"
+        type="text"
+        id="f-social"
+        name="social"
+        maxlength="300"
+        autocomplete="url"
+        placeholder="@handle or URL"
+      />
+    </div>
+
+    <fieldset class="nk-c-fieldset">
+      <legend class="nk-c-legend">Pronouns</legend>
+      <div class="nk-c-chiprow">
+        {
+          pronouns.map((p) => (
+            <label class="nk-c-chip-wrap">
+              <input class="nk-vh-input" type="radio" name="pronouns" value={p.value} />
+              <span class="nk-c-chip">
+                <span class="nk-c-chip-dot" aria-hidden="true" />
+                {p.label}
+              </span>
+            </label>
+          ))
+        }
+      </div>
+    </fieldset>
+
+    <div class="nk-c-field">
+      <label class="nk-c-label" for="f-access">Accessibility requirements or call adjustments</label>
+      <textarea
+        class="nk-c-textarea nk-c-textarea--ruled"
+        id="f-access"
+        name="access"
+        rows="3"
+        maxlength="1000"
+        placeholder="Anything that would make the process work better for you"
+      ></textarea>
+    </div>
+  </div>
+</section>
+
+<style>
+  @layer layout {
+    .nk-c-chip-wrap {
+      display: inline-block;
+    }
+  }
+</style>

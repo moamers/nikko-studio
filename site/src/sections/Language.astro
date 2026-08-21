@@ -1,0 +1,387 @@
+---
+/**
+ * Language section — spec §5 (design-handoff/homepage/README.md).
+ * Source markup: `Nikko Homepage.dc.html` lines 435-474.
+ *
+ * Full-bleed turquoise with a dot-field overlay and a perforated bottom
+ * edge; a heading paired with the paper-coloured Arabic setting; a paper
+ * panel carrying an inline animated counter to 12; three arch tiles with
+ * independent parallax speeds that wipe a paper shutter on hover or tap.
+ *
+ * Build rules:
+ *   - Copy comes from `src/lib/content`, never a string literal here. [P7]
+ *   - Colours/timings come from `--nk-*` tokens, never a hex literal. [P11]
+ *   - Reveals use <Reveal> — resting state is the FINAL state, so content is
+ *     never stranded invisible. [P1, P3]
+ *   - Must hold at 390px with no horizontal overflow. [P2]
+ *
+ * MOBILE DEVIATION (logged in docs/06-responsive-and-mobile-risks.md, R3):
+ * at the design's own layout, three tiles in a 390px row compute to ~99px
+ * wide with ~71px of text width — nowhere near enough for the headlines.
+ * Below 768px the tiles stack vertically at full width with
+ * `aspect-ratio: 16/10` instead of `3/4` (recommendation 1 of 3 in R3).
+ *
+ * TILES RESPOND TO CLICK/TAP, NOT ONLY HOVER. [P10] Each tile is a real
+ * `<button>` with `aria-pressed`; the shutter also opens on `:focus-visible`
+ * for keyboard users. The shutter's copy is never `aria-hidden` — it is
+ * genuine content (the three-step method), clipped from *view* at rest via
+ * `clip-path` rather than removed from the accessibility tree, so it reaches
+ * assistive tech regardless of whether the visitor ever hovers or taps.
+ */
+import Reveal from '../components/Reveal.astro';
+import ArchImage from '../components/ArchImage.astro';
+import { getLanguage } from '../lib/content';
+
+const language = await getLanguage();
+const { heading, editorial, arabic, panel, steps } = language;
+
+/** Each tile's independent parallax speed, matched by position (handoff lines 449/456/463). */
+const PARALLAX_CLASS = ['nk-para', 'nk-para-fast', 'nk-para-rev'] as const;
+
+const before = panel.before.trim();
+const after = panel.after.trim();
+---
+
+<section class="nk-lang">
+  <span class="nk-lang__dots" aria-hidden="true"></span>
+
+  <div class="nk-lang__inner">
+    <div class="nk-lang__header">
+      <Reveal as="h2" class="nk-lang__heading">{heading}</Reveal>
+      <Reveal as="div" class="nk-lang__editorial" delay={1}>
+        <p class="nk-lang__editorial-latin">{editorial}</p>
+        <p class="nk-lang__editorial-arabic" dir="rtl" lang="ar">{arabic}</p>
+      </Reveal>
+    </div>
+
+    <div class="nk-lang__row">
+      <Reveal as="div" class="nk-lang__panel">
+        <p class="nk-lang__panel-text">
+          {before}{' '}
+          <span
+            class="nk-lang__panel-count"
+            data-count={panel.counter.key}
+            data-count-target={panel.counter.value}
+            data-count-suffix={panel.counter.suffix}
+          >{panel.counter.value}{panel.counter.suffix}</span>{' '}
+          {after}
+        </p>
+      </Reveal>
+
+      <div class="nk-lang__tiles">
+        {
+          steps.map((step, i) => (
+            <div class:list={['nk-lang__tile-wrap', PARALLAX_CLASS[i] ?? 'nk-para']}>
+              <button type="button" class="nk-lang-tile" data-lang-tile aria-pressed="false">
+                <ArchImage
+                  image={step.image}
+                  alt={step.alt}
+                  variant="tile"
+                  ratio="3 / 4"
+                  sizes="(min-width: 768px) 33vw, 100vw"
+                />
+                <span class:list={['nk-lang-tile__shutter', `nk-lang-tile__shutter--${step.pattern}`]}>
+                  <span class="nk-lang-tile__label">{step.label}</span>
+                  <span class="nk-lang-tile__line">{step.headline}</span>
+                </span>
+              </button>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </div>
+
+  <div class="nk-lang__hem" aria-hidden="true"></div>
+</section>
+
+<script>
+  import { createLifecycle } from '../scripts/lifecycle';
+  import { initCounters } from '../scripts/counters';
+
+  initCounters();
+
+  // Click/tap toggle for the tiles: `:hover`/`:focus-visible` already open the
+  // shutter with pure CSS, so this is only load-bearing for touch, which has
+  // neither. [P10]
+  const life = createLifecycle();
+  const tiles = document.querySelectorAll<HTMLButtonElement>('[data-lang-tile]');
+  for (const tile of tiles) {
+    life.on(tile, 'click', () => {
+      const open = tile.getAttribute('aria-pressed') === 'true';
+      tile.setAttribute('aria-pressed', String(!open));
+    });
+  }
+</script>
+
+<style>
+  @layer layout {
+    .nk-lang {
+      position: relative;
+      /* clamp(90px,12vw,170px) in the source; no token lands exactly here. [P12] */
+      margin: clamp(90px, 12vw, 170px) 0 0;
+      padding: var(--nk-section-pad-turquoise);
+      background: var(--nk-turquoise);
+      overflow: clip;
+    }
+
+    .nk-lang__dots {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(
+        ellipse 13px 21px at 50% 50%,
+        rgb(var(--nk-ink-rgb) / 0.1) 0 96%,
+        transparent 97%
+      );
+      background-size: 32px 44px;
+    }
+
+    .nk-lang__inner {
+      position: relative;
+      max-width: var(--nk-content-max);
+      margin: 0 auto;
+      padding: 0 var(--nk-gutter);
+    }
+
+    /* ── Header row ────────────────────────────────────────────────────── */
+    .nk-lang__header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(30px, 5vw, 70px);
+      align-items: flex-end;
+      margin-bottom: clamp(40px, 5vw, 64px);
+    }
+
+    .nk-lang__heading {
+      flex: 1 1 440px;
+      min-width: min(300px, 100%);
+      /* clamp(30px,4.4vw,68px) in the source; close to --nk-size-h1 but not
+         exact (32/4.6 vs 30/4.4), so kept literal. [P12] */
+      font-size: clamp(30px, 4.4vw, 68px);
+      line-height: var(--nk-leading-h1);
+      letter-spacing: var(--nk-tracking-h1);
+      margin: 0;
+      max-width: 22ch;
+      color: var(--nk-ink);
+    }
+
+    .nk-lang__editorial {
+      flex: 0 1 300px;
+      min-width: min(260px, 100%);
+    }
+
+    .nk-lang__editorial-latin {
+      font-family: var(--nk-font-editorial);
+      font-style: italic;
+      font-size: clamp(24px, 2.6vw, 38px);
+      line-height: 1.1;
+      margin: 0 0 8px;
+      color: var(--nk-paper);
+    }
+
+    .nk-lang__editorial-arabic {
+      margin: 0;
+      font-size: clamp(20px, 2.1vw, 30px);
+      color: var(--nk-ink);
+      /* family/weight/line-height come from the global [lang='ar'] rule. */
+    }
+
+    /* ── Panel + tiles row ────────────────────────────────────────────── */
+    .nk-lang__row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(20px, 3vw, 36px);
+      align-items: flex-start;
+    }
+
+    .nk-lang__panel {
+      flex: 1 1 380px;
+      min-width: min(300px, 100%);
+      background: var(--nk-ground);
+      transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+      border: var(--nk-rule);
+      border-radius: var(--nk-radius-lid-panel);
+      padding: clamp(22px, 2.4vw, 34px);
+    }
+
+    .nk-lang__panel-text {
+      margin: 0;
+      font-size: clamp(17px, 1.5vw, 21px);
+      line-height: 1.5;
+      color: var(--nk-ink);
+    }
+
+    .nk-lang__panel-count {
+      font-family: var(--nk-font-display);
+      font-size: 1.5em;
+      letter-spacing: -0.04em;
+    }
+
+    .nk-lang__tiles {
+      flex: 1 1 440px;
+      min-width: min(320px, 100%);
+      display: flex;
+      gap: clamp(12px, 2vw, 20px);
+      align-items: flex-end;
+    }
+
+    .nk-lang__tile-wrap {
+      flex: 1 1 0;
+    }
+
+    .nk-lang-tile {
+      display: block;
+      position: relative;
+      width: 100%;
+      padding: 0;
+      border: var(--nk-rule);
+      border-radius: var(--nk-radius-arch-tile);
+      overflow: hidden;
+      cursor: pointer;
+      background: none;
+      text-align: left;
+    }
+
+    /* R9: the tile is already large, but the button reset above removes any
+       implicit min height — keep it comfortably above the tap-target floor. */
+    .nk-lang-tile {
+      min-height: var(--nk-tap-min);
+    }
+
+    .nk-lang-tile__shutter {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: clamp(14px, 1.6vw, 22px);
+      background-color: var(--nk-paper);
+      clip-path: inset(100% 0 0 0);
+    }
+
+    .nk-lang-tile__shutter--dots {
+      background-image:
+        radial-gradient(circle 13px at 0 0, transparent 11.4px, rgb(var(--nk-ink-rgb) / 0.3) 11.4px 12.6px, transparent 12.6px),
+        radial-gradient(circle 13px at 100% 0, transparent 11.4px, rgb(var(--nk-ink-rgb) / 0.3) 11.4px 12.6px, transparent 12.6px),
+        radial-gradient(circle 13px at 0 100%, transparent 11.4px, rgb(var(--nk-ink-rgb) / 0.3) 11.4px 12.6px, transparent 12.6px),
+        radial-gradient(circle 13px at 100% 100%, transparent 11.4px, rgb(var(--nk-ink-rgb) / 0.3) 11.4px 12.6px, transparent 12.6px);
+      background-size: 34px 34px;
+    }
+
+    .nk-lang-tile__shutter--crosshatch {
+      background-image:
+        repeating-linear-gradient(45deg, rgb(var(--nk-ink-rgb) / 0.26) 0 1.4px, transparent 1.4px 20px),
+        repeating-linear-gradient(-45deg, rgb(var(--nk-ink-rgb) / 0.26) 0 1.4px, transparent 1.4px 20px);
+    }
+
+    .nk-lang-tile__shutter--hatch {
+      background-image:
+        repeating-linear-gradient(60deg, rgb(var(--nk-ink-rgb) / 0.22) 0 3px, transparent 3px 12px),
+        repeating-linear-gradient(-60deg, rgb(var(--nk-ink-rgb) / 0.22) 0 3px, transparent 3px 12px);
+    }
+
+    .nk-lang-tile__label {
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono-xs);
+      /* 0.16em in the source; between --nk-tracking-mono (0.14em) and
+         --nk-tracking-mono-wide (0.2em) — kept literal. [P12] */
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+
+    .nk-lang-tile__line {
+      font-family: var(--nk-font-display);
+      font-size: clamp(15px, 1.5vw, 21px);
+      line-height: 1.05;
+      letter-spacing: var(--nk-tracking-display);
+      color: var(--nk-ink);
+    }
+
+    @media (hover: hover) {
+      .nk-lang-tile:hover .nk-lang-tile__shutter {
+        clip-path: inset(0 0 0 0);
+      }
+    }
+
+    .nk-lang-tile:focus-visible .nk-lang-tile__shutter,
+    .nk-lang-tile[aria-pressed='true'] .nk-lang-tile__shutter {
+      clip-path: inset(0 0 0 0);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      @media (hover: hover) {
+        .nk-lang-tile:hover .nk-lang-tile__shutter {
+          animation: nk-shutter var(--nk-dur-shutter) var(--nk-ease-shutter) both;
+        }
+
+        .nk-lang-tile:hover .nk-lang-tile__label { animation: nk-tile-copy 300ms 90ms var(--nk-ease-shutter) both; }
+        .nk-lang-tile:hover .nk-lang-tile__line  { animation: nk-tile-copy 300ms 140ms var(--nk-ease-shutter) both; }
+      }
+
+      .nk-lang-tile:focus-visible .nk-lang-tile__shutter,
+      .nk-lang-tile[aria-pressed='true'] .nk-lang-tile__shutter {
+        animation: nk-shutter var(--nk-dur-shutter) var(--nk-ease-shutter) both;
+      }
+
+      .nk-lang-tile:focus-visible .nk-lang-tile__label,
+      .nk-lang-tile[aria-pressed='true'] .nk-lang-tile__label {
+        animation: nk-tile-copy 300ms 90ms var(--nk-ease-shutter) both;
+      }
+
+      .nk-lang-tile:focus-visible .nk-lang-tile__line,
+      .nk-lang-tile[aria-pressed='true'] .nk-lang-tile__line {
+        animation: nk-tile-copy 300ms 140ms var(--nk-ease-shutter) both;
+      }
+    }
+
+    @keyframes nk-shutter {
+      0% { clip-path: inset(100% 0 0 0); }
+      100% { clip-path: inset(0 0 0 0); }
+    }
+
+    @keyframes nk-tile-copy {
+      0% { opacity: 0; transform: translateY(14px); }
+      55% { opacity: 1; }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+
+    /* R3 — below 768px the tiles cannot hold their copy at 3/4. Stack full
+       width at 16/10 instead. docs/06 § R3, recommendation 1. */
+    @media (max-width: 767.98px) {
+      .nk-lang__tiles {
+        flex-direction: column;
+      }
+
+      .nk-lang__tile-wrap {
+        width: 100%;
+      }
+
+      /* ArchImage sets its aspect-ratio via an inline custom property, which
+         out-specificities any external rule short of !important. */
+      .nk-lang__tile-wrap :global(.nk-arch) {
+        aspect-ratio: 16 / 10 !important;
+      }
+    }
+
+    /* ── Perforated bottom edge ───────────────────────────────────────── */
+    .nk-lang__hem {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 22px;
+      pointer-events: none;
+      background-color: var(--nk-ground);
+      transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+      -webkit-mask-image: radial-gradient(circle 10px at 10px 22px, transparent 0 7.6px, rgb(var(--nk-ink-rgb)) 7.6px 10px, transparent 10px);
+      mask-image: radial-gradient(circle 10px at 10px 22px, transparent 0 7.6px, rgb(var(--nk-ink-rgb)) 7.6px 10px, transparent 10px);
+      -webkit-mask-size: 20px 22px;
+      mask-size: 20px 22px;
+      -webkit-mask-repeat: repeat-x;
+      mask-repeat: repeat-x;
+    }
+  }
+</style>

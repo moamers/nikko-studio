@@ -1,0 +1,25 @@
+# Used two ways:
+#
+# 1. Locally, by `wrangler pages dev` / `npm run preview:cf` — testing the
+#    Cloudflare Pages Function (functions/api/enquiry.ts) with real bindings
+#    and secrets before pushing. Secrets never go here — see .dev.vars
+#    (gitignored) and .dev.vars.example.
+#
+# 2. By Cloudflare's own build pipeline. Its presence in the repo is why the
+#    dashboard's deploy command defaults to `npx wrangler deploy` — with
+#    `pages_build_output_dir` set below, that command deploys this as a Pages
+#    project (bundling the sibling `functions/` directory the normal Pages
+#    way), so nothing here needs to change to support that. `name` MUST match
+#    the exact Cloudflare project slug — check the dashboard if deploys ever
+#    seem to target the wrong project.
+name = "nikkostudio"
+compatibility_date = "2026-08-21"
+pages_build_output_dir = "dist"
+
+# D1 is not provisioned yet (docs/17 F1). Once it is, uncomment and fill in
+# database_id from `wrangler d1 create nikko-enquiries`, and add the same
+# binding as a D1 binding on the Cloudflare Pages project in the dashboard.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "nikko-enquiries"
+# database_id = "<from `wrangler d1 create`>"

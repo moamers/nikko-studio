@@ -1,0 +1,21 @@
+---
+/**
+ * The bordered "01 — Section title — note" heading row that repeats above
+ * every fieldset on the page. Pulled out once rather than copied five times.
+ * [P14]
+ */
+interface Props {
+  number: string;
+  title: string;
+  note: string;
+  headingId: string;
+}
+
+const { number, title, note, headingId } = Astro.props;
+---
+
+<div class="nk-c-section-head">
+  <span class="nk-c-section-num" aria-hidden="true">{number}</span>
+  <h2 class="nk-c-section-title" id={headingId}>{title}</h2>
+  <p class="nk-c-section-note">{note}</p>
+</div>

@@ -1,0 +1,91 @@
+---
+/**
+ * §0 — the opening sequence.
+ *
+ * CLIENT-SUPPLIED, REPRODUCED VERBATIM. The markup below is copied from
+ * `design-handoff/homepage/Nikko Homepage.dc.html` (lines 301–338); the
+ * stylesheet is `src/styles/opening-sequence.css`; the driver is
+ * `src/scripts/opening-sequence.ts`. Beats, formulas and values are
+ * byte-identical to the source. Do not re-tokenise it — the seam between
+ * this block and the site proper is intentional (handoff § 0).
+ *
+ * TWO SOURCE DEFECTS FIXED HERE
+ *
+ * (a) Duplicate `id="top"`. The source puts `id="top"` on BOTH this section
+ *     and the hero section — invalid HTML, and the browser resolves `#top`
+ *     to whichever it finds first. The handoff says the header logo links to
+ *     `#top` meaning "the top of the opening sequence", so the id stays HERE
+ *     and the hero section carries none. Whoever builds the hero: do not add
+ *     `id="top"` to it. Use `id="hero"` if you need a target.
+ *
+ * (b) Chrome gate inverted. See the long note in `opening-sequence.css`.
+ *     Site chrome is visible by default and this sequence hides it while it
+ *     owns the screen, rather than the reverse. [P1, P3]
+ *
+ * Deviation from the source, logged per P12: the `.nkhero-title` div carries
+ * `aria-label="Stories endure"` in the source but no role, so assistive
+ * technology ignores the label entirely. `role="img"` is added so the label
+ * does what it was clearly written to do. No visual change.
+ */
+import heroBand from '../assets/images/nkhero-band.webp';
+import '../styles/opening-sequence.css';
+---
+
+<section class="nkhero-stage" id="top" aria-label="Nikko Studio introduction">
+  <div class="nkhero-frame">
+    <div class="nkhero-opening-note nkhero-opening-note-top">A story studio / London / Dubai</div>
+    <div class="nkhero-opening-note nkhero-opening-note-bottom">Scroll to cross the line ↓</div>
+
+    <div class="nkhero-image-band" aria-hidden="true">
+      {/* Served as supplied. The handoff extracted this from the inlined
+          base64 and asks that it stay a file. It is already a well-optimised
+          1280x720 WebP: re-encoding it through astro:assets makes it *larger*
+          (webp 186kB, avif 237kB, source 180kB), so it is imported for the
+          content hash and cache headers and otherwise left alone. [P4] */}
+      <img
+        src={heroBand.src}
+        width={heroBand.width}
+        height={heroBand.height}
+        alt=""
+        loading="eager"
+        decoding="async"
+      />
+    </div>
+
+    <div class="nkhero-occlusion nkhero-occlusion-left" aria-hidden="true"></div>
+    <div class="nkhero-occlusion nkhero-occlusion-right" aria-hidden="true"></div>
+
+    <div class="nkhero-origin-mark" aria-hidden="true">
+      <span class="nkhero-origin-lockup">
+        <span class="nkhero-origin-symbol">
+          <span class="nkhero-origin-slot"></span>
+        </span>
+      </span>
+      <div class="nkhero-signal-line nkhero-signal-line-coral"></div>
+      <div class="nkhero-signal-line nkhero-signal-line-cream"></div>
+      <div class="nkhero-signal-line nkhero-signal-line-yellow"></div>
+      <div class="nkhero-signal-line nkhero-signal-line-blue"></div>
+    </div>
+
+    <div class="nkhero-title" role="img" aria-label="Stories endure">
+      <span class="nkhero-title-top" aria-hidden="true">STORIES</span>
+      <span class="nkhero-title-bottom" aria-hidden="true">ENDURE.</span>
+    </div>
+
+    <div class="nkhero-resolution">
+      <p>Nikko is a story studio.</p>
+      <p>Market for memorability.</p>
+    </div>
+
+    <p class="nkhero-source-line">
+      Like family albums, plastic straws on the ocean floor and a Nokia 3310 thrown from a
+      fast-moving car, stories endure.
+    </p>
+  </div>
+</section>
+
+<script>
+  import { initOpeningSequence } from '../scripts/opening-sequence';
+
+  initOpeningSequence();
+</script>

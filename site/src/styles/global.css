@@ -1,0 +1,13 @@
+/* global.css — the one stylesheet `Base.astro` imports.
+
+   Import order is the cascade order: faces, then reset, then tokens, then the
+   element defaults that read from them, then the shared component layers.
+   The layer order itself is declared at the top of `reset.css`. */
+
+@import './fonts.css';
+@import './reset.css';
+@import './tokens.css';
+@import './base.css';
+@import './motion.css';
+@import './reveal.css';
+@import './cursor.css';

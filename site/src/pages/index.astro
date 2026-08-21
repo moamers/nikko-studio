@@ -1,0 +1,54 @@
+---
+/**
+ * The homepage.
+ *
+ * The nine content sections are wired below in the order given by
+ * `design-handoff/homepage/README.md` § "Screens / Views". Each lives in
+ * `src/sections/` and is owned by exactly one build task — edit the section
+ * file, not this one.
+ *
+ * Two things to know before you add a section:
+ *
+ *   1. `<OpeningSequence />` owns `id="top"`. Do not put `id="top"` on the
+ *      hero — the source did, and two elements sharing an id is invalid HTML.
+ *      Use `id="hero"` if the hero needs a target.
+ *
+ *   2. Content comes from `src/lib/content`, never from `astro:content` and
+ *      never as a string literal in this file. [P7]
+ */
+import Base from '../layouts/Base.astro';
+import OpeningSequence from '../components/OpeningSequence.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import { getSiteSettings } from '../lib/content';
+
+import Hero from '../sections/Hero.astro';
+import Marquee from '../sections/Marquee.astro';
+import Attention from '../sections/Attention.astro';
+import Language from '../sections/Language.astro';
+import Founder from '../sections/Founder.astro';
+import Services from '../sections/Services.astro';
+import Sampler from '../sections/Sampler.astro';
+import Joyride from '../sections/Joyride.astro';
+import Pitch from '../sections/Pitch.astro';
+
+const settings = await getSiteSettings();
+---
+
+<Base>
+  <OpeningSequence />
+
+  <SiteHeader nav={settings.nav} cta={settings.cta} logo={settings.logo} />
+
+  <main id="main">
+    <Hero />
+    <Marquee />
+    <Attention />
+    <Language />
+    <Founder />
+    <Services />
+    <Sampler />
+    <Joyride />
+    <Pitch />
+  </main>
+</Base>
+

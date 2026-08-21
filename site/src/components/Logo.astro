@@ -1,0 +1,85 @@
+---
+/**
+ * The logo lockup: a 44×30 ink oval carrying "the slot" — a ground-coloured
+ * stripe with an accent-coloured stripe directly beneath it — beside the
+ * wordmark.
+ *
+ * It is MARKUP, NEVER AN IMAGE. The accent stripe reads the live accent, so
+ * the mark shifts with the rest of the page every twelve seconds. An SVG or a
+ * PNG could not do that. (handoff § Assets: "The logo is drawn in CSS".)
+ */
+interface Props {
+  /** The word beside the mark. */
+  wordmark: string;
+  /** Where the lockup links. Omit to render the mark without a link. */
+  href?: string | undefined;
+  /** Accessible name for the link. */
+  label?: string | undefined;
+}
+
+const { wordmark, href, label } = Astro.props;
+const Tag = href ? 'a' : 'span';
+---
+
+<Tag class="nk-logo" href={href} aria-label={href ? label : undefined}>
+  <span class="nk-logo__mark" aria-hidden="true">
+    <span class="nk-logo__slot-ground"></span>
+    <span class="nk-logo__slot-accent"></span>
+  </span>
+  <span class="nk-logo__word">{wordmark}</span>
+</Tag>
+
+<style>
+  @layer components {
+    .nk-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--nk-ink);
+    }
+
+    .nk-logo:hover {
+      color: var(--nk-ink);
+    }
+
+    .nk-logo__mark {
+      position: relative;
+      display: block;
+      flex: 0 0 auto;
+      width: 44px;
+      height: 30px;
+      overflow: hidden;
+      background: var(--nk-ink);
+      border-radius: var(--nk-radius-oval);
+    }
+
+    .nk-logo__slot-ground,
+    .nk-logo__slot-accent {
+      position: absolute;
+      right: 0;
+      left: 0;
+    }
+
+    .nk-logo__slot-ground {
+      top: 16px;
+      height: 5px;
+      background: var(--nk-ground);
+      transition: background-color var(--nk-dur-ground) var(--nk-ease-accent);
+    }
+
+    .nk-logo__slot-accent {
+      top: 21px;
+      height: 3px;
+      background: var(--nk-accent);
+      transition: background-color var(--nk-dur-accent) var(--nk-ease-accent);
+    }
+
+    .nk-logo__word {
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-logo);
+      letter-spacing: var(--nk-tracking-display-tight);
+      line-height: var(--nk-leading-flat);
+      text-transform: uppercase;
+    }
+  }
+</style>

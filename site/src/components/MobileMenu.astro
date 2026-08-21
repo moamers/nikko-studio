@@ -1,0 +1,118 @@
+---
+/**
+ * The mobile menu — R1's answer.
+ *
+ * At 390px the designed header row needs about 774px of a 310px line, and the
+ * handoff specifies no mobile header at all (docs/06 § R1). Below 1024px the
+ * bar collapses to logo + menu button and everything else moves in here: the
+ * three nav links at display scale, the CTA as a full-width pill, and the mode
+ * dial, which has no room in a collapsed row but plenty on a full screen.
+ *
+ * IT IS A REAL <dialog>, OPENED WITH `showModal()`.
+ * Focus trapping, `Esc` to close, an inert background, top-layer stacking and
+ * returning focus to the trigger are all the platform's, for free and correct.
+ * Hand-rolled focus management is the thing everyone gets wrong. The script
+ * below adds exactly three things the platform does not give us: the
+ * `aria-expanded` mirror, the body scroll lock, and closing the panel if the
+ * viewport grows past the breakpoint while it is open.
+ *
+ * THE SCRIPT IS `is:inline`, AND THAT IS THE POINT.
+ * It does two jobs — set `data-nk-js` (which collapses the header row) and
+ * wire this dialog — and because they are one script they cannot come apart.
+ * A bundled module could fail to load after the row had already collapsed,
+ * leaving a menu button attached to nothing and no navigation at all. Being
+ * inline it also runs during parse, so the collapsed layout is the first
+ * thing painted rather than a visible reflow. [P1, P3]
+ *
+ * With no JavaScript this element is `display: none` and unreachable — which
+ * is why `header.css` gives the script-free header a WRAPPED row that keeps
+ * every link on screen. Navigation never depends on this file.
+ */
+import ModeDial from './ModeDial.astro';
+import Pill from './Pill.astro';
+import type { ModeDialCopy, NavItem, SiteSettings } from '../lib/content';
+
+interface Props {
+  /** Matches the trigger's `aria-controls`. */
+  id: string;
+  nav: NavItem[];
+  cta: { label: string; href: string };
+  copy: SiteSettings['header'];
+  modeDial: ModeDialCopy;
+}
+
+const { id, nav, cta, copy, modeDial } = Astro.props;
+---
+
+<dialog id={id} class="nk-menu" data-nk-menu aria-label={copy.menuLabel}>
+  <div class="nk-menu__panel">
+    <div class="nk-menu__head">
+      <span class="nk-menu__eyebrow">{copy.menuLabel}</span>
+      <Pill size="sm" tone="paper" lift={false} data-nk-menu-close>{copy.menuClose}</Pill>
+    </div>
+
+    {/* Labelled distinctly from the header's own nav so the two landmarks are
+        never ambiguous, even though only one is ever exposed at a time. */}
+    <nav class="nk-menu__nav" aria-label={copy.menuLabel}>
+      {nav.map((item) => <a class="nk-menu__link" href={item.href}>{item.label}</a>)}
+    </nav>
+
+    <div class="nk-menu__foot">
+      <div class="nk-menu__dial"><ModeDial copy={modeDial} tone="paper" /></div>
+      <Pill href={cta.href} size="lg" tone="paper" block>{cta.label}</Pill>
+    </div>
+  </div>
+</dialog>
+
+<script is:inline>
+  (function () {
+    var dialog = document.querySelector('[data-nk-menu]');
+    var trigger = document.querySelector('[data-nk-menu-open]');
+    var closer = dialog && dialog.querySelector('[data-nk-menu-close]');
+
+    // No modal dialog support means no menu, so the header must keep its
+    // wrapped, script-free layout. Bail before setting the flag. [P3]
+    if (!dialog || !trigger || !closer || typeof dialog.showModal !== 'function') return;
+
+    var root = document.documentElement;
+    var LOCK = 'nk-scroll-locked';
+
+    function open() {
+      dialog.showModal();
+      trigger.setAttribute('aria-expanded', 'true');
+      root.classList.add(LOCK);
+    }
+
+    trigger.addEventListener('click', open);
+    closer.addEventListener('click', function () {
+      dialog.close();
+    });
+
+    // Fires for `Esc` and for every `close()` above, so the mirror and the
+    // lock are released on exactly one path.
+    dialog.addEventListener('close', function () {
+      trigger.setAttribute('aria-expanded', 'false');
+      root.classList.remove(LOCK);
+      // Modern browsers restore focus themselves; older ones do not, and a
+      // second call to `focus()` on the already-focused element is a no-op.
+      trigger.focus();
+    });
+
+    // Following a link leaves the page; on a same-page anchor it does not, and
+    // a menu left open over the target would be a trap of our own making.
+    dialog.addEventListener('click', function (event) {
+      if (event.target instanceof Element && event.target.closest('a[href]')) dialog.close();
+    });
+
+    // A rotation or a resize past the breakpoint hides the trigger; the panel
+    // must not outlive it.
+    var wide = window.matchMedia('(min-width: 1024px)');
+    wide.addEventListener('change', function (event) {
+      if (event.matches && dialog.open) dialog.close();
+    });
+
+    // Last, so the collapsed header row is only ever painted once everything
+    // above has attached.
+    root.setAttribute('data-nk-js', '');
+  })();
+</script>
