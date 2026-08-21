@@ -1,0 +1,33 @@
+# Template for .dev.vars — the local secrets file for `wrangler pages dev`.
+#
+# Copy this to `.dev.vars` (gitignored, never committed) and fill in real
+# values to test the enquiry endpoint locally with actual bindings.
+# `.dev.vars` is wrangler's equivalent of a dotenv file — it is NOT read by
+# `astro dev`, only by `wrangler pages dev`. See docs/18-staging-and-deployment.md
+# and docs/20-transactional-email-design.md for what each of these does.
+#
+# The deployed staging/production site does not read this file at all — those
+# values are set separately in the Cloudflare dashboard (Pages project →
+# Settings → Environment variables). This file only affects your machine.
+
+# Resend API key. https://resend.com/api-keys
+RESEND_API_KEY=
+
+# Where Nadia's (or your own, while testing) notification email goes.
+ENQUIRY_NOTIFY_TO=
+
+# The "From:" address on both emails. Must be on a domain verified in Resend —
+# until one is, use Resend's shared test domain, and note that Resend will
+# then only actually deliver to the email address your Resend account is
+# registered under.
+ENQUIRY_FROM=Nikko Studio <onboarding@resend.dev>
+
+# Salt for the stored IP hash. Generate with:
+#   openssl rand -hex 32
+# or, if openssl isn't available:
+#   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ENQUIRY_IP_SALT=
+
+# Optional — Cloudflare Turnstile secret. Leave unset locally; the spam check
+# is skipped gracefully without it (the honeypot still runs).
+TURNSTILE_SECRET=

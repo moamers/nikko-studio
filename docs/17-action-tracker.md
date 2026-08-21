@@ -48,7 +48,7 @@ Kit keeps doing everything it does today — list, double opt-in, confirmation e
 
 | | Task | Detail | Phase | Status |
 |---|---|---|---|---|
-| E1 | **Set up Resend** + verify the sending domain (DNS records) | Sends both form emails — `RESEND_API_KEY` is still unset, so sends are currently skipped, not failed | 1 | ⬜ |
+| E1 | **Set up Resend** + verify the sending domain (DNS records) | Full pipeline confirmed working locally with a real send (2026-08-21) using Resend's shared `onboarding@resend.dev` sender — but that sender only delivers to the Resend account's own login address, so it's a real test, not yet a real launch. `RESEND_API_KEY` still needs setting as an **encrypted** env var on the Cloudflare Pages project (dashboard, not this repo) for staging to actually send. Domain verification is still blocked on founder access | 1 | 🟡 |
 | E2 | **Notification email to Nadia** on every enquiry | Built to the approved Direction 01 design. All fields, readable on a phone, `Reply-To` = the enquirer. Blocked on E1 + E4 to actually send | 1 | ✅ |
 | E3 | **Confirmation email to the enquirer** | Built to the approved Direction 01 design. Says what happens next and when. Blocked on E1 to actually send | 1 | ✅ |
 | E4 | Decide where notifications go | Nadia's Workspace address, or a shared `hello@`? — `ENQUIRY_NOTIFY_TO` is still unset | 1 | ⬜ **Nadia** |

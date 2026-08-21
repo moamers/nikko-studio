@@ -1,0 +1,19 @@
+# Local-dev-only config for `wrangler pages dev` — testing the Cloudflare
+# Pages Function (functions/api/enquiry.ts) with real bindings and secrets
+# before pushing. It is NOT how the site is deployed: staging/production
+# deploy through Cloudflare's git integration (docs/18-staging-and-deployment.md),
+# which builds from GitHub directly and reads env vars from the Pages
+# project's dashboard, not from this file.
+#
+# Secrets never go here — see .dev.vars (gitignored) and .dev.vars.example.
+name = "nikko-studio"
+compatibility_date = "2026-08-21"
+pages_build_output_dir = "dist"
+
+# D1 is not provisioned yet (docs/17 F1). Once it is, uncomment and fill in
+# database_id from `wrangler d1 create nikko-enquiries`, and add the same
+# binding as a D1 binding on the Cloudflare Pages project in the dashboard.
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "nikko-enquiries"
+# database_id = "<from `wrangler d1 create`>"

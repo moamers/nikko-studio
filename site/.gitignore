@@ -5,6 +5,9 @@ dist/
 .wrangler/
 .env
 .env.production
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
 .DS_Store
 npm-debug.log*
 test-results/

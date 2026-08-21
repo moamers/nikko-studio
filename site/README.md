@@ -24,6 +24,36 @@ npm run dev        # http://localhost:4321
 `npm run build` produces a plain static `dist/` directory. Cloudflare Pages
 serves it directly; no adapter is involved.
 
+## Testing the Cloudflare Function locally
+
+`astro dev` only serves the Astro site — it does not run
+`functions/api/enquiry.ts`. That file only executes inside Cloudflare's
+Workers runtime, either in production or via **Wrangler**, Cloudflare's CLI
+(already a dev dependency here).
+
+```bash
+npm run build
+cp .dev.vars.example .dev.vars   # once — then fill in real values, see below
+npm run preview:cf               # http://localhost:8788, functions included
+```
+
+`.dev.vars` is Wrangler's equivalent of a dotenv file — it is **gitignored**
+and never read by anything except `wrangler pages dev`. It is not related to
+the deployed site: staging and production read their environment variables
+from the Cloudflare Pages project's dashboard instead (**Pages project →
+Settings → Environment variables**, separate for each — that's where
+`RESEND_API_KEY` etc. need to also be set, as **encrypted/secret** variables,
+for a real submission on the live staging URL to actually send). Local
+`.dev.vars` only lets you exercise the same code path on your own machine
+first. See `docs/20-transactional-email-design.md` and `docs/17` (row E1)
+for what each variable is and what's still outstanding.
+
+This is a separate thing from "the Pages project" in the Cloudflare
+dashboard, which is created once via **Workers & Pages → Create → Pages →
+Connect to Git** (docs/18) and deploys automatically on every push — no
+Wrangler command is involved in that path at all. Wrangler here is purely a
+local-testing tool.
+
 ## Where things live
 
 ```
