@@ -27,8 +27,19 @@
  *
  * The label is a slot, so the words come from the caller's content file and
  * never from here. [P7]
+ *
+ * EXTERNAL LINKS open in a new tab automatically. Any `href` starting with
+ * `http` — a Google Form, Threads, Substack, whatever a content file points
+ * at next — gets `target="_blank"` and `rel="noopener noreferrer"` applied
+ * here, not by the caller. That is deliberate: a content edit only ever
+ * changes a YAML string, never a template, so there is no schema flag for
+ * "open in a new tab" to remember to set. Detecting `http` means it is
+ * structurally impossible to ship an external link without `noopener` — the
+ * safety is a property of the component, not of every call site remembering
+ * it. [P7, P15]
  */
 import type { HTMLAttributes } from 'astro/types';
+import { isExternalHref } from '../lib/links';
 
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 type Tone = 'ink' | 'paper';
@@ -58,7 +69,9 @@ const {
 } = Astro.props;
 
 const Tag = href ? 'a' : 'button';
-const tagProps = href ? { href } : { type };
+const tagProps = href
+  ? { href, ...(isExternalHref(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {}) }
+  : { type };
 ---
 
 <Tag

@@ -34,10 +34,10 @@ The site's own opening sequence — the one place this exact "name / place / pla
 
 ```
 src/components/OpeningSequence.astro:36
-"A story studio / London / Dubai"
+"A story studio / London / UAE"
 ```
 
-There is no `//` anywhere else in the codebase's copy. Per [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess), the site's own verbatim, already-approved copy outranks the newer ChatGPT-authored artifact. `email-copy.yaml` was corrected to `NIKKO STUDIO / LONDON / DUBAI` with a comment citing `OpeningSequence.astro` as the source, and a unit test (`enquiry-email-copy.test.ts`) pins the single-slash form so it can't regress.
+There is no `//` anywhere else in the codebase's copy. Per [P0](./02-engineering-principles.md#p0--precedence-when-sources-conflict-we-escalate-we-do-not-guess), the site's own verbatim, already-approved copy outranks the newer ChatGPT-authored artifact. `email-copy.yaml` was corrected to `NIKKO STUDIO / LONDON / UAE` with a comment citing `OpeningSequence.astro` as the source, and a unit test (`enquiry-email-copy.test.ts`) pins the single-slash form so it can't regress. (The city name in that corner note was later changed from "Dubai" to "UAE" by the founder — the fix here was always about the separator, not the place, so the masthead tracks whatever `OpeningSequence.astro` says.)
 
 ### The handoff's logo was wrong
 

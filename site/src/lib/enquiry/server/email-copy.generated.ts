@@ -64,8 +64,8 @@ export interface EmailCopy {
 export const EMAIL_COPY: EmailCopy = {
   brand: {
     name: "NIKKO STUDIO",
-    locations: "LONDON // DUBAI",
-    masthead: "NIKKO STUDIO / LONDON / DUBAI",
+    locations: "LONDON // UAE",
+    masthead: "NIKKO STUDIO / LONDON / UAE",
     website_label: "NIKKOSTUDIO.CO",
   },
   sections: {

@@ -34,6 +34,7 @@ import ModeDial from './ModeDial.astro';
 import MobileMenu from './MobileMenu.astro';
 import Pill from './Pill.astro';
 import { getSiteSettings, type NavItem } from '../lib/content';
+import { resolveNavHref } from '../lib/links';
 import '../styles/header.css';
 
 interface Props {
@@ -46,22 +47,31 @@ const { nav, cta, logo } = Astro.props;
 const { header, modeDial } = await getSiteSettings();
 
 const MENU_ID = 'nk-menu';
+
+// `nav`, `cta.href` and `logo.homeHref` arrive from settings as bare anchors
+// (`#work`, `#services`, `#founder`, `#top`) — correct only on the page that
+// owns those ids, the homepage. Resolved once here, then handed to both this
+// header's own <nav> and to <MobileMenu>, so the two never disagree. [P7]
+const path = Astro.url.pathname;
+const resolvedNav = nav.map((item) => ({ ...item, href: resolveNavHref(item.href, path) }));
+const resolvedCta = { ...cta, href: resolveNavHref(cta.href, path) };
+const resolvedHomeHref = resolveNavHref(logo.homeHref, path);
 ---
 
 <a class="nk-skip" href="#main">{header.skipLink}</a>
 
 <header class="nk-header" data-nk-chrome="true">
   <div class="nk-header__row">
-    <Logo wordmark={logo.wordmark} href={logo.homeHref} label={logo.homeLabel} />
+    <Logo wordmark={logo.wordmark} href={resolvedHomeHref} label={logo.homeLabel} />
 
     <nav class="nk-header__nav" aria-label={header.navLabel}>
-      {nav.map((item) => <a class="nk-header__link" href={item.href}>{item.label}</a>)}
+      {resolvedNav.map((item) => <a class="nk-header__link" href={item.href}>{item.label}</a>)}
     </nav>
 
     <div class="nk-header__tools">
       <div class="nk-header__dial"><ModeDial copy={modeDial} /></div>
 
-      <Pill class="nk-header__cta" href={cta.href} size="sm">{cta.label}</Pill>
+      <Pill class="nk-header__cta" href={resolvedCta.href} size="sm">{cta.label}</Pill>
 
       {/*
         Hidden until the inline script in `MobileMenu.astro` has both set
@@ -84,7 +94,7 @@ const MENU_ID = 'nk-menu';
   </div>
 </header>
 
-<MobileMenu id={MENU_ID} nav={nav} cta={cta} copy={header} modeDial={modeDial} />
+<MobileMenu id={MENU_ID} nav={resolvedNav} cta={resolvedCta} copy={header} modeDial={modeDial} />
 
 <script>
   /* The dial is the only control on the page that needs `mode.ts`, so the
