@@ -183,6 +183,14 @@
     --nk-ease-collage: cubic-bezier(0.3, 1, 0.4, 1);
     --nk-dur-counter: 1100ms;
     --nk-dur-residue: 820ms;
+    /* The analogue signal loop on the hero collage. Each is the source's own
+       duration: `nk-flick 2.6s`, `nk-scan 5.2s`, `nk-tear 9s steps(2)`
+       (`Nikko Homepage.dc.html` lines 370-373). They only ever run under
+       `prefers-reduced-motion: no-preference`. */
+    --nk-dur-flicker: 2.6s;
+    --nk-dur-scan: 5.2s;
+    --nk-dur-tear: 9s;
+    --nk-ease-tear: steps(2);
     --nk-dur-marquee: 34s;
     --nk-interval-sampler: 3800ms;
 
@@ -216,11 +224,25 @@
     --nk-tap-min: 44px;
 
     /* ── Analogue / digital mode ────────────────────────────────────────
-       `mode.ts` writes `data-mode` on <html>; every difference between the
-       two modes is one of these three properties. Analogue is the resting
-       state, so a page with no JavaScript is analogue — which is what the
-       source's `auto: 'analogue'` initial state means. (handoff § Analogue /
-       digital mode.) */
+       `mode.ts` writes `data-mode` on <html>. Analogue is the resting state,
+       so a page with no JavaScript is analogue — which is what the source's
+       `auto: 'analogue'` initial state means. (handoff § Analogue / digital
+       mode.)
+
+       Six things change between the modes. Three are the properties below,
+       read by whoever needs them; the other three are switched by selector,
+       because they are whole layers rather than values:
+
+         1. `--nk-grain`      full-page multiply grain overlay  → grain.css
+         2. `--nk-img-filter` the warm / crisp grade on images  → ArchImage
+         3. `--nk-misreg`     chromatic misregistration on H1   → Hero
+         4. hero scanlines, scan sweep, cobalt tint, coral tear → Hero
+         5. the cursor pool's gradient and blend mode           → cursor.css
+         6. the dial's own label, `aria-pressed` and title      → mode.ts
+
+       Every one of them keys off `:root` for analogue and
+       `:root[data-mode='digital']` for digital — never the other way round,
+       so the no-JS page is the analogue page and nothing is stranded. */
     --nk-mode-flip: 0.52;               /* scroll depth at which mode drifts */
     --nk-grain: 0.13;
     --nk-img-filter: saturate(0.94) contrast(0.97) sepia(0.09);

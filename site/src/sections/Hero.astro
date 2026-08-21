@@ -211,9 +211,11 @@ const hero = await getHero();
     .nk-hero__collage {
       z-index: var(--nk-z-collage);
       margin: 34px 0 0;
-      /* Decorative and aria-hidden, so it never intercepts pointer events —
-         a deliberate drop of the source's hover-settle micro-interaction on
-         this element. Logged in docs/06 § Deviations log. */
+      /* Decorative, so it stays out of the way of the pointer everywhere the
+         source gives it nothing to do. The desktop branch below hands the
+         pointer back, because there the collage HAS a behaviour: the
+         hover-settle. `aria-hidden` is unaffected either way — pointer-events
+         is not an accessibility-tree property. (docs/06 § Deviations log #4.) */
       pointer-events: none;
     }
 
@@ -248,8 +250,14 @@ const hero = await getHero();
       pointer-events: none;
     }
 
+    /* The resting opacity of each layer IS its first keyframe, so the static
+       frame a reduced-motion reader gets is the frame the animation starts
+       on rather than a full-strength version of it. Without this the tear —
+       whose `nk-tear` begins and ends at `opacity: 0` and only flashes at
+       92–98% — sat permanently across the image as a 5px coral bar. */
     .nk-hero__scan-lines {
       inset: 0;
+      opacity: 0.46; /* nk-flick 0% */
       background-image: repeating-linear-gradient(
         to bottom,
         rgb(var(--nk-ink-rgb) / 0.3) 0 1px,
@@ -257,11 +265,14 @@ const hero = await getHero();
       );
     }
 
+    /* A sweep is only a sweep while it moves; parked, it is a bright band
+       across the top quarter of the image. Static means absent. */
     .nk-hero__scan-sweep {
       left: 0;
       right: 0;
       top: 0;
       height: 26%;
+      opacity: 0;
       background-image: linear-gradient(to bottom, transparent, rgb(var(--nk-paper-rgb) / 0.26), transparent);
     }
 
@@ -277,20 +288,25 @@ const hero = await getHero();
       right: 0;
       top: 44%;
       height: 5px;
+      opacity: 0; /* nk-tear 0% */
       background: rgb(var(--nk-coral-rgb) / 0.55);
     }
 
+    /* Movement is added here and nowhere else. Everything above is the still
+       photograph of analogue mode; this is the projector running. (docs/05
+       § Reduced motion: "Grain, scan sweep, tear, flicker — Off".) */
     @media (prefers-reduced-motion: no-preference) {
       .nk-hero__scan-lines {
-        animation: nk-flick 2.6s ease-in-out infinite;
+        animation: nk-flick var(--nk-dur-flicker) ease-in-out infinite;
       }
 
       .nk-hero__scan-sweep {
-        animation: nk-scan 5.2s linear infinite;
+        opacity: 1;
+        animation: nk-scan var(--nk-dur-scan) linear infinite;
       }
 
       .nk-hero__tear {
-        animation: nk-tear 9s steps(2) infinite;
+        animation: nk-tear var(--nk-dur-tear) var(--nk-ease-tear) infinite;
       }
     }
 
@@ -385,6 +401,32 @@ const hero = await getHero();
         width: min(46vw, 530px);
         margin: 0;
         transform: rotate(2.6deg);
+      }
+
+      /* ── The hover-settle ─────────────────────────────────────────────
+         "hovering it settles to `rotate(1.2deg) translateX(-34px)` over
+         `420ms`" (handoff § 2; `Nikko Homepage.dc.html` line 364, easing
+         `cubic-bezier(0.3,1,0.4,1)` — the same curve as the language
+         shutter, hence the shared token).
+
+         The card straightens as it slides in toward the copy. Nothing is
+         revealed by it — it is an Easter egg, not a route to information,
+         which is the only kind of hover this project allows. [P1]
+
+         `pointer-events` is returned only inside this branch, where the
+         collage is the absolutely-positioned corner element sitting clear
+         of the reserved text column. Below 900px it is a full-width figure
+         in normal flow directly under the copy, has no rotation to settle
+         from, and there is no hover to speak of anyway. */
+      @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+        .nk-hero__collage {
+          pointer-events: auto;
+          transition: transform var(--nk-dur-collage) var(--nk-ease-collage);
+        }
+
+        .nk-hero__collage:hover {
+          transform: rotate(1.2deg) translateX(-34px);
+        }
       }
     }
   }
