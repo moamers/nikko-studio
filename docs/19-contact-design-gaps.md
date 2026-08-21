@@ -54,6 +54,8 @@ The same scan against `/` (the homepage) returns **zero** violations, not becaus
 
 This lives in `SiteHeader.astro`/`ModeDial.astro`/`header.css`, all explicitly out of this task's ownership. **Flagging, not fixing** — logged here so it doesn't quietly stay invisible just because the page that exposes it isn't the page that caused it.
 
+**Update, 2026-08-21:** a fresh axe-core pass over the whole of `/contact` at 1440px — with the form empty and again with it part-filled — now returns **zero** violations, the dial included. Either the dial's state colour or the ground behind it has moved since that scan. The finding above is left in place as the record of what was seen; it is no longer reproducible here. `tests/e2e/contact.spec.ts` runs that pass on every build, so a regression would show up as a failing test rather than as prose.
+
 ## Deliberate simplifications (mine, not the design's)
 
 Distinct from the above — these are scope trims made to ship a complete, correct, accessible form in the time available, not things dropped from the handoff by whoever produced it.
@@ -102,5 +104,7 @@ Three places where the source file's literal numbers are wrong and this build do
 | Ruled textareas | `line-height: 28px`, rules every 28px, `padding: 13px 16px` | Same rules and line-height, `padding-top` one whole rule (28px), background offset 1px | 13px is not a multiple of the rule pitch, so text sat 15px off its own rules and every line landed at a different height in its band. The three numbers now agree |
 | Focused input/textarea | `box-shadow: 0 3px 0 #2B45F0` (outer) | The same bar, `inset` | The site keeps its coral `:focus-visible` ring (P10). An *outer* shadow lands in the gap `outline-offset` opens and reads as a second, blue ring around the field. Inset, it is a bar under the text and the field has exactly one ring |
 | Group label → controls | Fieldset `gap: 14px` | Legend `margin-bottom: 24px` | A rendered `<legend>` is excluded from its fieldset's flex layout, so the `gap` never applied — the measured clearance was 0px and a card's 4px hover lift covered the label above it. The lift is unchanged |
+
+| Selected intent card's note | `color: rgba(242,236,223,0.76)` | `var(--nk-paper)`, full opacity | 14.5px at 0.76 (or the 0.86 this build shipped) over the cobalt fill is 3.17:1 against a 4.5:1 requirement — axe-core fails `/contact` the moment a card is selected. Full paper is ~6:1. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement) outranks the literal value |
 
 One more, not a value but a placement: `.nk-c-intro` now states `max-width` / `margin` / `padding` matching `.nk-c-shell`. The design draws the intro inside the two-column shell, where it inherits that container; here it is a sibling above the shell, so without those three declarations it ran flush to the viewport edge.
