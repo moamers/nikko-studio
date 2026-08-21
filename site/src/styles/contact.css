@@ -38,8 +38,16 @@
   }
 
   /* ── Intro ──────────────────────────────────────────────────────────── */
+  /* The design draws this block inside the same two-column shell as the
+     form, so it inherits that shell's max-width and gutter. Here it sits
+     above the shell as its own <section>, which means it has to state the
+     container itself — without it the intro ran flush to the viewport edge
+     while every other block on the page was inset. Same three declarations
+     as `.nk-c-shell` so the two can never drift apart. */
   .nk-c-intro {
-    padding: clamp(48px, 6vw, 92px) 0 0;
+    max-width: var(--nk-content-max);
+    margin: 0 auto;
+    padding: clamp(48px, 6vw, 92px) var(--nk-gutter) 0;
   }
 
   .nk-c-kicker {
@@ -139,6 +147,78 @@
     line-height: 1.3;
   }
 
+  /* ── Rail selection summary ("gathered fragments") ──────────────────── */
+  /* One stamped chip per answered value, in the design's three tones:
+     cobalt for the single-select intent, yellow for the multi-select
+     deliverables, and an outline for plain text answers — the same
+     single/multi colour language the controls themselves use, so the rail
+     reads as an echo of the form rather than a second vocabulary.
+     Rendered by `contact-form.ts`; `[hidden]` until there is something to
+     show, so an empty rail is never a blank box. */
+  .nk-c-rail-frags {
+    margin-top: 26px;
+  }
+
+  .nk-c-rail-frags[hidden] {
+    display: none;
+  }
+
+  .nk-c-rail-frags-head {
+    font-family: var(--nk-font-mono);
+    font-size: var(--nk-size-mono-sm);
+    letter-spacing: var(--nk-tracking-mono-wide);
+    text-transform: uppercase;
+    color: var(--nk-ink-muted);
+    margin: 0 0 12px;
+  }
+
+  .nk-c-rail-frags-count {
+    color: var(--nk-ink);
+  }
+
+  .nk-c-rail-frag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .nk-c-frag {
+    font-family: var(--nk-font-mono);
+    font-size: 9.5px;
+    letter-spacing: var(--nk-tracking-mono-tight);
+    text-transform: uppercase;
+    padding: 5px 8px;
+    border: 1.5px solid rgb(var(--nk-ink-rgb) / 0.4);
+    background: transparent;
+    color: var(--nk-ink);
+    animation: nk-c-frag-in var(--nk-dur-step) var(--nk-ease-step) both;
+  }
+
+  .nk-c-frag--cobalt {
+    background: var(--nk-cobalt);
+    border-color: var(--nk-cobalt);
+    color: var(--nk-paper);
+  }
+
+  .nk-c-frag--yellow {
+    background: var(--nk-yellow);
+    border-color: var(--nk-ink);
+    color: var(--nk-ink);
+  }
+
+  @keyframes nk-c-frag-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nk-c-frag {
+      animation: none;
+    }
+  }
+
   /* ── Mobile chip bar (<1080px) ──────────────────────────────────────── */
   .nk-c-railbar {
     position: sticky;
@@ -228,7 +308,15 @@
     gap: 14px;
   }
 
+  /* The space under a group's label is the legend's own margin, NOT the
+     fieldset's `gap`: a rendered <legend> is excluded from its fieldset's
+     flex layout, so the gap never applied to it and the controls sat hard
+     against the label's box — measured at 0px. With a 4px hover lift on
+     every card that meant a hovered card rose into the label it belongs
+     to. 24px clears the lift on every group (chips, cards, boxes,
+     budgets) with daylight to spare; the lift itself is untouched. */
   .nk-c-legend {
+    margin-bottom: 24px;
     padding: 0;
     font-family: var(--nk-font-mono);
     font-size: var(--nk-size-mono-sm);
@@ -284,14 +372,19 @@
     opacity: 1;
   }
 
-  /* The design suppresses the native ring for this ink-border + cobalt
-     underbar treatment. The site-wide 3px coral :focus-visible ring
-     (base.css) is kept rather than removed — P10 states it as the floor —
-     so focus here gets both. docs/19. */
+  /* Focus is ONE ring, not two. The design suppresses the native ring and
+     marks focus with an ink border plus a cobalt underbar; base.css adds
+     the site-wide 3px coral :focus-visible ring, which P10 states as the
+     floor and which stays. The original underbar was an OUTER shadow
+     (`0 3px 0`), so it sat in the gap the 3px outline-offset opens up and
+     read as a second, blue ring around the field — the doubled-ring bug.
+     Inset, it reads as what the design means it to be: a bar under the
+     text, inside the field, with exactly one ring around the outside.
+     Logged as a deviation in docs/19. */
   .nk-c-input:focus-visible,
   .nk-c-textarea:focus-visible {
     border-color: var(--nk-ink);
-    box-shadow: 0 3px 0 var(--nk-cobalt);
+    box-shadow: inset 0 -3px 0 var(--nk-cobalt);
   }
 
   .nk-c-input[aria-invalid='true'],
@@ -300,18 +393,32 @@
   }
 
   .nk-c-textarea {
-    line-height: 28px;
+    /* One value, two jobs: the text's line-height and, on the ruled
+       variant below, the pitch of the rules it has to sit on. [P11] */
+    --nk-line-ruled: 28px;
+    line-height: var(--nk-line-ruled);
     resize: vertical;
     min-height: 112px;
   }
 
+  /* Ruled paper. Three numbers have to agree or the text crosses its own
+     rules: the gradient's period, the line-height, and the top padding.
+     The handoff's own values don't agree — it rules every 28px but pads
+     13px, so the first line of text lands 15px off the grid and drifts
+     visibly by the third line. Corrected here rather than reproduced:
+     the period is exactly --nk-line-ruled (= the textarea's line-height),
+     the top padding is one whole rule of it, and the 1px offset lands each
+     rule on a line-box boundary. Every line of text then sits in its own
+     ruled band at the same height, at any length, instead of drifting
+     across the rules. Logged as a deviation in docs/19. */
   .nk-c-textarea--ruled {
+    padding-top: var(--nk-line-ruled);
     background-image: repeating-linear-gradient(
       to bottom,
-      transparent 0 27px,
-      rgb(var(--nk-cobalt-rgb) / 0.16) 27px 28px
+      transparent 0 calc(var(--nk-line-ruled) - 1px),
+      rgb(var(--nk-cobalt-rgb) / 0.16) calc(var(--nk-line-ruled) - 1px) var(--nk-line-ruled)
     );
-    background-position: 0 -1px;
+    background-position: 0 1px;
     background-attachment: local;
     border-left: 4px solid var(--nk-coral);
   }
@@ -488,9 +595,22 @@
     }
   }
 
-  /* A decorative diagonal cut, redrawn per the handoff decisions note (18px
-     true diagonal). The corner shows the live page ground through the mask,
-     so it stays in sync with the accent cycle without extra wiring. */
+  /* The 18px cut corner, top right — "reads sharp, not square".
+     A 20×20 tile pinned over the card's own corner INCLUDING its 2px
+     border (hence the -2px offsets), painting three bands across the
+     diagonal: transparent below it, so the card shows through; a 2.8px
+     band of the card's current border colour, which is the cut's own
+     stroke; then the page ground above it, which erases the square corner
+     underneath. That last band is why this is a masked gradient and not a
+     `clip-path` — a clip would cut the corner off cleanly but leave the
+     diagonal edge with no border on it.
+     The gradient runs at 45deg (bottom-left → top-right), so "after the
+     stroke" is the top-RIGHT triangle. It was drawn at 135deg, which put
+     the ground band on the bottom-left of the line instead: a grey
+     diagonal scored across the inside of a still-square card, which is
+     the bevelled-looking notch that was reported. The ground band reads
+     `var(--nk-ground)` so the cut stays in step with the accent cycle
+     without extra wiring. */
   .nk-c-card-corner {
     position: absolute;
     top: -2px;
@@ -498,7 +618,7 @@
     width: 20px;
     height: 20px;
     background-image: linear-gradient(
-      135deg,
+      45deg,
       transparent 0 calc(50% - 1.4px),
       var(--nk-corner) calc(50% - 1.4px) calc(50% + 1.4px),
       var(--nk-ground) calc(50% + 1.4px) 100%
