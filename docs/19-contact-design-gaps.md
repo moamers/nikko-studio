@@ -125,6 +125,35 @@ Progressive enhancement: autosave is a JavaScript feature and cannot be anything
 
 The e2e test `nothing survives a reload [D8]` was repointed rather than deleted — its subject was never "the form must forget" but "the form must not remember behind the visitor's back", and five tests in `tests/e2e/contact.spec.ts` now hold both halves of that. See the D8 note in that file's header.
 
+## New source conflict: the focus ring is cobalt here and coral everywhere else
+
+Logged in full as [C9 in docs/14](./14-design-source-conflicts.md#c9--focus-ring-colour-coral-or-cobalt-) — this is the contact-page half of it.
+
+The two page designs in the handoff bundle state different focus rings, in as many words:
+
+| Source | Says |
+|---|---|
+| `design-handoff/homepage/Nikko Homepage.dc.html` | `outline: 3px solid #EE5439` — coral |
+| `design-handoff/contact/Nikko Contact.dc.html` | `outline: 3px solid #2B45F0` — cobalt |
+
+`--nk-focus-colour` in `tokens.css` was built from the homepage and is coral, which is why the founder is seeing form fields ring red. **The token has not been changed** — one token feeds every `:focus-visible` rule on the site, so repointing it would have recoloured the homepage to match a design the homepage does not have. Instead `.nk-contact` overrides the property for this page alone:
+
+```css
+.nk-contact {
+  --nk-focus-colour: var(--nk-cobalt);
+}
+```
+
+Every focus rule on the page already read `var(--nk-focus-colour)` rather than a literal, so the override reaches all of them — inputs, textareas, chips, cards, budget boxes and the autosave switch — and nothing else on the page (header, footer, newsletter) changes, because those sit outside `.nk-contact` and are shared chrome.
+
+Three reasons this is the right way round, beyond following each page's own source:
+
+- **Contrast.** Cobalt is 5.89:1 against the field fill and 5.56:1 against the page ground. Coral is 3.17:1 and 2.99:1 — the second of those is under the 3:1 non-text floor, and controls that sit directly on the ground (pronoun chips, year chips, the autosave switch) are exactly where the ring was weakest. [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+- **Coral already means "wrong" on this page.** The error text, the invalid-icon square and the invalid field border are all coral. A coral ring around a valid field being typed into is the same colour saying two opposite things — which is what the founder's "fields ringing red" report is describing.
+- **Cobalt already means "chosen" on this page.** The selected intent card and the selected month chip both fill cobalt.
+
+Held by `focus is one ring on every kind of control [D3]` in `tests/e2e/contact.spec.ts`, which now asserts the ring's colour as well as its geometry, and by a companion test that focuses a control on `/` and asserts it is still coral — so the cheap fix (moving the global token) fails the suite rather than shipping.
+
 ## Corrections to the handoff's own values
 
 Three places where the source file's literal numbers are wrong and this build does not reproduce them. [P12](./02-engineering-principles.md#p12--design-fidelity-is-a-specification-deviations-are-logged) requires them logged rather than quietly "improved".

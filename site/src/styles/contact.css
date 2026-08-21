@@ -20,6 +20,28 @@
     --nk-field: color-mix(in srgb, var(--nk-paper) 65%, white 35%);
     --nk-error: color-mix(in srgb, var(--nk-coral) 70%, black);
     --nk-line: rgb(var(--nk-ink-rgb) / 0.28);
+
+    /* The focus ring is cobalt on this page and coral everywhere else,
+       because the two design sources genuinely disagree and each is right
+       about its own page:
+
+         homepage/Nikko Homepage.dc.html  →  outline: 3px solid #EE5439
+         contact/Nikko Contact.dc.html    →  outline: 3px solid #2B45F0
+
+       This is a scoped override of `--nk-focus-colour`, never a change to
+       the token itself: the global value in tokens.css stays coral so the
+       homepage is untouched, and every focus rule on this page already
+       reads the property rather than a literal, so one line moves all of
+       them. Logged as a source conflict — see
+       docs/14-design-source-conflicts.md and docs/19-contact-design-gaps.md.
+
+       Coral on this page was also the worse of the two on its own terms:
+       the form's error state is coral, and a coral ring around a valid
+       field being typed into reads as the field complaining. Cobalt is
+       already the page's "this one is chosen" colour — the intent card and
+       the month chip both fill with it — and it clears 3:1 against both the
+       field fill (5.9:1) and the page ground (5.6:1). [P10] */
+    --nk-focus-colour: var(--nk-cobalt);
   }
 
   /* ── Shell ──────────────────────────────────────────────────────────── */

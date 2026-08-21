@@ -16,8 +16,11 @@ import { expect, test, type Page } from '@playwright/test';
  *       `radio.checked` as the PRE-click state, which it never is, and
  *       unchecked every radio the instant it was chosen.
  *   D3  the design's cobalt underbar was an OUTER shadow, so it sat in the
- *       gap the coral focus ring's `outline-offset` opens and read as a
- *       second blue ring.
+ *       gap the focus ring's `outline-offset` opens and read as a second
+ *       ring. The ring itself is cobalt on this page — the contact design
+ *       source says `3px solid #2B45F0` where the homepage source says
+ *       `#EE5439`, so `.nk-contact` overrides `--nk-focus-colour` rather
+ *       than the token moving under the homepage's feet. docs/14 § C9.
  *   D4  the ruled textarea's top padding was not a whole multiple of its own
  *       rule pitch, so text crossed its rules.
  *   D6  a rendered <legend> is outside its fieldset's flex layout, so the
@@ -38,6 +41,11 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 const RULE_PITCH = 28;
+
+/** `--nk-cobalt`. The focus ring on THIS page only — see D3 and docs/19. */
+const COBALT = 'rgb(43, 69, 240)';
+/** `--nk-coral`. The active section's mark in the rail and the chip bar. */
+const CORAL = 'rgb(238, 84, 57)';
 
 async function fillEnough(page: Page): Promise<void> {
   await page.locator('#f-business').fill('Dunder Mifflin Paper Company');
@@ -100,14 +108,37 @@ test.describe('the enquiry form', () => {
           focusVisible: (node as Element).matches(':focus-visible'),
           width: parseFloat(paint.outlineWidth || styles.outlineWidth),
           style: paint.outlineStyle,
+          colour: paint.outlineColor,
           shadow: paint.boxShadow,
         };
       });
       expect(ring.focusVisible, `${selector} :focus-visible`).toBe(true);
       expect(ring.width, `${selector} outline width`).toBeGreaterThanOrEqual(3);
       expect(ring.style, `${selector} outline style`).not.toBe('none');
+      // Cobalt, not the site-wide coral: the two design sources disagree and
+      // `.nk-contact` overrides `--nk-focus-colour` for this page alone. If
+      // this ever reads coral, either the override was dropped or the global
+      // token was changed — and changing the token would take the homepage
+      // with it. docs/14 § C9, docs/19.
+      expect(ring.colour, `${selector} outline colour`).toBe(COBALT);
       expect(ring.shadow, `${selector} must not add an outer shadow`).not.toMatch(/^rgb.*\)\s+0px\s+3px\s+0px\s+0px$/);
     }
+  });
+
+  test('the cobalt ring is scoped to this page — the homepage keeps coral [D3]', async ({
+    page,
+  }) => {
+    // The cheap fix for D3 was to repoint `--nk-focus-colour` in tokens.css.
+    // That would have recoloured every ring on the site from one line, which
+    // is exactly why it is the wrong fix: the homepage design asks for coral
+    // in as many words. This test is the guard on that.
+    await page.goto('/');
+    const ring = await page.evaluate(() => {
+      const el = document.querySelector('main a, main button') as HTMLElement | null;
+      el?.focus();
+      return el ? getComputedStyle(el).outlineColor : '';
+    });
+    expect(ring).toBe(CORAL);
   });
 
   test("a ruled textarea's rules land on its own line grid [D4]", async ({ page }) => {

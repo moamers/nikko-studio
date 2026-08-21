@@ -146,6 +146,36 @@ B's rule is almost certainly about *variants per page*, not *instances* — six 
 
 ---
 
+### C9 — Focus ring colour: coral or cobalt? 🟠
+
+*Not an A-vs-B conflict. This one is A against A: the two page designs in the handoff bundle disagree with each other.*
+
+| | |
+|---|---|
+| **Homepage says** | `Nikko Homepage.dc.html` — `outline: 3px solid #EE5439` (coral), and `homepage/README.md`'s token table names coral as the focus colour. This is what `--nk-focus-colour` in `tokens.css` was built from |
+| **Contact says** | `Nikko Contact.dc.html` — `outline: 3px solid #2B45F0` (cobalt), consistently, on every control |
+| **Impact** | Site-wide if resolved the obvious way. `--nk-focus-colour` is one token read by every `:focus-visible` rule on the site, so repointing it to cobalt for the contact page would silently recolour the homepage too |
+| **Cost to change** | Nil either way. One token, or one scoped override |
+
+**What this build does, pending a ruling:** the global token stays coral, and `.nk-contact` overrides `--nk-focus-colour` to `var(--nk-cobalt)` for the contact page only. Each page therefore matches its own design source, and neither source has been overruled by the other.
+
+Measured, against the two grounds a ring on this page is ever drawn over — the field fill (`#F7F3EA`) and the accent-tinted page ground:
+
+| Ring | vs field fill | vs page ground | 3:1 non-text floor |
+|---|---|---|---|
+| Coral `#EE5439` | 3.17:1 | **2.99:1** | fails on the ground |
+| Cobalt `#2B45F0` | 5.89:1 | 5.56:1 | passes on both |
+
+So this is not purely a taste decision. Coral is a marginal ring at best and an under-floor one around the controls that sit directly on the page ground (the pronoun chips, the year chips, the autosave switch). [P10](./02-engineering-principles.md#p10--accessibility-is-a-functional-requirement)
+
+**Our read:** cobalt is the better value on the contact page specifically, and the reason is not aesthetic. That page's error state is coral — coral text, a coral invalid-icon square, a coral field border — so a coral ring around a *valid* field the visitor is typing into is the same colour saying two opposite things. Cobalt is already the page's "chosen" colour there (the selected intent card and the selected month chip both fill with it). On the homepage, with no form and no error state to collide with, coral is unambiguous.
+
+**One thing this measurement says about the homepage, flagged not fixed:** coral's 2.99:1 against the paper ground is not a contact-page property. The homepage draws the same coral ring over the same ground, so its focus ring is fractionally under the same floor. Nothing on the homepage was touched here — that page is out of this task's ownership and the ruling below may moot it — but if the answer to C9 is "coral everywhere", the ring needs a darker coral or a companion inner stroke to clear 3:1.
+
+**Question for design:** is cobalt the contact page's own accent, or should focus be one colour site-wide? If it should be one colour, we need to know which — and if the answer is cobalt everywhere, say so explicitly, because that is a one-line change to `tokens.css` that moves every ring on the site.
+
+---
+
 ## Open decisions inside the direction document
 
 Separate from the conflicts, B carries decisions it explicitly marks unresolved. These need closing before anything beyond the homepage is built:
