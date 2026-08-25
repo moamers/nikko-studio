@@ -36,10 +36,17 @@ compatibility_date = "2026-08-21"
 directory = "./dist"
 binding = "ASSETS"
 
-# D1 is not provisioned yet (docs/17 F1). Once it is, uncomment and fill in
-# database_id from `wrangler d1 create nikko-enquiries`, and add the same
-# binding to the Worker in the Cloudflare dashboard.
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "nikko-enquiries"
-# database_id = "<from `wrangler d1 create`>"
+# The durable record of every enquiry — `store.ts` writes here BEFORE either
+# email is attempted, so a mail failure costs a notification and not a lead.
+#
+# This MUST live in this file and not only in the dashboard. A binding is
+# configuration, and `wrangler deploy` replaces the Worker's configuration
+# with whatever is here: a D1 binding added through the dashboard is removed
+# by the very next deploy, silently, and submissions then stop being stored
+# while everything else still appears to work. That happened once
+# (2026-08-25) and is exactly the failure this comment exists to prevent.
+# Secrets are the exception — they are stored separately and do survive.
+[[d1_databases]]
+binding = "DB"
+database_name = "nikko-enquiries"
+database_id = "e1b5ff68-dae3-4047-be43-13eff8b3e8f7"
