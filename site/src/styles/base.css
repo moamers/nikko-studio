@@ -41,6 +41,17 @@
     outline-offset: var(--nk-focus-offset);
   }
 
+  /* A text field takes its ring flush to its own edge, everywhere on the
+     site. Two reasons, and they happen to agree. It is what makes an input
+     look identical wherever it appears, which is the founder's rule; and on
+     the ink footer the 3px gap the offset opens is filled by the ink
+     itself, which drops the cobalt ring to 2.89:1 and under the 3:1 floor.
+     Flush, the ring sits against the field's own paper at 5.55:1. Every
+     other control keeps the offset. [P10] */
+  :is(input, textarea, select) {
+    --nk-focus-offset: 0px;
+  }
+
   ::selection {
     background: var(--nk-yellow);
     color: var(--nk-ink);

@@ -17,7 +17,6 @@
 
 @layer components {
   .nk-contact {
-    --nk-field: color-mix(in srgb, var(--nk-paper) 65%, white 35%);
     /* Coral, dropped far enough to be readable as small text on the page
        ground. Plain `--nk-coral` is 3.03:1 at 10px against the accent-tinted
        ground and fails AA outright; this is 4.66:1. It was introduced for

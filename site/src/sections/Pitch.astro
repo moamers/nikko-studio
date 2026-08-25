@@ -280,14 +280,24 @@ function autocompleteFor(field: { name: string; type: 'text' | 'email' }): strin
     .nk-pitch__input {
       width: 100%;
       padding: 15px;
-      background: var(--nk-paper);
-      border: 2px solid var(--nk-paper);
+      /* The same fill and the same 2px border as every other field on the
+         site — see `--nk-field` in tokens.css. Previously paper-on-paper,
+         which made the border invisible and left this reading as a
+         different control from the enquiry form's fields. */
+      background: var(--nk-field);
+      border: 2px solid rgb(var(--nk-ink-rgb) / 0.28);
       border-radius: var(--nk-radius-input);
       color: var(--nk-ink);
       font-family: var(--nk-font-body);
       /* Never lower — 16px is the floor iOS uses to decide whether to zoom
          the viewport on focus. [P2] */
       font-size: var(--nk-size-input);
+    }
+
+    /* Focus darkens the border to solid ink, exactly as the enquiry form's
+       fields do, so the two behave identically as well as matching at rest. */
+    .nk-pitch__input:focus-visible {
+      border-color: var(--nk-ink);
     }
 
     .nk-pitch__input::placeholder {
