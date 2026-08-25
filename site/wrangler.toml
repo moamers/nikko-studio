@@ -15,6 +15,23 @@ name = "nikkostudio"
 main = "src/worker.ts"
 compatibility_date = "2026-08-21"
 
+# Plain runtime variables. These belong HERE rather than in the dashboard:
+# `wrangler deploy` replaces the Worker's configuration with this file, so a
+# plain variable added through the dashboard is removed by the next deploy.
+# (Encrypted secrets are stored separately and survive — which is why
+# RESEND_API_KEY kept working when these two silently disappeared.)
+#
+# Only non-secret values go here. RESEND_API_KEY, ENQUIRY_IP_SALT and
+# ENQUIRY_NOTIFY_TO stay dashboard secrets: the first two are credentials,
+# and the third is a private inbox that does not belong in a git history.
+[vars]
+# The From: on both emails. Public by definition — it is printed in every
+# message. Resend's shared sender until nikkostudio.co is verified there;
+# note it only delivers to the Resend account's own address, so a test to
+# any other inbox will report success and arrive nowhere. Swap this to
+# "Nikko Studio <hello@nikkostudio.co>" the day the domain is verified.
+ENQUIRY_FROM = "Nikko Studio <onboarding@resend.dev>"
+
 # The built Astro site. `binding` is what makes `env.ASSETS` exist in
 # `src/worker.ts`; without it the Worker has no way to serve a file.
 [assets]

@@ -5,9 +5,17 @@
 -- system of record: docs/16-forms-and-data-capture.md, "Step 4 is the one that
 -- must succeed".
 --
--- Apply:
+-- Apply, by CLI:
 --   wrangler d1 create nikko-enquiries
 --   wrangler d1 migrations apply nikko-enquiries --remote
+--
+-- Apply, by hand in the Cloudflare D1 console: copy this file from GitHub's
+-- RAW view, not the rendered one. A rendered copy can arrive with its line
+-- breaks stripped, and every `--` below then comments out the rest of the
+-- statement. D1 reports that as `incomplete input: SQLITE_ERROR`; some
+-- clients instead treat the whole file as one comment and report success
+-- having created nothing at all, which is the worse failure. Either way,
+-- check the Tables tab afterwards and confirm both tables exist.
 --
 -- D1 is SQLite. Timestamps are ISO-8601 UTC strings (SQLite has no date type,
 -- and a sortable string beats a unix integer for a human reading the table).
