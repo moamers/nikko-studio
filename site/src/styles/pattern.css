@@ -1,0 +1,87 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   pattern.css — the generative pattern field.
+
+   Imported by `PatternField.astro`, not by `global.css`, so a page with no
+   pattern on it pays nothing. (Same arrangement as `header.css` and
+   `contact.css`.)
+
+   There is very little here on purpose. Everything the field actually looks
+   like is drawn by `pattern.ts` onto a canvas; this file positions that
+   canvas, and supplies the static texture underneath it for the case where
+   no script ever runs. No hex literal appears below. [P11]
+   ───────────────────────────────────────────────────────────────────────── */
+
+@layer components {
+  .nk-pattern {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    /* The field is decoration behind content. Anything that must sit on top
+       needs its own positioning — see the usage note in PatternField.astro. */
+    z-index: 0;
+  }
+
+  /* The canvas takes pointer events back, because the pointer IS the
+     interaction. The wrapper stays transparent to them so a field behind a
+     link never eats the click. */
+  .nk-pattern__canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    pointer-events: auto;
+    touch-action: pan-y;
+    /* Fades up over the fallback once `pattern.ts` has a field running. A
+       browser with no script leaves this at 0 and keeps the texture below. */
+    opacity: 0;
+    transition: opacity var(--nk-dur-chrome) var(--nk-ease-chrome);
+  }
+
+  /* `--nk-pattern-strength` is written on the wrapper by the component. One
+     opacity on the whole canvas, never a per-shape alpha — see `pattern.ts`
+     for why the difference is visible. */
+  .nk-pattern__canvas[data-pattern-ready='true'] {
+    opacity: var(--nk-pattern-strength, 1);
+  }
+
+  /* ── The no-JS texture ────────────────────────────────────────────────
+     A stand-in, not a replica: CSS gradients can draw a quarter disc and
+     they cannot draw an eight-point star, so the najmeh case falls back to
+     the lattice its stars sit on rather than to a worse star. Both are held
+     well below the live field's contrast, so the swap reads as the pattern
+     arriving rather than changing. */
+  .nk-pattern--quarters {
+    background-image:
+      radial-gradient(circle at 0 0, var(--nk-ink) 49%, transparent 50%),
+      radial-gradient(circle at 100% 100%, var(--nk-ink) 49%, transparent 50%);
+    background-size: 44px 44px;
+    opacity: 0.1;
+  }
+
+  .nk-pattern--najmeh {
+    background-image:
+      linear-gradient(45deg, var(--nk-accent) 25%, transparent 26%, transparent 74%, var(--nk-accent) 75%),
+      linear-gradient(45deg, var(--nk-accent) 25%, transparent 26%, transparent 74%, var(--nk-accent) 75%);
+    background-position: 0 0, 36px 36px;
+    background-size: 72px 72px;
+    opacity: 0.16;
+  }
+
+  .nk-pattern--ink.nk-pattern--quarters {
+    background-image:
+      radial-gradient(circle at 0 0, var(--nk-paper) 49%, transparent 50%),
+      radial-gradient(circle at 100% 100%, var(--nk-paper) 49%, transparent 50%);
+  }
+
+  /* Once the canvas is up the fallback underneath it is dead weight that can
+     still be seen through a partly transparent field. Drop it. */
+  .nk-pattern:has(.nk-pattern__canvas[data-pattern-ready='true']) {
+    background-image: none;
+    opacity: 1;
+  }
+
+  /* The field is never the reason a page cannot be read. Under reduced
+     motion `pattern.ts` draws one still composition and creates no loop —
+     there is nothing to disable here, and this rule exists so the next
+     reader does not go looking for one. */
+}

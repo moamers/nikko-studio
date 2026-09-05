@@ -1,0 +1,91 @@
+---
+/**
+ * PatternField — a living generative tile field, drawn on one canvas.
+ *
+ * The shapes and the motion belong to `src/scripts/pattern.ts`; this file is
+ * only the mount point, the options and the fallback. See that file's header
+ * for the six motion layers and why it is canvas rather than DOM.
+ *
+ * DECORATION, ALWAYS. The canvas is `aria-hidden` and the wrapper is
+ * `presentation`: nothing a reader needs is ever inside a pattern field, so a
+ * screen reader is told nothing at all rather than told about a rectangle.
+ * If a field ever needs to carry meaning, it is the wrong component. [P10]
+ *
+ * WHAT HAPPENS WITH NO JAVASCRIPT. The wrapper carries a static CSS texture,
+ * and the canvas fades up over it only once `pattern.ts` has genuinely
+ * started a field (`data-pattern-ready`). A browser that runs no script, or
+ * has no 2d context, keeps the static texture and is never handed a blank
+ * rectangle where a pattern was meant to be. [P1, P3]
+ *
+ * The fallback is a stand-in, not a replica — CSS gradients cannot draw a
+ * najmeh — and it is deliberately quieter than the live field so the swap,
+ * when it happens, reads as the pattern arriving rather than changing.
+ *
+ * THE FIELD DRAWS SHAPES, NOT A BACKGROUND. Whatever sits behind it belongs
+ * to the caller — the section's own colour, an image, anything. For `najmeh`
+ * that background IS the screen the light comes through, so a najmeh field
+ * on a paper section needs an ink ground put there by the caller.
+ *
+ * USAGE. The field fills its positioned parent, so give the parent a size
+ * and a `position` and put the field behind the content:
+ *
+ *   <div class="something" style="position: relative">
+ *     <PatternField variant="najmeh" tone="ink" strength={0.9} />
+ *     <div style="position: relative">…the actual content…</div>
+ *   </div>
+ */
+import '../styles/pattern.css';
+
+interface Props {
+  /** `quarters` is a texture to sit behind type. `najmeh` is a subject. */
+  variant?: 'quarters' | 'najmeh';
+  /** `accent` follows the cycle, `trio` bands all three, `mono` is quietest. */
+  palette?: 'accent' | 'trio' | 'mono';
+  /** The ground beneath. Decides whether tiles are ink or paper. */
+  tone?: 'paper' | 'ink';
+  /** Cell pitch in CSS pixels. Capped by `--nk-pattern-max-cells` at runtime. */
+  density?: number;
+  /** `quarters`: how broken up the field is. `najmeh`: the resting aperture. */
+  amount?: number;
+  /**
+   * Overall opacity, applied to the whole canvas rather than to each shape —
+   * see the note in `pattern.ts`. A backdrop behind body copy wants ~0.1; a
+   * panel that is the point wants 1.
+   */
+  strength?: number;
+  class?: string;
+}
+
+const {
+  variant = 'quarters',
+  palette = 'accent',
+  tone = 'paper',
+  density = variant === 'najmeh' ? 72 : 44,
+  amount = variant === 'najmeh' ? 0.3 : 0.42,
+  strength = 1,
+  class: className,
+} = Astro.props;
+---
+
+<div
+  class:list={['nk-pattern', `nk-pattern--${variant}`, `nk-pattern--${tone}`, className]}
+  role="presentation"
+  data-pattern-fallback={variant}
+  style={`--nk-pattern-strength: ${strength}`}
+>
+  <canvas
+    class="nk-pattern__canvas"
+    aria-hidden="true"
+    data-pattern
+    data-pattern-variant={variant}
+    data-pattern-palette={palette}
+    data-pattern-tone={tone}
+    data-pattern-density={String(density)}
+    data-pattern-amount={String(amount)}></canvas>
+</div>
+
+<script>
+  import { initPatternFields } from '../scripts/pattern';
+
+  initPatternFields();
+</script>

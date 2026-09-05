@@ -1,0 +1,576 @@
+---
+/**
+ * /lab/patterns — an internal prototype, not a route anyone is meant to find.
+ *
+ * WHAT THIS PAGE IS FOR. Two pattern studies exist as a standalone pitch; the
+ * question that pitch cannot answer is whether either one survives contact
+ * with a real section, at real contrast, behind real copy. So this page puts
+ * the field into three places on the actual site and uses the actual words
+ * from `src/content/homepage/*.yaml` — not lorem, and not a mock-up of the
+ * copy. If the heading is hard to read here, it will be hard to read there.
+ *
+ * NEVER INDEXED. `noindex` is passed to `Base` explicitly rather than relying
+ * on `PUBLIC_ALLOW_INDEXING` being unset, because production sets that flag
+ * and a prototype competing with the homepage in search is exactly the
+ * mistake that flag exists to prevent. The page also carries no navigation
+ * to it: reaching it means typing the URL.
+ *
+ * NOT SHIPPED. Nothing on this page is wired into the real homepage. The
+ * component and the renderer are real and reviewed; where — and whether —
+ * they land is the founder's call, and until that call this route is the
+ * whole footprint.
+ */
+import Base from '../../layouts/Base.astro';
+import PatternField from '../../components/PatternField.astro';
+import Pill from '../../components/Pill.astro';
+import { getHero, getLanguage, getPitch } from '../../lib/content/homepage';
+
+const hero = await getHero();
+const language = await getLanguage();
+const pitch = await getPitch();
+
+/** The three contexts, in the order the homepage would meet them. */
+const CONTEXTS = [
+  {
+    id: 'hero',
+    index: '01',
+    title: 'Hero backdrop',
+    variant: 'Quarters · mono · strength 0.10',
+    note:
+      'The quietest setting there is. The field is behind the H1 doing nothing you would ' +
+      'consciously notice — which is the job. Turn it off with the toggle and the section ' +
+      'goes flat; that difference is the whole argument for it.',
+  },
+  {
+    id: 'language',
+    index: '02',
+    title: 'Language panel',
+    variant: 'Najmeh · accent · arch · strength 1',
+    note:
+      'The one place the reference is the point rather than the texture. It sits in the ' +
+      'arch beside the Arabic setting, on the turquoise ground the section already has.',
+  },
+  {
+    id: 'pitch',
+    index: '03',
+    title: 'Footer field',
+    variant: 'Najmeh · accent · ink · split · strength 0.55',
+    note:
+      'Full bleed behind the copy was the first attempt and it failed: at any strength ' +
+      'where the stars still read as stars, the body text and the smallprint underneath ' +
+      'them do not. So the field is beside the words rather than under them, bleeding off ' +
+      'the right edge. That is the honest answer for a section that has to carry a form — ' +
+      'a pattern can hold a heading, and it cannot hold 14px of legal type.',
+  },
+] as const;
+---
+
+<Base
+  title="Pattern prototype"
+  description="Internal prototype: the generative pattern field in three homepage contexts."
+  noindex
+>
+  <div class="lab" data-lab>
+    <header class="lab__mast">
+      <p class="lab__eyebrow">Nikko Studio · internal prototype · not a live route</p>
+      <h1 class="lab__title">The pattern, doing a job</h1>
+      <p class="lab__stand">
+        The same field in three places on the homepage, with the real copy. Scroll — the
+        pattern is stirred by scroll velocity, so it surges as the page moves and settles
+        when it stops. Drag across any of them; tap to send a wave through.
+      </p>
+
+      <ol class="lab__index">
+        {
+          CONTEXTS.map((context) => (
+            <li class="lab__index-item">
+              <a class="lab__index-link" href={`#${context.id}`}>
+                <span class="lab__index-num">{context.index}</span>
+                <span class="lab__index-name">{context.title}</span>
+                <span class="lab__index-spec">{context.variant}</span>
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+    </header>
+
+    {/* ── 01 · Hero backdrop ─────────────────────────────────────────── */}
+    <section class="lab__case" id="hero">
+      <p class="lab__caseline"><b>01</b> Hero backdrop · {CONTEXTS[0].variant}</p>
+
+      <div class="demo demo--hero">
+        <PatternField variant="quarters" palette="mono" tone="paper" density={34} amount={0.38} strength={0.1} />
+
+        <div class="demo__content">
+          <ul class="demo__ticket">
+            {
+              hero.ticket.map((item) => (
+                <li class:list={['demo__chip', item.highlight && 'demo__chip--on']}>{item.label}</li>
+              ))
+            }
+          </ul>
+          <h2 class="demo__h1">{hero.heading}</h2>
+          <p class="demo__lead">{hero.lead}</p>
+          <Pill href={hero.cta.href} size="xl">{hero.cta.label}</Pill>
+        </div>
+      </div>
+
+      <p class="lab__note">{CONTEXTS[0].note}</p>
+    </section>
+
+    {/* ── 02 · Language panel ────────────────────────────────────────── */}
+    <section class="lab__case" id="language">
+      <p class="lab__caseline"><b>02</b> Language panel · {CONTEXTS[1].variant}</p>
+
+      <div class="demo demo--lang">
+        <div class="demo__lang-copy">
+          <h2 class="demo__h2">{language.heading}</h2>
+          <p class="demo__editorial">{language.editorial}</p>
+          <p class="demo__arabic" dir="rtl" lang="ar">{language.arabic}</p>
+        </div>
+
+        <div class="demo__arch">
+          <PatternField variant="najmeh" palette="accent" tone="ink" density={64} amount={0.28} />
+        </div>
+      </div>
+
+      <p class="lab__note">{CONTEXTS[1].note}</p>
+    </section>
+
+    {/* ── 03 · Footer field ──────────────────────────────────────────── */}
+    <section class="lab__case" id="pitch">
+      <p class="lab__caseline"><b>03</b> Footer field · {CONTEXTS[2].variant}</p>
+
+      <div class="demo demo--pitch">
+        <div class="demo__content demo__content--pitch">
+          <h2 class="demo__h2 demo__h2--paper">{pitch.heading}</h2>
+          <p class="demo__body">{pitch.body[0]}</p>
+
+          <form class="demo__form" novalidate>
+            {
+              pitch.newsletter.fields.map((field) => (
+                <p class="demo__field">
+                  <label class="demo__label" for={`lab-${field.name}`}>
+                    {field.label}
+                  </label>
+                  <input
+                    class="demo__input"
+                    id={`lab-${field.name}`}
+                    name={field.name}
+                    type={field.type}
+                    placeholder={field.placeholder}
+                    autocomplete="off"
+                  />
+                </p>
+              ))
+            }
+            <Pill type="button" size="lg" tone="paper">{pitch.newsletter.submit}</Pill>
+          </form>
+          <p class="demo__smallprint">
+            Prototype only — this form is not wired to anything and submits nowhere.
+          </p>
+        </div>
+
+        <div class="demo__bleed">
+          <PatternField variant="najmeh" palette="accent" tone="ink" density={78} amount={0.24} strength={0.55} />
+        </div>
+      </div>
+
+      <p class="lab__note">{CONTEXTS[2].note}</p>
+    </section>
+
+    {/* ── The comparison rail ────────────────────────────────────────── */}
+    <div class="rail" data-lab-rail>
+      <p class="rail__label">Compare</p>
+      <div class="rail__group" role="group" aria-label="Pattern visibility">
+        <button type="button" class="rail__btn" data-lab-on="true" aria-pressed="true">Pattern on</button>
+        <button type="button" class="rail__btn" data-lab-on="false" aria-pressed="false">Off</button>
+      </div>
+      <div class="rail__group" role="group" aria-label="Palette">
+        <button type="button" class="rail__btn" data-lab-palette="" aria-pressed="true">As set</button>
+        <button type="button" class="rail__btn" data-lab-palette="trio" aria-pressed="false">Trio</button>
+        <button type="button" class="rail__btn" data-lab-palette="mono" aria-pressed="false">Mono</button>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<script>
+  import { initPatternFields, destroyPatternFields } from '../../scripts/pattern';
+
+  /**
+   * The prototype's comparison rail.
+   *
+   * Options are read once when a field mounts, so changing one means writing
+   * the new `data-*`, tearing the fields down and mounting them again. That
+   * is a prototype affordance and deliberately not an API on the renderer:
+   * the real site sets a field's options in the template and never changes
+   * them, and giving `pattern.ts` a live setter for one internal page would
+   * be interface nobody else asks for. [P14]
+   */
+  const rail = document.querySelector<HTMLElement>('[data-lab-rail]');
+  const stage = document.querySelector<HTMLElement>('[data-lab]');
+
+  if (rail && stage) {
+    const canvases = Array.from(stage.querySelectorAll<HTMLCanvasElement>('canvas[data-pattern]'));
+    // Whatever each field was authored with, so "As set" can put it back.
+    const authored = canvases.map((canvas) => canvas.dataset.patternPalette ?? 'accent');
+
+    let visible = true;
+    let palette = '';
+
+    const press = (group: string, value: string): void => {
+      rail.querySelectorAll<HTMLButtonElement>(`[data-lab-${group}]`).forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset[`lab${group[0]?.toUpperCase()}${group.slice(1)}`] === value));
+      });
+    };
+
+    const apply = (): void => {
+      destroyPatternFields(stage);
+      canvases.forEach((canvas, index) => {
+        canvas.dataset.patternPalette = palette || authored[index] || 'accent';
+        const wrapper = canvas.closest<HTMLElement>('.nk-pattern');
+        if (wrapper) wrapper.hidden = !visible;
+      });
+      if (visible) initPatternFields(stage);
+    };
+
+    rail.querySelectorAll<HTMLButtonElement>('[data-lab-on]').forEach((button) => {
+      button.addEventListener('click', () => {
+        visible = button.dataset.labOn === 'true';
+        press('on', button.dataset.labOn ?? 'true');
+        apply();
+      });
+    });
+
+    rail.querySelectorAll<HTMLButtonElement>('[data-lab-palette]').forEach((button) => {
+      button.addEventListener('click', () => {
+        palette = button.dataset.labPalette ?? '';
+        press('palette', palette);
+        apply();
+      });
+    });
+  }
+</script>
+
+<style>
+  /* Prototype-only styling. It lives here rather than in `src/styles` on
+     purpose: nothing below is site furniture, and none of it should outlive
+     the decision this page exists to support. Tokens only, no hex. [P11] */
+  @layer components {
+    .lab {
+      max-width: var(--nk-content-max);
+      margin: 0 auto;
+      padding: clamp(28px, 5vw, 64px) var(--nk-gutter) clamp(120px, 18vh, 200px);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(48px, 7vw, 88px);
+    }
+
+    .lab__eyebrow,
+    .lab__caseline,
+    .lab__index-num,
+    .lab__index-spec,
+    .rail__label,
+    .rail__btn,
+    .demo__chip,
+    .demo__label,
+    .demo__smallprint {
+      font-family: var(--nk-font-mono);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+    }
+
+    .lab__eyebrow {
+      margin: 0 0 16px;
+      font-size: var(--nk-size-mono);
+      color: var(--nk-coral);
+    }
+
+    .lab__title {
+      margin: 0 0 16px;
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-h1);
+      line-height: var(--nk-leading-h1);
+      letter-spacing: var(--nk-tracking-h1);
+      text-transform: uppercase;
+      text-wrap: balance;
+    }
+
+    .lab__stand {
+      margin: 0;
+      max-width: var(--nk-measure-prose);
+      font-size: var(--nk-size-lead);
+      color: var(--nk-ink-muted);
+    }
+
+    .lab__index {
+      list-style: none;
+      margin: 28px 0 0;
+      padding: 0;
+      display: grid;
+      gap: 0;
+      border-top: var(--nk-rule-hair);
+    }
+
+    .lab__index-link {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 4px 16px;
+      align-items: baseline;
+      padding: 14px 0;
+      min-height: var(--nk-tap-min);
+      border-bottom: var(--nk-rule-hair);
+      color: var(--nk-ink);
+    }
+
+    .lab__index-link:hover { color: var(--nk-coral); }
+
+    .lab__index-num { font-size: var(--nk-size-mono); color: var(--nk-ink-muted); }
+
+    .lab__index-name {
+      font-family: var(--nk-font-body);
+      font-size: var(--nk-size-body);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .lab__index-spec {
+      grid-column: 2;
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      color: var(--nk-ink-muted);
+    }
+
+    .lab__case { display: flex; flex-direction: column; gap: var(--nk-gap-stack); }
+
+    .lab__caseline {
+      margin: 0;
+      padding-top: 12px;
+      border-top: var(--nk-rule);
+      font-size: var(--nk-size-mono);
+      color: var(--nk-ink-muted);
+    }
+
+    .lab__caseline b { color: var(--nk-ink); }
+
+    .lab__note {
+      margin: 0;
+      max-width: var(--nk-measure-prose);
+      font-size: var(--nk-size-note);
+      color: var(--nk-ink-muted);
+    }
+
+    /* ── The demos ──────────────────────────────────────────────────── */
+    .demo { position: relative; overflow: hidden; }
+
+    .demo__content { position: relative; z-index: 1; }
+
+    .demo--hero {
+      background: var(--nk-paper);
+      padding: clamp(36px, 6vw, 72px) clamp(24px, 4vw, 56px);
+      box-shadow: var(--nk-shadow-ticket);
+    }
+
+    .demo__ticket {
+      list-style: none;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 24px;
+      padding: 0;
+    }
+
+    .demo__chip {
+      padding: 7px 14px;
+      border: var(--nk-rule);
+      border-radius: var(--nk-radius-oval);
+      font-size: var(--nk-size-mono-sm);
+    }
+
+    .demo__chip--on { background: var(--nk-accent); color: var(--nk-on-accent); }
+
+    .demo__h1 {
+      margin: 0 0 20px;
+      max-width: var(--nk-measure-heading);
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-h1);
+      line-height: var(--nk-leading-h1);
+      letter-spacing: var(--nk-tracking-h1);
+      text-transform: uppercase;
+      text-wrap: balance;
+    }
+
+    .demo__lead {
+      margin: 0 0 28px;
+      max-width: var(--nk-measure-prose);
+      font-size: var(--nk-size-lead);
+      color: var(--nk-ink-muted);
+    }
+
+    /* 02 — the turquoise ground the Language section already has. Turquoise
+       as a full-bleed surface is exactly what the founder's C1 ruling
+       permits; nothing in the pattern itself is turquoise. */
+    .demo--lang {
+      display: grid;
+      gap: clamp(24px, 4vw, 48px);
+      align-items: center;
+      background: var(--nk-turquoise);
+      padding: clamp(32px, 5vw, 64px) clamp(24px, 4vw, 56px);
+    }
+
+    @media (min-width: 860px) {
+      .demo--lang { grid-template-columns: minmax(0, 1fr) minmax(0, 42%); }
+    }
+
+    .demo__h2 {
+      margin: 0 0 16px;
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-h2-pitch);
+      line-height: var(--nk-leading-h1);
+      letter-spacing: var(--nk-tracking-h1);
+      text-transform: uppercase;
+      color: var(--nk-paper);
+      text-wrap: balance;
+    }
+
+    .demo__h2--paper { color: var(--nk-paper); }
+
+    .demo__editorial {
+      margin: 0;
+      font-family: var(--nk-font-editorial);
+      font-style: italic;
+      font-size: var(--nk-size-editorial);
+      color: var(--nk-paper);
+    }
+
+    .demo__arabic {
+      margin: 6px 0 0;
+      font-family: var(--nk-font-arabic);
+      font-size: var(--nk-size-editorial);
+      line-height: var(--nk-leading-arabic);
+      color: var(--nk-paper);
+    }
+
+    /* The arch is the site's own radius token, so the panel is the same
+       shape as every image frame on the homepage. */
+    .demo__arch {
+      position: relative;
+      /* The screen the light comes through. The field draws shapes only —
+         the ground is always the caller's, see PatternField.astro. */
+      background: var(--nk-ink);
+      aspect-ratio: 3 / 4;
+      max-height: 62vh;
+      margin-inline: auto;
+      width: 100%;
+      border-radius: var(--nk-radius-arch-frame);
+      overflow: hidden;
+      box-shadow: var(--nk-shadow-scrap);
+    }
+
+    /* 03 — the black section, split.
+       The field bleeds off the right edge and the copy keeps a clean ground,
+       because a najmeh strong enough to read as a najmeh is strong enough to
+       swallow 13px of smallprint. Below 860px the two stack, and the field
+       becomes a band under the form rather than a column beside it — same
+       principle, one dimension down. */
+    .demo--pitch {
+      display: grid;
+      gap: clamp(28px, 4vw, 48px);
+      background: var(--nk-ink);
+      padding: clamp(40px, 6vw, 80px) 0 clamp(40px, 6vw, 80px) clamp(24px, 4vw, 56px);
+    }
+
+    @media (min-width: 860px) {
+      .demo--pitch {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 44%);
+        align-items: center;
+      }
+    }
+
+    .demo__content--pitch { max-width: var(--nk-measure-prose); }
+
+    /* The field's own box. `position: relative` because the field fills its
+       positioned parent; the height is set here because a canvas has no
+       intrinsic one. */
+    .demo__bleed {
+      position: relative;
+      min-height: clamp(240px, 34vh, 420px);
+      align-self: stretch;
+    }
+
+    .demo__body {
+      margin: 0 0 var(--nk-gap-block);
+      font-size: var(--nk-size-body);
+      color: var(--nk-paper-muted);
+    }
+
+    .demo__form { display: flex; flex-direction: column; gap: var(--nk-gap-stack); align-items: flex-start; }
+
+    .demo__field { display: flex; flex-direction: column; gap: 6px; margin: 0; width: 100%; max-width: 34ch; }
+
+    .demo__label { font-size: var(--nk-size-mono-sm); color: var(--nk-paper-muted); }
+
+    .demo__input {
+      width: 100%;
+      padding: 13px 14px;
+      border: 0;
+      border-radius: var(--nk-radius-input);
+      background: var(--nk-field);
+      color: var(--nk-ink);
+      font-family: var(--nk-font-body);
+      font-size: var(--nk-size-input);
+    }
+
+    .demo__smallprint {
+      margin: 20px 0 0;
+      font-size: var(--nk-size-mono-sm);
+      letter-spacing: var(--nk-tracking-mono-wide);
+      color: var(--nk-paper-muted);
+    }
+
+    /* ── The rail ───────────────────────────────────────────────────── */
+    .rail {
+      position: sticky;
+      bottom: 16px;
+      z-index: var(--nk-z-rail);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px 14px;
+      align-self: center;
+      padding: 10px 14px;
+      background: var(--nk-ink);
+      border-radius: var(--nk-radius-oval);
+    }
+
+    .rail__label { font-size: var(--nk-size-mono-sm); color: var(--nk-paper-muted); }
+
+    .rail__group { display: flex; border: 1.5px solid rgb(var(--nk-paper-rgb) / 0.28); border-radius: var(--nk-radius-oval); overflow: hidden; }
+
+    .rail__btn {
+      appearance: none;
+      border: 0;
+      background: transparent;
+      color: var(--nk-paper-muted);
+      font-size: var(--nk-size-mono-sm);
+      padding: 9px 12px;
+      min-height: var(--nk-tap-min);
+      cursor: pointer;
+      transition: background-color var(--nk-dur-step) var(--nk-ease-step);
+    }
+
+    .rail__btn:hover { color: var(--nk-paper); }
+    .rail__btn[aria-pressed='true'] { background: var(--nk-accent); color: var(--nk-on-accent); }
+
+    /* The rail sits on ink, so its ring is yellow — cobalt measures 2.89:1
+       there and fails. Same rule as the mobile menu and the footer. [P10] */
+    .rail__btn:focus-visible { outline: var(--nk-focus-width) solid var(--nk-yellow); outline-offset: -3px; }
+
+    @media (max-width: 479px) {
+      .lab { padding-inline: 20px; }
+      .rail { align-self: stretch; justify-content: center; }
+    }
+  }
+</style>

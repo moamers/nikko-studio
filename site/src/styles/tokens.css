@@ -302,6 +302,14 @@
     --nk-interval-residue: 110ms;
     --nk-residue-pool: 10;              /* fixed recycled pool size [P4] */
 
+    /* ── Pattern field ──────────────────────────────────────────────────
+       The hard ceiling on how many shapes a generative field will ever
+       draw in one frame, whatever pitch it is asked for. A 4K viewport at
+       a small pitch would otherwise ask for tens of thousands; `pattern.ts`
+       widens the cell instead of blowing the frame budget. Same class of
+       guarantee as `--nk-residue-pool` above. [P4] */
+    --nk-pattern-max-cells: 1500;
+
     /* ── Breakpoints ────────────────────────────────────────────────────
        Named here for reference; `@media` cannot read a custom property, so
        the literal widths are repeated in the rules that use them. This is the
