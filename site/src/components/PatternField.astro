@@ -39,11 +39,23 @@ import '../styles/pattern.css';
 interface Props {
   /**
    * Three textures — `quarters`, `truchet`, `wave` — to sit behind type at
-   * low strength, and four subjects — `najmeh`, `nested`, `ribbon`,
-   * `blocks` — strong enough to be the thing you are looking at. See the
-   * table at the top of `pattern.ts`.
+   * low strength; five subjects — `najmeh`, `nested`, `ribbon`, `blocks`,
+   * `arcbfly` — strong enough to be the thing you are looking at; and two
+   * objects — `isosphere`, `isocross` — which do not tile at all and want a
+   * plate the way a photograph does. See the table at the top of
+   * `pattern.ts`.
    */
-  variant?: 'quarters' | 'truchet' | 'wave' | 'najmeh' | 'nested' | 'ribbon' | 'blocks';
+  variant?:
+    | 'quarters'
+    | 'truchet'
+    | 'wave'
+    | 'najmeh'
+    | 'nested'
+    | 'ribbon'
+    | 'blocks'
+    | 'arcbfly'
+    | 'isosphere'
+    | 'isocross';
   /** `accent` follows the cycle, `trio` bands all three, `mono` is quietest. */
   palette?: 'accent' | 'trio' | 'mono';
   /** The ground beneath. Decides whether tiles are ink or paper. */
@@ -81,6 +93,10 @@ const DENSITY: Record<string, number> = {
   nested: 74,
   ribbon: 44,
   blocks: 62,
+  arcbfly: 96,
+  // The objects size themselves to their box, so this is only a floor.
+  isosphere: 60,
+  isocross: 60,
 };
 
 const {

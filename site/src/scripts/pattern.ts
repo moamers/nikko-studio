@@ -19,6 +19,18 @@
  *                      flow field, so the bands snake as it moves
  *   blocks    subject  isometric cubes with striped faces, rising and falling
  *                      on the field. The op-art one.
+ *   arcbfly   subject  concentric half-discs on a Truchet flip. The banded
+ *                      cousin of `truchet`: mass rather than line, so it is
+ *                      the one to reach for when a pattern is meant to be
+ *                      seen rather than felt.
+ *   isosphere object   a voxel sphere, turning, dissolving to wireframe
+ *                      where the field passes through it
+ *   isocross  object   the same machinery as a 3D plus
+ *
+ * OBJECTS ARE NOT FIELDS. The last two do not tile and do not fill a
+ * section: they are one thing, centred, that wants a plate the way a
+ * photograph does. They are in this file because they share every one of the
+ * six motion layers and the whole lifecycle — not because they are patterns.
  *
  * WHY CANVAS AND NOT CSS OR SVG. A field this size is 400-1500 shapes, each
  * with its own spring. As DOM nodes that is 1500 elements the compositor has
@@ -78,7 +90,10 @@ export type PatternVariant =
   | 'wave'
   | 'nested'
   | 'ribbon'
-  | 'blocks';
+  | 'blocks'
+  | 'arcbfly'
+  | 'isosphere'
+  | 'isocross';
 
 /**
  * Which colours the tiles take.
@@ -96,7 +111,7 @@ export type PatternPalette = 'accent' | 'trio' | 'mono';
 export type PatternTone = 'paper' | 'ink';
 
 /** How `build()` lays the cells out. */
-type Lattice = 'square' | 'tri' | 'iso';
+type Lattice = 'square' | 'tri' | 'iso' | 'voxel';
 
 /**
  * Per-variant facts the rest of the file reads rather than hard-codes.
@@ -115,6 +130,9 @@ const SPEC: Record<PatternVariant, { lattice: Lattice; cap: number; density: num
   nested: { lattice: 'square', cap: 500, density: 74 },
   ribbon: { lattice: 'tri', cap: 1400, density: 44 },
   blocks: { lattice: 'iso', cap: 90, density: 62 },
+  arcbfly: { lattice: 'square', cap: 420, density: 96 },
+  isosphere: { lattice: 'voxel', cap: 760, density: 60 },
+  isocross: { lattice: 'voxel', cap: 760, density: 60 },
 };
 
 /**
@@ -145,8 +163,12 @@ interface Cell {
   ripple: number;
   /** `tri`: which way up the triangle points. */
   up?: boolean;
-  /** `iso`: lattice coordinates, used for painter's-algorithm ordering. */
+  /** `iso` and `voxel`: how far back this cell is, for painter's ordering. */
   depth?: number;
+  /** `voxel`: position in the 3D lattice, before rotation and projection. */
+  px?: number;
+  py?: number;
+  pz?: number;
 }
 
 interface Options {
@@ -164,6 +186,9 @@ interface Options {
    *   nested    how many rings per cell
    *   ribbon    how much of the lattice the ribbons occupy
    *   blocks    how much of the cluster is solid
+   *   arcbfly   how many bands per half-disc
+   *   isosphere how much of the shell stays solid rather than wireframe
+   *   isocross  the same, and the thickness of the arms
    */
   amount: number;
 }
@@ -474,7 +499,80 @@ class PatternField {
 
     if (spec.lattice === 'tri') this.buildTriangles(size, cap);
     else if (spec.lattice === 'iso') this.buildCubes(size, cap);
+    else if (spec.lattice === 'voxel') this.buildVoxels(cap);
     else this.buildSquares(size, cap);
+  }
+
+  /**
+   * Is this lattice point inside the solid?
+   *
+   * The sphere is the obvious test. The cross is "inside at least two of the
+   * three slabs", which is the standard way to write a 3D plus and reads far
+   * better than six unioned boxes.
+   */
+  private solid(x: number, y: number, z: number, radius: number, arm: number): boolean {
+    if (this.options.variant === 'isocross') {
+      if (Math.abs(x) > radius || Math.abs(y) > radius || Math.abs(z) > radius) return false;
+      let slabs = 0;
+      if (Math.abs(x) <= arm) slabs += 1;
+      if (Math.abs(y) <= arm) slabs += 1;
+      if (Math.abs(z) <= arm) slabs += 1;
+      return slabs >= 2;
+    }
+    return x * x + y * y + z * z <= radius * radius;
+  }
+
+  /**
+   * The 3D lattice the two objects are carved out of.
+   *
+   * ONLY SURFACE VOXELS ARE KEPT. An interior voxel is never visible from any
+   * angle and costs three filled faces every frame — for a solid sphere that
+   * is most of them. Culling it is the difference between 760 cubes and
+   * several thousand.
+   */
+  private buildVoxels(cap: number): void {
+    let radius = this.options.variant === 'isocross' ? 5 : 7;
+    let list: Array<{ x: number; y: number; z: number }> = [];
+
+    for (let attempt = 0; attempt < 8; attempt += 1) {
+      const arm = Math.max(1, Math.round(radius * 0.34));
+      list = [];
+      for (let z = -radius; z <= radius; z += 1) {
+        for (let y = -radius; y <= radius; y += 1) {
+          for (let x = -radius; x <= radius; x += 1) {
+            if (!this.solid(x, y, z, radius, arm)) continue;
+            const buried =
+              this.solid(x + 1, y, z, radius, arm) &&
+              this.solid(x - 1, y, z, radius, arm) &&
+              this.solid(x, y + 1, z, radius, arm) &&
+              this.solid(x, y - 1, z, radius, arm) &&
+              this.solid(x, y, z + 1, radius, arm) &&
+              this.solid(x, y, z - 1, radius, arm);
+            if (buried) continue;
+            list.push({ x, y, z });
+          }
+        }
+      }
+      if (list.length <= cap || radius <= 3) break;
+      radius -= 1;
+    }
+
+    // The cube edge that makes the whole solid fit its box. The projection
+    // spans 4R cube-widths across and about the same down once the vertical
+    // stack is counted, so one divisor serves both.
+    this.cell = Math.max(3, Math.min(this.width, this.height) / (4 * radius + 6));
+    this.originX = this.width / 2;
+    this.originY = this.height / 2;
+
+    const span = Math.max(1, 6 * radius);
+    this.cells = list.map((point) => {
+      const cell = this.makeCell(this.originX, this.originY, (point.x + point.y + point.z + 3 * radius) / span);
+      cell.px = point.x;
+      cell.py = point.y;
+      cell.pz = point.z;
+      cell.depth = 0;
+      return cell;
+    });
   }
 
   private buildSquares(requested: number, cap: number): void {
@@ -705,9 +803,15 @@ class PatternField {
 
     // Layer 6. One offset pass in coral, the same misregistration the hero's
     // H1 takes in analogue mode, so the field belongs to the same print.
+    //
+    // NOT on the two objects. Misregistration reads as a printing plate a
+    // hair off on flat shapes; on a rotating 3D solid the same offset reads
+    // as a double exposure, which is mush rather than character.
+    const object = this.options.variant === 'isosphere' || this.options.variant === 'isocross';
     if (
       this.ghost &&
       !this.still &&
+      !object &&
       document.documentElement.getAttribute('data-mode') === 'analogue'
     ) {
       ctx.globalAlpha = 0.16;
@@ -759,6 +863,15 @@ class PatternField {
     // rather than per cell.
     if (variant === 'wave') ctx.lineCap = 'round';
     if (variant === 'truchet' || variant === 'wave') ctx.lineJoin = 'round';
+
+    // The two objects need their own pass: their screen positions are
+    // recomputed every frame from a rotation, and they have to be re-sorted
+    // into painter's order afterwards. Neither fits a loop that assumes a
+    // cell's position was settled at build time.
+    if (variant === 'isosphere' || variant === 'isocross') {
+      this.paintVoxels(now, sweep, offsetX, offsetY + parallax, override, focus, reach, flowT, swell);
+      return;
+    }
 
     for (let index = 0; index < this.cells.length; index += 1) {
       const cell = this.cells[index];
@@ -823,6 +936,9 @@ class PatternField {
           break;
         case 'blocks':
           this.drawBlock(cell, x, y, wave, excite, dealt, swell, now, colour, accent, override);
+          break;
+        case 'arcbfly':
+          this.drawArcButterfly(cell, x, y, wave, excite, dealt, colour, accent, override);
           break;
         default:
           this.drawQuarter(cell, x, y, wave, excite, dealt, swell, pop, colour, accent, override);
@@ -1126,6 +1242,9 @@ class PatternField {
     for (let k = rings; k >= 1; k -= 1) {
       const radius = half * 0.94 * (k / rings) * cell.amp;
       const lit = (Math.floor(k + phase) % 2) === 0;
+      // The ghost pass paints one colour, so an unlit ring must be skipped
+      // rather than filled — otherwise the ghost is a solid disc.
+      if (override && !lit) continue;
       ctx.fillStyle = override ?? (lit ? (excite > 0.3 ? accent : colour) : this.colours.ground);
       polygonPath(ctx, radius, sides, rotation);
       ctx.fill();
@@ -1319,6 +1438,248 @@ class PatternField {
       ctx.moveTo(frontTop[0] ?? 0, frontTop[1] ?? 0);
       ctx.lineTo(rightTop[0] ?? 0, rightTop[1] ?? 0);
       ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  // ── arcbfly ────────────────────────────────────────────────────────────
+  /**
+   * Concentric half-discs on a Truchet flip — the banded cousin of
+   * `truchet`. Each cell carries a semicircle rooted on one edge, so two
+   * cells that meet edge to edge make a whole circle and the field reads as
+   * one drawing rather than as tiles.
+   *
+   * This one is MASS where `truchet` is line, which is the whole difference
+   * between them: it is the variant to reach for when a pattern is meant to
+   * be looked at, and the wrong one to put behind a paragraph.
+   */
+  private drawArcButterfly(
+    cell: Cell,
+    x: number,
+    y: number,
+    wave: number,
+    excite: number,
+    dealt: number,
+    colour: string,
+    accent: string,
+    override: string | null,
+  ): void {
+    const ctx = this.ctx;
+    const half = this.cell / 2;
+
+    if (!this.still && Math.random() < 0.0005 + this.energy * 0.005) cell.turn += 1;
+
+    const targetAngle = (cell.turn * Math.PI) / 2 + excite * (Math.PI / 2);
+    if (this.still) cell.ang = (cell.turn * Math.PI) / 2;
+    else [cell.ang, cell.angV] = spring(cell.ang, cell.angV, targetAngle, 0.11, 0.8);
+
+    const bands = Math.max(2, Math.round(2 + this.options.amount * 6));
+    const lit = excite > 0.35 ? accent : colour;
+
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(cell.ang);
+    ctx.globalAlpha *= dealt;
+
+    for (let k = bands; k >= 1; k -= 1) {
+      // Parity is measured from the OUTSIDE IN, so the outermost band is
+      // always lit. Alternating from the inside instead let the outer band
+      // land on "off", which fills the whole tile with the ground colour and
+      // drops it out of the field entirely — the field then reads as holes
+      // rather than as a pattern.
+      const on = ((bands - k) % 2) === 0;
+      if (override && !on) continue;
+      // The bands breathe on the flow field rather than flipping on it, for
+      // the same reason: a tile must never stop reading.
+      const breath = this.still ? 1 : 1 + Math.sin(wave * Math.PI * 2 + k * 0.9) * 0.05;
+      const radius = half * (k / bands) * breath * (1 + excite * 0.1);
+      ctx.fillStyle = override ?? (on ? lit : this.colours.ground);
+      ctx.beginPath();
+      // Rooted on the bottom edge, opening upward. Canvas y runs down, so
+      // sweeping from PI to 0 clockwise is the UPPER half.
+      ctx.moveTo(-radius, half);
+      ctx.arc(0, half, radius, Math.PI, 0);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // ── isosphere / isocross ───────────────────────────────────────────────
+  /**
+   * The two voxel objects.
+   *
+   * Three things happen here that the shared loop cannot do:
+   *
+   *   ROTATION   the lattice turns about its vertical axis, which is two
+   *              multiplies per voxel and the entire reason these read as
+   *              solids rather than as isometric wallpaper.
+   *   SORTING    a rotation changes which voxel is in front, so the array is
+   *              re-sorted into painter's order every frame. 760 items is
+   *              nothing; getting it wrong is very visible.
+   *   CARVING    a voxel the flow field has passed below the threshold is
+   *              drawn as bare wireframe instead of solid faces, so the
+   *              object dissolves and re-forms as the field moves through
+   *              it. This is what the reference does statically.
+   *
+   * Excitation is measured against LAST frame's screen position, because
+   * this frame's position depends on the bulge that excitation produces. One
+   * frame of lag on a spring nobody can see is the cheap way out of a
+   * circular dependency.
+   */
+  private paintVoxels(
+    now: number,
+    sweep: number,
+    offsetX: number,
+    offsetY: number,
+    override: string | null,
+    focus: { x: number; y: number } | null,
+    reach: number,
+    flowT: number,
+    swell: number,
+  ): void {
+    const ctx = this.ctx;
+    const edge = this.cell;
+    const halfW = edge;
+    const halfH = edge * 0.5;
+
+    // A full turn every ~44 seconds. Slow enough to read as a solid being
+    // looked at rather than as something spinning.
+    const theta = this.still ? 0.6 : now / 7000 + this.energy * 0.9;
+    const cos = Math.cos(theta);
+    const sin = Math.sin(theta);
+
+    let rippleRadius = -1;
+    const band = edge * 3;
+    if (this.ripple) {
+      rippleRadius = (now - this.ripple.at) * 0.8;
+      if (rippleRadius > Math.hypot(this.width, this.height) + band) this.ripple = null;
+    }
+
+    for (let index = 0; index < this.cells.length; index += 1) {
+      const cell = this.cells[index];
+      if (!cell) continue;
+
+      let excite = 0;
+      if (focus) {
+        const distance = Math.hypot(cell.x - focus.x, cell.y - focus.y);
+        if (distance < reach) {
+          excite = 1 - distance / reach;
+          excite *= excite;
+        }
+      }
+      if (this.ripple) {
+        const distance = Math.hypot(cell.x - this.ripple.x, cell.y - this.ripple.y);
+        const rim = rippleRadius - distance;
+        if (rim > 0 && rim < band) excite = Math.max(excite, Math.sin((rim / band) * Math.PI) * 0.9);
+      }
+
+      // The bulge. Voxels near the pointer push out along their own radius,
+      // so the surface swells under a finger instead of merely lighting up.
+      const target = 1 + excite * 0.3;
+      if (this.still) cell.amp = 1;
+      else [cell.amp, cell.ampV] = spring(cell.amp, cell.ampV, target, 0.12, 0.78);
+
+      const vx = (cell.px ?? 0) * cell.amp;
+      const vy = (cell.py ?? 0) * cell.amp;
+      const vz = (cell.pz ?? 0) * cell.amp;
+
+      const rx = vx * cos - vz * sin;
+      const rz = vx * sin + vz * cos;
+
+      cell.x = this.originX + (rx - rz) * halfW;
+      cell.y = this.originY + (rx + rz) * halfH - vy * edge;
+      // Standard isometric depth: the camera looks down (1, 1, 1), so a
+      // larger sum is nearer and must be painted later.
+      cell.depth = rx + vy + rz;
+    }
+
+    this.cells.sort((a, b) => (a.depth ?? 0) - (b.depth ?? 0));
+
+    const face = (points: number[][]): void => {
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        const px = point[0] ?? 0;
+        const py = point[1] ?? 0;
+        if (index === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      });
+      ctx.closePath();
+    };
+
+    for (let index = 0; index < this.cells.length; index += 1) {
+      const cell = this.cells[index];
+      if (!cell) continue;
+
+      const dealt = this.still ? 1 : Math.max(0, Math.min(1, (this.deal - cell.diag * 0.55) * 2.6));
+      if (dealt <= 0) continue;
+
+      const x = cell.x + offsetX;
+      const y = cell.y + offsetY;
+
+      // A rough 3D sample of the same flow field, so the carving travels
+      // through the solid rather than across its silhouette.
+      const field = this.still
+        ? 1
+        : flow((cell.px ?? 0) * 34 + (cell.pz ?? 0) * 13, (cell.py ?? 0) * 34, flowT);
+      const carved = !this.still && field < 0.40 - this.options.amount * 0.3 + (swell - 0.35) * 0.1;
+
+      const accent = sweep >= 1 || sweep > cell.diag ? this.colours.accent : this.previousAccent;
+      const colour = override ?? this.restColour(cell, accent);
+
+      const top = y - edge / 2;
+      const bottom = y + edge / 2;
+      const backTop = [x, top - halfH];
+      const rightTop = [x + halfW, top];
+      const frontTop = [x, top + halfH];
+      const leftTop = [x - halfW, top];
+      const rightBottom = [x + halfW, bottom];
+      const frontBottom = [x, bottom + halfH];
+      const leftBottom = [x - halfW, bottom];
+
+      if (carved) {
+        // Bare lattice. The object dissolves here and re-forms as the field
+        // moves on, which is the whole reason it is worth animating.
+        if (override) continue;
+        ctx.save();
+        ctx.globalAlpha *= 0.3 * dealt;
+        ctx.strokeStyle = colour;
+        ctx.lineWidth = 1;
+        face([backTop, rightTop, rightBottom, frontBottom, leftBottom, leftTop]);
+        ctx.stroke();
+        ctx.restore();
+        continue;
+      }
+
+      ctx.save();
+      ctx.globalAlpha *= dealt;
+
+      // Three tones from one colour: the ground underneath, then the colour
+      // at three weights. No second hex, and it stays right in both modes.
+      const plane = (points: number[][], weight: number): void => {
+        ctx.fillStyle = this.colours.ground;
+        face(points);
+        ctx.fill();
+        ctx.save();
+        ctx.globalAlpha *= weight;
+        ctx.fillStyle = colour;
+        face(points);
+        ctx.fill();
+        ctx.restore();
+      };
+
+      plane([backTop, rightTop, frontTop, leftTop], 1);
+      plane([leftTop, frontTop, frontBottom, leftBottom], 0.46);
+      plane([frontTop, rightTop, rightBottom, frontBottom], 0.17);
+
+      if (!override) {
+        ctx.strokeStyle = colour;
+        ctx.globalAlpha *= 0.55;
+        ctx.lineWidth = 1;
+        ctx.lineJoin = 'round';
+        face([backTop, rightTop, rightBottom, frontBottom, leftBottom, leftTop]);
+        ctx.stroke();
+      }
       ctx.restore();
     }
   }

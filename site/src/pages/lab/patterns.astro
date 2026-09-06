@@ -29,6 +29,7 @@ import {
   getHero,
   getJoyride,
   getLanguage,
+  getMarquee,
   getPitch,
   getSampler,
   getServices,
@@ -62,6 +63,8 @@ const joyrideHeading = fill(
   joyride.heading.emphasis.map((item) => item.text),
 );
 const firstService = services.items[0];
+const secondService = services.items[1];
+const marquee = await getMarquee();
 
 /** The three contexts, in the order the homepage would meet them. */
 const CONTEXTS = [
@@ -152,6 +155,30 @@ const CONTEXTS = [
       'placement on this page where all three accents run at once — a sampler is the one ' +
       'section where that is the point rather than a distraction.',
   },
+  {
+    id: 'lid',
+    index: '09',
+    title: 'Section lid',
+    variant: 'Arc butterfly · accent · strength 1',
+    note:
+      'The banded cousin of the Truchet arcs: MASS where that one is line. It cannot go ' +
+      'behind anything, which is exactly why it is here — a section lid is the one slot on ' +
+      'the page that carries no copy at all, so a pattern strong enough to be looked at has ' +
+      'nothing to negotiate with. Full strength, no apology. The ticker underneath sits on ' +
+      'clean ground.',
+  },
+  {
+    id: 'objects',
+    index: '10',
+    title: 'Service card objects',
+    variant: 'Iso sphere + iso cross · accent · strength 1',
+    note:
+      'These two are OBJECTS, not fields. They do not tile and they do not fill a section — ' +
+      'each is one thing, centred, that wants a plate the way a photograph does. Which makes ' +
+      'the two service cards the obvious home: the section has exactly two items and each one ' +
+      'has a slot an image would otherwise occupy. Both turn slowly on their own axis and ' +
+      'dissolve to bare wireframe where the flow field passes through them.',
+  },
 ] as const;
 ---
 
@@ -165,9 +192,9 @@ const CONTEXTS = [
       <p class="lab__eyebrow">Nikko Studio · internal prototype · not a live route</p>
       <h1 class="lab__title">The pattern, doing a job</h1>
       <p class="lab__stand">
-        Seven variants across eight places on the homepage, with the real copy. Three of
-        them are textures meant to sit behind type; four are subjects strong enough to be
-        the thing you are looking at. Scroll — every field is stirred by scroll velocity, so
+        Ten variants across ten places on the homepage, with the real copy. Three are
+        textures meant to sit behind type, five are subjects strong enough to be the thing
+        you are looking at, and two are objects that do not tile at all. Scroll — every field is stirred by scroll velocity, so
         they surge as the page moves and settle when it stops. Drag across any of them; tap
         to send a wave through.
       </p>
@@ -375,6 +402,48 @@ const CONTEXTS = [
       </div>
 
       <p class="lab__note">{CONTEXTS[7].note}</p>
+    </section>
+
+    {/* ── 09 · Section lid ───────────────────────────────────────────── */}
+    <section class="lab__case" id="lid">
+      <p class="lab__caseline"><b>09</b> Section lid · {CONTEXTS[8].variant}</p>
+
+      <div class="demo demo--lid">
+        <PatternField variant="arcbfly" palette="accent" tone="ink" density={104} amount={0.55} />
+      </div>
+
+      <p class="demo__ticker">{marquee.text.trim()}</p>
+
+      <p class="lab__note">{CONTEXTS[8].note}</p>
+    </section>
+
+    {/* ── 10 · Service card objects ──────────────────────────────────── */}
+    <section class="lab__case" id="objects">
+      <p class="lab__caseline"><b>10</b> Service card objects · {CONTEXTS[9].variant}</p>
+
+      <div class="demo demo--objects">
+        {
+          [
+            { item: firstService, variant: 'isosphere' as const },
+            { item: secondService, variant: 'isocross' as const },
+          ].map((entry) =>
+            entry.item ? (
+              <article class="demo__svc">
+                <div class="demo__object">
+                  <PatternField variant={entry.variant} palette="accent" tone="ink" amount={0.5} />
+                </div>
+                <div class="demo__svc-copy">
+                  <p class="demo__kicker">{entry.item.n} · {entry.item.stamp}</p>
+                  <h3 class="demo__card-title">{entry.item.title}</h3>
+                  <p class="demo__lead">{entry.item.lead}</p>
+                </div>
+              </article>
+            ) : null,
+          )
+        }
+      </div>
+
+      <p class="lab__note">{CONTEXTS[9].note}</p>
     </section>
 
     {/* ── The comparison rail ────────────────────────────────────────── */}
@@ -896,6 +965,61 @@ const CONTEXTS = [
     .demo__frag:last-child { border-bottom: 0; padding-bottom: 0; }
 
     .demo__frag-text { font-size: var(--nk-size-body); }
+
+    /* 09 — the section lid. Nikko's own lid radius, and the one slot on the
+       page that carries no copy at all. */
+    .demo--lid {
+      height: clamp(160px, 26vh, 300px);
+      border-radius: var(--nk-radius-section-lid);
+      background: var(--nk-ink);
+    }
+
+    .demo__ticker {
+      margin: 0;
+      padding: 18px 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-marquee);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+      border-bottom: var(--nk-rule-hair);
+    }
+
+    /* 10 — the two service cards, each with an object where an image would
+       otherwise sit. */
+    .demo--objects {
+      display: grid;
+      gap: var(--nk-gap-cards);
+      background: transparent;
+    }
+
+    @media (min-width: 760px) {
+      .demo--objects { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    .demo__svc {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: clamp(18px, 2.6vw, 28px);
+      background: var(--nk-paper);
+      border: var(--nk-rule);
+      border-radius: var(--nk-radius-lid-card);
+    }
+
+    /* The ground the object stands on — the field draws shapes only. */
+    .demo__object {
+      position: relative;
+      aspect-ratio: 1 / 1;
+      background: var(--nk-ink);
+      border-radius: var(--nk-radius-lid-panel);
+      overflow: hidden;
+    }
+
+    .demo__svc-copy { display: flex; flex-direction: column; }
 
     /* ── The rail ───────────────────────────────────────────────────── */
     .rail {

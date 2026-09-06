@@ -100,6 +100,21 @@
     opacity: 0.2;
   }
 
+  .nk-pattern--arcbfly {
+    background-image: repeating-radial-gradient(
+      circle at 50% 100%,
+      var(--nk-accent) 0 8px,
+      transparent 8px 16px
+    );
+    background-size: 96px 96px;
+    opacity: 0.2;
+  }
+
+  /* The two objects are one thing, not a field, so there is no honest
+     tiling fallback. A faint isometric lattice says "something dimensional
+     goes here" and gets out of the way. */
+  .nk-pattern--isosphere,
+  .nk-pattern--isocross,
   .nk-pattern--ribbon,
   .nk-pattern--blocks {
     background-image:
@@ -130,6 +145,8 @@
     );
   }
 
+  .nk-pattern--ink.nk-pattern--isosphere,
+  .nk-pattern--ink.nk-pattern--isocross,
   .nk-pattern--ink.nk-pattern--ribbon,
   .nk-pattern--ink.nk-pattern--blocks {
     background-image:
