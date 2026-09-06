@@ -23,11 +23,45 @@
 import Base from '../../layouts/Base.astro';
 import PatternField from '../../components/PatternField.astro';
 import Pill from '../../components/Pill.astro';
-import { getHero, getLanguage, getPitch } from '../../lib/content/homepage';
+import {
+  getAttention,
+  getFounder,
+  getHero,
+  getJoyride,
+  getLanguage,
+  getPitch,
+  getSampler,
+  getServices,
+} from '../../lib/content/homepage';
 
 const hero = await getHero();
 const language = await getLanguage();
 const pitch = await getPitch();
+const attention = await getAttention();
+const services = await getServices();
+const sampler = await getSampler();
+const founder = await getFounder();
+const joyride = await getJoyride();
+
+/**
+ * Two headings on the homepage are templates with `{1}`-style slots so the
+ * emphasised words can be styled separately. This prototype only needs the
+ * sentence, so it fills the slots flat rather than reproducing the markup the
+ * real sections build. [P7 — the copy still comes from the content files.]
+ */
+function fill(template: string, parts: readonly string[]): string {
+  return parts.reduce((out, part, i) => out.replace(`{${i + 1}}`, part), template).trim();
+}
+
+const attentionHeading = fill(
+  attention.heading.template,
+  attention.heading.words.map((word) => word.label),
+);
+const joyrideHeading = fill(
+  joyride.heading.template,
+  joyride.heading.emphasis.map((item) => item.text),
+);
+const firstService = services.items[0];
 
 /** The three contexts, in the order the homepage would meet them. */
 const CONTEXTS = [
@@ -62,6 +96,62 @@ const CONTEXTS = [
       'the right edge. That is the honest answer for a section that has to carry a form — ' +
       'a pattern can hold a heading, and it cannot hold 14px of legal type.',
   },
+  {
+    id: 'services',
+    index: '04',
+    title: 'Services band',
+    variant: 'Truchet · mono · strength 0.16',
+    note:
+      'Concentric quarter arcs on a Truchet flip. This is LINE rather than mass, which is ' +
+      'why it survives under a paragraph where the quarter discs would not — there is far ' +
+      'less ink on the page for the same amount of pattern. Tiles flip on their own as you ' +
+      'scroll, and every line through a flipped tile re-routes with it.',
+  },
+  {
+    id: 'attention',
+    index: '05',
+    title: 'Attention backdrop',
+    variant: 'Wave · mono · strength 0.14',
+    note:
+      'The quietest of the three textures, and the only one whose shape IS the motion: ' +
+      'every stroke is turned by the same flow field that animates the others. Drag across ' +
+      'it — strokes near the pointer turn to run around it, so you leave a wake rather ' +
+      'than a highlight. On a section about attention and noise, that is the argument.',
+  },
+  {
+    id: 'joyride',
+    index: '06',
+    title: 'Joyride band',
+    variant: 'Ribbon · accent · ink · strength 0.38',
+    note:
+      'A triangular lattice with ribbons cut out of it by the flow field, so the chevron ' +
+      'bands actually snake rather than sitting still. The wireframe stays visible ' +
+      'underneath wherever the ribbon does not reach, which is what the reference does too. ' +
+      'This is the other half of the footer finding: a subject pattern CAN sit under display ' +
+      'type at 52px in Archivo Black. It is 16px body copy it cannot carry.',
+  },
+  {
+    id: 'founder',
+    index: '07',
+    title: 'Founder plate',
+    variant: 'Blocks · accent · ink · strength 1',
+    note:
+      'The op-art one, and the most expensive: three clipped faces with stripes each, so it ' +
+      'is capped at 90 cubes however big the box gets. Each face rules its stripes in a ' +
+      'different direction — that change of angle is what the eye reads as a change of ' +
+      'plane. The cluster rises and falls on the field like a skyline.',
+  },
+  {
+    id: 'sampler',
+    index: '08',
+    title: 'Sampler card',
+    variant: 'Nested · trio · strength 0.45',
+    note:
+      'Concentric polygons with the fill phase travelling outward, so each cell pulses ' +
+      'instead of sitting there as a bullseye. Set to `trio` here, which is the only ' +
+      'placement on this page where all three accents run at once — a sampler is the one ' +
+      'section where that is the point rather than a distraction.',
+  },
 ] as const;
 ---
 
@@ -75,9 +165,11 @@ const CONTEXTS = [
       <p class="lab__eyebrow">Nikko Studio · internal prototype · not a live route</p>
       <h1 class="lab__title">The pattern, doing a job</h1>
       <p class="lab__stand">
-        The same field in three places on the homepage, with the real copy. Scroll — the
-        pattern is stirred by scroll velocity, so it surges as the page moves and settles
-        when it stops. Drag across any of them; tap to send a wave through.
+        Seven variants across eight places on the homepage, with the real copy. Three of
+        them are textures meant to sit behind type; four are subjects strong enough to be
+        the thing you are looking at. Scroll — every field is stirred by scroll velocity, so
+        they surge as the page moves and settle when it stops. Drag across any of them; tap
+        to send a wave through.
       </p>
 
       <ol class="lab__index">
@@ -178,6 +270,111 @@ const CONTEXTS = [
       </div>
 
       <p class="lab__note">{CONTEXTS[2].note}</p>
+    </section>
+
+    {/* ── 04 · Services band ─────────────────────────────────────────── */}
+    <section class="lab__case" id="services">
+      <p class="lab__caseline"><b>04</b> Services band · {CONTEXTS[3].variant}</p>
+
+      <div class="demo demo--services">
+        <PatternField variant="truchet" palette="mono" tone="paper" density={64} amount={0.5} strength={0.16} />
+
+        <div class="demo__content demo__content--services">
+          <p class="demo__kicker">{services.kicker}</p>
+          <h2 class="demo__h1">{services.heading}</h2>
+          {
+            firstService && (
+              <div class="demo__card">
+                <p class="demo__kicker">{firstService.n} · {firstService.stamp}</p>
+                <h3 class="demo__card-title">{firstService.title}</h3>
+                <p class="demo__lead">{firstService.lead}</p>
+              </div>
+            )
+          }
+        </div>
+      </div>
+
+      <p class="lab__note">{CONTEXTS[3].note}</p>
+    </section>
+
+    {/* ── 05 · Attention backdrop ────────────────────────────────────── */}
+    <section class="lab__case" id="attention">
+      <p class="lab__caseline"><b>05</b> Attention backdrop · {CONTEXTS[4].variant}</p>
+
+      <div class="demo demo--attention">
+        <PatternField variant="wave" palette="mono" tone="paper" density={20} amount={0.5} strength={0.14} />
+
+        <div class="demo__content">
+          <h2 class="demo__h1 demo__h1--wrap">{attentionHeading}</h2>
+          <p class="demo__lead">{attention.lead}</p>
+          <p class="demo__counter">
+            <span class="demo__counter-n">{attention.counter.value}</span>
+            <span class="demo__counter-label">{attention.counterLabel}</span>
+          </p>
+        </div>
+      </div>
+
+      <p class="lab__note">{CONTEXTS[4].note}</p>
+    </section>
+
+    {/* ── 06 · Joyride band ──────────────────────────────────────────── */}
+    <section class="lab__case" id="joyride">
+      <p class="lab__caseline"><b>06</b> Joyride band · {CONTEXTS[5].variant}</p>
+
+      <div class="demo demo--joyride">
+        <PatternField variant="ribbon" palette="accent" tone="ink" density={48} amount={0.52} strength={0.38} />
+
+        <div class="demo__content demo__content--joyride">
+          <h2 class="demo__h2 demo__h2--paper">{joyrideHeading}</h2>
+          <p class="demo__joyride-lead">{joyride.lead}</p>
+        </div>
+      </div>
+
+      <p class="lab__note">{CONTEXTS[5].note}</p>
+    </section>
+
+    {/* ── 07 · Founder plate ─────────────────────────────────────────── */}
+    <section class="lab__case" id="founder">
+      <p class="lab__caseline"><b>07</b> Founder plate · {CONTEXTS[6].variant}</p>
+
+      <div class="demo demo--founder">
+        <div class="demo__content demo__content--founder">
+          <p class="demo__kicker">{founder.eyebrow}</p>
+          <h2 class="demo__h2 demo__h2--ink">{founder.heading}</h2>
+          <p class="demo__lead">{founder.body[0]}</p>
+        </div>
+
+        <div class="demo__plate">
+          <PatternField variant="blocks" palette="accent" tone="ink" density={34} amount={0.5} />
+        </div>
+      </div>
+
+      <p class="lab__note">{CONTEXTS[6].note}</p>
+    </section>
+
+    {/* ── 08 · Sampler card ──────────────────────────────────────────── */}
+    <section class="lab__case" id="sampler">
+      <p class="lab__caseline"><b>08</b> Sampler card · {CONTEXTS[7].variant}</p>
+
+      <div class="demo demo--sampler">
+        <PatternField variant="nested" palette="trio" tone="paper" density={80} amount={0.5} strength={0.45} />
+
+        <div class="demo__content demo__content--sampler">
+          <h2 class="demo__h2 demo__h2--ink">{sampler.heading}</h2>
+          <ul class="demo__frags">
+            {
+              sampler.fragments.slice(0, 3).map((fragment) => (
+                <li class="demo__frag">
+                  <span class="demo__kicker">{fragment.tag}</span>
+                  <span class="demo__frag-text">{fragment.text}</span>
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+      </div>
+
+      <p class="lab__note">{CONTEXTS[7].note}</p>
     </section>
 
     {/* ── The comparison rail ────────────────────────────────────────── */}
@@ -529,6 +726,176 @@ const CONTEXTS = [
       letter-spacing: var(--nk-tracking-mono-wide);
       color: var(--nk-paper-muted);
     }
+
+    /* 04 — the services band. Line texture under a real paragraph, which is
+       the only test that matters for this variant. */
+    .demo--services {
+      background: var(--nk-paper);
+      padding: clamp(32px, 5vw, 68px) clamp(24px, 4vw, 56px);
+      box-shadow: var(--nk-shadow-ticket);
+    }
+
+    .demo__kicker {
+      margin: 0 0 10px;
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+
+    .demo__content--services { max-width: var(--nk-measure-prose); }
+
+    /* The card sits on its own paper so the pattern reads as the section's
+       ground rather than as the card's surface — a distinction that matters
+       once a card has body copy in it. */
+    .demo__card {
+      margin-top: var(--nk-gap-block);
+      padding: clamp(20px, 3vw, 32px);
+      background: var(--nk-paper);
+      border: var(--nk-rule);
+      border-radius: var(--nk-radius-lid-card);
+    }
+
+    .demo__card-title {
+      margin: 0 0 12px;
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-h2-joyride);
+      line-height: var(--nk-leading-h1);
+      letter-spacing: var(--nk-tracking-h1);
+      text-transform: uppercase;
+      text-wrap: balance;
+    }
+
+    /* 05 — attention. */
+    .demo--attention {
+      background: var(--nk-ground);
+      padding: clamp(32px, 5vw, 68px) clamp(24px, 4vw, 56px);
+    }
+
+    .demo__h1--wrap { white-space: pre-line; }
+
+    .demo__counter {
+      display: flex;
+      align-items: baseline;
+      gap: 14px;
+      margin: var(--nk-gap-block) 0 0;
+    }
+
+    .demo__counter-n {
+      font-family: var(--nk-font-display);
+      font-size: var(--nk-size-numeral);
+      line-height: var(--nk-leading-display);
+      letter-spacing: var(--nk-tracking-display-tight);
+      color: var(--nk-accent);
+      transition: color var(--nk-dur-accent) var(--nk-ease-accent);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .demo__counter-label {
+      font-family: var(--nk-font-mono);
+      font-size: var(--nk-size-mono);
+      letter-spacing: var(--nk-tracking-mono);
+      text-transform: uppercase;
+      color: var(--nk-ink-muted);
+    }
+
+    /* 06 — the joyride band, full bleed on ink. */
+    .demo--joyride {
+      background: var(--nk-ink);
+      padding: clamp(40px, 7vw, 88px) clamp(24px, 4vw, 56px);
+      min-height: clamp(300px, 42vh, 460px);
+      display: flex;
+      align-items: center;
+    }
+
+    .demo__content--joyride {
+      flex: 1 1 auto;
+      width: 100%;
+      /* NOT a `ch` measure. `--nk-measure-heading` is 32ch, and `ch` on a
+         CONTAINER resolves against that container's own 16px body font — so
+         it caps the box at ~320px and then the 52px display heading inside
+         breaks mid-word. A ch measure belongs on the element whose font it
+         is meant to measure, or not at all. */
+      max-width: min(100%, 44rem);
+    }
+
+    .demo__joyride-lead {
+      margin: 18px 0 0;
+      font-family: var(--nk-font-editorial);
+      font-style: italic;
+      font-size: var(--nk-size-editorial);
+      color: var(--nk-accent);
+      transition: color var(--nk-dur-accent) var(--nk-ease-accent);
+    }
+
+    /* 07 — the founder plate. The cubes are the subject, so they get a box of
+       their own rather than sitting behind anything. */
+    .demo--founder {
+      display: grid;
+      gap: clamp(24px, 4vw, 44px);
+      align-items: center;
+      background: var(--nk-paper);
+      padding: clamp(32px, 5vw, 64px) clamp(24px, 4vw, 56px);
+    }
+
+    @media (min-width: 860px) {
+      .demo--founder { grid-template-columns: minmax(0, 1fr) minmax(0, 46%); }
+    }
+
+    .demo__content--founder { max-width: var(--nk-measure-prose); }
+
+    .demo__h2--ink { color: var(--nk-ink); }
+
+    .demo__plate {
+      position: relative;
+      aspect-ratio: 4 / 5;
+      max-height: 60vh;
+      width: 100%;
+      margin-inline: auto;
+      /* The ground the cubes are cut out of. */
+      background: var(--nk-ink);
+      border-radius: var(--nk-radius-lid-panel);
+      overflow: hidden;
+      box-shadow: var(--nk-shadow-scrap);
+    }
+
+    /* 08 — the sampler card. */
+    .demo--sampler {
+      background: var(--nk-paper);
+      padding: clamp(32px, 5vw, 68px) clamp(24px, 4vw, 56px);
+      box-shadow: var(--nk-shadow-ticket);
+    }
+
+    .demo__content--sampler { max-width: var(--nk-measure-prose); }
+
+    /* Its own panel, because the nested rings behind it are strong enough to
+       eat a 16px line. A backing that stops mid-pattern with a hard edge
+       reads as a clipping fault, so the panel is given a border and a radius
+       and allowed to be a panel. */
+    .demo__frags {
+      list-style: none;
+      margin: var(--nk-gap-block) 0 0;
+      padding: clamp(16px, 2.4vw, 26px) clamp(18px, 2.6vw, 30px);
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      background: var(--nk-paper);
+      border: var(--nk-rule);
+      border-radius: var(--nk-radius-lid-panel);
+    }
+
+    .demo__frag {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 14px 0;
+      border-bottom: var(--nk-rule-hair);
+    }
+
+    .demo__frag:last-child { border-bottom: 0; padding-bottom: 0; }
+
+    .demo__frag-text { font-size: var(--nk-size-body); }
 
     /* ── The rail ───────────────────────────────────────────────────── */
     .rail {

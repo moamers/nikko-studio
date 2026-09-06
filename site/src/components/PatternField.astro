@@ -37,15 +37,26 @@
 import '../styles/pattern.css';
 
 interface Props {
-  /** `quarters` is a texture to sit behind type. `najmeh` is a subject. */
-  variant?: 'quarters' | 'najmeh';
+  /**
+   * Three textures — `quarters`, `truchet`, `wave` — to sit behind type at
+   * low strength, and four subjects — `najmeh`, `nested`, `ribbon`,
+   * `blocks` — strong enough to be the thing you are looking at. See the
+   * table at the top of `pattern.ts`.
+   */
+  variant?: 'quarters' | 'truchet' | 'wave' | 'najmeh' | 'nested' | 'ribbon' | 'blocks';
   /** `accent` follows the cycle, `trio` bands all three, `mono` is quietest. */
   palette?: 'accent' | 'trio' | 'mono';
   /** The ground beneath. Decides whether tiles are ink or paper. */
   tone?: 'paper' | 'ink';
   /** Cell pitch in CSS pixels. Capped by `--nk-pattern-max-cells` at runtime. */
   density?: number;
-  /** `quarters`: how broken up the field is. `najmeh`: the resting aperture. */
+  /**
+   * The variant's one taste knob, 0-1. It means something different in each:
+   * how broken up the field is (`quarters`), the resting aperture
+   * (`najmeh`), how many arcs or rings per cell (`truchet`, `nested`),
+   * stroke length (`wave`), how much of the lattice the ribbons occupy
+   * (`ribbon`), how solid the cluster is (`blocks`).
+   */
   amount?: number;
   /**
    * Overall opacity, applied to the whole canvas rather than to each shape —
@@ -56,11 +67,27 @@ interface Props {
   class?: string;
 }
 
+/**
+ * Each variant's natural pitch. A `wave` stroke wants a fine grid and a
+ * `blocks` cube wants a coarse one; one shared default would be wrong for
+ * six of the seven. `pattern.ts` holds the same table for the runtime cap —
+ * these are the authoring defaults, and either can be overridden per use.
+ */
+const DENSITY: Record<string, number> = {
+  quarters: 44,
+  truchet: 58,
+  wave: 18,
+  najmeh: 72,
+  nested: 74,
+  ribbon: 44,
+  blocks: 62,
+};
+
 const {
   variant = 'quarters',
   palette = 'accent',
   tone = 'paper',
-  density = variant === 'najmeh' ? 72 : 44,
+  density = DENSITY[variant] ?? 44,
   amount = variant === 'najmeh' ? 0.3 : 0.42,
   strength = 1,
   class: className,
