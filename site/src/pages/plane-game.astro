@@ -10,6 +10,7 @@
     <p>Drag your finger (or mouse) up and down to fly the plane!</p>
     <canvas id="game" width="400" height="600"></canvas>
     <p id="score">Score: 0</p>
+    <p id="level">Level: 1</p>
 
     <style>
       body {
@@ -27,12 +28,19 @@
         font-size: 24px;
         font-weight: bold;
       }
+      #level {
+        font-size: 16px;
+        color: #4a6572;
+        margin-top: -8px;
+      }
     </style>
 
     <script>
       const canvas = document.getElementById('game');
       const ctx = canvas.getContext('2d');
       const scoreEl = document.getElementById('score');
+      const levelEl = document.getElementById('level');
+      const pointsPerLevel = 5;
 
       const plane = { x: 80, y: 300 };
       const planeSize = 44; // font size the plane emoji is drawn at
@@ -44,7 +52,13 @@
       let keys = { up: false, down: false };
       let bars = []; // the white obstacle bars you have to fly through
       let score = 0;
+      let level = 1;
+      let levelFlash = 0; // frames left to show the "Level up!" banner
       let gameOver = false;
+
+      function levelFor(s) {
+        return Math.floor(s / pointsPerLevel) + 1;
+      }
 
       // Fluffy clouds drifting in the background, purely for looks — the
       // plane can fly straight through them, they're not obstacles.
@@ -72,14 +86,15 @@
       }
 
       function spawnBar() {
-        // Starts easy (big gap, slow) and gets trickier the longer you survive.
-        const gapHeight = Math.max(85, 190 - score * 6);
+        // Each level has its own fixed gap size — a clear step down, not a slow crawl.
+        const gapHeight = Math.max(85, 190 - (level - 1) * 18);
         const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
         bars.push({ x: canvas.width, gapY, gapHeight, passed: false });
       }
 
       function barSpeed() {
-        return 7; // fast right from the start, the whole game through
+        // Fast within a level, and a notch faster each level up.
+        return Math.min(10, 5.5 + (level - 1) * 0.6);
       }
 
       function resetGame() {
@@ -87,9 +102,12 @@
         targetY = plane.y;
         bars = [];
         score = 0;
+        level = 1;
+        levelFlash = 0;
         gameOver = false;
         spawnBar();
         spawnBackgroundClouds();
+        levelEl.textContent = 'Level: 1';
       }
 
       function pointerToY(clientX, clientY) {
@@ -162,6 +180,13 @@
           if (!bar.passed && bar.x + 40 < plane.x) {
             bar.passed = true;
             score++;
+
+            const newLevel = levelFor(score);
+            if (newLevel > level) {
+              level = newLevel;
+              levelEl.textContent = 'Level: ' + level;
+              levelFlash = 90; // ~1.5s at 60fps
+            }
           }
         });
 
@@ -170,6 +195,8 @@
         if (bars.length === 0 || bars[bars.length - 1].x < canvas.width - 260) {
           spawnBar();
         }
+
+        if (levelFlash > 0) levelFlash--;
 
         scoreEl.textContent = 'Score: ' + score;
       }
@@ -192,6 +219,14 @@
         ctx.textBaseline = 'middle';
         ctx.fillText('✈️', 0, 0);
         ctx.restore();
+
+        if (levelFlash > 0) {
+          const alpha = Math.min(1, levelFlash / 20);
+          ctx.fillStyle = `rgba(255, 196, 0, ${alpha})`;
+          ctx.font = 'bold 40px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Level ' + level + '!', canvas.width / 2, 80);
+        }
 
         if (gameOver) {
           ctx.fillStyle = 'rgba(0,0,0,0.5)';
