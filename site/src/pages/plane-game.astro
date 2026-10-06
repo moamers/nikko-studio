@@ -35,8 +35,8 @@
       const scoreEl = document.getElementById('score');
 
       const plane = { x: 80, y: 300 };
-      const moveSpeed = 6; // how fast arrow keys move the plane
-      const followSpeed = 0.15; // how smoothly the plane chases the pointer
+      const moveSpeed = 9; // how fast arrow keys move the plane
+      const followSpeed = 0.22; // how smoothly the plane chases the pointer
 
       let targetY = plane.y;
       let keys = { up: false, down: false };
@@ -46,13 +46,13 @@
 
       function spawnCloud() {
         // Starts easy (big gap, slow) and gets trickier the longer you survive.
-        const gapHeight = Math.max(95, 200 - score * 5);
+        const gapHeight = Math.max(85, 190 - score * 6);
         const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
         clouds.push({ x: canvas.width, gapY, gapHeight, passed: false });
       }
 
       function cloudSpeed() {
-        return Math.min(5, 2.5 + score * 0.12);
+        return Math.min(6.5, 3 + score * 0.16);
       }
 
       function resetGame() {
