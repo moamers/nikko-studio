@@ -40,28 +40,54 @@
 
       let targetY = plane.y;
       let keys = { up: false, down: false };
-      let clouds = [];
+      let bars = []; // the white obstacle bars you have to fly through
       let score = 0;
       let gameOver = false;
 
-      function spawnCloud() {
+      // Fluffy clouds drifting in the background, purely for looks — the
+      // plane can fly straight through them, they're not obstacles.
+      let clouds = [];
+
+      function spawnBackgroundClouds() {
+        clouds = [];
+        for (let i = 0; i < 6; i++) {
+          clouds.push({
+            x: Math.random() * canvas.width,
+            y: 40 + Math.random() * (canvas.height - 80),
+            scale: 0.6 + Math.random() * 0.8,
+          });
+        }
+      }
+
+      function drawCloud(x, y, scale) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.beginPath();
+        ctx.arc(x, y, 18 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 20 * scale, y - 8 * scale, 22 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 42 * scale, y, 18 * scale, 0, Math.PI * 2);
+        ctx.arc(x + 20 * scale, y + 6 * scale, 20 * scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function spawnBar() {
         // Starts easy (big gap, slow) and gets trickier the longer you survive.
         const gapHeight = Math.max(85, 190 - score * 6);
         const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
-        clouds.push({ x: canvas.width, gapY, gapHeight, passed: false });
+        bars.push({ x: canvas.width, gapY, gapHeight, passed: false });
       }
 
-      function cloudSpeed() {
+      function barSpeed() {
         return Math.min(6.5, 3 + score * 0.16);
       }
 
       function resetGame() {
         plane.y = canvas.height / 2;
         targetY = plane.y;
-        clouds = [];
+        bars = [];
         score = 0;
         gameOver = false;
-        spawnCloud();
+        spawnBar();
+        spawnBackgroundClouds();
       }
 
       function pointerToY(clientX, clientY) {
@@ -113,26 +139,34 @@
         plane.y += (targetY - plane.y) * followSpeed;
 
         clouds.forEach((cloud) => {
-          cloud.x -= cloudSpeed();
+          cloud.x -= 0.5; // slower than the bars, so it feels far away
+          if (cloud.x < -60) {
+            cloud.x = canvas.width + 60;
+            cloud.y = 40 + Math.random() * (canvas.height - 80);
+          }
+        });
+
+        bars.forEach((bar) => {
+          bar.x -= barSpeed();
 
           if (
-            plane.x + 12 > cloud.x &&
-            plane.x - 12 < cloud.x + 40 &&
-            (plane.y - 12 < cloud.gapY || plane.y + 12 > cloud.gapY + cloud.gapHeight)
+            plane.x + 12 > bar.x &&
+            plane.x - 12 < bar.x + 40 &&
+            (plane.y - 12 < bar.gapY || plane.y + 12 > bar.gapY + bar.gapHeight)
           ) {
             gameOver = true;
           }
 
-          if (!cloud.passed && cloud.x + 40 < plane.x) {
-            cloud.passed = true;
+          if (!bar.passed && bar.x + 40 < plane.x) {
+            bar.passed = true;
             score++;
           }
         });
 
-        clouds = clouds.filter((cloud) => cloud.x > -50);
+        bars = bars.filter((bar) => bar.x > -50);
 
-        if (clouds.length === 0 || clouds[clouds.length - 1].x < canvas.width - 260) {
-          spawnCloud();
+        if (bars.length === 0 || bars[bars.length - 1].x < canvas.width - 260) {
+          spawnBar();
         }
 
         scoreEl.textContent = 'Score: ' + score;
@@ -141,10 +175,12 @@
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        clouds.forEach((cloud) => drawCloud(cloud.x, cloud.y, cloud.scale));
+
         ctx.fillStyle = '#ffffff';
-        clouds.forEach((cloud) => {
-          ctx.fillRect(cloud.x, 0, 40, cloud.gapY);
-          ctx.fillRect(cloud.x, cloud.gapY + cloud.gapHeight, 40, canvas.height);
+        bars.forEach((bar) => {
+          ctx.fillRect(bar.x, 0, 40, bar.gapY);
+          ctx.fillRect(bar.x, bar.gapY + bar.gapHeight, 40, canvas.height);
         });
 
         ctx.save();
