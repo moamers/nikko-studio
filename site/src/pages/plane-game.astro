@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plane Game</title>
+  </head>
+  <body>
+    <h1>✈️ Plane Game</h1>
+    <p>Tap, click, or press SPACE to fly up!</p>
+    <canvas id="game" width="400" height="600"></canvas>
+    <p id="score">Score: 0</p>
+
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        background: #cdefff;
+      }
+      canvas {
+        background: #aee6ff;
+        border: 4px solid #333;
+        border-radius: 8px;
+      }
+      #score {
+        font-size: 24px;
+        font-weight: bold;
+      }
+    </style>
+
+    <script>
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const scoreEl = document.getElementById('score');
+
+      const plane = { x: 80, y: 300, vy: 0 };
+      const gravity = 0.4;
+      const flapPower = -7;
+
+      let clouds = [];
+      let score = 0;
+      let gameOver = false;
+
+      function spawnCloud() {
+        const gapY = 100 + Math.random() * 300;
+        clouds.push({ x: canvas.width, gapY, gapHeight: 150, passed: false });
+      }
+
+      function resetGame() {
+        plane.y = 300;
+        plane.vy = 0;
+        clouds = [];
+        score = 0;
+        gameOver = false;
+        spawnCloud();
+      }
+
+      function flap() {
+        if (gameOver) {
+          resetGame();
+          return;
+        }
+        plane.vy = flapPower;
+      }
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') flap();
+      });
+      canvas.addEventListener('mousedown', flap);
+      canvas.addEventListener('touchstart', flap);
+
+      function update() {
+        if (gameOver) return;
+
+        plane.vy += gravity;
+        plane.y += plane.vy;
+
+        if (plane.y < 0 || plane.y > canvas.height) {
+          gameOver = true;
+        }
+
+        clouds.forEach((cloud) => {
+          cloud.x -= 3;
+
+          if (
+            plane.x + 15 > cloud.x &&
+            plane.x - 15 < cloud.x + 40 &&
+            (plane.y - 15 < cloud.gapY || plane.y + 15 > cloud.gapY + cloud.gapHeight)
+          ) {
+            gameOver = true;
+          }
+
+          if (!cloud.passed && cloud.x + 40 < plane.x) {
+            cloud.passed = true;
+            score++;
+          }
+        });
+
+        clouds = clouds.filter((cloud) => cloud.x > -50);
+
+        if (clouds.length === 0 || clouds[clouds.length - 1].x < canvas.width - 200) {
+          spawnCloud();
+        }
+
+        scoreEl.textContent = 'Score: ' + score;
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#ffffff';
+        clouds.forEach((cloud) => {
+          ctx.fillRect(cloud.x, 0, 40, cloud.gapY);
+          ctx.fillRect(cloud.x, cloud.gapY + cloud.gapHeight, 40, canvas.height);
+        });
+
+        ctx.save();
+        ctx.translate(plane.x, plane.y);
+        ctx.font = '30px serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('✈️', 0, 0);
+        ctx.restore();
+
+        if (gameOver) {
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = 'white';
+          ctx.font = '28px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2 - 20);
+          ctx.font = '18px sans-serif';
+          ctx.fillText('Click or tap to try again', canvas.width / 2, canvas.height / 2 + 20);
+        }
+      }
+
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      resetGame();
+      loop();
+    </script>
+  </body>
+</html>
