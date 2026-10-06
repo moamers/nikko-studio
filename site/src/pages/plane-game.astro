@@ -62,8 +62,8 @@
         ctx.lineWidth = 2;
         ctx.stroke();
       }
-      const moveSpeed = 26; // how fast arrow keys move the plane
-      const followSpeed = 0.68; // how smoothly the plane chases the pointer
+      const moveSpeed = 32; // how fast arrow keys move the plane
+      const followSpeed = 0.78; // how smoothly the plane chases the pointer
 
       let targetY = plane.y;
       let keys = { up: false, down: false };
@@ -108,14 +108,14 @@
 
       function spawnBar() {
         // Each level has its own fixed gap size — a clear step down, not a slow crawl.
-        const gapHeight = Math.max(90, 190 - (level - 1) * 15);
+        const gapHeight = Math.max(82, 175 - (level - 1) * 17);
         const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
         bars.push({ x: canvas.width, gapY, gapHeight, passed: false });
       }
 
       function barSpeed() {
         // Fast within a level, and a notch faster each level up.
-        return Math.min(9, 5.5 + (level - 1) * 0.55);
+        return Math.min(10.5, 6.5 + (level - 1) * 0.7);
       }
 
       function resetGame() {
