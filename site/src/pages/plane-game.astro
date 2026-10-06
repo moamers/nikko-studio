@@ -16,10 +16,10 @@
       body {
         font-family: sans-serif;
         text-align: center;
-        background: #e6f7ff;
+        background: #f6fdff;
       }
       canvas {
-        background: #dcf4ff;
+        background: #eefaff;
         border: 4px solid #333;
         border-radius: 8px;
         touch-action: none;
@@ -76,13 +76,17 @@
       }
 
       function drawCloud(x, y, scale) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
         ctx.beginPath();
         ctx.arc(x, y, 18 * scale, 0, Math.PI * 2);
         ctx.arc(x + 20 * scale, y - 8 * scale, 22 * scale, 0, Math.PI * 2);
         ctx.arc(x + 42 * scale, y, 18 * scale, 0, Math.PI * 2);
         ctx.arc(x + 20 * scale, y + 6 * scale, 20 * scale, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
         ctx.fill();
+        // A soft outline so clouds don't vanish against a very light sky.
+        ctx.strokeStyle = 'rgba(120, 170, 200, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
       }
 
       function spawnBar() {
