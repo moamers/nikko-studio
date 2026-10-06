@@ -43,8 +43,25 @@
       const pointsPerLevel = 5;
 
       const plane = { x: 80, y: 300 };
-      const planeSize = 44; // font size the plane emoji is drawn at
+      const planeSize = 44; // overall size the plane shape is drawn at
       const planeHit = 18; // half-height/width used for collisions
+      const planeColor = '#e63946'; // red
+      const planeOutline = '#9c1c2b';
+
+      function drawPlane() {
+        const s = planeSize * 0.55;
+        ctx.beginPath();
+        ctx.moveTo(s, 0);
+        ctx.lineTo(-s * 0.7, s * 0.55);
+        ctx.lineTo(-s * 0.15, 0);
+        ctx.lineTo(-s * 0.7, -s * 0.55);
+        ctx.closePath();
+        ctx.fillStyle = planeColor;
+        ctx.fill();
+        ctx.strokeStyle = planeOutline;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
       const moveSpeed = 22; // how fast arrow keys move the plane
       const followSpeed = 0.6; // how smoothly the plane chases the pointer
 
@@ -91,14 +108,14 @@
 
       function spawnBar() {
         // Each level has its own fixed gap size — a clear step down, not a slow crawl.
-        const gapHeight = Math.max(82, 178 - (level - 1) * 17);
+        const gapHeight = Math.max(78, 170 - (level - 1) * 18);
         const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
         bars.push({ x: canvas.width, gapY, gapHeight, passed: false });
       }
 
       function barSpeed() {
         // Fast within a level, and a notch faster each level up.
-        return Math.min(10.5, 6.5 + (level - 1) * 0.7);
+        return Math.min(11.5, 7.2 + (level - 1) * 0.8);
       }
 
       function resetGame() {
@@ -218,10 +235,7 @@
 
         ctx.save();
         ctx.translate(plane.x, plane.y);
-        ctx.font = planeSize + 'px serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('✈️', 0, 0);
+        drawPlane();
         ctx.restore();
 
         if (levelFlash > 0) {
