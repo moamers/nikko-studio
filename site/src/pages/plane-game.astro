@@ -45,9 +45,14 @@
       let gameOver = false;
 
       function spawnCloud() {
-        const gapHeight = 220; // nice and big — easy to fly through
+        // Starts easy (big gap, slow) and gets trickier the longer you survive.
+        const gapHeight = Math.max(95, 200 - score * 5);
         const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
         clouds.push({ x: canvas.width, gapY, gapHeight, passed: false });
+      }
+
+      function cloudSpeed() {
+        return Math.min(5, 2.5 + score * 0.12);
       }
 
       function resetGame() {
@@ -108,7 +113,7 @@
         plane.y += (targetY - plane.y) * followSpeed;
 
         clouds.forEach((cloud) => {
-          cloud.x -= 2; // slow and friendly
+          cloud.x -= cloudSpeed();
 
           if (
             plane.x + 12 > cloud.x &&
