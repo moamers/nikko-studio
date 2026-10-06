@@ -35,8 +35,10 @@
       const scoreEl = document.getElementById('score');
 
       const plane = { x: 80, y: 300 };
-      const moveSpeed = 28; // how fast arrow keys move the plane
-      const followSpeed = 0.75; // how smoothly the plane chases the pointer
+      const planeSize = 44; // font size the plane emoji is drawn at
+      const planeHit = 18; // half-height/width used for collisions
+      const moveSpeed = 22; // how fast arrow keys move the plane
+      const followSpeed = 0.6; // how smoothly the plane chases the pointer
 
       let targetY = plane.y;
       let keys = { up: false, down: false };
@@ -150,9 +152,9 @@
           bar.x -= barSpeed();
 
           if (
-            plane.x + 12 > bar.x &&
-            plane.x - 12 < bar.x + 40 &&
-            (plane.y - 12 < bar.gapY || plane.y + 12 > bar.gapY + bar.gapHeight)
+            plane.x + planeHit > bar.x &&
+            plane.x - planeHit < bar.x + 40 &&
+            (plane.y - planeHit < bar.gapY || plane.y + planeHit > bar.gapY + bar.gapHeight)
           ) {
             gameOver = true;
           }
@@ -185,7 +187,7 @@
 
         ctx.save();
         ctx.translate(plane.x, plane.y);
-        ctx.font = '30px serif';
+        ctx.font = planeSize + 'px serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('✈️', 0, 0);
