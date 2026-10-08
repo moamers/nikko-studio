@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Car Game</title>
+  </head>
+  <body>
+    <h1>🏎️ Car Game</h1>
+    <p>Drag your finger (or mouse) left and right to steer!</p>
+    <canvas id="game" width="400" height="600"></canvas>
+    <p id="score">Score: 0</p>
+
+    <style>
+      body {
+        font-family: sans-serif;
+        text-align: center;
+        background: #f6fdff;
+      }
+      canvas {
+        background: #555555;
+        border: 4px solid #333;
+        border-radius: 8px;
+        touch-action: none;
+      }
+      #score {
+        font-size: 24px;
+        font-weight: bold;
+      }
+    </style>
+
+    <script>
+      const canvas = document.getElementById('game');
+      const ctx = canvas.getContext('2d');
+      const scoreEl = document.getElementById('score');
+
+      const roadLeft = 60;
+      const roadRight = canvas.width - 60;
+
+      const car = { x: canvas.width / 2, y: canvas.height - 100, w: 36, h: 60 };
+      const carColor = '#2b45f0';
+      const carOutline = '#15259c';
+
+      let targetX = car.x;
+      let keys = { left: false, right: false };
+      const moveSpeed = 10; // how fast arrow keys move the car
+      const followSpeed = 0.35; // how smoothly the car chases the pointer
+
+      let traffic = []; // the other cars coming down the road
+      let laneLines = [];
+      let score = 0;
+      let gameOver = false;
+
+      function spawnTraffic() {
+        const w = 36;
+        const h = 56;
+        const x = roadLeft + 20 + Math.random() * (roadRight - roadLeft - 40 - w) + w / 2;
+        const colors = ['#e63946', '#ffb703', '#2a9d8f', '#f4a261'];
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        traffic.push({ x, y: -60, w, h, color, passed: false });
+      }
+
+      function trafficSpeed() {
+        // Starts slow, ramps up the longer you survive.
+        return Math.min(13, 4.5 + score * 0.12);
+      }
+
+      function spawnLaneLines() {
+        laneLines = [];
+        for (let i = 0; i < 8; i++) {
+          laneLines.push({ y: i * 80 });
+        }
+      }
+
+      function resetGame() {
+        car.x = canvas.width / 2;
+        targetX = car.x;
+        traffic = [];
+        score = 0;
+        gameOver = false;
+        spawnTraffic();
+        spawnLaneLines();
+      }
+
+      function pointerToX(clientX) {
+        const rect = canvas.getBoundingClientRect();
+        return ((clientX - rect.left) / rect.width) * canvas.width;
+      }
+
+      canvas.addEventListener('mousedown', (e) => {
+        if (gameOver) resetGame();
+        targetX = pointerToX(e.clientX);
+      });
+      canvas.addEventListener('mousemove', (e) => {
+        targetX = pointerToX(e.clientX);
+      });
+      canvas.addEventListener(
+        'touchstart',
+        (e) => {
+          if (gameOver) resetGame();
+          targetX = pointerToX(e.touches[0].clientX);
+        },
+        { passive: true }
+      );
+      canvas.addEventListener(
+        'touchmove',
+        (e) => {
+          targetX = pointerToX(e.touches[0].clientX);
+        },
+        { passive: true }
+      );
+
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+        if (e.code === 'Space' && gameOver) resetGame();
+      });
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+      });
+
+      function update() {
+        if (gameOver) return;
+
+        if (keys.left) targetX -= moveSpeed;
+        if (keys.right) targetX += moveSpeed;
+        targetX = Math.max(roadLeft + car.w / 2, Math.min(roadRight - car.w / 2, targetX));
+
+        car.x += (targetX - car.x) * followSpeed;
+
+        laneLines.forEach((line) => {
+          line.y += trafficSpeed();
+          if (line.y > canvas.height) line.y -= 8 * 80;
+        });
+
+        traffic.forEach((other) => {
+          other.y += trafficSpeed();
+
+          if (
+            Math.abs(car.x - other.x) < (car.w + other.w) / 2 - 6 &&
+            Math.abs(car.y - other.y) < (car.h + other.h) / 2 - 6
+          ) {
+            gameOver = true;
+          }
+
+          if (!other.passed && other.y > car.y + car.h) {
+            other.passed = true;
+            score++;
+          }
+        });
+
+        traffic = traffic.filter((other) => other.y < canvas.height + 80);
+
+        if (traffic.length === 0 || traffic[traffic.length - 1].y > 160) {
+          spawnTraffic();
+        }
+
+        scoreEl.textContent = 'Score: ' + score;
+      }
+
+      function drawCar(x, y, w, h, color, outline) {
+        const r = 8;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.moveTo(x - w / 2 + r, y - h / 2);
+        ctx.arcTo(x + w / 2, y - h / 2, x + w / 2, y - h / 2 + r, r);
+        ctx.lineTo(x + w / 2, y + h / 2 - r);
+        ctx.arcTo(x + w / 2, y + h / 2, x + w / 2 - r, y + h / 2, r);
+        ctx.lineTo(x - w / 2 + r, y + h / 2);
+        ctx.arcTo(x - w / 2, y + h / 2, x - w / 2, y + h / 2 - r, r);
+        ctx.lineTo(x - w / 2, y - h / 2 + r);
+        ctx.arcTo(x - w / 2, y - h / 2, x - w / 2 + r, y - h / 2, r);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = outline;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // A little windshield so cars read as cars, not just boxes.
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        ctx.fillRect(x - w / 2 + 6, y - h / 2 + 10, w - 12, h / 3);
+      }
+
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Grass either side of the road.
+        ctx.fillStyle = '#3a7d44';
+        ctx.fillRect(0, 0, roadLeft, canvas.height);
+        ctx.fillRect(roadRight, 0, canvas.width - roadRight, canvas.height);
+
+        // Road.
+        ctx.fillStyle = '#555555';
+        ctx.fillRect(roadLeft, 0, roadRight - roadLeft, canvas.height);
+
+        // Scrolling centre line.
+        ctx.strokeStyle = '#f2ecdf';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([24, 24]);
+        laneLines.forEach((line) => {
+          ctx.beginPath();
+          ctx.moveTo(canvas.width / 2, line.y);
+          ctx.lineTo(canvas.width / 2, line.y + 24);
+          ctx.stroke();
+        });
+        ctx.setLineDash([]);
+
+        traffic.forEach((other) => drawCar(other.x, other.y, other.w, other.h, other.color, '#333'));
+
+        drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
+
+        if (gameOver) {
+          ctx.fillStyle = 'rgba(0,0,0,0.5)';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = 'white';
+          ctx.font = '28px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2 - 20);
+          ctx.font = '18px sans-serif';
+          ctx.fillText('Click or tap to try again', canvas.width / 2, canvas.height / 2 + 20);
+        }
+      }
+
+      function loop() {
+        update();
+        draw();
+        requestAnimationFrame(loop);
+      }
+
+      resetGame();
+      loop();
+    </script>
+  </body>
+</html>
