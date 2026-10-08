@@ -90,7 +90,8 @@
       const roadLeft = 60;
       const roadRight = canvas.width - 60;
 
-      const car = { x: canvas.width / 2, y: canvas.height - 100, w: 36, h: 60 };
+      const carStartY = canvas.height - 130;
+      const car = { x: canvas.width / 2, y: carStartY, w: 36, h: 60 };
       const carColor = '#d62828'; // red
       const carOutline = '#8c1a1a';
 
@@ -118,9 +119,13 @@
         } catch (e) {}
       }
 
+      function policeWarning() {
+        return !police && !gameOver && !crashing && slowTimer > slowThreshold - policeWarnFrames;
+      }
+
       function updateSiren() {
         if (!audioCtx) return;
-        const wailing = !gameOver && !!police;
+        const wailing = !gameOver && (!!police || policeWarning());
         const targetVol = wailing ? 0.05 : 0;
         sirenGain.gain.linearRampToValueAtTime(targetVol, audioCtx.currentTime + 0.15);
         if (wailing) {
@@ -165,7 +170,8 @@
       let slowTimer = 0;
       let busted = false;
       const slowThreshold = 300; // ~5s of not boosting before it appears
-      const policeApproach = 1.8; // how fast it closes the gap while you coast
+      const policeApproach = 1.0; // how fast it creeps up while you coast (slow, so you see it coming)
+      const policeWarnFrames = 150; // ~2.5s of flashing warning before it appears
       const policeRetreat = 6.5; // how fast it falls back while you boost
 
       // Crash: the car spins out and swings off the nearest edge of the
@@ -182,6 +188,7 @@
       let splashed = false;
       let splashes = []; // expanding ripple rings where the car hit the water
       let frameCount = 0;
+      let lastTime = null; // so game speed does not depend on the screen refresh rate
 
       function startCrash() {
         if (crashing || gameOver) return;
@@ -195,7 +202,7 @@
         crashSpin = direction;
         crashStartX = car.x;
         crashStartY = car.y;
-        crashTargetX = direction < 0 ? roadLeft - 55 : roadRight + 55;
+        crashTargetX = direction < 0 ? roadLeft - 34 : roadRight + 34; // whole car fits in the water strip
         crashTargetY = car.y + 50;
       }
 
@@ -249,7 +256,7 @@
 
       function resetGame() {
         car.x = canvas.width / 2;
-        car.y = canvas.height - 100; // the crash swing moves the car down, so put it back
+        car.y = carStartY; // the crash swing moves the car, so put it back
         targetX = car.x;
         traffic = [];
         coins = [];
@@ -337,21 +344,25 @@
       });
 
       function update() {
-        frameCount++;
+        const now = performance.now();
+        let step = lastTime === null ? 1 : (now - lastTime) / (1000 / 60);
+        lastTime = now;
+        step = Math.min(Math.max(step, 0.2), 3); // same game speed on 60Hz and 120Hz screens
+        frameCount += step;
 
         if (crashing) {
-          crashTimer--;
-          const t = easeOut(1 - crashTimer / crashDuration);
+          crashTimer -= step;
+          const t = easeOut(Math.min(1, Math.max(0, 1 - crashTimer / crashDuration)));
           car.x = crashStartX + (crashTargetX - crashStartX) * t;
           car.y = crashStartY + (crashTargetY - crashStartY) * t;
-          crashAngle += 0.35 * crashSpin;
+          crashAngle = crashSpin * Math.PI * 4 * t; // two full spins, finishing upright
 
           if (!splashed && (car.x < roadLeft || car.x > roadRight)) {
             splashed = true;
             splashes.push({ x: car.x, y: car.y, age: 0 });
           }
 
-          splashes.forEach((s) => s.age++);
+          splashes.forEach((s) => (s.age += step));
           splashes = splashes.filter((s) => s.age < 26);
 
           if (crashTimer <= 0) {
@@ -367,29 +378,30 @@
           return;
         }
 
-        if (keys.left) targetX -= moveSpeed;
-        if (keys.right) targetX += moveSpeed;
+        if (keys.left) targetX -= moveSpeed * step;
+        if (keys.right) targetX += moveSpeed * step;
         targetX = Math.max(roadLeft + car.w / 2, Math.min(roadRight - car.w / 2, targetX));
 
-        car.x += (targetX - car.x) * followSpeed;
+        car.x += (targetX - car.x) * (1 - Math.pow(1 - followSpeed, step));
 
         if (boosting && boostEnergy > 0) {
-          boostEnergy = Math.max(0, boostEnergy - boostDrain);
+          boostEnergy = Math.max(0, boostEnergy - boostDrain * step);
         } else {
           boosting = false;
-          boostEnergy = Math.min(100, boostEnergy + boostRegen);
+          boostEnergy = Math.min(100, boostEnergy + boostRegen * step);
         }
         boostFill.style.width = boostEnergy + '%';
 
         const speed = worldSpeed();
+        const dist = speed * step;
 
         laneLines.forEach((line) => {
-          line.y += speed;
-          if (line.y > canvas.height) line.y -= 8 * 80;
+          line.y += dist;
+          if (line.y > ctx.canvas.height) line.y -= 8 * 80;
         });
 
         traffic.forEach((other) => {
-          other.y += speed;
+          other.y += dist;
 
           if (
             Math.abs(car.x - other.x) < (car.w + other.w) / 2 - 6 &&
@@ -416,19 +428,19 @@
             if (newLevel > level) {
               level = newLevel;
               levelEl.textContent = 'Level: ' + level;
-              levelFlash = 90; // ~1.5s at 60fps
+              levelFlash = 90; // ~1.5s
             }
           }
         });
 
-        traffic = traffic.filter((other) => other.y < canvas.height + 80);
+        traffic = traffic.filter((other) => other.y < ctx.canvas.height + 80);
 
         if (traffic.length === 0 || traffic[traffic.length - 1].y > spawnGap()) {
           spawnTraffic();
         }
 
         coins.forEach((coin) => {
-          coin.y += speed;
+          coin.y += dist;
 
           const dx = car.x - coin.x;
           const dy = car.y - coin.y;
@@ -437,16 +449,16 @@
             score += 3;
           }
         });
-        coins = coins.filter((coin) => !coin.collected && coin.y < canvas.height + 40);
+        coins = coins.filter((coin) => !coin.collected && coin.y < ctx.canvas.height + 40);
 
-        coinSpawnIn--;
+        coinSpawnIn -= step;
         if (coinSpawnIn <= 0) {
           spawnCoin();
           coinSpawnIn = 110 + Math.random() * 90;
         }
 
         shields.forEach((sh) => {
-          sh.y += speed;
+          sh.y += dist;
           const dx = car.x - sh.x;
           const dy = car.y - sh.y;
           if (Math.sqrt(dx * dx + dy * dy) < sh.r + Math.min(car.w, car.h) / 2) {
@@ -457,30 +469,34 @@
         shields = shields.filter((sh) => !sh.collected && sh.y < ctx.canvas.height + 40);
 
         if (!shieldOn && shields.length === 0) {
-          shieldSpawnIn--;
+          shieldSpawnIn -= step;
           if (shieldSpawnIn <= 0) {
             spawnShield();
             shieldSpawnIn = 500 + Math.random() * 400;
           }
         }
 
-        // The police car: coasting too long (not boosting) summons it from
-        // behind; boosting sends it falling back out of the chase.
+        // The police car. Coasting too long (not boosting) first triggers a
+        // flashing warning, then the police appears in the OTHER lane, well back
+        // and off-screen, and creeps up. It has to line up with you to bust you.
         if (boosting) {
           slowTimer = 0;
         } else {
-          slowTimer++;
+          slowTimer += step;
         }
 
         if (!police && slowTimer >= slowThreshold) {
-          police = { x: car.x, y: canvas.height + 90 };
+          const laneX = car.x < (roadLeft + roadRight) / 2 ? roadRight - 55 : roadLeft + 55;
+          police = { x: laneX, y: ctx.canvas.height + 60 };
         }
 
         if (police) {
-          police.y += boosting ? policeRetreat : -policeApproach;
-          police.x += (car.x - police.x) * 0.06;
+          police.y += (boosting ? policeRetreat : -policeApproach) * step;
+          // stays in its own lane until it is on screen, then drifts toward yours
+    if (police.y < ctx.canvas.height) police.x += (car.x - police.x) * (1 - Math.pow(1 - 0.015, step));
 
-          if (police.y - car.y < 14) {
+          const caught = police.y - car.y < 14;
+          if (caught && Math.abs(police.x - car.x) < 34) {
             if (shieldOn) {
               shieldOn = false;
               invuln = 45;
@@ -491,15 +507,17 @@
               busted = true;
               startCrash();
             }
-          } else if (police.y > canvas.height + 140) {
+          } else if (caught) {
+            police.y = car.y + 14; // right beside you, sliding into your lane
+          } else if (police.y > ctx.canvas.height + 140) {
             police = null;
             slowTimer = 0;
           }
         }
 
-        if (levelFlash > 0) levelFlash--;
-        if (shieldFlash > 0) shieldFlash--;
-        if (invuln > 0) invuln--;
+        levelFlash = Math.max(0, levelFlash - step);
+        shieldFlash = Math.max(0, shieldFlash - step);
+        invuln = Math.max(0, invuln - step);
 
         updateSiren();
 
@@ -540,6 +558,17 @@
         const litRed = Math.floor(frameCount / 8) % 2 === 0;
         ctx.fillStyle = litRed ? '#ff3b30' : '#2b45f0';
         ctx.fillRect(x - 10, y - h / 2 - 8, 20, 7);
+      }
+
+      function drawPoliceGlow() {
+        const cw = ctx.canvas.width;
+        const ch = ctx.canvas.height;
+        const red = Math.floor(frameCount / 8) % 2 === 0;
+        const g = ctx.createLinearGradient(0, ch, 0, ch - 90);
+        g.addColorStop(0, red ? 'rgba(255, 59, 48, 0.75)' : 'rgba(43, 69, 240, 0.75)');
+        g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = g;
+        ctx.fillRect(0, ch - 90, cw, 90);
       }
 
       function drawShieldPickup(x, y, r) {
@@ -662,6 +691,7 @@
         coins.forEach((coin) => drawCoin(coin.x, coin.y, coin.r));
 
       shields.forEach((sh) => drawShieldPickup(sh.x, sh.y, sh.r));
+      if ((police || policeWarning()) && !gameOver) drawPoliceGlow();
 
         traffic.forEach((other) => drawCar(other.x, other.y, other.w, other.h, other.color, '#333'));
 
@@ -698,14 +728,11 @@
           ctx.font = 'bold 18px sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('🚨 Boost to lose the police!', canvas.width / 2, 30);
-        } else if (!police && slowTimer > slowThreshold - 90 && !crashing && !gameOver) {
-          const blink = Math.floor(frameCount / 10) % 2 === 0;
-          if (blink) {
-            ctx.fillStyle = 'rgba(255, 150, 0, 0.9)';
-            ctx.font = 'bold 16px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('Speed up...', canvas.width / 2, 30);
-          }
+        } else if (policeWarning()) {
+          ctx.fillStyle = 'rgba(255, 59, 48, 0.95)';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('🚨 Police coming! Hold BOOST!', ctx.canvas.width / 2, 30);
         }
 
         drawShieldEffects();
