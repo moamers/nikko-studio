@@ -563,9 +563,7 @@
         }
 
         if (crashing) {
-          const fade = splashed ? Math.max(0, crashTimer / (crashDuration * 0.4)) : 1;
           ctx.save();
-          ctx.globalAlpha = Math.min(1, fade);
           ctx.translate(car.x, car.y);
           ctx.rotate(crashAngle);
           drawCar(0, 0, car.w, car.h, carColor, carOutline);
