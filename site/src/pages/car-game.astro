@@ -237,6 +237,7 @@
 
       function resetGame() {
         car.x = canvas.width / 2;
+        car.y = canvas.height - 100; // the crash swing moves the car down, so put it back
         targetX = car.x;
         traffic = [];
         coins = [];
