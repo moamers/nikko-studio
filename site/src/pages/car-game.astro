@@ -76,12 +76,12 @@
 
       function trafficSpeed() {
         // Starts slow at level 1, a clear step up with each level.
-        return Math.min(20, 6 + (level - 1) * 2.2);
+        return Math.min(23, 7 + (level - 1) * 2.6);
       }
 
       function spawnGap() {
         // The road gets busier each level — new cars arrive sooner.
-        return Math.max(95, 210 - (level - 1) * 17);
+        return Math.max(85, 195 - (level - 1) * 19);
       }
 
       function spawnLaneLines() {
