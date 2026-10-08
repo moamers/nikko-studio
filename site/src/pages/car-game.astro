@@ -46,8 +46,8 @@
       const roadRight = canvas.width - 60;
 
       const car = { x: canvas.width / 2, y: canvas.height - 100, w: 36, h: 60 };
-      const carColor = '#2b45f0';
-      const carOutline = '#15259c';
+      const carColor = '#d62828'; // red
+      const carOutline = '#8c1a1a';
 
       let targetX = car.x;
       let keys = { left: false, right: false };
@@ -69,7 +69,7 @@
         const w = 36;
         const h = 56;
         const x = roadLeft + 20 + Math.random() * (roadRight - roadLeft - 40 - w) + w / 2;
-        const colors = ['#e63946', '#ffb703', '#2a9d8f', '#f4a261'];
+        const colors = ['#6a4c93', '#ffb703', '#2a9d8f', '#f4a261'];
         const color = colors[Math.floor(Math.random() * colors.length)];
         traffic.push({ x, y: -60, w, h, color, passed: false });
       }
