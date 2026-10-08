@@ -101,11 +101,13 @@
       let sirenGain = null;
 
       function ensureAudio() {
-        if (audioCtx) {
-          if (audioCtx.state === 'suspended') audioCtx.resume();
-          return;
-        }
+        // Never let anything here throw — a sound failure must not be able
+        // to block the game from starting.
         try {
+          if (audioCtx) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return;
+          }
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
           sirenOsc = audioCtx.createOscillator();
           sirenGain = audioCtx.createGain();
