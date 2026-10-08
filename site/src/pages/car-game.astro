@@ -10,6 +10,7 @@
     <p>Drag your finger (or mouse) left and right to steer!</p>
     <canvas id="game" width="400" height="600"></canvas>
     <p id="score">Score: 0</p>
+    <p id="level">Level: 1</p>
 
     <style>
       body {
@@ -27,12 +28,19 @@
         font-size: 24px;
         font-weight: bold;
       }
+      #level {
+        font-size: 16px;
+        color: #4a6572;
+        margin-top: -8px;
+      }
     </style>
 
     <script>
       const canvas = document.getElementById('game');
       const ctx = canvas.getContext('2d');
       const scoreEl = document.getElementById('score');
+      const levelEl = document.getElementById('level');
+      const pointsPerLevel = 5;
 
       const roadLeft = 60;
       const roadRight = canvas.width - 60;
@@ -49,7 +57,13 @@
       let traffic = []; // the other cars coming down the road
       let laneLines = [];
       let score = 0;
+      let level = 1;
+      let levelFlash = 0; // frames left to show the "Level up!" banner
       let gameOver = false;
+
+      function levelFor(s) {
+        return Math.floor(s / pointsPerLevel) + 1;
+      }
 
       function spawnTraffic() {
         const w = 36;
@@ -61,8 +75,13 @@
       }
 
       function trafficSpeed() {
-        // Starts slow, ramps up the longer you survive.
-        return Math.min(16, 5.5 + score * 0.16);
+        // Starts slow at level 1, a clear step up with each level.
+        return Math.min(17, 5 + (level - 1) * 1.8);
+      }
+
+      function spawnGap() {
+        // The road gets busier each level — new cars arrive sooner.
+        return Math.max(110, 230 - (level - 1) * 15);
       }
 
       function spawnLaneLines() {
@@ -77,9 +96,12 @@
         targetX = car.x;
         traffic = [];
         score = 0;
+        level = 1;
+        levelFlash = 0;
         gameOver = false;
         spawnTraffic();
         spawnLaneLines();
+        levelEl.textContent = 'Level: 1';
       }
 
       function pointerToX(clientX) {
@@ -147,14 +169,23 @@
           if (!other.passed && other.y > car.y + car.h) {
             other.passed = true;
             score++;
+
+            const newLevel = levelFor(score);
+            if (newLevel > level) {
+              level = newLevel;
+              levelEl.textContent = 'Level: ' + level;
+              levelFlash = 90; // ~1.5s at 60fps
+            }
           }
         });
 
         traffic = traffic.filter((other) => other.y < canvas.height + 80);
 
-        if (traffic.length === 0 || traffic[traffic.length - 1].y > 210) {
+        if (traffic.length === 0 || traffic[traffic.length - 1].y > spawnGap()) {
           spawnTraffic();
         }
+
+        if (levelFlash > 0) levelFlash--;
 
         scoreEl.textContent = 'Score: ' + score;
       }
@@ -209,6 +240,14 @@
         traffic.forEach((other) => drawCar(other.x, other.y, other.w, other.h, other.color, '#333'));
 
         drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
+
+        if (levelFlash > 0) {
+          const alpha = Math.min(1, levelFlash / 20);
+          ctx.fillStyle = `rgba(255, 196, 0, ${alpha})`;
+          ctx.font = 'bold 40px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Level ' + level + '!', canvas.width / 2, 80);
+        }
 
         if (gameOver) {
           ctx.fillStyle = 'rgba(0,0,0,0.5)';
