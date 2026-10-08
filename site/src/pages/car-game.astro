@@ -94,6 +94,38 @@
       const carColor = '#d62828'; // red
       const carOutline = '#8c1a1a';
 
+      // A synthesized police siren — no audio file needed. Created lazily on
+      // the first tap/click/key so the browser's autoplay rules allow it.
+      let audioCtx = null;
+      let sirenOsc = null;
+      let sirenGain = null;
+
+      function ensureAudio() {
+        if (audioCtx) {
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          return;
+        }
+        try {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          sirenOsc = audioCtx.createOscillator();
+          sirenGain = audioCtx.createGain();
+          sirenOsc.type = 'sine';
+          sirenGain.gain.value = 0;
+          sirenOsc.connect(sirenGain).connect(audioCtx.destination);
+          sirenOsc.start();
+        } catch (e) {}
+      }
+
+      function updateSiren() {
+        if (!audioCtx) return;
+        const wailing = !gameOver && !!police;
+        const targetVol = wailing ? 0.05 : 0;
+        sirenGain.gain.linearRampToValueAtTime(targetVol, audioCtx.currentTime + 0.15);
+        if (wailing) {
+          sirenOsc.frequency.setValueAtTime(650 + Math.sin(frameCount / 15) * 150, audioCtx.currentTime);
+        }
+      }
+
       let targetX = car.x;
       let keys = { left: false, right: false };
       const moveSpeed = 15; // how fast arrow keys move the car
@@ -221,6 +253,7 @@
         crashAngle = 0;
         splashed = false;
         splashes = [];
+        if (audioCtx) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
         spawnTraffic();
         spawnLaneLines();
         levelEl.textContent = 'Level: 1';
@@ -232,6 +265,7 @@
       }
 
       canvas.addEventListener('mousedown', (e) => {
+        ensureAudio();
         if (gameOver) resetGame();
         targetX = pointerToX(e.clientX);
       });
@@ -241,6 +275,7 @@
       canvas.addEventListener(
         'touchstart',
         (e) => {
+          ensureAudio();
           if (gameOver) resetGame();
           targetX = pointerToX(e.touches[0].clientX);
         },
@@ -256,6 +291,7 @@
 
       function startBoost(e) {
         e.preventDefault();
+        ensureAudio();
         boosting = true;
       }
       function stopBoost() {
@@ -301,6 +337,7 @@
           if (crashTimer <= 0) {
             crashing = false;
             gameOver = true;
+            if (audioCtx) sirenGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
           }
           return; // freeze traffic, coins and the police car while spinning out
         }
@@ -404,6 +441,8 @@
         }
 
         if (levelFlash > 0) levelFlash--;
+
+        updateSiren();
 
         scoreEl.textContent = 'Score: ' + score;
       }
