@@ -43,8 +43,8 @@
 
       let targetX = car.x;
       let keys = { left: false, right: false };
-      const moveSpeed = 10; // how fast arrow keys move the car
-      const followSpeed = 0.35; // how smoothly the car chases the pointer
+      const moveSpeed = 15; // how fast arrow keys move the car
+      const followSpeed = 0.5; // how smoothly the car chases the pointer
 
       let traffic = []; // the other cars coming down the road
       let laneLines = [];
@@ -62,7 +62,7 @@
 
       function trafficSpeed() {
         // Starts slow, ramps up the longer you survive.
-        return Math.min(13, 4.5 + score * 0.12);
+        return Math.min(16, 5.5 + score * 0.16);
       }
 
       function spawnLaneLines() {
@@ -152,7 +152,7 @@
 
         traffic = traffic.filter((other) => other.y < canvas.height + 80);
 
-        if (traffic.length === 0 || traffic[traffic.length - 1].y > 160) {
+        if (traffic.length === 0 || traffic[traffic.length - 1].y > 210) {
           spawnTraffic();
         }
 
