@@ -437,12 +437,27 @@
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Grass either side of the road.
-        ctx.fillStyle = '#3a7d44';
+        // The sea either side of the bridge.
+        ctx.fillStyle = '#1f6f9c';
         ctx.fillRect(0, 0, roadLeft, canvas.height);
         ctx.fillRect(roadRight, 0, canvas.width - roadRight, canvas.height);
 
-        // Road.
+        // Gentle wave caps drifting with the road, reusing the lane-line
+        // positions so nothing extra needs to be tracked.
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.lineWidth = 2;
+        laneLines.forEach((line) => {
+          [22, 70].forEach((xOffset) => {
+            ctx.beginPath();
+            ctx.arc(xOffset, line.y + 30, 10, Math.PI * 0.15, Math.PI * 0.85);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(canvas.width - xOffset, line.y + 60, 10, Math.PI * 0.15, Math.PI * 0.85);
+            ctx.stroke();
+          });
+        });
+
+        // The bridge deck.
         ctx.fillStyle = '#555555';
         ctx.fillRect(roadLeft, 0, roadRight - roadLeft, canvas.height);
 
@@ -457,6 +472,16 @@
           ctx.stroke();
         });
         ctx.setLineDash([]);
+
+        // Bridge guardrails: a concrete curb with posts along each edge.
+        ctx.fillStyle = '#c9c2b2';
+        ctx.fillRect(roadLeft - 10, 0, 10, canvas.height);
+        ctx.fillRect(roadRight, 0, 10, canvas.height);
+        ctx.fillStyle = '#8c8577';
+        laneLines.forEach((line) => {
+          ctx.fillRect(roadLeft - 10, line.y, 10, 14);
+          ctx.fillRect(roadRight, line.y, 10, 14);
+        });
 
         coins.forEach((coin) => drawCoin(coin.x, coin.y, coin.r));
 
