@@ -114,7 +114,7 @@
       let boostEnergy = 100;
       const boostDrain = 1.3;
       const boostRegen = 0.5;
-      const boostMultiplier = 1.6;
+      const boostMultiplier = 2.8;
 
       let coinSpawnIn = 90;
 
@@ -124,27 +124,42 @@
       let slowTimer = 0;
       let busted = false;
       const slowThreshold = 300; // ~5s of not boosting before it appears
-      const policeApproach = 3; // how fast it closes the gap while you coast
-      const policeRetreat = 4; // how fast it falls back while you boost
+      const policeApproach = 1.8; // how fast it closes the gap while you coast
+      const policeRetreat = 6.5; // how fast it falls back while you boost
 
-      // Crash spin-out: a short animation before "Game Over" shows, instead
-      // of the car just freezing in place.
+      // Crash: the car spins out and swings off the nearest edge of the
+      // bridge into the sea, with a splash where it goes in.
       let crashing = false;
       let crashTimer = 0;
+      const crashDuration = 50;
       let crashAngle = 0;
       let crashSpin = 1;
-      let crashVX = 0;
-      let crashVY = 0;
+      let crashStartX = 0;
+      let crashStartY = 0;
+      let crashTargetX = 0;
+      let crashTargetY = 0;
+      let splashed = false;
+      let splashes = []; // expanding ripple rings where the car hit the water
       let frameCount = 0;
 
       function startCrash() {
         if (crashing || gameOver) return;
         crashing = true;
-        crashTimer = 36;
+        crashTimer = crashDuration;
         crashAngle = 0;
-        crashSpin = Math.random() < 0.5 ? -1 : 1;
-        crashVX = crashSpin * 4;
-        crashVY = -2;
+        splashed = false;
+
+        const roadMid = (roadLeft + roadRight) / 2;
+        const direction = car.x < roadMid ? -1 : 1;
+        crashSpin = direction;
+        crashStartX = car.x;
+        crashStartY = car.y;
+        crashTargetX = direction < 0 ? roadLeft - 55 : roadRight + 55;
+        crashTargetY = car.y + 50;
+      }
+
+      function easeOut(t) {
+        return t * t * (3 - 2 * t); // smoothstep
       }
 
       function levelFor(s) {
@@ -204,6 +219,8 @@
         crashing = false;
         crashTimer = 0;
         crashAngle = 0;
+        splashed = false;
+        splashes = [];
         spawnTraffic();
         spawnLaneLines();
         levelEl.textContent = 'Level: 1';
@@ -268,11 +285,19 @@
 
         if (crashing) {
           crashTimer--;
+          const t = easeOut(1 - crashTimer / crashDuration);
+          car.x = crashStartX + (crashTargetX - crashStartX) * t;
+          car.y = crashStartY + (crashTargetY - crashStartY) * t;
           crashAngle += 0.35 * crashSpin;
-          car.x += crashVX;
-          car.y += crashVY;
-          crashVX *= 0.92;
-          crashVY *= 0.92;
+
+          if (!splashed && (car.x < roadLeft || car.x > roadRight)) {
+            splashed = true;
+            splashes.push({ x: car.x, y: car.y, age: 0 });
+          }
+
+          splashes.forEach((s) => s.age++);
+          splashes = splashes.filter((s) => s.age < 26);
+
           if (crashTimer <= 0) {
             crashing = false;
             gameOver = true;
@@ -442,18 +467,23 @@
         ctx.fillRect(0, 0, roadLeft, canvas.height);
         ctx.fillRect(roadRight, 0, canvas.width - roadRight, canvas.height);
 
-        // Gentle wave caps drifting with the road, reusing the lane-line
-        // positions so nothing extra needs to be tracked.
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+        // Wave caps drifting with the road, with their own gentle side-to-
+        // side shimmer so the sea keeps moving even when the road doesn't.
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
         ctx.lineWidth = 2;
-        laneLines.forEach((line) => {
-          [22, 70].forEach((xOffset) => {
-            ctx.beginPath();
-            ctx.arc(xOffset, line.y + 30, 10, Math.PI * 0.15, Math.PI * 0.85);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(canvas.width - xOffset, line.y + 60, 10, Math.PI * 0.15, Math.PI * 0.85);
-            ctx.stroke();
+        laneLines.forEach((line, i) => {
+          [0, 40].forEach((yStep, j) => {
+            const y = line.y + yStep;
+            const bob = Math.sin(frameCount / 18 + i * 1.7 + j) * 5;
+            [20, 46, 72].forEach((xOffset, k) => {
+              const r = 8 + ((i + k) % 2) * 3;
+              ctx.beginPath();
+              ctx.arc(xOffset + bob, y + 14, r, Math.PI * 0.15, Math.PI * 0.85);
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.arc(canvas.width - xOffset - bob, y + 44, r, Math.PI * 0.15, Math.PI * 0.85);
+              ctx.stroke();
+            });
           });
         });
 
@@ -492,11 +522,22 @@
         }
 
         if (crashing) {
+          const fade = splashed ? Math.max(0, crashTimer / (crashDuration * 0.4)) : 1;
           ctx.save();
+          ctx.globalAlpha = Math.min(1, fade);
           ctx.translate(car.x, car.y);
           ctx.rotate(crashAngle);
           drawCar(0, 0, car.w, car.h, carColor, carOutline);
           ctx.restore();
+
+          splashes.forEach((s) => {
+            const p = s.age / 26;
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, 6 + p * 34, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 * (1 - p)})`;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+          });
         } else {
           drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
         }
