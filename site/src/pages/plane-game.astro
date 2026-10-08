@@ -108,14 +108,14 @@
 
       function spawnBar() {
         // Each level has its own fixed gap size — a clear step down, not a slow crawl.
-        const gapHeight = Math.max(72, 185 - (level - 1) * 19);
+        const gapHeight = Math.max(66, 175 - (level - 1) * 20);
         const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
         bars.push({ x: canvas.width, gapY, gapHeight, passed: false });
       }
 
       function barSpeed() {
         // Fast within a level, and a notch faster each level up.
-        return Math.min(12, 4 + (level - 1) * 1.1); // starts slow, ramps up with each level
+        return Math.min(14, 4.6 + (level - 1) * 1.3); // starts slow, ramps up with each level
       }
 
       function resetGame() {
