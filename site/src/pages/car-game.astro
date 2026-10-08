@@ -7,10 +7,17 @@
   </head>
   <body>
     <h1>🏎️ Car Game</h1>
-    <p>Drag your finger (or mouse) left and right to steer!</p>
+    <p>Drag your finger (or mouse) left and right to steer! Grab the gold coins.</p>
     <canvas id="game" width="400" height="600"></canvas>
     <p id="score">Score: 0</p>
     <p id="level">Level: 1</p>
+
+    <div class="boost-row">
+      <button id="boostBtn">🚀 BOOST</button>
+      <div class="boost-bar">
+        <div id="boostFill" class="boost-fill"></div>
+      </div>
+    </div>
 
     <style>
       body {
@@ -33,6 +40,42 @@
         color: #4a6572;
         margin-top: -8px;
       }
+      .boost-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      #boostBtn {
+        font-size: 16px;
+        font-weight: bold;
+        padding: 10px 18px;
+        border: 3px solid #8c1a1a;
+        border-radius: 999px;
+        background: #ff6b4a;
+        color: white;
+        cursor: pointer;
+        touch-action: none;
+        user-select: none;
+      }
+      #boostBtn:active {
+        background: #e63946;
+      }
+      .boost-bar {
+        width: 110px;
+        height: 14px;
+        background: #ddd;
+        border: 2px solid #333;
+        border-radius: 999px;
+        overflow: hidden;
+      }
+      .boost-fill {
+        height: 100%;
+        width: 100%;
+        background: #ffd400;
+        transition: width 80ms linear;
+      }
     </style>
 
     <script>
@@ -40,6 +83,8 @@
       const ctx = canvas.getContext('2d');
       const scoreEl = document.getElementById('score');
       const levelEl = document.getElementById('level');
+      const boostBtn = document.getElementById('boostBtn');
+      const boostFill = document.getElementById('boostFill');
       const pointsPerLevel = 5;
 
       const roadLeft = 60;
@@ -55,11 +100,52 @@
       const followSpeed = 0.5; // how smoothly the car chases the pointer
 
       let traffic = []; // the other cars coming down the road
+      let coins = []; // gold coins you can collect for bonus points
       let laneLines = [];
       let score = 0;
       let level = 1;
       let levelFlash = 0; // frames left to show the "Level up!" banner
       let gameOver = false;
+
+      // Boost: hold the button (or Shift) to speed everything up for a
+      // moment. Draining/refilling an energy bar keeps it a choice, not a
+      // free always-on speed.
+      let boosting = false;
+      let boostEnergy = 100;
+      const boostDrain = 1.3;
+      const boostRegen = 0.5;
+      const boostMultiplier = 1.6;
+
+      let coinSpawnIn = 90;
+
+      // A police car waits behind you. Coast too long without boosting and
+      // it starts closing in; boost to pull away and lose it.
+      let police = null;
+      let slowTimer = 0;
+      let busted = false;
+      const slowThreshold = 300; // ~5s of not boosting before it appears
+      const policeApproach = 3; // how fast it closes the gap while you coast
+      const policeRetreat = 4; // how fast it falls back while you boost
+
+      // Crash spin-out: a short animation before "Game Over" shows, instead
+      // of the car just freezing in place.
+      let crashing = false;
+      let crashTimer = 0;
+      let crashAngle = 0;
+      let crashSpin = 1;
+      let crashVX = 0;
+      let crashVY = 0;
+      let frameCount = 0;
+
+      function startCrash() {
+        if (crashing || gameOver) return;
+        crashing = true;
+        crashTimer = 36;
+        crashAngle = 0;
+        crashSpin = Math.random() < 0.5 ? -1 : 1;
+        crashVX = crashSpin * 4;
+        crashVY = -2;
+      }
 
       function levelFor(s) {
         return Math.floor(s / pointsPerLevel) + 1;
@@ -74,9 +160,18 @@
         traffic.push({ x, y: -60, w, h, color, passed: false });
       }
 
-      function trafficSpeed() {
+      function spawnCoin() {
+        const x = roadLeft + 24 + Math.random() * (roadRight - roadLeft - 48);
+        coins.push({ x, y: -30, r: 12 });
+      }
+
+      function baseSpeed() {
         // Starts slow at level 1, a clear step up with each level.
         return Math.min(23, 7 + (level - 1) * 2.6);
+      }
+
+      function worldSpeed() {
+        return boosting && boostEnergy > 0 ? baseSpeed() * boostMultiplier : baseSpeed();
       }
 
       function spawnGap() {
@@ -95,10 +190,20 @@
         car.x = canvas.width / 2;
         targetX = car.x;
         traffic = [];
+        coins = [];
         score = 0;
         level = 1;
         levelFlash = 0;
         gameOver = false;
+        boosting = false;
+        boostEnergy = 100;
+        coinSpawnIn = 90;
+        police = null;
+        slowTimer = 0;
+        busted = false;
+        crashing = false;
+        crashTimer = 0;
+        crashAngle = 0;
         spawnTraffic();
         spawnLaneLines();
         levelEl.textContent = 'Level: 1';
@@ -132,18 +237,53 @@
         { passive: true }
       );
 
+      function startBoost(e) {
+        e.preventDefault();
+        boosting = true;
+      }
+      function stopBoost() {
+        boosting = false;
+      }
+      boostBtn.addEventListener('mousedown', startBoost);
+      boostBtn.addEventListener('touchstart', startBoost, { passive: false });
+      boostBtn.addEventListener('mouseup', stopBoost);
+      boostBtn.addEventListener('mouseleave', stopBoost);
+      boostBtn.addEventListener('touchend', stopBoost);
+      boostBtn.addEventListener('touchcancel', stopBoost);
+
       window.addEventListener('keydown', (e) => {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = true;
         if (e.code === 'Space' && gameOver) resetGame();
       });
       window.addEventListener('keyup', (e) => {
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = false;
       });
 
       function update() {
-        if (gameOver) return;
+        frameCount++;
+
+        if (crashing) {
+          crashTimer--;
+          crashAngle += 0.35 * crashSpin;
+          car.x += crashVX;
+          car.y += crashVY;
+          crashVX *= 0.92;
+          crashVY *= 0.92;
+          if (crashTimer <= 0) {
+            crashing = false;
+            gameOver = true;
+          }
+          return; // freeze traffic, coins and the police car while spinning out
+        }
+
+        if (gameOver) {
+          boosting = false;
+          return;
+        }
 
         if (keys.left) targetX -= moveSpeed;
         if (keys.right) targetX += moveSpeed;
@@ -151,19 +291,29 @@
 
         car.x += (targetX - car.x) * followSpeed;
 
+        if (boosting && boostEnergy > 0) {
+          boostEnergy = Math.max(0, boostEnergy - boostDrain);
+        } else {
+          boosting = false;
+          boostEnergy = Math.min(100, boostEnergy + boostRegen);
+        }
+        boostFill.style.width = boostEnergy + '%';
+
+        const speed = worldSpeed();
+
         laneLines.forEach((line) => {
-          line.y += trafficSpeed();
+          line.y += speed;
           if (line.y > canvas.height) line.y -= 8 * 80;
         });
 
         traffic.forEach((other) => {
-          other.y += trafficSpeed();
+          other.y += speed;
 
           if (
             Math.abs(car.x - other.x) < (car.w + other.w) / 2 - 6 &&
             Math.abs(car.y - other.y) < (car.h + other.h) / 2 - 6
           ) {
-            gameOver = true;
+            startCrash();
           }
 
           if (!other.passed && other.y > car.y + car.h) {
@@ -183,6 +333,49 @@
 
         if (traffic.length === 0 || traffic[traffic.length - 1].y > spawnGap()) {
           spawnTraffic();
+        }
+
+        coins.forEach((coin) => {
+          coin.y += speed;
+
+          const dx = car.x - coin.x;
+          const dy = car.y - coin.y;
+          if (Math.sqrt(dx * dx + dy * dy) < coin.r + Math.min(car.w, car.h) / 2) {
+            coin.collected = true;
+            score += 3;
+          }
+        });
+        coins = coins.filter((coin) => !coin.collected && coin.y < canvas.height + 40);
+
+        coinSpawnIn--;
+        if (coinSpawnIn <= 0) {
+          spawnCoin();
+          coinSpawnIn = 110 + Math.random() * 90;
+        }
+
+        // The police car: coasting too long (not boosting) summons it from
+        // behind; boosting sends it falling back out of the chase.
+        if (boosting) {
+          slowTimer = 0;
+        } else {
+          slowTimer++;
+        }
+
+        if (!police && slowTimer >= slowThreshold) {
+          police = { x: car.x, y: canvas.height + 90 };
+        }
+
+        if (police) {
+          police.y += boosting ? policeRetreat : -policeApproach;
+          police.x += (car.x - police.x) * 0.06;
+
+          if (police.y - car.y < 14) {
+            busted = true;
+            startCrash();
+          } else if (police.y > canvas.height + 140) {
+            police = null;
+            slowTimer = 0;
+          }
         }
 
         if (levelFlash > 0) levelFlash--;
@@ -213,6 +406,34 @@
         ctx.fillRect(x - w / 2 + 6, y - h / 2 + 10, w - 12, h / 3);
       }
 
+      function drawPoliceCar(x, y, w, h) {
+        drawCar(x, y, w, h, '#f2ecdf', '#222');
+
+        // Black door stripe.
+        ctx.fillStyle = '#222';
+        ctx.fillRect(x - w / 2, y - 6, w, 10);
+
+        // Flashing red/blue light bar on the roof.
+        const litRed = Math.floor(frameCount / 8) % 2 === 0;
+        ctx.fillStyle = litRed ? '#ff3b30' : '#2b45f0';
+        ctx.fillRect(x - 10, y - h / 2 - 8, 20, 7);
+      }
+
+      function drawCoin(x, y, r) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffd400';
+        ctx.fill();
+        ctx.strokeStyle = '#b8860b';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, r - 4, 0, Math.PI * 2);
+        ctx.strokeStyle = '#fff3b0';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+
       function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -237,9 +458,43 @@
         });
         ctx.setLineDash([]);
 
+        coins.forEach((coin) => drawCoin(coin.x, coin.y, coin.r));
+
         traffic.forEach((other) => drawCar(other.x, other.y, other.w, other.h, other.color, '#333'));
 
-        drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
+        if (police) {
+          drawPoliceCar(police.x, police.y, car.w, car.h);
+        }
+
+        if (crashing) {
+          ctx.save();
+          ctx.translate(car.x, car.y);
+          ctx.rotate(crashAngle);
+          drawCar(0, 0, car.w, car.h, carColor, carOutline);
+          ctx.restore();
+        } else {
+          drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
+        }
+
+        if (boosting && boostEnergy > 0) {
+          ctx.fillStyle = 'rgba(255, 180, 0, 0.9)';
+          ctx.font = 'bold 20px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('BOOST!', canvas.width / 2, 30);
+        } else if (police && !crashing && !gameOver) {
+          ctx.fillStyle = 'rgba(255, 59, 48, 0.9)';
+          ctx.font = 'bold 18px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('🚨 Boost to lose the police!', canvas.width / 2, 30);
+        } else if (!police && slowTimer > slowThreshold - 90 && !crashing && !gameOver) {
+          const blink = Math.floor(frameCount / 10) % 2 === 0;
+          if (blink) {
+            ctx.fillStyle = 'rgba(255, 150, 0, 0.9)';
+            ctx.font = 'bold 16px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Speed up...', canvas.width / 2, 30);
+          }
+        }
 
         if (levelFlash > 0) {
           const alpha = Math.min(1, levelFlash / 20);
@@ -255,7 +510,7 @@
           ctx.fillStyle = 'white';
           ctx.font = '28px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2 - 20);
+          ctx.fillText(busted ? 'Busted!' : 'Game Over!', canvas.width / 2, canvas.height / 2 - 20);
           ctx.font = '18px sans-serif';
           ctx.fillText('Click or tap to try again', canvas.width / 2, canvas.height / 2 + 20);
         }
