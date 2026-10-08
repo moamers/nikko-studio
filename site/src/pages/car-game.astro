@@ -7,7 +7,7 @@
   </head>
   <body>
     <h1>🏎️ Car Game</h1>
-    <p>Drag your finger (or mouse) left and right to steer! Grab the gold coins.</p>
+    <p>Drag your finger (or mouse) left and right to steer! Grab the gold coins and the blue shield.</p>
     <canvas id="game" width="400" height="600"></canvas>
     <p id="score">Score: 0</p>
     <p id="level">Level: 1</p>
@@ -152,6 +152,13 @@
 
       let coinSpawnIn = 90;
 
+      // Shield power-up: grab the blue shield to survive one crash or arrest.
+      let shields = [];
+      let shieldOn = false;
+      let shieldSpawnIn = 450;
+      let shieldFlash = 0; // frames left of the "Shield saved you!" pop
+      let invuln = 0; // brief protection right after the shield pops
+
       // A police car waits behind you. Coast too long without boosting and
       // it starts closing in; boost to pull away and lose it.
       let police = null;
@@ -209,6 +216,11 @@
         traffic.push({ x, y: -60, w, h, color, passed: false });
       }
 
+      function spawnShield() {
+        const x = roadLeft + 24 + Math.random() * (roadRight - roadLeft - 48);
+        shields.push({ x, y: -30, r: 15 });
+      }
+
       function spawnCoin() {
         const x = roadLeft + 24 + Math.random() * (roadRight - roadLeft - 48);
         coins.push({ x, y: -30, r: 12 });
@@ -256,6 +268,11 @@
         crashAngle = 0;
         splashed = false;
         splashes = [];
+        shields = [];
+        shieldOn = false;
+        shieldSpawnIn = 450 + Math.random() * 300;
+        shieldFlash = 0;
+        invuln = 0;
         if (audioCtx) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
         spawnTraffic();
         spawnLaneLines();
@@ -378,7 +395,17 @@
             Math.abs(car.x - other.x) < (car.w + other.w) / 2 - 6 &&
             Math.abs(car.y - other.y) < (car.h + other.h) / 2 - 6
           ) {
-            startCrash();
+            if (invuln > 0) {
+              // still protected for a moment after the shield popped
+            } else if (shieldOn) {
+              shieldOn = false;
+              invuln = 45;
+              shieldFlash = 60;
+              other.passed = true;
+              other.y = ctx.canvas.height + 200; // the car you bumped is swept aside
+            } else {
+              startCrash();
+            }
           }
 
           if (!other.passed && other.y > car.y + car.h) {
@@ -418,6 +445,25 @@
           coinSpawnIn = 110 + Math.random() * 90;
         }
 
+        shields.forEach((sh) => {
+          sh.y += speed;
+          const dx = car.x - sh.x;
+          const dy = car.y - sh.y;
+          if (Math.sqrt(dx * dx + dy * dy) < sh.r + Math.min(car.w, car.h) / 2) {
+            sh.collected = true;
+            shieldOn = true;
+          }
+        });
+        shields = shields.filter((sh) => !sh.collected && sh.y < ctx.canvas.height + 40);
+
+        if (!shieldOn && shields.length === 0) {
+          shieldSpawnIn--;
+          if (shieldSpawnIn <= 0) {
+            spawnShield();
+            shieldSpawnIn = 500 + Math.random() * 400;
+          }
+        }
+
         // The police car: coasting too long (not boosting) summons it from
         // behind; boosting sends it falling back out of the chase.
         if (boosting) {
@@ -435,8 +481,16 @@
           police.x += (car.x - police.x) * 0.06;
 
           if (police.y - car.y < 14) {
-            busted = true;
-            startCrash();
+            if (shieldOn) {
+              shieldOn = false;
+              invuln = 45;
+              shieldFlash = 60;
+              police = null;
+              slowTimer = 0;
+            } else {
+              busted = true;
+              startCrash();
+            }
           } else if (police.y > canvas.height + 140) {
             police = null;
             slowTimer = 0;
@@ -444,6 +498,8 @@
         }
 
         if (levelFlash > 0) levelFlash--;
+        if (shieldFlash > 0) shieldFlash--;
+        if (invuln > 0) invuln--;
 
         updateSiren();
 
@@ -484,6 +540,54 @@
         const litRed = Math.floor(frameCount / 8) % 2 === 0;
         ctx.fillStyle = litRed ? '#ff3b30' : '#2b45f0';
         ctx.fillRect(x - 10, y - h / 2 - 8, 20, 7);
+      }
+
+      function drawShieldPickup(x, y, r) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#29c5f6';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y - 8);
+        ctx.lineTo(x + 7, y - 5);
+        ctx.lineTo(x + 6, y + 2);
+        ctx.quadraticCurveTo(x + 5, y + 8, x, y + 10);
+        ctx.quadraticCurveTo(x - 5, y + 8, x - 6, y + 2);
+        ctx.lineTo(x - 7, y - 5);
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
+
+      function drawShieldEffects() {
+        const cw = ctx.canvas.width;
+        if (shieldOn && !crashing && !gameOver) {
+          const pulse = 40 + Math.sin(frameCount / 8) * 2;
+          ctx.beginPath();
+          ctx.arc(car.x, car.y, pulse, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(41, 197, 246, 0.95)';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.fillStyle = 'rgba(41, 197, 246, 0.95)';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('SHIELD READY', cw / 2, 52);
+        }
+        if (shieldFlash > 0 && !gameOver) {
+          const p = 1 - shieldFlash / 60;
+          ctx.beginPath();
+          ctx.arc(car.x, car.y, 40 + p * 50, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(41, 197, 246, ${shieldFlash / 60})`;
+          ctx.lineWidth = 4;
+          ctx.stroke();
+          ctx.fillStyle = `rgba(41, 197, 246, ${Math.min(1, shieldFlash / 20)})`;
+          ctx.font = 'bold 22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Shield saved you!', cw / 2, 112);
+        }
       }
 
       function drawCoin(x, y, r) {
@@ -557,6 +661,8 @@
 
         coins.forEach((coin) => drawCoin(coin.x, coin.y, coin.r));
 
+      shields.forEach((sh) => drawShieldPickup(sh.x, sh.y, sh.r));
+
         traffic.forEach((other) => drawCar(other.x, other.y, other.w, other.h, other.color, '#333'));
 
         if (police) {
@@ -602,6 +708,7 @@
           }
         }
 
+        drawShieldEffects();
         if (levelFlash > 0) {
           const alpha = Math.min(1, levelFlash / 20);
           ctx.fillStyle = `rgba(255, 196, 0, ${alpha})`;
