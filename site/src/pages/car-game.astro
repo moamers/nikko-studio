@@ -235,7 +235,7 @@
 
       function baseSpeed() {
         // Starts slow at level 1, a clear step up with each level.
-        return Math.min(17, 5 + (level - 1) * 1.8);
+        return Math.min(15, 4.6 + (level - 1) * 1.5);
       }
 
       function worldSpeed() {
@@ -244,7 +244,7 @@
 
       function spawnGap() {
         // The road gets busier each level — new cars arrive sooner.
-        return Math.max(95, 210 - (level - 1) * 17);
+        return Math.max(105, 225 - (level - 1) * 15);
       }
 
       function spawnLaneLines() {
