@@ -135,7 +135,7 @@
 
 <div class="wrap">
   <h1>&#128642; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, and grab the gold!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, and grab the gold and shields!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -187,6 +187,9 @@
     let started = false;
     let gameOver = false;
     let coinSpawnIn = 90;
+    let shieldTime = 0; // frames of shield left
+    let shieldSpawnIn = 1100;
+    const shieldDuration = 720; // about 12 seconds
     let lastSpawnY = 0;
     let scrollTotal = 0;
     let smokeIn = 0;
@@ -401,6 +404,16 @@
       return true;
     }
 
+    // A glowing shield bubble to collect. It protects the whole train from
+    // one bump (or runs out after about 12 seconds).
+    function spawnShield() {
+      if (shieldTime > 0 || coins.some((c) => c.kind === 'shield')) return true;
+      const l = Math.floor(Math.random() * 3);
+      if (obstacles.some((o) => o.lane === l && o.y < 120)) return false;
+      coins.push({ x: laneX[l], y: -30, r: 15, kind: 'shield' });
+      return true;
+    }
+
     function resetGame() {
       lane = 1;
       cars.forEach((c) => (c.x = laneX[1]));
@@ -412,6 +425,8 @@
       level = 1;
       levelFlash = 0;
       coinSpawnIn = 90;
+      shieldTime = 0;
+      shieldSpawnIn = 1100;
       crashing = false;
       crashTimer = 0;
       crashT = 0;
@@ -555,9 +570,31 @@
           o.phase += step * 0.35;
           o.lane = o.x < 140 ? 0 : o.x < 260 ? 1 : 2;
         }
-        for (let i = 0; i < cars.length; i++) {
-          const c = cars[i];
-          if (Math.abs(c.x - o.x) < c.hw + o.hw - 4 && Math.abs(carY(i) - o.y) < c.hh + o.hh - 4) {
+        let hit = false;
+        if (!o.ignore && !o.dead) {
+          for (let i = 0; i < cars.length; i++) {
+            const c = cars[i];
+            if (Math.abs(c.x - o.x) < c.hw + o.hw - 4 && Math.abs(carY(i) - o.y) < c.hh + o.hh - 4) {
+              hit = true;
+              break;
+            }
+          }
+        }
+        if (hit) {
+          if (shieldTime > 0) {
+            // the shield soaks up the bump
+            shieldTime = 0;
+            rings.push({ x: o.x, y: o.y, age: 0 });
+            rings.push({ x: o.x, y: o.y, age: 12 });
+            noiseBurst(700, 0.25, 0.3);
+            tone('sine', 900, 300, 0.3, 0.12);
+            if (o.kind === 'animal') {
+              o.ignore = true; // the animal gets a fright and runs off
+              o.vx = o.dir * 5;
+            } else {
+              o.dead = true;
+            }
+          } else {
             startCrash();
           }
         }
@@ -575,7 +612,7 @@
         }
       });
       lastSpawnY += dist;
-      obstacles = obstacles.filter((o) => o.y - o.hh < H + 20);
+      obstacles = obstacles.filter((o) => o.y - o.hh < H + 20 && !o.dead);
       if (lastSpawnY > spawnGap()) spawnRow();
 
       coins.forEach((c) => {
@@ -584,16 +621,28 @@
         const dy = engineY - c.y;
         if (Math.sqrt(dx * dx + dy * dy) < c.r + 22) {
           c.collected = true;
-          score += 3;
-          scoreEl.textContent = 'Score: ' + score;
           rings.push({ x: c.x, y: c.y, age: 22 });
-          playDing();
+          if (c.kind === 'shield') {
+            shieldTime = shieldDuration;
+            tone('triangle', 500, 900, 0.25, 0.12);
+            tone('triangle', 750, 1300, 0.25, 0.1, 0.12);
+          } else {
+            score += 3;
+            scoreEl.textContent = 'Score: ' + score;
+            playDing();
+          }
         }
       });
       coins = coins.filter((c) => !c.collected && c.y < H + 40);
       coinSpawnIn -= step;
       if (coinSpawnIn <= 0) {
         coinSpawnIn = spawnCoin() ? 100 + Math.random() * 90 : 10;
+      }
+
+      shieldTime = Math.max(0, shieldTime - step);
+      shieldSpawnIn -= step;
+      if (shieldSpawnIn <= 0) {
+        shieldSpawnIn = spawnShield() ? 1500 + Math.random() * 900 : 10;
       }
 
       levelFlash = Math.max(0, levelFlash - step);
@@ -981,7 +1030,73 @@
       ctx.fill();
     }
 
+    function drawShieldPickup(c) {
+      const pulse = 1 + 0.08 * Math.sin(frame * 0.12);
+      const g = ctx.createRadialGradient(c.x - 4, c.y - 4, 2, c.x, c.y, c.r * pulse);
+      g.addColorStop(0, 'rgba(210, 240, 255, 0.95)');
+      g.addColorStop(1, 'rgba(60, 150, 255, 0.85)');
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r * pulse, 0, Math.PI * 2);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // little shield badge
+      ctx.beginPath();
+      ctx.moveTo(c.x - 7, c.y - 7);
+      ctx.lineTo(c.x + 7, c.y - 7);
+      ctx.lineTo(c.x + 7, c.y + 1);
+      ctx.quadraticCurveTo(c.x + 7, c.y + 8, c.x, c.y + 11);
+      ctx.quadraticCurveTo(c.x - 7, c.y + 8, c.x - 7, c.y + 1);
+      ctx.closePath();
+      ctx.fillStyle = '#1d4e89';
+      ctx.fill();
+    }
+
+    function drawShieldBubble() {
+      if (shieldTime <= 0 || crashing) return;
+      if (shieldTime < 120 && Math.floor(shieldTime / 6) % 2 === 0) return; // flicker when running out
+      const cx = (cars[0].x + cars[cars.length - 1].x) / 2;
+      const top = engineY - 30;
+      const bottom = carY(cars.length - 1) + 28;
+      const cy = (top + bottom) / 2;
+      const rx = 34 + Math.abs(cars[0].x - cars[cars.length - 1].x) / 2;
+      const ry = (bottom - top) / 2 + 4;
+      const pulse = 1 + 0.03 * Math.sin(frame * 0.2);
+      const g = ctx.createRadialGradient(cx, cy, ry * 0.3, cx, cy, ry * pulse);
+      g.addColorStop(0, 'rgba(120, 200, 255, 0.05)');
+      g.addColorStop(1, 'rgba(120, 200, 255, 0.4)');
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(rx / ry, 1);
+      ctx.beginPath();
+      ctx.arc(0, 0, ry * pulse, 0, Math.PI * 2);
+      ctx.restore();
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(190, 230, 255, 0.95)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    function drawShieldHud() {
+      if (shieldTime <= 0 || !started || gameOver) return;
+      const w = 90;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+      roundedRect(10, 10, w + 36, 22, 11);
+      ctx.fill();
+      ctx.fillStyle = '#55b6ff';
+      roundedRect(32, 16, Math.max(2, w * (shieldTime / shieldDuration)), 10, 5);
+      ctx.fill();
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillStyle = 'white';
+      ctx.fillText('🛡️', 14, 27);
+    }
+
     function drawCoin(c) {
+      if (c.kind === 'shield') return drawShieldPickup(c);
       ctx.beginPath();
       ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
       ctx.fillStyle = '#ffd400';
@@ -1085,6 +1200,7 @@
         else if (o.kind === 'train') drawOncoming(o);
       });
       drawTrain();
+      drawShieldBubble();
       drawTunnel();
       obstacles.forEach((o) => {
         if (o.kind === 'animal') drawAnimal(o);
@@ -1093,6 +1209,7 @@
       drawEffects();
 
       if (night) drawNight();
+      drawShieldHud();
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
