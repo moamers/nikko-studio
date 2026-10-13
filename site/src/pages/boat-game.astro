@@ -175,15 +175,15 @@
 
     // Starts gentle at level 1 and steps up each level.
     function worldSpeed() {
-      return Math.min(11, 3.0 + (level - 1) * 0.9);
+      return Math.min(12, 3.2 + (level - 1) * 1.05);
     }
 
     function spawnGap() {
-      return Math.max(125, 265 - (level - 1) * 12);
+      return Math.max(115, 250 - (level - 1) * 13);
     }
 
     function spawnRock() {
-      const isShark = level >= 2 && Math.random() < 0.25;
+      const isShark = level >= 2 && Math.random() < 0.3;
       const x = 34 + Math.random() * (W - 68);
       if (isShark) {
         rocks.push({ kind: 'shark', x, y: -50, hw: 13, hh: 24, passed: false, sway: Math.random() * 6 });
@@ -325,7 +325,7 @@
         o.y += dist;
         if (o.kind === 'shark') o.x += Math.sin((frame + o.sway * 20) / 25) * 0.8 * step;
 
-        if (Math.abs(boat.x - o.x) < boat.w / 2 + o.hw - 9 && Math.abs(boatY - o.y) < boat.h / 2 + o.hh - 11) {
+        if (Math.abs(boat.x - o.x) < boat.w / 2 + o.hw - 7 && Math.abs(boatY - o.y) < boat.h / 2 + o.hh - 9) {
           startCrash();
         }
 
