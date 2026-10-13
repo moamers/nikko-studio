@@ -155,7 +155,7 @@
     <canvas id="game" width="400" height="600" aria-label="Train dodge game"></canvas>
   </div>
   <div class="controls">
-    <button type="button" id="whistleBtn">&#128226; Whistle</button>
+    <button type="button" id="whistleBtn">&#128226; Horn</button>
     <button type="button" id="boostBtn">&#128640; Boost</button>
     <button type="button" id="nightBtn">&#127769; Night</button>
     <button type="button" id="soundBtn">&#128266; Sound on</button>
@@ -280,7 +280,7 @@
       } catch (e) {}
     }
 
-    function tone(type, f0, f1, dur, vol, delay) {
+    function tone(type, f0, f1, dur, vol, delay, lowpass) {
       try {
         const a = getAudio();
         if (!a || !soundOn) return;
@@ -294,27 +294,101 @@
         g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
         g.gain.setValueAtTime(vol, t + dur * 0.7);
         g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-        o.connect(g);
+        if (lowpass) {
+          const f = a.createBiquadFilter();
+          f.type = 'lowpass';
+          f.frequency.value = lowpass;
+          o.connect(f);
+          f.connect(g);
+        } else {
+          o.connect(g);
+        }
         g.connect(a.destination);
         o.start(t);
         o.stop(t + dur + 0.05);
       } catch (e) {}
     }
 
-    function playChuff() {
-      chuffFlip = !chuffFlip;
-      noiseBurst(chuffFlip ? 520 : 380, 0.09, 0.16);
+    // Bullet-train sounds: a smooth electric hum and rushing wind that rise
+    // with speed, quick clack-clacks over the rail joints, and a bright horn.
+    let hum = null;
+    let humIn = 0;
+    function ensureHum() {
+      try {
+        const a = getAudio();
+        if (!a || hum) return;
+        const o = a.createOscillator();
+        o.type = 'sawtooth';
+        const f = a.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = 300;
+        const g = a.createGain();
+        g.gain.value = 0;
+        o.connect(f);
+        f.connect(g);
+        g.connect(a.destination);
+        o.start();
+        const n = a.createBufferSource();
+        n.buffer = noiseBuf;
+        n.loop = true;
+        const nf = a.createBiquadFilter();
+        nf.type = 'bandpass';
+        nf.frequency.value = 800;
+        nf.Q.value = 0.6;
+        const ng = a.createGain();
+        ng.gain.value = 0;
+        n.connect(nf);
+        nf.connect(ng);
+        ng.connect(a.destination);
+        n.start();
+        hum = { o, f, g, nf, ng };
+      } catch (e) {
+        hum = null;
+      }
     }
 
-    // Two notes at once, like a real steam whistle: toot-toooot!
+    function updateHum(on, speed) {
+      try {
+        if (!on || !soundOn) {
+          if (hum) {
+            const t0 = audio.currentTime;
+            hum.g.gain.setTargetAtTime(0, t0, 0.08);
+            hum.ng.gain.setTargetAtTime(0, t0, 0.08);
+          }
+          return;
+        }
+        ensureHum();
+        if (!hum) return;
+        const t = audio.currentTime;
+        hum.o.frequency.setTargetAtTime(60 + speed * 12, t, 0.15);
+        hum.f.frequency.setTargetAtTime(240 + speed * 45, t, 0.15);
+        hum.g.gain.setTargetAtTime(0.03, t, 0.15);
+        hum.nf.frequency.setTargetAtTime(500 + speed * 110, t, 0.15);
+        hum.ng.gain.setTargetAtTime(0.012 + speed * 0.004, t, 0.15);
+      } catch (e) {}
+    }
+
+    function playClack() {
+      chuffFlip = !chuffFlip;
+      noiseBurst(chuffFlip ? 2600 : 2100, 0.04, 0.1);
+      noiseBurst(260, 0.06, 0.09, 'lowpass');
+    }
+
+    // A bright two-note electric horn: pwaaa!
     function playWhistle(short) {
-      const d = short ? 0.28 : 0.7;
-      tone('triangle', 660, 640, d, 0.14);
-      tone('triangle', 880, 860, d, 0.12);
+      const d = short ? 0.3 : 0.8;
+      tone('sawtooth', 520, 500, d, 0.05, 0, 1700);
+      tone('sawtooth', 660, 630, d, 0.04, 0, 1700);
       if (!short) {
-        tone('triangle', 660, 600, 0.4, 0.12, d + 0.12);
-        tone('triangle', 880, 800, 0.4, 0.1, d + 0.12);
+        tone('sawtooth', 520, 470, 0.35, 0.05, d + 0.15, 1700);
+        tone('sawtooth', 660, 600, 0.35, 0.04, d + 0.15, 1700);
       }
+    }
+
+    // whoosh when a train rushes past the other way
+    function playPassBy() {
+      noiseBurst(1800, 0.5, 0.22);
+      tone('sawtooth', 700, 260, 0.45, 0.04, 0, 900);
     }
 
     function playDing() {
@@ -582,6 +656,7 @@
           crashing = false;
           endGame();
         }
+        updateHum(false, 0);
         return;
       }
 
@@ -602,11 +677,23 @@
         smokeIn = 7;
       }
 
-      if (!running) return;
+      if (!running) {
+        humIn -= step;
+        if (humIn <= 0) {
+          updateHum(false, 0);
+          humIn = 10;
+        }
+        return;
+      }
 
+      humIn -= step;
+      if (humIn <= 0) {
+        updateHum(true, dist / step);
+        humIn = 8;
+      }
       chuffIn -= step;
       if (chuffIn <= 0) {
-        playChuff();
+        playClack();
         chuffIn = Math.max(6, 24 - (dist / step) * 1.5);
       }
       const ev = eventInfo();
@@ -617,6 +704,10 @@
 
       obstacles.forEach((o) => {
         o.y += dist * o.speedMul;
+        if (o.kind === 'train' && !o.whooshed && o.y > engineY - 70) {
+          o.whooshed = true;
+          if (Math.abs(o.x - cars[0].x) < 140) playPassBy();
+        }
         if (o.kind === 'animal') {
           o.x += o.vx * step;
           o.phase += step * 0.35;
