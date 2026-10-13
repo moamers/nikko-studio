@@ -212,6 +212,9 @@
     let scrollTotal = 0;
     let smokeIn = 0;
     let frame = 0;
+    let shownMph = 0; // the speedometer needle eases toward the real speed
+    const mphPerUnit = 20; // game speed -> miles per hour
+    const mphMax = 400;
     let lastTime = null;
 
     // Wreck animation: the carriages swing out sideways and the train tips,
@@ -643,6 +646,10 @@
       lastTime = now;
       step = Math.min(Math.max(step, 0.2), 3); // same speed on 60Hz and 120Hz screens
       frame += step;
+
+      // speedometer: ease toward the speed we are really doing
+      const liveSpeed = started && !gameOver && !crashing ? worldSpeed() * (boostTime > 0 ? boostSpeed : 1) : 0;
+      shownMph += (liveSpeed * mphPerUnit - shownMph) * (1 - Math.pow(1 - 0.08, step));
 
       rings.forEach((r) => (r.age += step));
       rings = rings.filter((r) => r.age < 40);
@@ -1292,6 +1299,64 @@
       ctx.fill();
     }
 
+    function drawSpeedometer() {
+      const cx = W - 50;
+      const cy = 52;
+      const r = 40;
+      const a0 = Math.PI * 0.75;
+      const a1 = Math.PI * 2.25;
+      const frac = Math.min(1, shownMph / mphMax);
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+      ctx.fill();
+      // dial track
+      ctx.lineCap = 'round';
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.beginPath();
+      ctx.arc(cx, cy, r - 5, a0, a1);
+      ctx.stroke();
+      // coloured part: green when slow, red when really fast
+      if (frac > 0.005) {
+        ctx.strokeStyle = 'hsl(' + Math.round(130 - frac * 130) + ', 85%, 55%)';
+        ctx.beginPath();
+        ctx.arc(cx, cy, r - 5, a0, a0 + (a1 - a0) * frac);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      // tick marks every 100 mph
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.lineWidth = 2;
+      for (let m = 0; m <= mphMax; m += 100) {
+        const a = a0 + (a1 - a0) * (m / mphMax);
+        ctx.beginPath();
+        ctx.moveTo(cx + Math.cos(a) * (r - 14), cy + Math.sin(a) * (r - 14));
+        ctx.lineTo(cx + Math.cos(a) * (r - 9), cy + Math.sin(a) * (r - 9));
+        ctx.stroke();
+      }
+      // needle
+      const na = a0 + (a1 - a0) * frac;
+      ctx.strokeStyle = '#ff5a4a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(na) * (r - 12), cy + Math.sin(na) * (r - 12));
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      // numbers
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText(String(Math.round(shownMph)), cx, cy + 22);
+      ctx.font = '10px sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillText('mph', cx, cy + 33);
+    }
+
     function drawShieldHud() {
       if (shieldTime <= 0 || !started || gameOver) return;
       const w = 90;
@@ -1423,6 +1488,7 @@
 
       if (night) drawNight();
       drawShieldHud();
+      drawSpeedometer();
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
