@@ -108,6 +108,8 @@
 
   .controls {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: 10px;
   }
 
@@ -123,6 +125,16 @@
     cursor: pointer;
   }
 
+  .controls button:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  #boostBtn:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
   .controls button:active {
     transform: scale(0.96);
   }
@@ -134,8 +146,8 @@
 </style>
 
 <div class="wrap">
-  <h1>&#128642; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, and grab the gold and shields!</p>
+  <h1>&#128644; Train Dodge</h1>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -144,6 +156,7 @@
   </div>
   <div class="controls">
     <button type="button" id="whistleBtn">&#128226; Whistle</button>
+    <button type="button" id="boostBtn">&#128640; Boost</button>
     <button type="button" id="nightBtn">&#127769; Night</button>
     <button type="button" id="soundBtn">&#128266; Sound on</button>
   </div>
@@ -187,6 +200,11 @@
     let started = false;
     let gameOver = false;
     let coinSpawnIn = 90;
+    let boostTime = 0; // frames of boost left
+    let boostCool = 0; // frames until the boost is ready again
+    const boostDuration = 120; // 2 seconds
+    const boostCooldown = 420; // 7 seconds
+    const boostSpeed = 1.6;
     let shieldTime = 0; // frames of shield left
     let shieldSpawnIn = 1100;
     const shieldDuration = 720; // about 12 seconds
@@ -338,17 +356,46 @@
     setNight(night);
     nightBtn.addEventListener('click', () => setNight(!night));
 
+    // ---------- boost ----------
+    const boostBtn = document.getElementById('boostBtn');
+    let boostLabel = '';
+    function updateBoostBtn(force) {
+      const running = started && !gameOver && !crashing;
+      let label = '\u{1F680} Boost';
+      if (boostTime > 0) label = '\u{1F525} Zoom!';
+      else if (boostCool > 0) label = '\u{1F680} ' + Math.ceil(boostCool / 60) + 's';
+      const off = !running || boostTime > 0 || boostCool > 0;
+      if (force || label !== boostLabel || boostBtn.disabled !== off) {
+        boostLabel = label;
+        boostBtn.textContent = label;
+        boostBtn.disabled = off;
+      }
+    }
+
+    function useBoost() {
+      unlockAudio();
+      if (!started || gameOver || crashing || boostTime > 0 || boostCool > 0) return;
+      boostTime = boostDuration;
+      boostCool = boostCooldown;
+      noiseBurst(1200, 0.6, 0.25);
+      tone('sawtooth', 120, 420, 0.6, 0.07);
+      playWhistle(true);
+      updateBoostBtn();
+    }
+    boostBtn.addEventListener('click', useBoost);
+    updateBoostBtn(true);
+
     function levelFor(s) {
       return Math.floor(s / pointsPerLevel) + 1;
     }
 
     // Starts gentle at level 1 and steps up each level.
     function worldSpeed() {
-      return Math.min(12.5, 3.5 + (level - 1) * 1.0);
+      return Math.min(11.5, 3.3 + (level - 1) * 0.9);
     }
 
     function spawnGap() {
-      return Math.max(135, 260 - (level - 1) * 14);
+      return Math.max(145, 280 - (level - 1) * 13);
     }
 
     // A cow or a sheep wanders across the tracks from one side.
@@ -376,12 +423,12 @@
     }
 
     function spawnRow() {
-      if (level >= 2 && Math.random() < 0.18) {
+      if (level >= 2 && Math.random() < 0.14) {
         spawnAnimal();
         return;
       }
       const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
-      const blocked = level >= 3 && Math.random() < 0.38 ? 2 : 1; // never all three
+      const blocked = level >= 4 && Math.random() < 0.3 ? 2 : 1; // never all three
       for (let i = 0; i < blocked; i++) {
         const l = lanes[i];
         const roll = Math.random();
@@ -427,6 +474,9 @@
       coinSpawnIn = 90;
       shieldTime = 0;
       shieldSpawnIn = 1100;
+      boostTime = 0;
+      boostCool = 0;
+      updateBoostBtn(true);
       crashing = false;
       crashTimer = 0;
       crashT = 0;
@@ -446,6 +496,7 @@
     function startCrash() {
       if (crashing || gameOver) return;
       crashing = true;
+      boostTime = 0;
       crashTimer = crashDuration;
       crashDir = cars[0].x < W / 2 ? 1 : cars[0].x > W / 2 ? -1 : Math.random() < 0.5 ? 1 : -1;
       rings.push({ x: cars[0].x, y: engineY - 20, age: 0 });
@@ -503,6 +554,7 @@
       if (e.repeat) return;
       unlockAudio();
       if (e.code === 'ArrowUp' || e.code === 'KeyW') playWhistle();
+      if (e.code === 'ArrowDown' || e.code === 'KeyB') useBoost();
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') lane = Math.max(0, lane - 1);
       if (e.code === 'ArrowRight' || e.code === 'KeyD') lane = Math.min(2, lane + 1);
       if (e.code === 'Space') {
@@ -534,7 +586,7 @@
       }
 
       const running = started && !gameOver;
-      const dist = (running ? worldSpeed() : 2) * step;
+      const dist = (running ? worldSpeed() * (boostTime > 0 ? boostSpeed : 1) : 2) * step;
       scrollTotal += dist;
 
       // The engine glides to the chosen track; each carriage trails the one
@@ -546,7 +598,7 @@
 
       smokeIn -= step;
       if (smokeIn <= 0) {
-        puffs.push({ x: cars[0].x + (Math.random() - 0.5) * 4, y: engineY - 8, age: 0 });
+        if (boostTime > 0) puffs.push({ x: cars[0].x + (Math.random() - 0.5) * 6, y: engineY + 10, age: 0 });
         smokeIn = 7;
       }
 
@@ -600,7 +652,7 @@
         }
         if (!o.passed && o.y - o.hh > carY(cars.length - 1) + 22) {
           o.passed = true;
-          score++;
+          score += boostTime > 0 ? 2 : 1; // double points while boosting
           scoreEl.textContent = 'Score: ' + score;
           const newLevel = levelFor(score);
           if (newLevel > level) {
@@ -639,6 +691,12 @@
         coinSpawnIn = spawnCoin() ? 100 + Math.random() * 90 : 10;
       }
 
+      if (boostTime > 0) {
+        boostTime = Math.max(0, boostTime - step);
+      } else {
+        boostCool = Math.max(0, boostCool - step);
+      }
+      updateBoostBtn();
       shieldTime = Math.max(0, shieldTime - step);
       shieldSpawnIn -= step;
       if (shieldSpawnIn <= 0) {
@@ -976,41 +1034,71 @@
       ctx.closePath();
     }
 
-    // The engine, drawn from above, front pointing up.
-    function drawEngine(color, outline, headlight) {
-      roundedRect(-17, -25, 34, 50, 8);
-      ctx.fillStyle = color;
+    // A bullet train, drawn from above, nose pointing up: white and sleek,
+    // with a long pointed nose and a coloured stripe.
+    function drawEngine(stripe, outline, headlight) {
+      ctx.beginPath();
+      ctx.moveTo(-16, 25);
+      ctx.lineTo(-16, -4);
+      ctx.bezierCurveTo(-16, -17, -8, -25, 0, -29);
+      ctx.bezierCurveTo(8, -25, 16, -17, 16, -4);
+      ctx.lineTo(16, 25);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(-16, 0, 16, 0);
+      g.addColorStop(0, '#dfe6ec');
+      g.addColorStop(0.5, '#ffffff');
+      g.addColorStop(1, '#cfd8e0');
+      ctx.fillStyle = g;
       ctx.fill();
       ctx.strokeStyle = outline;
       ctx.lineWidth = 2;
       ctx.stroke();
-      // boiler stripe + chimney
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
-      ctx.fillRect(-9, -20, 18, 22);
+      // stripe down each side
+      ctx.fillStyle = stripe;
+      ctx.fillRect(-15, -2, 4, 26);
+      ctx.fillRect(11, -2, 4, 26);
+      // windscreen
       ctx.beginPath();
-      ctx.arc(0, -11, 6, 0, Math.PI * 2);
-      ctx.fillStyle = '#26292e';
+      ctx.moveTo(-9, -8);
+      ctx.bezierCurveTo(-9, -15, -4, -20, 0, -22);
+      ctx.bezierCurveTo(4, -20, 9, -15, 9, -8);
+      ctx.closePath();
+      ctx.fillStyle = '#26323d';
       ctx.fill();
-      // cab roof
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-      ctx.fillRect(-11, 8, 22, 12);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.fillRect(-6, -13, 5, 2);
+      // roof stripe and vents
+      ctx.fillStyle = stripe;
+      ctx.fillRect(-2, -3, 4, 28);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.fillRect(-9, 8, 18, 3);
+      ctx.fillRect(-9, 15, 18, 3);
       if (headlight) {
         ctx.beginPath();
-        ctx.arc(0, -25, 4, 0, Math.PI * 2);
+        ctx.arc(0, -27, 3, 0, Math.PI * 2);
         ctx.fillStyle = '#fff3a0';
         ctx.fill();
       }
     }
 
-    function drawCarriage(color, outline) {
-      roundedRect(-16, -22, 32, 44, 6);
-      ctx.fillStyle = color;
+    function drawCarriage(stripe, outline) {
+      roundedRect(-16, -22, 32, 44, 7);
+      const g = ctx.createLinearGradient(-16, 0, 16, 0);
+      g.addColorStop(0, '#dfe6ec');
+      g.addColorStop(0.5, '#ffffff');
+      g.addColorStop(1, '#cfd8e0');
+      ctx.fillStyle = g;
       ctx.fill();
       ctx.strokeStyle = outline;
       ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      for (let i = 0; i < 3; i++) ctx.fillRect(-9, -16 + i * 13, 18, 8);
+      ctx.fillStyle = stripe;
+      ctx.fillRect(-15, -20, 4, 40);
+      ctx.fillRect(11, -20, 4, 40);
+      ctx.fillRect(-2, -20, 4, 40);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.fillRect(-9, -12, 18, 3);
+      ctx.fillRect(-9, 9, 18, 3);
     }
 
     function drawOncoming(o) {
@@ -1018,11 +1106,11 @@
       ctx.save();
       ctx.translate(o.x, o.y + 22);
       ctx.rotate(Math.PI);
-      drawEngine('#264653', '#10242b', true);
+      drawEngine('#e63946', '#3b4752', true);
       ctx.restore();
       ctx.save();
       ctx.translate(o.x, o.y - 30);
-      drawCarriage('#3a7d8c', '#10242b');
+      drawCarriage('#e63946', '#3b4752');
       ctx.restore();
       ctx.beginPath();
       ctx.arc(o.x, o.y + 50, 14, 0, Math.PI * 2);
@@ -1080,6 +1168,39 @@
       ctx.stroke();
     }
 
+    function drawBoostEffects() {
+      if (boostTime <= 0) return;
+      // speed lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 14; i++) {
+        const x = (i * 97) % W;
+        const y = ((i * 131 + frame * 28) % (H + 80)) - 40;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + 36);
+        ctx.stroke();
+      }
+      // flame out of the back
+      const fx = cars[cars.length - 1].x;
+      const fy = carY(cars.length - 1) + 24;
+      const len = 26 + Math.random() * 14;
+      ctx.fillStyle = 'rgba(255, 140, 30, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(fx - 9, fy);
+      ctx.lineTo(fx + 9, fy);
+      ctx.lineTo(fx, fy + len);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 235, 120, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(fx - 4, fy);
+      ctx.lineTo(fx + 4, fy);
+      ctx.lineTo(fx, fy + len * 0.55);
+      ctx.closePath();
+      ctx.fill();
+    }
+
     function drawShieldHud() {
       if (shieldTime <= 0 || !started || gameOver) return;
       const w = 90;
@@ -1121,8 +1242,8 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        if (i === 0) drawEngine('#d62828', '#8c1a1a', true);
-        else drawCarriage('#2b7bd6', '#17487f');
+        if (i === 0) drawEngine('#1f6fd6', '#5d6c78', true);
+        else drawCarriage('#1f6fd6', '#5d6c78');
         ctx.restore();
       }
     }
@@ -1201,6 +1322,7 @@
       });
       drawTrain();
       drawShieldBubble();
+      drawBoostEffects();
       drawTunnel();
       obstacles.forEach((o) => {
         if (o.kind === 'animal') drawAnimal(o);
