@@ -250,6 +250,9 @@
     let chuffIn = 0;
     let chuffFlip = false;
     let whistledSlot = -1;
+    let surpriseSlot = -1;
+    let surpriseFlash = 0;
+    let surpriseText = '';
     const whistleBtn = document.getElementById('whistleBtn');
     const soundBtn = document.getElementById('soundBtn');
 
@@ -598,6 +601,46 @@
       else tone('square', 330, 270, 0.4, 0.04, 0.3);
     }
 
+    // Every tunnel hides a surprise. You only find out when you drive in!
+    function startSurprise(kind) {
+      const kinds = ['treasure', 'bats', 'ghost'];
+      kind = kind || kinds[Math.floor(Math.random() * kinds.length)];
+      const yAt = (k) => engineY - 120 - k * 45;
+      if (kind === 'treasure') {
+        surpriseText = '\u{1F4B0} Treasure!';
+        const trail = [1, 1, 0, 0, 0, 1, 2, 2, 2, 1];
+        trail.forEach((l, k) => coins.push({ x: laneX[l], y: yAt(k), r: 12 }));
+        if (shieldTime <= 0 && !coins.some((c) => c.kind === 'shield')) coins.push({ x: laneX[1], y: yAt(trail.length), r: 15, kind: 'shield' });
+        [0, 1, 2, 3].forEach((k) => tone('sine', 700 + k * 200, 900 + k * 200, 0.2, 0.1, k * 0.09));
+      } else if (kind === 'bats') {
+        surpriseText = '\u{1F987} Bats!';
+        for (let i = 0; i < 4; i++) {
+          const dir = i % 2 ? 1 : -1;
+          obstacles.push({
+            kind: 'animal',
+            animal: 'bat',
+            lane: dir > 0 ? 0 : 2,
+            x: dir > 0 ? -20 - i * 40 : W + 20 + i * 40,
+            y: engineY - 170 - i * 75,
+            vx: dir * 3.4,
+            dir,
+            phase: i,
+            hw: 11,
+            hh: 8,
+            speedMul: 1,
+            passed: false,
+          });
+        }
+        [0, 1, 2].forEach((k) => tone('sine', 2400, 3300, 0.09, 0.05, k * 0.14));
+      } else {
+        surpriseText = '\u{1F47B} A ghost train!';
+        obstacles.push({ kind: 'ghost', lane, x: laneX[lane], y: engineY - 300, hw: 15, hh: 48, speedMul: 1.5, ignore: true, passed: false });
+        tone('sine', 500, 220, 0.9, 0.08, 0, 700);
+        tone('sine', 530, 240, 0.9, 0.06, 0.05, 700);
+      }
+      surpriseFlash = 150;
+    }
+
     function spawnRow() {
       if (level >= 2 && Math.random() < 0.14) {
         spawnAnimal();
@@ -662,6 +705,8 @@
       levelEl.textContent = 'Level 1';
       const ev0 = eventInfo();
       whistledSlot = eventReach(ev0) >= engineY ? ev0.n : -1;
+      surpriseSlot = ev0.kind === 'tunnel' && eventReach(ev0) >= engineY ? ev0.n : -1;
+      surpriseFlash = 0;
       spawnRow();
     }
 
@@ -833,6 +878,10 @@
         chuffIn = Math.max(6, 24 - (dist / step) * 1.5);
       }
       const ev = eventInfo();
+      if (ev.kind === 'tunnel' && ev.n !== surpriseSlot && eventReach(ev) >= engineY) {
+        surpriseSlot = ev.n;
+        startSurprise();
+      }
       if (ev.n !== whistledSlot && eventReach(ev) >= engineY) {
         whistledSlot = ev.n;
         playWhistle();
@@ -853,9 +902,17 @@
           o.whooshed = true;
           if (Math.abs(o.x - cars[0].x) < 140) playPassBy();
         }
+        if (o.kind === 'ghost' && !o.boo && o.y > engineY - 10) {
+          o.boo = true; // the ghost floats straight through: a harmless fright, worth 5 points
+          score += 5;
+          scoreEl.textContent = 'Score: ' + score;
+          rings.push({ x: o.x, y: engineY, age: 0 });
+          playDing();
+        }
         if (o.kind === 'animal') {
+          if (o.animal === 'bat') o.y += Math.sin(o.phase * 1.7) * 1.6 * step;
           o.x += o.vx * step;
-          o.phase += step * (o.scared ? 0.9 : 0.35);
+          o.phase += step * (o.animal === 'bat' ? 0.5 : o.scared ? 0.9 : 0.35);
           o.lane = o.x < 140 ? 0 : o.x < 260 ? 1 : 2;
         }
         let hit = false;
@@ -940,6 +997,7 @@
       }
 
       levelFlash = Math.max(0, levelFlash - step);
+      surpriseFlash = Math.max(0, surpriseFlash - step);
     }
 
     // ---------- drawing ----------
@@ -1157,12 +1215,69 @@
       });
     }
 
+    function drawGhost(o) {
+      ctx.save();
+      ctx.globalAlpha = 0.28 + 0.14 * Math.sin(frame * 0.3);
+      ctx.fillStyle = '#e8f4ff';
+      ctx.shadowColor = '#9fd4ff';
+      ctx.shadowBlur = 18;
+      roundedRect(o.x - 16, o.y - 50, 32, 98, 14);
+      ctx.fill();
+      ctx.restore();
+      ctx.fillStyle = 'rgba(20, 30, 50, 0.8)';
+      ctx.beginPath();
+      ctx.arc(o.x - 6, o.y + 22, 4, 0, Math.PI * 2);
+      ctx.arc(o.x + 6, o.y + 22, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.ellipse(o.x, o.y + 33, 4, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawBat(o) {
+      const flap = Math.sin(o.phase * 4);
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.fillStyle = '#3d2f52';
+      ctx.strokeStyle = '#1a1226';
+      ctx.lineWidth = 1.5;
+      [-1, 1].forEach((side) => {
+        ctx.beginPath();
+        ctx.moveTo(side * 3, -2);
+        ctx.quadraticCurveTo(side * 14, -10 - flap * 6, side * 21, 2 + flap * 3);
+        ctx.quadraticCurveTo(side * 16, 1, side * 13, 6);
+        ctx.quadraticCurveTo(side * 8, 2, side * 3, 6);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.fillStyle = '#2a2036';
+      ctx.beginPath();
+      ctx.ellipse(0, 1, 5, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-4, -5);
+      ctx.lineTo(-3, -10);
+      ctx.lineTo(0, -6);
+      ctx.lineTo(3, -10);
+      ctx.lineTo(4, -5);
+      ctx.fill();
+      ctx.fillStyle = '#ff4d4d';
+      ctx.fillRect(-3, -3, 2, 2);
+      ctx.fillRect(1, -3, 2, 2);
+      ctx.restore();
+    }
+
     function drawAnimal(o) {
       if (o.scared) {
         ctx.fillStyle = '#e63946';
         ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('!', o.x, o.y - o.hh - 12);
+      }
+      if (o.animal === 'bat') {
+        drawBat(o);
+        return;
       }
       const d = o.dir;
       const swing = Math.sin(o.phase) * 3;
@@ -1663,6 +1778,7 @@
         if (o.kind === 'rock') drawRock(o);
         else if (o.kind === 'barrier') drawBarrier(o);
         else if (o.kind === 'train') drawOncoming(o);
+        else if (o.kind === 'ghost') drawGhost(o);
       });
       drawTrain();
       drawShieldBubble();
@@ -1678,6 +1794,13 @@
       drawStorm();
       drawShieldHud();
       drawSpeedometer();
+
+      if (surpriseFlash > 0 && started && !gameOver) {
+        ctx.fillStyle = 'rgba(190, 150, 255, ' + Math.min(1, surpriseFlash / 25) + ')';
+        ctx.font = 'bold 25px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Surprise! ' + surpriseText, W / 2, 112);
+      }
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
