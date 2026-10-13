@@ -215,6 +215,19 @@
     let shownMph = 0; // the speedometer needle eases toward the real speed
     const mphPerUnit = 20; // game speed -> miles per hour
     const mphMax = 400;
+
+    // Storm: from level 5 it rains, and now and then lightning strikes.
+    const stormLevel = 5;
+    let rainAmt = 0; // 0 = dry, 1 = full storm (fades in and out)
+    let lightningIn = 200;
+    let flash = 0;
+    let flashAgain = 0; // frames until the second flicker of a strike
+    let bolt = null;
+    let rainSoundIn = 0;
+    const drops = [];
+    for (let i = 0; i < 110; i++) {
+      drops.push({ x: Math.random() * (W + 40), y: Math.random() * H, len: 10 + Math.random() * 14, v: 15 + Math.random() * 9 });
+    }
     let lastTime = null;
 
     // Wreck animation: the carriages swing out sideways and the train tips,
@@ -350,6 +363,55 @@
       }
     }
 
+    let rainSnd = null;
+    function updateRainSound() {
+      try {
+        if (rainAmt < 0.02 || !soundOn) {
+          if (rainSnd) rainSnd.g.gain.setTargetAtTime(0, audio.currentTime, 0.2);
+          return;
+        }
+        const a = getAudio();
+        if (!a) return;
+        if (!rainSnd) {
+          const n = a.createBufferSource();
+          n.buffer = noiseBuf;
+          n.loop = true;
+          const f = a.createBiquadFilter();
+          f.type = 'highpass';
+          f.frequency.value = 2500;
+          const g = a.createGain();
+          g.gain.value = 0;
+          n.connect(f);
+          f.connect(g);
+          g.connect(a.destination);
+          n.start();
+          rainSnd = { g };
+        }
+        rainSnd.g.gain.setTargetAtTime(0.035 * rainAmt, a.currentTime, 0.2);
+      } catch (e) {}
+    }
+
+    function strikeLightning() {
+      flash = 1;
+      flashAgain = 7;
+      // a jagged bolt from the sky down to the ground
+      const pts = [];
+      let x = 40 + Math.random() * (W - 80);
+      let y = 0;
+      const bottom = 180 + Math.random() * 260;
+      while (y < bottom) {
+        pts.push([x, y]);
+        x += (Math.random() - 0.5) * 50;
+        y += 22 + Math.random() * 26;
+      }
+      bolt = pts;
+      // thunder arrives a moment later
+      setTimeout(() => {
+        noiseBurst(140, 1.3, 0.4, 'lowpass');
+        noiseBurst(70, 1.6, 0.35, 'lowpass');
+      }, 250 + Math.random() * 600);
+    }
+
     function updateHum(on, speed) {
       try {
         if (!on || !soundOn) {
@@ -377,8 +439,23 @@
       noiseBurst(260, 0.06, 0.09, 'lowpass');
     }
 
+    // Honk! Any animal ahead of the train (and close) gets a fright and runs
+    // away sideways, fast.
+    function scareAnimals() {
+      obstacles.forEach((o) => {
+        if (o.kind !== 'animal' || o.scared) return;
+        const ahead = engineY - o.y; // how far in front of the engine
+        if (ahead < -40 || ahead > 280) return;
+        o.scared = true;
+        o.dir = o.x < cars[0].x ? -1 : o.x > cars[0].x ? 1 : Math.random() < 0.5 ? -1 : 1;
+        o.vx = o.dir * 6.5;
+        rings.push({ x: o.x, y: o.y, age: 18 });
+      });
+    }
+
     // A bright two-note electric horn: pwaaa!
     function playWhistle(short) {
+      scareAnimals();
       const d = short ? 0.3 : 0.8;
       tone('sawtooth', 520, 500, d, 0.05, 0, 1700);
       tone('sawtooth', 660, 630, d, 0.04, 0, 1700);
@@ -479,7 +556,7 @@
     function spawnAnimal() {
       const dir = Math.random() < 0.5 ? 1 : -1;
       const cow = Math.random() < 0.5;
-      const vx = dir * Math.min(2.6, 1.5 + level * 0.08);
+      const vx = dir * Math.min(4.2, 2.5 + level * 0.12);
       obstacles.push({
         kind: 'animal',
         animal: cow ? 'cow' : 'sheep',
@@ -647,6 +724,36 @@
       step = Math.min(Math.max(step, 0.2), 3); // same speed on 60Hz and 120Hz screens
       frame += step;
 
+      // weather
+      const wantRain = started && !gameOver && level >= stormLevel ? 1 : 0;
+      rainAmt += (wantRain - rainAmt) * (1 - Math.pow(1 - 0.02, step));
+      if (rainAmt < 0.005 && !wantRain) rainAmt = 0;
+      drops.forEach((d) => {
+        d.y += d.v * step;
+        d.x -= d.v * 0.28 * step;
+        if (d.y > H + 20 || d.x < -20) {
+          d.y = -20 - Math.random() * 40;
+          d.x = Math.random() * (W + 60);
+        }
+      });
+      flash = Math.max(0, flash - 0.07 * step);
+      if (flashAgain > 0) {
+        flashAgain -= step;
+        if (flashAgain <= 0) flash = 0.75;
+      }
+      if (rainAmt > 0.8) {
+        lightningIn -= step;
+        if (lightningIn <= 0) {
+          strikeLightning();
+          lightningIn = 220 + Math.random() * 420;
+        }
+      }
+      rainSoundIn -= step;
+      if (rainSoundIn <= 0) {
+        updateRainSound();
+        rainSoundIn = 10;
+      }
+
       // speedometer: ease toward the speed we are really doing
       const liveSpeed = started && !gameOver && !crashing ? worldSpeed() * (boostTime > 0 ? boostSpeed : 1) : 0;
       shownMph += (liveSpeed * mphPerUnit - shownMph) * (1 - Math.pow(1 - 0.08, step));
@@ -717,7 +824,7 @@
         }
         if (o.kind === 'animal') {
           o.x += o.vx * step;
-          o.phase += step * 0.35;
+          o.phase += step * (o.scared ? 0.9 : 0.35);
           o.lane = o.x < 140 ? 0 : o.x < 260 ? 1 : 2;
         }
         let hit = false;
@@ -1020,6 +1127,12 @@
     }
 
     function drawAnimal(o) {
+      if (o.scared) {
+        ctx.fillStyle = '#e63946';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', o.x, o.y - o.hh - 12);
+      }
       const d = o.dir;
       const swing = Math.sin(o.phase) * 3;
       ctx.save();
@@ -1357,6 +1470,40 @@
       ctx.fillText('mph', cx, cy + 33);
     }
 
+    function drawStorm() {
+      if (rainAmt > 0.01) {
+        // gloomy sky
+        ctx.fillStyle = 'rgba(14, 24, 48, ' + 0.3 * rainAmt + ')';
+        ctx.fillRect(0, 0, W, H);
+        // rain
+        ctx.strokeStyle = 'rgba(205, 225, 255, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        const n = Math.floor(drops.length * rainAmt);
+        for (let i = 0; i < n; i++) {
+          const d = drops[i];
+          ctx.moveTo(d.x, d.y);
+          ctx.lineTo(d.x + d.len * 0.28, d.y - d.len);
+        }
+        ctx.stroke();
+      }
+      if (flash > 0.02) {
+        if (bolt && flash > 0.3) {
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = 'rgba(200, 220, 255, ' + flash * 0.5 + ')';
+          ctx.lineWidth = 9;
+          ctx.beginPath();
+          bolt.forEach(([bx, by], i) => (i ? ctx.lineTo(bx, by) : ctx.moveTo(bx, by)));
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(255, 255, 255, ' + Math.min(1, flash * 1.2) + ')';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        }
+        ctx.fillStyle = 'rgba(235, 240, 255, ' + 0.5 * flash + ')';
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
     function drawShieldHud() {
       if (shieldTime <= 0 || !started || gameOver) return;
       const w = 90;
@@ -1487,6 +1634,7 @@
       drawEffects();
 
       if (night) drawNight();
+      drawStorm();
       drawShieldHud();
       drawSpeedometer();
 
@@ -1495,7 +1643,7 @@
         ctx.fillStyle = 'rgba(255, 235, 90, ' + alpha + ')';
         ctx.font = 'bold 36px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Level ' + level + '!', W / 2, 70);
+        ctx.fillText('Level ' + level + '!' + (level === stormLevel ? ' \u26C8\uFE0F Storm!' : ''), W / 2, 70);
       }
 
       if (!started) {
