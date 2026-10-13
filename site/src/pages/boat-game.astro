@@ -1,0 +1,616 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Boat Dodge</title>
+  </head>
+  <body>
+<style is:global>
+  :root {
+    --bg: #f6fdff;
+    --card: #ffffff;
+    --ink: #1a2a33;
+    --ink-soft: #4a6572;
+    --sea: #2b8fc4;
+    --accent: #e4572e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1b22;
+      --card: #16262f;
+      --ink: #eaf4f8;
+      --ink-soft: #9fb6c0;
+      --sea: #15506f;
+      --accent: #ff8a6a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1b22;
+    --card: #16262f;
+    --ink: #eaf4f8;
+    --ink-soft: #9fb6c0;
+    --sea: #15506f;
+    --accent: #ff8a6a;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding-inline: 16px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-block: 24px;
+  }
+
+  h1 {
+    font-size: clamp(22px, 6vw, 30px);
+    margin: 0;
+    text-align: center;
+  }
+
+  .sub {
+    color: var(--ink-soft);
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    max-height: 70vh;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.15);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+    background: var(--sea);
+    touch-action: none;
+  }
+
+  .score {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .level {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .best {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+</style>
+
+<div class="wrap">
+  <h1>&#9973; Boat Dodge</h1>
+  <p class="sub">Drag your finger (or mouse) left and right to sail. Dodge the rocks and sharks, grab the gold!</p>
+  <p class="score" id="score">Score: 0</p>
+  <p class="level" id="level">Level 1</p>
+  <p class="best" id="best">Best: 0</p>
+  <div class="stage">
+    <canvas id="game" width="400" height="600" aria-label="Boat dodge game"></canvas>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    const bestEl = document.getElementById('best');
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const pointsPerLevel = 5;
+
+    // The boat never moves up or down on its own: its spot is fixed, and the
+    // sinking animation is drawn as an offset on top, so a restart can never
+    // leave it in the wrong place.
+    const boatY = H - 130;
+    const boat = { x: W / 2, w: 38, h: 64 };
+    const followSpeed = 0.35;
+    const keySpeed = 9;
+
+    let targetX = boat.x;
+    let keys = { left: false, right: false };
+
+    let rocks = []; // rocks and sharks to dodge
+    let coins = []; // gold to collect
+    let splashes = []; // expanding rings on the water
+    let score = 0;
+    let level = 1;
+    let levelFlash = 0;
+    let best = 0;
+    let started = false;
+    let gameOver = false;
+    let coinSpawnIn = 90;
+    let scrollY = 0; // makes the waves drift past
+    let frame = 0;
+    let lastTime = null;
+
+    // Sinking animation (the boat tips over and settles in the water, still
+    // fully visible).
+    let crashing = false;
+    let crashTimer = 0;
+    const crashDuration = 60;
+    let crashDir = 1;
+    let crashT = 0; // 0 -> 1 progress, eased
+    let crashStartX = 0;
+    let crashEndX = 0;
+
+    try {
+      best = Number(localStorage.getItem('boatDodgeBest') || 0);
+    } catch (e) {}
+    bestEl.textContent = 'Best: ' + best;
+
+    function levelFor(s) {
+      return Math.floor(s / pointsPerLevel) + 1;
+    }
+
+    // Starts gentle at level 1 and steps up each level.
+    function worldSpeed() {
+      return Math.min(13, 3.4 + (level - 1) * 1.2);
+    }
+
+    function spawnGap() {
+      return Math.max(105, 235 - (level - 1) * 14);
+    }
+
+    function spawnRock() {
+      const isShark = level >= 2 && Math.random() < 0.35;
+      const x = 34 + Math.random() * (W - 68);
+      if (isShark) {
+        rocks.push({ kind: 'shark', x, y: -50, hw: 13, hh: 24, passed: false, sway: Math.random() * 6 });
+      } else {
+        const r = 17 + Math.random() * 10;
+        rocks.push({ kind: 'rock', x, y: -50, hw: r * 0.85, hh: r * 0.8, r, seed: Math.random() * 10, passed: false });
+      }
+    }
+
+    function spawnCoin() {
+      coins.push({ x: 30 + Math.random() * (W - 60), y: -30, r: 12 });
+    }
+
+    function resetGame() {
+      boat.x = W / 2;
+      targetX = boat.x;
+      rocks = [];
+      coins = [];
+      splashes = [];
+      score = 0;
+      level = 1;
+      levelFlash = 0;
+      coinSpawnIn = 90;
+      crashing = false;
+      crashTimer = 0;
+      crashT = 0;
+      gameOver = false;
+      started = true;
+      scoreEl.textContent = 'Score: 0';
+      levelEl.textContent = 'Level 1';
+      spawnRock();
+    }
+
+    function startOrRestart() {
+      if (!started || gameOver) resetGame();
+    }
+
+    function startCrash() {
+      if (crashing || gameOver) return;
+      crashing = true;
+      crashTimer = crashDuration;
+      crashDir = boat.x < W / 2 ? -1 : 1;
+      crashStartX = boat.x;
+      crashEndX = Math.max(36, Math.min(W - 36, boat.x + crashDir * 14));
+      splashes.push({ x: boat.x, y: boatY, age: 0 });
+    }
+
+    function endGame() {
+      if (gameOver) return;
+      gameOver = true;
+      if (score > best) {
+        best = score;
+        bestEl.textContent = 'Best: ' + best;
+        try {
+          localStorage.setItem('boatDodgeBest', String(best));
+        } catch (e) {}
+      }
+    }
+
+    function easeInOut(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    function pointerToX(clientX) {
+      const rect = canvas.getBoundingClientRect();
+      return ((clientX - rect.left) / rect.width) * W;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      startOrRestart();
+      targetX = pointerToX(e.clientX);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      targetX = pointerToX(e.clientX);
+    });
+    canvas.addEventListener(
+      'touchstart',
+      (e) => {
+        startOrRestart();
+        targetX = pointerToX(e.touches[0].clientX);
+      },
+      { passive: true }
+    );
+    canvas.addEventListener(
+      'touchmove',
+      (e) => {
+        targetX = pointerToX(e.touches[0].clientX);
+      },
+      { passive: true }
+    );
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+      if (e.code === 'Space') {
+        e.preventDefault();
+        startOrRestart();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+    });
+
+    function update() {
+      const now = performance.now();
+      let step = lastTime === null ? 1 : (now - lastTime) / (1000 / 60);
+      lastTime = now;
+      step = Math.min(Math.max(step, 0.2), 3); // same speed on 60Hz and 120Hz screens
+      frame += step;
+
+      splashes.forEach((s) => (s.age += step));
+      splashes = splashes.filter((s) => s.age < 40);
+
+      if (crashing) {
+        crashTimer -= step;
+        crashT = easeInOut(Math.min(1, Math.max(0, 1 - crashTimer / crashDuration)));
+        boat.x = crashStartX + (crashEndX - crashStartX) * crashT;
+        if (crashTimer <= 0) {
+          crashing = false;
+          endGame();
+        }
+        return;
+      }
+
+      // The sea keeps drifting even on the start and game-over screens.
+      const running = started && !gameOver;
+      const dist = (running ? worldSpeed() : 2) * step;
+      scrollY = (scrollY + dist) % 120;
+
+      if (!running) return;
+
+      if (keys.left) targetX -= keySpeed * step;
+      if (keys.right) targetX += keySpeed * step;
+      targetX = Math.max(boat.w / 2, Math.min(W - boat.w / 2, targetX));
+      boat.x += (targetX - boat.x) * (1 - Math.pow(1 - followSpeed, step));
+
+      rocks.forEach((o) => {
+        o.y += dist;
+        if (o.kind === 'shark') o.x += Math.sin((frame + o.sway * 20) / 25) * 0.8 * step;
+
+        if (Math.abs(boat.x - o.x) < boat.w / 2 + o.hw - 6 && Math.abs(boatY - o.y) < boat.h / 2 + o.hh - 8) {
+          startCrash();
+        }
+
+        if (!o.passed && o.y > boatY + boat.h / 2 + o.hh) {
+          o.passed = true;
+          score++;
+          scoreEl.textContent = 'Score: ' + score;
+          const newLevel = levelFor(score);
+          if (newLevel > level) {
+            level = newLevel;
+            levelEl.textContent = 'Level ' + level;
+            levelFlash = 90;
+          }
+        }
+      });
+      rocks = rocks.filter((o) => o.y < H + 80);
+      if (rocks.length === 0 || rocks[rocks.length - 1].y > spawnGap()) spawnRock();
+
+      coins.forEach((c) => {
+        c.y += dist;
+        const dx = boat.x - c.x;
+        const dy = boatY - c.y;
+        if (Math.sqrt(dx * dx + dy * dy) < c.r + 22) {
+          c.collected = true;
+          score += 3;
+          scoreEl.textContent = 'Score: ' + score;
+          splashes.push({ x: c.x, y: c.y, age: 18 });
+        }
+      });
+      coins = coins.filter((c) => !c.collected && c.y < H + 40);
+      coinSpawnIn -= step;
+      if (coinSpawnIn <= 0) {
+        spawnCoin();
+        coinSpawnIn = 100 + Math.random() * 90;
+      }
+
+      levelFlash = Math.max(0, levelFlash - step);
+    }
+
+    // ---------- drawing ----------
+
+    function drawSea() {
+      const sea = getComputedStyle(document.documentElement).getPropertyValue('--sea').trim() || '#2b8fc4';
+      ctx.fillStyle = sea;
+      ctx.fillRect(0, 0, W, H);
+
+      // Wave caps drifting down the screen, with a gentle side-to-side shimmer.
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+      ctx.lineWidth = 2;
+      for (let row = -1; row < H / 60 + 1; row++) {
+        const y = row * 60 + (scrollY % 60);
+        for (let col = 0; col < 6; col++) {
+          const x = col * 80 + (row % 2 === 0 ? 20 : 60) + Math.sin(frame / 30 + row + col) * 5;
+          ctx.beginPath();
+          ctx.arc(x, y, 9, Math.PI * 0.15, Math.PI * 0.85);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawRock(o) {
+      const pts = 8;
+      ctx.beginPath();
+      for (let i = 0; i < pts; i++) {
+        const a = (i / pts) * Math.PI * 2;
+        const rr = o.r * (0.82 + 0.28 * Math.abs(Math.sin(o.seed + i * 2.3)));
+        const px = o.x + Math.cos(a) * rr;
+        const py = o.y + Math.sin(a) * rr;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#6b6f76';
+      ctx.fill();
+      ctx.strokeStyle = '#3d4045';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(o.x - o.r * 0.25, o.y - o.r * 0.25, o.r * 0.38, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, o.r + 6, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    function drawShark(o) {
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.fillStyle = '#7d8a99';
+      ctx.strokeStyle = '#46515e';
+      ctx.lineWidth = 2;
+      // tail
+      ctx.beginPath();
+      ctx.moveTo(0, -20);
+      ctx.lineTo(-11, -34);
+      ctx.lineTo(0, -28);
+      ctx.lineTo(11, -34);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      // side fins
+      ctx.beginPath();
+      ctx.moveTo(-8, 2);
+      ctx.lineTo(-22, 12);
+      ctx.lineTo(-6, 12);
+      ctx.moveTo(8, 2);
+      ctx.lineTo(22, 12);
+      ctx.lineTo(6, 12);
+      ctx.fill();
+      // body
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 12, 26, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      // dorsal fin
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(7, 8);
+      ctx.lineTo(-7, 8);
+      ctx.closePath();
+      ctx.fillStyle = '#5d6975';
+      ctx.fill();
+      // eyes
+      ctx.fillStyle = '#10151a';
+      ctx.beginPath();
+      ctx.arc(-5, 17, 1.8, 0, Math.PI * 2);
+      ctx.arc(5, 17, 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawCoin(c) {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd400';
+      ctx.fill();
+      ctx.strokeStyle = '#b8860b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r - 4, 0, Math.PI * 2);
+      ctx.strokeStyle = '#fff3b0';
+      ctx.stroke();
+    }
+
+    function drawBoat() {
+      const sink = crashing || (gameOver && crashT > 0) ? crashT : 0;
+      const x = boat.x;
+      const y = boatY + sink * 30;
+      const angle = crashDir * sink * 1.35;
+
+      // foam trail behind the boat while sailing
+      if (!crashing && !gameOver) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+        ctx.beginPath();
+        ctx.moveTo(x - 12, y + 26);
+        ctx.lineTo(x - 26 - Math.sin(frame / 10) * 3, y + 92);
+        ctx.lineTo(x + 26 + Math.sin(frame / 10) * 3, y + 92);
+        ctx.lineTo(x + 12, y + 26);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+
+      // hull
+      ctx.beginPath();
+      ctx.moveTo(0, -33);
+      ctx.quadraticCurveTo(19, -10, 15, 28);
+      ctx.lineTo(-15, 28);
+      ctx.quadraticCurveTo(-19, -10, 0, -33);
+      ctx.closePath();
+      ctx.fillStyle = '#d62828';
+      ctx.fill();
+      ctx.strokeStyle = '#8c1a1a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // deck
+      ctx.beginPath();
+      ctx.moveTo(0, -24);
+      ctx.quadraticCurveTo(12, -8, 9, 22);
+      ctx.lineTo(-9, 22);
+      ctx.quadraticCurveTo(-12, -8, 0, -24);
+      ctx.closePath();
+      ctx.fillStyle = '#f2d9a8';
+      ctx.fill();
+
+      // sail
+      ctx.beginPath();
+      ctx.moveTo(0, -18);
+      ctx.quadraticCurveTo(22, -2, 3, 14);
+      ctx.lineTo(0, 14);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#c9c2b2';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // mast
+      ctx.beginPath();
+      ctx.arc(0, -1, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#6b4f2a';
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+    function drawSplashes() {
+      splashes.forEach((s) => {
+        const p = s.age / 40;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, 6 + p * 34, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + 0.7 * (1 - p) + ')';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      });
+    }
+
+    function drawOverlay(title, subtitle) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'white';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 30px sans-serif';
+      ctx.fillText(title, W / 2, H / 2 - 16);
+      ctx.font = '18px sans-serif';
+      ctx.fillText(subtitle, W / 2, H / 2 + 20);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      drawSea();
+
+      coins.forEach(drawCoin);
+      rocks.forEach((o) => (o.kind === 'shark' ? drawShark(o) : drawRock(o)));
+      drawBoat();
+      drawSplashes();
+
+      if (levelFlash > 0 && started && !gameOver) {
+        const alpha = Math.min(1, levelFlash / 20);
+        ctx.fillStyle = 'rgba(255, 220, 80, ' + alpha + ')';
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level ' + level + '!', W / 2, 70);
+      }
+
+      if (!started) {
+        drawOverlay('Tap to start', 'Dodge the rocks and sharks!');
+      } else if (gameOver) {
+        drawOverlay('Shipwrecked!', 'Tap to sail again • Score: ' + score);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function boot(data) {
+      if (data && typeof data.best === 'number' && data.best > best) {
+        best = data.best;
+        bestEl.textContent = 'Best: ' + best;
+      }
+      draw();
+      loop();
+    }
+
+    if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
+      window.claude.hot.snapshot(() => ({ best }));
+    }
+
+    if (window.claude && window.claude.hot && window.claude.hot.ready) {
+      window.claude.hot.ready(boot);
+    } else {
+      boot(window.claude && window.claude.hot ? window.claude.hot.data : null);
+    }
+  })();
+</script>
+  </body>
+</html>
