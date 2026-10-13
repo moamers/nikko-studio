@@ -14,6 +14,7 @@
     --ink-soft: #4a6572;
     --land: #6fbf73;
     --bed: #b8a88a;
+    --water: #4aa3d8;
     --accent: #e4572e;
   }
   @media (prefers-color-scheme: dark) {
@@ -24,6 +25,7 @@
       --ink-soft: #9fb6c0;
       --land: #2f6b3a;
       --bed: #7d7360;
+      --water: #2a6a99;
       --accent: #ff8a6a;
       color-scheme: dark;
     }
@@ -35,6 +37,7 @@
     --ink-soft: #9fb6c0;
     --land: #2f6b3a;
     --bed: #7d7360;
+    --water: #2a6a99;
     --accent: #ff8a6a;
     color-scheme: dark;
   }
@@ -103,6 +106,27 @@
     color: var(--accent);
   }
 
+  .controls {
+    display: flex;
+    gap: 10px;
+  }
+
+  .controls button {
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--card);
+    border: 2px solid var(--ink-soft);
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+
+  .controls button:active {
+    transform: scale(0.96);
+  }
+
   .best {
     font-size: 13px;
     color: var(--ink-soft);
@@ -117,6 +141,10 @@
   <p class="best" id="best">Best: 0</p>
   <div class="stage">
     <canvas id="game" width="400" height="600" aria-label="Train dodge game"></canvas>
+  </div>
+  <div class="controls">
+    <button type="button" id="whistleBtn">&#128226; Whistle</button>
+    <button type="button" id="soundBtn">&#128266; Sound on</button>
   </div>
 </div>
 
@@ -177,22 +205,135 @@
     } catch (e) {}
     bestEl.textContent = 'Best: ' + best;
 
+    // ---------- sound (made with Web Audio, no files needed) ----------
+    let audio = null;
+    let noiseBuf = null;
+    let soundOn = true;
+    let chuffIn = 0;
+    let chuffFlip = false;
+    let whistledSlot = -1;
+    const whistleBtn = document.getElementById('whistleBtn');
+    const soundBtn = document.getElementById('soundBtn');
+
+    function getAudio() {
+      if (audio) return audio;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        audio = new AC();
+        noiseBuf = audio.createBuffer(1, audio.sampleRate * 0.5, audio.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      } catch (e) {
+        audio = null;
+      }
+      return audio;
+    }
+
+    function unlockAudio() {
+      try {
+        const a = getAudio();
+        if (a && a.state === 'suspended') a.resume();
+      } catch (e) {}
+    }
+
+    function noiseBurst(freq, dur, vol, type) {
+      try {
+        const a = getAudio();
+        if (!a || !soundOn) return;
+        const src = a.createBufferSource();
+        src.buffer = noiseBuf;
+        const f = a.createBiquadFilter();
+        f.type = type || 'bandpass';
+        f.frequency.value = freq;
+        const g = a.createGain();
+        const t = a.currentTime;
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        src.connect(f);
+        f.connect(g);
+        g.connect(a.destination);
+        src.start(t);
+        src.stop(t + dur + 0.02);
+      } catch (e) {}
+    }
+
+    function tone(type, f0, f1, dur, vol, delay) {
+      try {
+        const a = getAudio();
+        if (!a || !soundOn) return;
+        const o = a.createOscillator();
+        const g = a.createGain();
+        const t = a.currentTime + (delay || 0);
+        o.type = type;
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.linearRampToValueAtTime(f1, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
+        g.gain.setValueAtTime(vol, t + dur * 0.7);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g);
+        g.connect(a.destination);
+        o.start(t);
+        o.stop(t + dur + 0.05);
+      } catch (e) {}
+    }
+
+    function playChuff() {
+      chuffFlip = !chuffFlip;
+      noiseBurst(chuffFlip ? 520 : 380, 0.09, 0.16);
+    }
+
+    // Two notes at once, like a real steam whistle: toot-toooot!
+    function playWhistle(short) {
+      const d = short ? 0.28 : 0.7;
+      tone('triangle', 660, 640, d, 0.14);
+      tone('triangle', 880, 860, d, 0.12);
+      if (!short) {
+        tone('triangle', 660, 600, 0.4, 0.12, d + 0.12);
+        tone('triangle', 880, 800, 0.4, 0.1, d + 0.12);
+      }
+    }
+
+    function playDing() {
+      tone('sine', 1100, 1500, 0.18, 0.12);
+    }
+
+    function playCrash() {
+      noiseBurst(300, 0.6, 0.4, 'lowpass');
+      tone('sawtooth', 220, 50, 0.5, 0.12);
+    }
+
+    function setSound(on) {
+      soundOn = on;
+      soundBtn.innerHTML = on ? '&#128266; Sound on' : '&#128263; Sound off';
+    }
+
+    whistleBtn.addEventListener('click', () => {
+      unlockAudio();
+      playWhistle();
+    });
+    soundBtn.addEventListener('click', () => {
+      unlockAudio();
+      setSound(!soundOn);
+    });
+
     function levelFor(s) {
       return Math.floor(s / pointsPerLevel) + 1;
     }
 
     // Starts gentle at level 1 and steps up each level.
     function worldSpeed() {
-      return Math.min(12, 3.2 + (level - 1) * 1.0);
+      return Math.min(13, 3.8 + (level - 1) * 1.1);
     }
 
     function spawnGap() {
-      return Math.max(140, 270 - (level - 1) * 14);
+      return Math.max(125, 245 - (level - 1) * 14);
     }
 
     function spawnRow() {
       const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
-      const blocked = level >= 3 && Math.random() < 0.35 ? 2 : 1; // never all three
+      const blocked = level >= 3 && Math.random() < 0.45 ? 2 : 1; // never all three
       for (let i = 0; i < blocked; i++) {
         const l = lanes[i];
         const roll = Math.random();
@@ -233,6 +374,8 @@
       started = true;
       scoreEl.textContent = 'Score: 0';
       levelEl.textContent = 'Level 1';
+      const ev0 = eventInfo();
+      whistledSlot = eventReach(ev0) >= engineY ? ev0.n : -1;
       spawnRow();
     }
 
@@ -246,6 +389,7 @@
       crashTimer = crashDuration;
       crashDir = cars[0].x < W / 2 ? 1 : cars[0].x > W / 2 ? -1 : Math.random() < 0.5 ? 1 : -1;
       rings.push({ x: cars[0].x, y: engineY - 20, age: 0 });
+      playCrash();
     }
 
     function endGame() {
@@ -271,6 +415,7 @@
     }
 
     canvas.addEventListener('mousedown', (e) => {
+      unlockAudio();
       startOrRestart();
       lane = laneFromClientX(e.clientX);
     });
@@ -280,6 +425,7 @@
     canvas.addEventListener(
       'touchstart',
       (e) => {
+        unlockAudio();
         startOrRestart();
         lane = laneFromClientX(e.touches[0].clientX);
       },
@@ -295,6 +441,8 @@
 
     window.addEventListener('keydown', (e) => {
       if (e.repeat) return;
+      unlockAudio();
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') playWhistle();
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') lane = Math.max(0, lane - 1);
       if (e.code === 'ArrowRight' || e.code === 'KeyD') lane = Math.min(2, lane + 1);
       if (e.code === 'Space') {
@@ -344,6 +492,17 @@
 
       if (!running) return;
 
+      chuffIn -= step;
+      if (chuffIn <= 0) {
+        playChuff();
+        chuffIn = Math.max(6, 24 - (dist / step) * 1.5);
+      }
+      const ev = eventInfo();
+      if (ev.n !== whistledSlot && eventReach(ev) >= engineY) {
+        whistledSlot = ev.n;
+        playWhistle();
+      }
+
       obstacles.forEach((o) => {
         o.y += dist * o.speedMul;
         for (let i = 0; i < cars.length; i++) {
@@ -361,6 +520,7 @@
             level = newLevel;
             levelEl.textContent = 'Level ' + level;
             levelFlash = 90;
+            playWhistle(true);
           }
         }
       });
@@ -377,6 +537,7 @@
           score += 3;
           scoreEl.textContent = 'Score: ' + score;
           rings.push({ x: c.x, y: c.y, age: 22 });
+          playDing();
         }
       });
       coins = coins.filter((c) => !c.collected && c.y < H + 40);
@@ -415,6 +576,8 @@
         ctx.fill();
       }
 
+      drawBridgeWater();
+
       laneX.forEach((x) => {
         // gravel bed
         ctx.fillStyle = bed;
@@ -430,6 +593,174 @@
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         ctx.fillRect(x - 15, 0, 1, H);
         ctx.fillRect(x + 12, 0, 1, H);
+      });
+
+      drawBridgeDecks();
+      drawStationGround();
+    }
+
+    // Every so often the line passes something special: a station, then a
+    // tunnel, then a bridge over a river. One per slot, so they never overlap.
+    const slotLength = 1500;
+    const stationNames = ['Nikko Central', 'Sunny Junction', 'Gold Hill', 'Pine Valley', 'Rocky Bridge', 'Seaside'];
+    const eventKinds = ['station', 'tunnel', 'bridge'];
+    const eventLengths = { station: 300, tunnel: 440, bridge: 200 };
+    function eventInfo() {
+      const n = Math.floor(scrollTotal / slotLength);
+      const kind = eventKinds[n % 3];
+      const len = eventLengths[kind];
+      const top = (scrollTotal % slotLength) - len; // top edge on screen
+      return { n, kind, len, top, name: stationNames[Math.floor(n / 3) % stationNames.length] };
+    }
+    // the moment the engine reaches the thing (sign, tunnel mouth or river)
+    function eventReach(ev) {
+      return ev.kind === 'station' ? ev.top + 20 : ev.top + ev.len;
+    }
+    const stationInfo = () => {
+      const ev = eventInfo();
+      return { top: ev.kind === 'station' ? ev.top : 9999, name: ev.name };
+    };
+    const stationLength = eventLengths.station;
+
+    function drawStationGround() {
+      const st = stationInfo();
+      if (st.top > H || st.top + stationLength < 0) return;
+      [140, 260].forEach((cx) => {
+        // platform
+        ctx.fillStyle = '#c9ccd1';
+        ctx.fillRect(cx - 27, st.top, 54, stationLength);
+        ctx.fillStyle = '#ffd23f';
+        ctx.fillRect(cx - 27, st.top, 3, stationLength);
+        ctx.fillRect(cx + 24, st.top, 3, stationLength);
+        // little roof over the platform
+        ctx.fillStyle = 'rgba(190, 60, 60, 0.95)';
+        roundedRect(cx - 24, st.top + 60, 48, stationLength - 120, 6);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fillRect(cx - 24, st.top + 60, 48, 6);
+        // waiting passengers
+        const colours = ['#2b7bd6', '#e8a33d', '#8e44ad', '#2a9d8f'];
+        for (let i = 0; i < 5; i++) {
+          const px = cx - 16 + ((i * 11) % 32);
+          const py = st.top + 40 + i * 48 + (cx === 260 ? 18 : 0);
+          ctx.beginPath();
+          ctx.arc(px, py, 5, 0, Math.PI * 2);
+          ctx.fillStyle = colours[(i + (cx === 260 ? 2 : 0)) % 4];
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(px, py - 7, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#f2c9a0';
+          ctx.fill();
+        }
+      });
+    }
+
+    function drawStationSign() {
+      const st = stationInfo();
+      const y = st.top + 20;
+      if (y < -40 || y > H + 20) return;
+      ctx.fillStyle = '#4a4f55';
+      ctx.fillRect(0, y, W, 6);
+      ctx.fillRect(6, y, 6, 20);
+      ctx.fillRect(W - 12, y, 6, 20);
+      roundedRect(W / 2 - 100, y - 6, 200, 34, 8);
+      ctx.fillStyle = '#1d4e89';
+      ctx.fill();
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = 'white';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('🚉 ' + st.name, W / 2, y + 17);
+    }
+
+    function drawBridgeWater() {
+      const ev = eventInfo();
+      if (ev.kind !== 'bridge' || ev.top > H || ev.top + ev.len < 0) return;
+      const water = getComputedStyle(document.documentElement).getPropertyValue('--water').trim() || '#4aa3d8';
+      ctx.fillStyle = '#7a5b3a';
+      ctx.fillRect(0, ev.top - 6, W, ev.len + 12); // muddy banks
+      ctx.fillStyle = water;
+      ctx.fillRect(0, ev.top, W, ev.len);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 9; i++) {
+        const wy = ev.top + 14 + ((i * 47) % (ev.len - 28));
+        const wx = (i * 83 + scrollTotal * 0.6) % (W + 40) - 20;
+        ctx.beginPath();
+        ctx.moveTo(wx, wy);
+        ctx.quadraticCurveTo(wx + 10, wy - 5, wx + 20, wy);
+        ctx.quadraticCurveTo(wx + 30, wy + 5, wx + 40, wy);
+        ctx.stroke();
+      }
+    }
+
+    function drawBridgeDecks() {
+      const ev = eventInfo();
+      if (ev.kind !== 'bridge' || ev.top > H || ev.top + ev.len < 0) return;
+      laneX.forEach((x) => {
+        ctx.fillStyle = '#9a7b4f';
+        ctx.fillRect(x - 34, ev.top - 8, 68, ev.len + 16);
+        ctx.fillStyle = '#7a5a3a';
+        const sb = scrollTotal % 22;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(x - 34, ev.top - 8, 68, ev.len + 16);
+        ctx.clip();
+        for (let y = -22 + sb; y < H + 22; y += 22) ctx.fillRect(x - 24, y, 48, 7);
+        ctx.fillStyle = '#8d969e';
+        ctx.fillRect(x - 15, 0, 3, H);
+        ctx.fillRect(x + 12, 0, 3, H);
+        ctx.restore();
+        // railings
+        ctx.fillStyle = '#5b4026';
+        ctx.fillRect(x - 34, ev.top - 8, 3, ev.len + 16);
+        ctx.fillRect(x + 31, ev.top - 8, 3, ev.len + 16);
+        for (let y = ev.top; y <= ev.top + ev.len; y += 25) {
+          ctx.fillRect(x - 36, y - 2, 7, 5);
+          ctx.fillRect(x + 29, y - 2, 7, 5);
+        }
+      });
+    }
+
+    // A tunnel through a hill. The hill covers everything beside the tracks;
+    // inside it is dark, with just a headlight glow around the engine.
+    function drawTunnel() {
+      const ev = eventInfo();
+      if (ev.kind !== 'tunnel' || ev.top > H || ev.top + ev.len < 0) return;
+      const y0 = ev.top;
+      const bands = [[0, 50], [110, 170], [230, 290], [350, W]];
+      bands.forEach(([x0, x1]) => {
+        ctx.fillStyle = '#566b4a';
+        ctx.fillRect(x0, y0, x1 - x0, ev.len);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+        for (let i = 0; i < 6; i++) {
+          ctx.beginPath();
+          ctx.arc(x0 + ((i * 29) % Math.max(8, x1 - x0 - 8)) + 8, y0 + 40 + i * 62, 9, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+      // darkness over the three tracks, lit by the headlight
+      ctx.save();
+      ctx.beginPath();
+      laneX.forEach((x) => ctx.rect(x - 30, y0, 60, ev.len));
+      ctx.clip();
+      const ex = cars[0].x;
+      const grad = ctx.createRadialGradient(ex, engineY - 60, 30, ex, engineY - 60, 250);
+      grad.addColorStop(0, 'rgba(0, 0, 10, 0.25)');
+      grad.addColorStop(1, 'rgba(0, 0, 10, 0.78)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, y0, W, ev.len);
+      ctx.restore();
+      // stone mouths at both ends (the tracks pass through the gaps)
+      [y0, y0 + ev.len - 22].forEach((y) => {
+        bands.forEach(([x0, x1]) => {
+          ctx.fillStyle = '#8a8d93';
+          ctx.fillRect(x0, y, x1 - x0, 22);
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+          ctx.fillRect(x0, y + 20, x1 - x0, 2);
+        });
       });
     }
 
@@ -605,6 +936,8 @@
         else drawOncoming(o);
       });
       drawTrain();
+      drawTunnel();
+      drawStationSign();
       drawEffects();
 
       if (levelFlash > 0 && started && !gameOver) {
