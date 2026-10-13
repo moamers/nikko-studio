@@ -439,10 +439,32 @@
       noiseBurst(260, 0.06, 0.09, 'lowpass');
     }
 
+    // Honk at an oncoming train that is heading for you and it politely slides
+    // over to another track (never onto yours).
+    function moveOncomingTrain(o) {
+      if (o.slideTo !== undefined) return;
+      const ahead = engineY - (o.y + o.hh);
+      if (ahead < -20 || ahead > 380) return;
+      const mine = laneX[lane];
+      if (Math.abs(o.x - mine) > 50 && Math.abs(o.x - cars[0].x) > 50) return; // not coming for us
+      const options = [0, 1, 2].filter((l) => laneX[l] !== mine && Math.abs(laneX[l] - o.x) > 10);
+      if (!options.length) return;
+      const clear = (l) => !obstacles.some((q) => q !== o && Math.abs(q.x - laneX[l]) < 40 && Math.abs(q.y - o.y) < 140);
+      const pick = options.find(clear) || options[0];
+      o.slideTo = laneX[pick];
+      o.lane = pick;
+      o.scared = true;
+      rings.push({ x: o.x, y: o.y + o.hh, age: 18 });
+    }
+
     // Honk! Any animal ahead of the train (and close) gets a fright and runs
     // away sideways, fast.
     function scareAnimals() {
       obstacles.forEach((o) => {
+        if (o.kind === 'train') {
+          moveOncomingTrain(o);
+          return;
+        }
         if (o.kind !== 'animal' || o.scared) return;
         const ahead = engineY - o.y; // how far in front of the engine
         if (ahead < -40 || ahead > 280) return;
@@ -818,6 +840,15 @@
 
       obstacles.forEach((o) => {
         o.y += dist * o.speedMul;
+        if (o.slideTo !== undefined) {
+          const d = o.slideTo - o.x;
+          o.x += Math.max(-4.5 * step, Math.min(4.5 * step, d));
+          if (Math.abs(o.slideTo - o.x) < 0.5) {
+            o.x = o.slideTo;
+            o.slideTo = undefined;
+            o.scared = false;
+          }
+        }
         if (o.kind === 'train' && !o.whooshed && o.y > engineY - 70) {
           o.whooshed = true;
           if (Math.abs(o.x - cars[0].x) < 140) playPassBy();
@@ -1247,7 +1278,10 @@
 
     // A bullet train, drawn from above, nose pointing up: white and sleek,
     // with a long pointed nose and a coloured stripe.
-    function drawEngine(stripe, outline, headlight) {
+    const whiteBody = ['#dfe6ec', '#ffffff', '#cfd8e0'];
+    const redBody = ['#b41e1e', '#f04646', '#a01818'];
+    function drawEngine(stripe, outline, headlight, body) {
+      body = body || whiteBody;
       ctx.beginPath();
       ctx.moveTo(-16, 25);
       ctx.lineTo(-16, -4);
@@ -1256,9 +1290,9 @@
       ctx.lineTo(16, 25);
       ctx.closePath();
       const g = ctx.createLinearGradient(-16, 0, 16, 0);
-      g.addColorStop(0, '#dfe6ec');
-      g.addColorStop(0.5, '#ffffff');
-      g.addColorStop(1, '#cfd8e0');
+      g.addColorStop(0, body[0]);
+      g.addColorStop(0.5, body[1]);
+      g.addColorStop(1, body[2]);
       ctx.fillStyle = g;
       ctx.fill();
       ctx.strokeStyle = outline;
@@ -1292,12 +1326,13 @@
       }
     }
 
-    function drawCarriage(stripe, outline) {
+    function drawCarriage(stripe, outline, body) {
+      body = body || whiteBody;
       roundedRect(-16, -22, 32, 44, 7);
       const g = ctx.createLinearGradient(-16, 0, 16, 0);
-      g.addColorStop(0, '#dfe6ec');
-      g.addColorStop(0.5, '#ffffff');
-      g.addColorStop(1, '#cfd8e0');
+      g.addColorStop(0, body[0]);
+      g.addColorStop(0.5, body[1]);
+      g.addColorStop(1, body[2]);
       ctx.fillStyle = g;
       ctx.fill();
       ctx.strokeStyle = outline;
@@ -1313,15 +1348,21 @@
     }
 
     function drawOncoming(o) {
+      if (o.scared) {
+        ctx.fillStyle = '#e63946';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', o.x, o.y - o.hh - 18);
+      }
       // an oncoming train: engine facing down, with a carriage behind it
       ctx.save();
       ctx.translate(o.x, o.y + 22);
       ctx.rotate(Math.PI);
-      drawEngine('#e63946', '#3b4752', true);
+      drawEngine('#1f6fd6', '#3b4752', true);
       ctx.restore();
       ctx.save();
       ctx.translate(o.x, o.y - 30);
-      drawCarriage('#e63946', '#3b4752');
+      drawCarriage('#1f6fd6', '#3b4752');
       ctx.restore();
       ctx.beginPath();
       ctx.arc(o.x, o.y + 50, 14, 0, Math.PI * 2);
@@ -1545,8 +1586,8 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        if (i === 0) drawEngine('#1f6fd6', '#5d6c78', true);
-        else drawCarriage('#1f6fd6', '#5d6c78');
+        if (i === 0) drawEngine('#ffffff', '#6b1212', true, redBody);
+        else drawCarriage('#ffffff', '#6b1212', redBody);
         ctx.restore();
       }
     }
