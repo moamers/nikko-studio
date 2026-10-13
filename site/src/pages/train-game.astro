@@ -251,6 +251,8 @@
     let chuffFlip = false;
     let whistledSlot = -1;
     let surpriseSlot = -1;
+    let dragon = null;
+    let singeFlash = 0;
     let surpriseFlash = 0;
     let surpriseText = '';
     const whistleBtn = document.getElementById('whistleBtn');
@@ -463,6 +465,11 @@
     // Honk! Any animal ahead of the train (and close) gets a fright and runs
     // away sideways, fast.
     function scareAnimals() {
+      if (dragon && dragon.deaf <= 0 && dragon.mode !== 'leave') {
+        dragon.mode = 'leave';
+        dragon.scared = true;
+        rings.push({ x: dragon.x, y: dragon.y, age: 12 });
+      }
       obstacles.forEach((o) => {
         if (o.kind === 'train') {
           moveOncomingTrain(o);
@@ -603,7 +610,7 @@
 
     // Every tunnel hides a surprise. You only find out when you drive in!
     function startSurprise(kind) {
-      const kinds = ['treasure', 'bats', 'ghost'];
+      const kinds = ['treasure', 'bats', 'ghost', 'dragon', 'animals'];
       kind = kind || kinds[Math.floor(Math.random() * kinds.length)];
       const yAt = (k) => engineY - 120 - k * 45;
       if (kind === 'treasure') {
@@ -632,6 +639,33 @@
           });
         }
         [0, 1, 2].forEach((k) => tone('sine', 2400, 3300, 0.09, 0.05, k * 0.14));
+      } else if (kind === 'animals') {
+        surpriseText = '\u{1F404} Animals!';
+        for (let i = 0; i < 3; i++) {
+          const dir = i % 2 ? 1 : -1;
+          const cow = i !== 1;
+          obstacles.push({
+            kind: 'animal',
+            animal: cow ? 'cow' : 'sheep',
+            lane: dir > 0 ? 0 : 2,
+            x: dir > 0 ? 20 + i * 15 : W - 20 - i * 15,
+            y: engineY - 170 - i * 95,
+            vx: dir * 1.5,
+            dir,
+            phase: i,
+            hw: cow ? 21 : 17,
+            hh: cow ? 12 : 11,
+            speedMul: 1,
+            passed: false,
+          });
+        }
+        tone('sawtooth', 140, 95, 0.55, 0.07, 0, 600);
+        tone('square', 330, 270, 0.4, 0.04, 0.5, 900);
+      } else if (kind === 'dragon') {
+        surpriseText = '\u{1F409} A dragon!';
+        dragon = { x: laneX[1], y: -70, mode: 'enter', t: 0, rounds: 3, target: 1, fireX: laneX[1], hitDone: false, scared: false, singed: false, deaf: 20 };
+        tone('sawtooth', 170, 55, 0.8, 0.09, 0, 500);
+        noiseBurst(300, 0.7, 0.25, 'lowpass');
       } else {
         surpriseText = '\u{1F47B} A ghost train!';
         obstacles.push({ kind: 'ghost', lane, x: laneX[lane], y: engineY - 300, hw: 15, hh: 48, speedMul: 1.5, ignore: true, passed: false });
@@ -639,6 +673,89 @@
         tone('sine', 530, 240, 0.9, 0.06, 0.05, 700);
       }
       surpriseFlash = 150;
+    }
+
+    // The dragon flies in from the top of the screen, warns which track it will
+    // aim at (red glow), then breathes fire down it. Honk and it flies away!
+    function pickDragonTarget(d) {
+      d.target = Math.random() < 0.7 ? lane : Math.floor(Math.random() * 3);
+    }
+
+    function updateDragon(step) {
+      const d = dragon;
+      if (!d) return;
+      d.t += step;
+      d.deaf = Math.max(0, d.deaf - step);
+      if (d.mode === 'enter') {
+        d.y += (72 - d.y) * (1 - Math.pow(1 - 0.12, step));
+        if (d.t > 45) {
+          d.mode = 'aim';
+          d.t = 0;
+          pickDragonTarget(d);
+        }
+      } else if (d.mode === 'aim') {
+        d.x += (laneX[d.target] - d.x) * (1 - Math.pow(1 - 0.15, step));
+        if (d.t > 80) {
+          d.mode = 'fire';
+          d.t = 0;
+          d.fireX = laneX[d.target];
+          d.x = d.fireX;
+          d.hitDone = false;
+          noiseBurst(700, 0.9, 0.3, 'lowpass');
+          tone('sawtooth', 140, 90, 0.5, 0.06, 0, 400);
+        }
+      } else if (d.mode === 'fire') {
+        if (!d.hitDone) {
+          for (let i = 0; i < cars.length; i++) {
+            if (Math.abs(cars[i].x - d.fireX) < cars[i].hw + 12) {
+              d.hitDone = true;
+              if (shieldTime > 0) {
+                shieldTime = 0;
+                rings.push({ x: d.fireX, y: engineY, age: 0 });
+                noiseBurst(700, 0.25, 0.3);
+                tone('sine', 900, 300, 0.3, 0.12);
+              } else {
+                // a singe, never a crash: lose up to 3 points and get a fright
+                const lost = Math.min(score, 3);
+                score -= lost;
+                scoreEl.textContent = 'Score: ' + score;
+                d.singed = true;
+                singeFlash = 30;
+                surpriseText = lost > 0 ? 'Ouch! Hot! -' + lost : 'Ouch! Hot!';
+                surpriseFlash = 70;
+                noiseBurst(500, 0.4, 0.3, 'lowpass');
+                tone('sawtooth', 300, 120, 0.3, 0.08, 0, 700);
+              }
+              break;
+            }
+          }
+        }
+        if (d.t > 55) {
+          d.rounds--;
+          d.mode = 'rest';
+          d.t = 0;
+        }
+      } else if (d.mode === 'rest') {
+        if (d.t > 30) {
+          if (d.rounds > 0) {
+            d.mode = 'aim';
+            d.t = 0;
+            pickDragonTarget(d);
+          } else {
+            d.mode = 'leave';
+            d.t = 0;
+            if (!d.singed) {
+              score += 5; // you dodged the dragon perfectly!
+              scoreEl.textContent = 'Score: ' + score;
+              rings.push({ x: d.x, y: d.y, age: 0 });
+              playDing();
+            }
+          }
+        }
+      } else {
+        d.y -= 6 * step;
+        if (d.y < -100) dragon = null;
+      }
     }
 
     function spawnRow() {
@@ -707,6 +824,8 @@
       whistledSlot = eventReach(ev0) >= engineY ? ev0.n : -1;
       surpriseSlot = ev0.kind === 'tunnel' && eventReach(ev0) >= engineY ? ev0.n : -1;
       surpriseFlash = 0;
+      dragon = null;
+      singeFlash = 0;
       spawnRow();
     }
 
@@ -878,14 +997,15 @@
         chuffIn = Math.max(6, 24 - (dist / step) * 1.5);
       }
       const ev = eventInfo();
-      if (ev.kind === 'tunnel' && ev.n !== surpriseSlot && eventReach(ev) >= engineY) {
-        surpriseSlot = ev.n;
-        startSurprise();
-      }
       if (ev.n !== whistledSlot && eventReach(ev) >= engineY) {
         whistledSlot = ev.n;
         playWhistle();
       }
+      if (ev.kind === 'tunnel' && ev.n !== surpriseSlot && eventReach(ev) >= engineY) {
+        surpriseSlot = ev.n;
+        startSurprise();
+      }
+      updateDragon(step);
 
       obstacles.forEach((o) => {
         o.y += dist * o.speedMul;
@@ -998,6 +1118,7 @@
 
       levelFlash = Math.max(0, levelFlash - step);
       surpriseFlash = Math.max(0, surpriseFlash - step);
+      singeFlash = Math.max(0, singeFlash - step);
     }
 
     // ---------- drawing ----------
@@ -1177,21 +1298,49 @@
 
     // A tunnel through a hill. The hill covers everything beside the tracks;
     // inside it is dark, with just a headlight glow around the engine.
+    // A wall of red bricks, in rows that are shifted like a real brick wall.
+    function drawBricks(x, y, w, h, colour) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.clip();
+      ctx.fillStyle = colour;
+      ctx.fillRect(x, y, w, h);
+      const rowH = 12;
+      const brickW = 26;
+      ctx.strokeStyle = 'rgba(235, 215, 195, 0.55)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      for (let r = 0; r * rowH <= h; r++) {
+        const ry = y + r * rowH;
+        ctx.moveTo(x, ry);
+        ctx.lineTo(x + w, ry);
+        const shift = r % 2 ? brickW / 2 : 0;
+        for (let bx = x - shift; bx < x + w; bx += brickW) {
+          ctx.moveTo(bx, ry);
+          ctx.lineTo(bx, ry + rowH);
+        }
+      }
+      ctx.stroke();
+      // a few darker and lighter bricks so it does not look flat
+      for (let r = 0; r * rowH <= h; r++) {
+        const shift = r % 2 ? brickW / 2 : 0;
+        for (let c = 0; c < Math.ceil(w / brickW) + 1; c++) {
+          const n = (r * 7 + c * 13) % 9;
+          if (n > 2) continue;
+          ctx.fillStyle = n === 0 ? 'rgba(0, 0, 0, 0.14)' : n === 1 ? 'rgba(255, 255, 255, 0.10)' : 'rgba(60, 20, 10, 0.12)';
+          ctx.fillRect(x - shift + c * brickW + 1, y + r * rowH + 1, brickW - 2, rowH - 2);
+        }
+      }
+      ctx.restore();
+    }
+
     function drawTunnel() {
       const ev = eventInfo();
       if (ev.kind !== 'tunnel' || ev.top > H || ev.top + ev.len < 0) return;
       const y0 = ev.top;
       const bands = [[0, 50], [110, 170], [230, 290], [350, W]];
-      bands.forEach(([x0, x1]) => {
-        ctx.fillStyle = '#566b4a';
-        ctx.fillRect(x0, y0, x1 - x0, ev.len);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
-        for (let i = 0; i < 6; i++) {
-          ctx.beginPath();
-          ctx.arc(x0 + ((i * 29) % Math.max(8, x1 - x0 - 8)) + 8, y0 + 40 + i * 62, 9, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      });
+      bands.forEach(([x0, x1]) => drawBricks(x0, y0, x1 - x0, ev.len, '#a8543b'));
       // darkness over the three tracks, lit by the headlight
       ctx.save();
       ctx.beginPath();
@@ -1207,10 +1356,11 @@
       // stone mouths at both ends (the tracks pass through the gaps)
       [y0, y0 + ev.len - 22].forEach((y) => {
         bands.forEach(([x0, x1]) => {
-          ctx.fillStyle = '#8a8d93';
-          ctx.fillRect(x0, y, x1 - x0, 22);
+          drawBricks(x0, y, x1 - x0, 22, '#8c4330');
+          ctx.fillStyle = '#b9b2a6';
+          ctx.fillRect(x0, y + 17, x1 - x0, 5);
           ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
-          ctx.fillRect(x0, y + 20, x1 - x0, 2);
+          ctx.fillRect(x0, y + 21, x1 - x0, 1);
         });
       });
     }
@@ -1232,6 +1382,113 @@
       ctx.beginPath();
       ctx.ellipse(o.x, o.y + 33, 4, 6, 0, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    function drawDragon() {
+      const d = dragon;
+      if (!d) return;
+      // warning glow on the track it is about to burn
+      if (d.mode === 'aim') {
+        const a = 0.16 + 0.12 * Math.sin(frame * 0.5);
+        ctx.fillStyle = 'rgba(255, 60, 30, ' + a + ')';
+        ctx.fillRect(laneX[d.target] - 30, d.y + 30, 60, H);
+        ctx.fillStyle = 'rgba(255, 50, 30, ' + (0.5 + 0.5 * Math.sin(frame * 0.5)) + ')';
+        ctx.font = 'bold 30px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', laneX[d.target], 240);
+      }
+      // the fire
+      if (d.mode === 'fire') {
+        const top = d.y + 36;
+        const len = Math.min(1, d.t / 8) * (H - top);
+        const layers = [
+          ['rgba(255, 90, 20, 0.75)', 22],
+          ['rgba(255, 170, 40, 0.85)', 15],
+          ['rgba(255, 245, 160, 0.95)', 7],
+        ];
+        layers.forEach(([col, w]) => {
+          ctx.fillStyle = col;
+          ctx.beginPath();
+          ctx.moveTo(d.fireX - 5, top);
+          for (let y = 0; y <= len; y += 22) {
+            const spread = w * (0.45 + (y / Math.max(len, 1)) * 0.6);
+            ctx.lineTo(d.fireX - spread - Math.random() * 4, top + y);
+          }
+          for (let y = len; y >= 0; y -= 22) {
+            const spread = w * (0.45 + (y / Math.max(len, 1)) * 0.6);
+            ctx.lineTo(d.fireX + spread + Math.random() * 4, top + y);
+          }
+          ctx.closePath();
+          ctx.fill();
+        });
+      }
+      ctx.save();
+      ctx.translate(d.x, d.y);
+      const flap = Math.sin(frame * 0.25);
+      // tail
+      ctx.strokeStyle = '#2c8a52';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, -18);
+      ctx.quadraticCurveTo(Math.sin(frame * 0.12) * 16, -44, Math.sin(frame * 0.12 + 1) * 8, -70);
+      ctx.stroke();
+      ctx.lineCap = 'butt';
+      // wings
+      [-1, 1].forEach((side) => {
+        ctx.beginPath();
+        ctx.moveTo(side * 6, -8);
+        ctx.quadraticCurveTo(side * 38, -34 + flap * 8, side * 62, -14 + flap * 12);
+        ctx.quadraticCurveTo(side * 54, -4, side * 52, 6);
+        ctx.quadraticCurveTo(side * 40, -2, side * 36, 12);
+        ctx.quadraticCurveTo(side * 22, 2, side * 8, 14);
+        ctx.closePath();
+        ctx.fillStyle = '#2f8f4e';
+        ctx.fill();
+        ctx.strokeStyle = '#154a28';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      });
+      // body
+      ctx.fillStyle = '#3cb371';
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 13, 28, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#154a28';
+      ctx.stroke();
+      ctx.fillStyle = '#a8e6a1';
+      ctx.beginPath();
+      ctx.ellipse(0, 8, 6, 20, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // head, horns, eyes
+      ctx.fillStyle = '#3cb371';
+      ctx.beginPath();
+      ctx.ellipse(0, 32, 11, 13, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#f2e6c9';
+      ctx.beginPath();
+      ctx.moveTo(-8, 24);
+      ctx.lineTo(-14, 12);
+      ctx.lineTo(-3, 22);
+      ctx.moveTo(8, 24);
+      ctx.lineTo(14, 12);
+      ctx.lineTo(3, 22);
+      ctx.fill();
+      ctx.fillStyle = '#ffd400';
+      ctx.fillRect(-8, 29, 5, 4);
+      ctx.fillRect(3, 29, 5, 4);
+      ctx.fillStyle = d.mode === 'aim' || d.mode === 'fire' ? '#ff5a1e' : '#1d6b3c';
+      ctx.beginPath();
+      ctx.ellipse(0, 41, 5, d.mode === 'fire' ? 5 : 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (d.scared) {
+        ctx.fillStyle = '#e63946';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('!', 0, -76);
+      }
+      ctx.restore();
     }
 
     function drawBat(o) {
@@ -1643,6 +1900,10 @@
         }
         ctx.stroke();
       }
+      if (singeFlash > 0) {
+        ctx.fillStyle = 'rgba(255, 70, 20, ' + 0.3 * (singeFlash / 30) + ')';
+        ctx.fillRect(0, 0, W, H);
+      }
       if (flash > 0.02) {
         if (bolt && flash > 0.3) {
           ctx.lineJoin = 'round';
@@ -1780,13 +2041,21 @@
         else if (o.kind === 'train') drawOncoming(o);
         else if (o.kind === 'ghost') drawGhost(o);
       });
-      drawTrain();
+      if (singeFlash > 0) {
+        ctx.save();
+        ctx.translate((Math.random() - 0.5) * 5, 0);
+        drawTrain();
+        ctx.restore();
+      } else {
+        drawTrain();
+      }
       drawShieldBubble();
       drawBoostEffects();
       drawTunnel();
       obstacles.forEach((o) => {
         if (o.kind === 'animal') drawAnimal(o);
       });
+      drawDragon();
       drawStationSign();
       drawEffects();
 
@@ -1799,7 +2068,7 @@
         ctx.fillStyle = 'rgba(190, 150, 255, ' + Math.min(1, surpriseFlash / 25) + ')';
         ctx.font = 'bold 25px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Surprise! ' + surpriseText, W / 2, 112);
+        ctx.fillText((surpriseText.indexOf('Ouch') === 0 ? '' : 'Surprise! ') + surpriseText, W / 2, 170);
       }
 
       if (levelFlash > 0 && started && !gameOver) {
