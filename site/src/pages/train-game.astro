@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Train Dodge</title>
+  </head>
+  <body>
+<style is:global>
+  :root {
+    --bg: #f6fdff;
+    --card: #ffffff;
+    --ink: #1a2a33;
+    --ink-soft: #4a6572;
+    --land: #6fbf73;
+    --bed: #b8a88a;
+    --accent: #e4572e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1b22;
+      --card: #16262f;
+      --ink: #eaf4f8;
+      --ink-soft: #9fb6c0;
+      --land: #2f6b3a;
+      --bed: #7d7360;
+      --accent: #ff8a6a;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1b22;
+    --card: #16262f;
+    --ink: #eaf4f8;
+    --ink-soft: #9fb6c0;
+    --land: #2f6b3a;
+    --bed: #7d7360;
+    --accent: #ff8a6a;
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding-inline: 16px;
+  }
+
+  .wrap {
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-block: 24px;
+  }
+
+  h1 {
+    font-size: clamp(22px, 6vw, 30px);
+    margin: 0;
+    text-align: center;
+  }
+
+  .sub {
+    color: var(--ink-soft);
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    max-height: 70vh;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.15);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+    background: var(--land);
+    touch-action: none;
+  }
+
+  .score {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .level {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .best {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+</style>
+
+<div class="wrap">
+  <h1>&#128642; Train Dodge</h1>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers and oncoming trains, and grab the gold!</p>
+  <p class="score" id="score">Score: 0</p>
+  <p class="level" id="level">Level 1</p>
+  <p class="best" id="best">Best: 0</p>
+  <div class="stage">
+    <canvas id="game" width="400" height="600" aria-label="Train dodge game"></canvas>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const levelEl = document.getElementById('level');
+    const bestEl = document.getElementById('best');
+
+    const W = canvas.width;
+    const H = canvas.height;
+    const pointsPerLevel = 5;
+
+    const laneX = [80, 200, 320];
+
+    // The train's spot on screen never changes by itself: only its sideways
+    // position follows the track you pick. The wreck animation is drawn as an
+    // offset on top, so a restart always puts everything back.
+    const engineY = H - 190;
+    const carSpacing = 52;
+    const cars = [
+      { x: laneX[1], hw: 15, hh: 25, kind: 'engine' },
+      { x: laneX[1], hw: 14, hh: 22, kind: 'car' },
+      { x: laneX[1], hw: 14, hh: 22, kind: 'car' },
+    ];
+    const carY = (i) => engineY + i * carSpacing;
+
+    let lane = 1;
+    let obstacles = [];
+    let coins = [];
+    let puffs = []; // chimney smoke
+    let rings = []; // dust rings when something happens
+    let score = 0;
+    let level = 1;
+    let levelFlash = 0;
+    let best = 0;
+    let started = false;
+    let gameOver = false;
+    let coinSpawnIn = 90;
+    let lastSpawnY = 0;
+    let scrollTotal = 0;
+    let smokeIn = 0;
+    let frame = 0;
+    let lastTime = null;
+
+    // Wreck animation: the carriages swing out sideways and the train tips,
+    // staying fully on screen.
+    let crashing = false;
+    let crashTimer = 0;
+    const crashDuration = 60;
+    let crashDir = 1;
+    let crashT = 0;
+
+    try {
+      best = Number(localStorage.getItem('trainDodgeBest') || 0);
+    } catch (e) {}
+    bestEl.textContent = 'Best: ' + best;
+
+    function levelFor(s) {
+      return Math.floor(s / pointsPerLevel) + 1;
+    }
+
+    // Starts gentle at level 1 and steps up each level.
+    function worldSpeed() {
+      return Math.min(12, 3.2 + (level - 1) * 1.0);
+    }
+
+    function spawnGap() {
+      return Math.max(140, 270 - (level - 1) * 14);
+    }
+
+    function spawnRow() {
+      const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
+      const blocked = level >= 3 && Math.random() < 0.35 ? 2 : 1; // never all three
+      for (let i = 0; i < blocked; i++) {
+        const l = lanes[i];
+        const roll = Math.random();
+        const x = laneX[l];
+        if (level >= 2 && blocked === 1 && roll < 0.3) {
+          obstacles.push({ kind: 'train', lane: l, x, y: -90, hw: 15, hh: 48, speedMul: 1.35, passed: false });
+        } else if (roll < 0.65) {
+          obstacles.push({ kind: 'rock', lane: l, x, y: -40, hw: 17, hh: 15, seed: Math.random() * 10, speedMul: 1, passed: false });
+        } else {
+          obstacles.push({ kind: 'barrier', lane: l, x, y: -40, hw: 28, hh: 8, speedMul: 1, passed: false });
+        }
+      }
+      lastSpawnY = -40;
+    }
+
+    function spawnCoin() {
+      const l = Math.floor(Math.random() * 3);
+      if (obstacles.some((o) => o.lane === l && o.y < 120)) return false;
+      coins.push({ x: laneX[l], y: -30, r: 12 });
+      return true;
+    }
+
+    function resetGame() {
+      lane = 1;
+      cars.forEach((c) => (c.x = laneX[1]));
+      obstacles = [];
+      coins = [];
+      puffs = [];
+      rings = [];
+      score = 0;
+      level = 1;
+      levelFlash = 0;
+      coinSpawnIn = 90;
+      crashing = false;
+      crashTimer = 0;
+      crashT = 0;
+      gameOver = false;
+      started = true;
+      scoreEl.textContent = 'Score: 0';
+      levelEl.textContent = 'Level 1';
+      spawnRow();
+    }
+
+    function startOrRestart() {
+      if (!started || gameOver) resetGame();
+    }
+
+    function startCrash() {
+      if (crashing || gameOver) return;
+      crashing = true;
+      crashTimer = crashDuration;
+      crashDir = cars[0].x < W / 2 ? 1 : cars[0].x > W / 2 ? -1 : Math.random() < 0.5 ? 1 : -1;
+      rings.push({ x: cars[0].x, y: engineY - 20, age: 0 });
+    }
+
+    function endGame() {
+      if (gameOver) return;
+      gameOver = true;
+      if (score > best) {
+        best = score;
+        bestEl.textContent = 'Best: ' + best;
+        try {
+          localStorage.setItem('trainDodgeBest', String(best));
+        } catch (e) {}
+      }
+    }
+
+    function easeInOut(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    function laneFromClientX(clientX) {
+      const rect = canvas.getBoundingClientRect();
+      const x = ((clientX - rect.left) / rect.width) * W;
+      return Math.max(0, Math.min(2, Math.floor(x / (W / 3))));
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      startOrRestart();
+      lane = laneFromClientX(e.clientX);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      lane = laneFromClientX(e.clientX);
+    });
+    canvas.addEventListener(
+      'touchstart',
+      (e) => {
+        startOrRestart();
+        lane = laneFromClientX(e.touches[0].clientX);
+      },
+      { passive: true }
+    );
+    canvas.addEventListener(
+      'touchmove',
+      (e) => {
+        lane = laneFromClientX(e.touches[0].clientX);
+      },
+      { passive: true }
+    );
+
+    window.addEventListener('keydown', (e) => {
+      if (e.repeat) return;
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') lane = Math.max(0, lane - 1);
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') lane = Math.min(2, lane + 1);
+      if (e.code === 'Space') {
+        e.preventDefault();
+        startOrRestart();
+      }
+    });
+
+    function update() {
+      const now = performance.now();
+      let step = lastTime === null ? 1 : (now - lastTime) / (1000 / 60);
+      lastTime = now;
+      step = Math.min(Math.max(step, 0.2), 3); // same speed on 60Hz and 120Hz screens
+      frame += step;
+
+      rings.forEach((r) => (r.age += step));
+      rings = rings.filter((r) => r.age < 40);
+      puffs.forEach((p) => (p.age += step));
+      puffs = puffs.filter((p) => p.age < 40);
+
+      if (crashing) {
+        crashTimer -= step;
+        crashT = easeInOut(Math.min(1, Math.max(0, 1 - crashTimer / crashDuration)));
+        if (crashTimer <= 0) {
+          crashing = false;
+          endGame();
+        }
+        return;
+      }
+
+      const running = started && !gameOver;
+      const dist = (running ? worldSpeed() : 2) * step;
+      scrollTotal += dist;
+
+      // The engine glides to the chosen track; each carriage trails the one
+      // in front a little, so the train swings round corners like a snake.
+      cars[0].x += (laneX[lane] - cars[0].x) * (1 - Math.pow(1 - 0.2, step));
+      for (let i = 1; i < cars.length; i++) {
+        cars[i].x += (cars[i - 1].x - cars[i].x) * (1 - Math.pow(1 - 0.16, step));
+      }
+
+      smokeIn -= step;
+      if (smokeIn <= 0) {
+        puffs.push({ x: cars[0].x + (Math.random() - 0.5) * 4, y: engineY - 8, age: 0 });
+        smokeIn = 7;
+      }
+
+      if (!running) return;
+
+      obstacles.forEach((o) => {
+        o.y += dist * o.speedMul;
+        for (let i = 0; i < cars.length; i++) {
+          const c = cars[i];
+          if (Math.abs(c.x - o.x) < c.hw + o.hw - 4 && Math.abs(carY(i) - o.y) < c.hh + o.hh - 4) {
+            startCrash();
+          }
+        }
+        if (!o.passed && o.y - o.hh > carY(cars.length - 1) + 22) {
+          o.passed = true;
+          score++;
+          scoreEl.textContent = 'Score: ' + score;
+          const newLevel = levelFor(score);
+          if (newLevel > level) {
+            level = newLevel;
+            levelEl.textContent = 'Level ' + level;
+            levelFlash = 90;
+          }
+        }
+      });
+      lastSpawnY += dist;
+      obstacles = obstacles.filter((o) => o.y - o.hh < H + 20);
+      if (lastSpawnY > spawnGap()) spawnRow();
+
+      coins.forEach((c) => {
+        c.y += dist;
+        const dx = cars[0].x - c.x;
+        const dy = engineY - c.y;
+        if (Math.sqrt(dx * dx + dy * dy) < c.r + 22) {
+          c.collected = true;
+          score += 3;
+          scoreEl.textContent = 'Score: ' + score;
+          rings.push({ x: c.x, y: c.y, age: 22 });
+        }
+      });
+      coins = coins.filter((c) => !c.collected && c.y < H + 40);
+      coinSpawnIn -= step;
+      if (coinSpawnIn <= 0) {
+        coinSpawnIn = spawnCoin() ? 100 + Math.random() * 90 : 10;
+      }
+
+      levelFlash = Math.max(0, levelFlash - step);
+    }
+
+    // ---------- drawing ----------
+
+    function drawScenery() {
+      const land = getComputedStyle(document.documentElement).getPropertyValue('--land').trim() || '#6fbf73';
+      const bed = getComputedStyle(document.documentElement).getPropertyValue('--bed').trim() || '#b8a88a';
+      ctx.fillStyle = land;
+      ctx.fillRect(0, 0, W, H);
+
+      // trees and bushes drifting past
+      const idx = Math.floor(scrollTotal / 90);
+      const base = scrollTotal % 90;
+      const treeXs = [22, 140, 260, 378];
+      for (let r = -1; r < H / 90 + 1; r++) {
+        const y = r * 90 + base;
+        const g = idx - r;
+        const x = treeXs[((g * 7) % 4 + 4) % 4];
+        const size = 11 + (((g * 13) % 5) + 5) % 5 * 2;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(30, 90, 45, 0.85)';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x - size * 0.25, y - size * 0.25, size * 0.45, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+        ctx.fill();
+      }
+
+      laneX.forEach((x) => {
+        // gravel bed
+        ctx.fillStyle = bed;
+        ctx.fillRect(x - 30, 0, 60, H);
+        // sleepers
+        ctx.fillStyle = '#7a5a3a';
+        const sb = scrollTotal % 22;
+        for (let y = -22 + sb; y < H + 22; y += 22) ctx.fillRect(x - 24, y, 48, 7);
+        // rails
+        ctx.fillStyle = '#8d969e';
+        ctx.fillRect(x - 15, 0, 3, H);
+        ctx.fillRect(x + 12, 0, 3, H);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillRect(x - 15, 0, 1, H);
+        ctx.fillRect(x + 12, 0, 1, H);
+      });
+    }
+
+    function drawRock(o) {
+      const r = 18;
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        const rr = r * (0.82 + 0.28 * Math.abs(Math.sin(o.seed + i * 2.3)));
+        const px = o.x + Math.cos(a) * rr;
+        const py = o.y + Math.sin(a) * rr;
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#6b6f76';
+      ctx.fill();
+      ctx.strokeStyle = '#3d4045';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(o.x - 6, o.y - 6, 6, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.fill();
+    }
+
+    function drawBarrier(o) {
+      const x0 = o.x - 28;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(x0, o.y - 8, 56, 16);
+      ctx.fillStyle = '#ff8c1a';
+      for (let i = 0; i < 4; i++) ctx.fillRect(x0 + i * 14 + 3, o.y - 8, 7, 16);
+      ctx.strokeStyle = '#7a4a10';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x0, o.y - 8, 56, 16);
+      ctx.fillStyle = '#4a4f55';
+      ctx.fillRect(x0 - 4, o.y - 12, 6, 24);
+      ctx.fillRect(x0 + 54, o.y - 12, 6, 24);
+    }
+
+    function roundedRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
+    // The engine, drawn from above, front pointing up.
+    function drawEngine(color, outline, headlight) {
+      roundedRect(-17, -25, 34, 50, 8);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // boiler stripe + chimney
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+      ctx.fillRect(-9, -20, 18, 22);
+      ctx.beginPath();
+      ctx.arc(0, -11, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#26292e';
+      ctx.fill();
+      // cab roof
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.fillRect(-11, 8, 22, 12);
+      if (headlight) {
+        ctx.beginPath();
+        ctx.arc(0, -25, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff3a0';
+        ctx.fill();
+      }
+    }
+
+    function drawCarriage(color, outline) {
+      roundedRect(-16, -22, 32, 44, 6);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      for (let i = 0; i < 3; i++) ctx.fillRect(-9, -16 + i * 13, 18, 8);
+    }
+
+    function drawOncoming(o) {
+      // an oncoming train: engine facing down, with a carriage behind it
+      ctx.save();
+      ctx.translate(o.x, o.y + 22);
+      ctx.rotate(Math.PI);
+      drawEngine('#264653', '#10242b', true);
+      ctx.restore();
+      ctx.save();
+      ctx.translate(o.x, o.y - 30);
+      drawCarriage('#3a7d8c', '#10242b');
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(o.x, o.y + 50, 14, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 243, 160, 0.35)';
+      ctx.fill();
+    }
+
+    function drawCoin(c) {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd400';
+      ctx.fill();
+      ctx.strokeStyle = '#b8860b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, c.r - 4, 0, Math.PI * 2);
+      ctx.strokeStyle = '#fff3b0';
+      ctx.stroke();
+    }
+
+    function drawTrain() {
+      const t = crashing || (gameOver && crashT > 0) ? crashT : 0;
+      // carriages first, so the engine sits on top
+      for (let i = cars.length - 1; i >= 0; i--) {
+        const c = cars[i];
+        const x = c.x + crashDir * t * i * 20;
+        const y = carY(i);
+        const angle = crashDir * t * (0.3 + 0.3 * i);
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        if (i === 0) drawEngine('#d62828', '#8c1a1a', true);
+        else drawCarriage('#2b7bd6', '#17487f');
+        ctx.restore();
+      }
+    }
+
+    function drawEffects() {
+      puffs.forEach((p) => {
+        const a = p.age / 40;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y + p.age * 2.4, 5 + a * 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(245, 245, 245, ' + 0.55 * (1 - a) + ')';
+        ctx.fill();
+      });
+      rings.forEach((r) => {
+        const a = r.age / 40;
+        ctx.beginPath();
+        ctx.arc(r.x, r.y, 6 + a * 34, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + 0.8 * (1 - a) + ')';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      });
+    }
+
+    function drawOverlay(title, subtitle) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'white';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 30px sans-serif';
+      ctx.fillText(title, W / 2, H / 2 - 16);
+      ctx.font = '18px sans-serif';
+      ctx.fillText(subtitle, W / 2, H / 2 + 20);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      drawScenery();
+
+      coins.forEach(drawCoin);
+      obstacles.forEach((o) => {
+        if (o.kind === 'rock') drawRock(o);
+        else if (o.kind === 'barrier') drawBarrier(o);
+        else drawOncoming(o);
+      });
+      drawTrain();
+      drawEffects();
+
+      if (levelFlash > 0 && started && !gameOver) {
+        const alpha = Math.min(1, levelFlash / 20);
+        ctx.fillStyle = 'rgba(255, 235, 90, ' + alpha + ')';
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level ' + level + '!', W / 2, 70);
+      }
+
+      if (!started) {
+        drawOverlay('Tap to start', 'Tap left, middle or right to switch tracks!');
+      } else if (gameOver) {
+        drawOverlay('Derailed!', 'Tap to try again • Score: ' + score);
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function boot(data) {
+      if (data && typeof data.best === 'number' && data.best > best) {
+        best = data.best;
+        bestEl.textContent = 'Best: ' + best;
+      }
+      draw();
+      loop();
+    }
+
+    if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
+      window.claude.hot.snapshot(() => ({ best }));
+    }
+
+    if (window.claude && window.claude.hot && window.claude.hot.ready) {
+      window.claude.hot.ready(boot);
+    } else {
+      boot(window.claude && window.claude.hot ? window.claude.hot.data : null);
+    }
+  })();
+</script>
+  </body>
+</html>
