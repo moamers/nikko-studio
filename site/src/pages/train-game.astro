@@ -135,7 +135,7 @@
 
 <div class="wrap">
   <h1>&#128642; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers and oncoming trains, and grab the gold!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, and grab the gold!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -144,6 +144,7 @@
   </div>
   <div class="controls">
     <button type="button" id="whistleBtn">&#128226; Whistle</button>
+    <button type="button" id="nightBtn">&#127769; Night</button>
     <button type="button" id="soundBtn">&#128266; Sound on</button>
   </div>
 </div>
@@ -318,22 +319,66 @@
       setSound(!soundOn);
     });
 
+    // ---------- night mode ----------
+    let night = false;
+    const nightBtn = document.getElementById('nightBtn');
+    try {
+      night = localStorage.getItem('trainNight') === '1';
+    } catch (e) {}
+    function setNight(on) {
+      night = on;
+      nightBtn.innerHTML = on ? '&#9728;&#65039; Day' : '&#127769; Night';
+      try {
+        localStorage.setItem('trainNight', on ? '1' : '0');
+      } catch (e) {}
+    }
+    setNight(night);
+    nightBtn.addEventListener('click', () => setNight(!night));
+
     function levelFor(s) {
       return Math.floor(s / pointsPerLevel) + 1;
     }
 
     // Starts gentle at level 1 and steps up each level.
     function worldSpeed() {
-      return Math.min(13, 3.8 + (level - 1) * 1.1);
+      return Math.min(12.5, 3.5 + (level - 1) * 1.0);
     }
 
     function spawnGap() {
-      return Math.max(125, 245 - (level - 1) * 14);
+      return Math.max(135, 260 - (level - 1) * 14);
+    }
+
+    // A cow or a sheep wanders across the tracks from one side.
+    function spawnAnimal() {
+      const dir = Math.random() < 0.5 ? 1 : -1;
+      const cow = Math.random() < 0.5;
+      const vx = dir * Math.min(2.6, 1.5 + level * 0.08);
+      obstacles.push({
+        kind: 'animal',
+        animal: cow ? 'cow' : 'sheep',
+        lane: dir > 0 ? 0 : 2,
+        x: dir > 0 ? -30 : W + 30,
+        y: -40,
+        vx,
+        dir,
+        phase: 0,
+        hw: cow ? 21 : 17,
+        hh: cow ? 12 : 11,
+        speedMul: 1,
+        passed: false,
+      });
+      lastSpawnY = -40;
+      if (cow) tone('sawtooth', 140, 95, 0.55, 0.07, 0.3);
+      else tone('square', 330, 270, 0.4, 0.04, 0.3);
     }
 
     function spawnRow() {
+      if (level >= 2 && Math.random() < 0.18) {
+        spawnAnimal();
+        return;
+      }
       const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
-      const blocked = level >= 3 && Math.random() < 0.45 ? 2 : 1; // never all three
+      const blocked = level >= 3 && Math.random() < 0.38 ? 2 : 1; // never all three
       for (let i = 0; i < blocked; i++) {
         const l = lanes[i];
         const roll = Math.random();
@@ -505,6 +550,11 @@
 
       obstacles.forEach((o) => {
         o.y += dist * o.speedMul;
+        if (o.kind === 'animal') {
+          o.x += o.vx * step;
+          o.phase += step * 0.35;
+          o.lane = o.x < 140 ? 0 : o.x < 260 ? 1 : 2;
+        }
         for (let i = 0; i < cars.length; i++) {
           const c = cars[i];
           if (Math.abs(c.x - o.x) < c.hw + o.hw - 4 && Math.abs(carY(i) - o.y) < c.hh + o.hh - 4) {
@@ -764,6 +814,72 @@
       });
     }
 
+    function drawAnimal(o) {
+      const d = o.dir;
+      const swing = Math.sin(o.phase) * 3;
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      // legs peeking out at the sides
+      ctx.fillStyle = '#3a2a20';
+      for (let i = 0; i < 2; i++) {
+        const lx = (i === 0 ? -0.5 : 0.45) * o.hw;
+        ctx.fillRect(lx - 2 + swing * (i ? -1 : 1), -o.hh - 3, 4, 5);
+        ctx.fillRect(lx - 2 - swing * (i ? -1 : 1), o.hh - 2, 4, 5);
+      }
+      if (o.animal === 'cow') {
+        ctx.fillStyle = '#ffffff';
+        roundedRect(-o.hw, -o.hh, o.hw * 2, o.hh * 2, 8);
+        ctx.fill();
+        ctx.strokeStyle = '#555a60';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#2a2a2e';
+        ctx.beginPath();
+        ctx.ellipse(-d * 7, -3, 6, 4, 0.4, 0, Math.PI * 2);
+        ctx.ellipse(d * 2, 4, 5, 3.5, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        // tail
+        ctx.strokeStyle = '#2a2a2e';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-d * o.hw, 0);
+        ctx.lineTo(-d * (o.hw + 7), swing);
+        ctx.stroke();
+        // head
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(d * (o.hw + 3), 0, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#f4a6b0';
+        ctx.beginPath();
+        ctx.arc(d * (o.hw + 8), 0, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d9c9a0';
+        ctx.fillRect(d * (o.hw + 1) - 1.5, -10, 3, 4);
+        ctx.fillRect(d * (o.hw + 1) - 1.5, 6, 3, 4);
+      } else {
+        ctx.fillStyle = '#f3efe2';
+        [[-9, -3], [0, -5], [9, -3], [-8, 4], [1, 5], [9, 4]].forEach(([bx, by]) => {
+          ctx.beginPath();
+          ctx.arc(bx * (o.hw / 12), by, 8, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(0, 0, o.hw - 3, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#3b3b40';
+        ctx.beginPath();
+        ctx.arc(d * (o.hw + 3), 0, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(d * (o.hw + 1) - 1.5, -9, 3, 4);
+        ctx.fillRect(d * (o.hw + 1) - 1.5, 5, 3, 4);
+      }
+      ctx.restore();
+    }
+
     function drawRock(o) {
       const r = 18;
       ctx.beginPath();
@@ -914,6 +1030,39 @@
       });
     }
 
+    // Night: everything goes dark except a glow from the headlight, with
+    // little lights on the engine and carriages.
+    function drawNight() {
+      const ex = cars[0].x;
+      const grad = ctx.createRadialGradient(ex, engineY - 90, 40, ex, engineY - 90, 330);
+      grad.addColorStop(0, 'rgba(8, 12, 45, 0.15)');
+      grad.addColorStop(1, 'rgba(8, 12, 45, 0.7)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      // headlight beam
+      const beam = ctx.createLinearGradient(0, engineY - 20, 0, engineY - 190);
+      beam.addColorStop(0, 'rgba(255, 244, 180, 0.35)');
+      beam.addColorStop(1, 'rgba(255, 244, 180, 0)');
+      ctx.fillStyle = beam;
+      ctx.beginPath();
+      ctx.moveTo(ex - 8, engineY - 22);
+      ctx.lineTo(ex + 8, engineY - 22);
+      ctx.lineTo(ex + 34, engineY - 190);
+      ctx.lineTo(ex - 34, engineY - 190);
+      ctx.closePath();
+      ctx.fill();
+      // little yellow window lights on the carriages
+      ctx.fillStyle = 'rgba(255, 230, 120, 0.9)';
+      for (let i = 1; i < cars.length; i++) {
+        const cx = cars[i].x;
+        const cy = carY(i);
+        ctx.fillRect(cx - 7, cy - 10, 5, 5);
+        ctx.fillRect(cx + 2, cy - 10, 5, 5);
+        ctx.fillRect(cx - 7, cy + 3, 5, 5);
+        ctx.fillRect(cx + 2, cy + 3, 5, 5);
+      }
+    }
+
     function drawOverlay(title, subtitle) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.fillRect(0, 0, W, H);
@@ -933,12 +1082,17 @@
       obstacles.forEach((o) => {
         if (o.kind === 'rock') drawRock(o);
         else if (o.kind === 'barrier') drawBarrier(o);
-        else drawOncoming(o);
+        else if (o.kind === 'train') drawOncoming(o);
       });
       drawTrain();
       drawTunnel();
+      obstacles.forEach((o) => {
+        if (o.kind === 'animal') drawAnimal(o);
+      });
       drawStationSign();
       drawEffects();
+
+      if (night) drawNight();
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
