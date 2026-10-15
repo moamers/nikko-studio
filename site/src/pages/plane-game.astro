@@ -209,6 +209,12 @@
     let bars = []; // pairs of buildings: one hanging from the sky city, one from the ground
     let jets = []; // other planes crossing the sky
     let barsPassed = 0;
+    // Day and night: one full cycle takes about 100 seconds. 0 is morning,
+    // then noon, sunset (about 0.45), night, and back to sunrise.
+    let dayClock = 0;
+    const dayLength = 6000; // frames
+    let nightAmt = 0; // 0 = bright day, 1 = deep night
+    let glowAmt = 0; // how much sunset / sunrise colour there is
     let shownMph = 0; // the speedometer needle eases toward the real speed
     const mphPerUnit = 35; // game speed -> miles per hour
     const mphMax = 900;
@@ -333,7 +339,27 @@
     }
 
     function drawPlane() {
-      drawAirliner(planeSize * 0.55, '#d71920', '#c9a24a', true);
+      const s = planeSize * 0.55;
+      drawAirliner(s, '#d71920', '#c9a24a', true);
+      if (nightAmt > 0.2) {
+        const a = Math.min(1, nightAmt * 1.3);
+        const blink = Math.floor(frame / 25) % 2 === 0;
+        const lamp = (x, y, col, r) => {
+          const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+          g.addColorStop(0, col);
+          g.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.globalAlpha = a;
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        };
+        lamp(-s * 0.55, -s * 0.72, 'rgba(255, 70, 70, 0.95)', 2.2); // red on the left wing tip
+        lamp(-s * 0.55, s * 0.72, 'rgba(80, 255, 120, 0.95)', 2.2); // green on the right
+        lamp(s * 0.98, 0, 'rgba(255, 255, 235, 0.95)', 2.4); // nose light
+        if (blink) lamp(-s * 1.05, 0, 'rgba(255, 255, 255, 0.95)', 2.2); // flashing tail light
+      }
     }
 
     function drawJet(j) {
@@ -597,13 +623,162 @@
       }
     }
 
+    const smooth = (t) => t * t * (3 - 2 * t);
+    function nightAmount(p) {
+      if (p < 0.4) return 0;
+      if (p < 0.55) return smooth((p - 0.4) / 0.15);
+      if (p < 0.85) return 1;
+      return 1 - smooth((p - 0.85) / 0.15);
+    }
+    function glowAmount(p) {
+      const sunset = Math.max(0, 1 - Math.abs(p - 0.45) / 0.1);
+      const sunrise = Math.max(0, 1 - Math.abs(p - 0.94) / 0.08);
+      return Math.max(sunset, sunrise);
+    }
+    const hex = (c) => [parseInt(c.slice(1, 3), 16), parseInt(c.slice(3, 5), 16), parseInt(c.slice(5, 7), 16)];
+    const mix = (a, b, t) => {
+      const x = hex(a);
+      const y = hex(b);
+      return 'rgb(' + Math.round(x[0] + (y[0] - x[0]) * t) + ',' + Math.round(x[1] + (y[1] - x[1]) * t) + ',' + Math.round(x[2] + (y[2] - x[2]) * t) + ')';
+    };
+    const rgbHex = (str) => {
+      const m = /rgb\((\d+),(\d+),(\d+)\)/.exec(str);
+      return '#' + [1, 2, 3].map((i) => Number(m[i]).toString(16).padStart(2, '0')).join('');
+    };
+    const mixHex = (a, b, t) => rgbHex(mix(a, b, t));
+    // [time, top colour, bottom colour]
+    const skyLight = [
+      [0.0, '#bfe8ff', '#fafdff'],
+      [0.36, '#bfe8ff', '#fafdff'],
+      [0.45, '#ff9a76', '#ffd9a8'],
+      [0.55, '#2b3a67', '#7b5ea7'],
+      [0.64, '#0e1730', '#1d2a4f'],
+      [0.84, '#0e1730', '#1d2a4f'],
+      [0.92, '#4b5a8f', '#ffb199'],
+      [1.0, '#bfe8ff', '#fafdff'],
+    ];
+    const skyDark = skyLight.map(([t, top, bottom], i) => (i < 2 || i === skyLight.length - 1 ? [t, '#1c3440', '#27465a'] : [t, top, bottom]));
+
+    function skyColours(p, dark) {
+      const keys = dark ? skyDark : skyLight;
+      for (let i = 0; i < keys.length - 1; i++) {
+        if (p >= keys[i][0] && p <= keys[i + 1][0]) {
+          const t = (p - keys[i][0]) / (keys[i + 1][0] - keys[i][0]);
+          return [mixHex(keys[i][1], keys[i + 1][1], t), mixHex(keys[i][2], keys[i + 1][2], t)];
+        }
+      }
+      return [keys[0][1], keys[0][2]];
+    }
+
+    const stars = [];
+    for (let i = 0; i < 46; i++) stars.push({ x: (i * 97) % W, y: 22 + ((i * 53) % 330), r: 0.8 + (i % 3) * 0.5, tw: i * 0.7 });
+
+    function drawSky() {
+      const dark = (parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dim')) || 0) > 0;
+      const [top, bottom] = skyColours(dayClock, dark);
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, top);
+      g.addColorStop(1, bottom);
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+
+      // stars come out at night
+      if (nightAmt > 0.15) {
+        stars.forEach((st) => {
+          const tw = 0.6 + 0.4 * Math.sin(frame * 0.05 + st.tw);
+          ctx.fillStyle = 'rgba(255, 255, 240, ' + nightAmt * tw + ')';
+          ctx.beginPath();
+          ctx.arc(st.x, st.y, st.r, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+
+      // the sun crosses the sky by day, the moon by night
+      const day = dayClock < 0.5;
+      const u = day ? dayClock / 0.5 : (dayClock - 0.5) / 0.5;
+      const bx = 36 + (W - 72) * u;
+      const by = 60 + (1 - Math.sin(Math.PI * u)) * 150;
+      if (day) {
+        const warm = Math.max(glowAmt, 0);
+        const sg = ctx.createRadialGradient(bx, by, 4, bx, by, 46);
+        sg.addColorStop(0, 'rgba(255, 244, 190, 0.95)');
+        sg.addColorStop(1, 'rgba(255, 220, 120, 0)');
+        ctx.fillStyle = sg;
+        ctx.fillRect(bx - 50, by - 50, 100, 100);
+        ctx.beginPath();
+        ctx.arc(bx, by, 14, 0, Math.PI * 2);
+        ctx.fillStyle = warm > 0.2 ? '#ff9b4a' : '#ffd84a';
+        ctx.fill();
+      } else {
+        const mg = ctx.createRadialGradient(bx, by, 4, bx, by, 38);
+        mg.addColorStop(0, 'rgba(230, 240, 255, 0.5)');
+        mg.addColorStop(1, 'rgba(230, 240, 255, 0)');
+        ctx.fillStyle = mg;
+        ctx.fillRect(bx - 40, by - 40, 80, 80);
+        ctx.beginPath();
+        ctx.arc(bx, by, 13, 0, Math.PI * 2);
+        ctx.fillStyle = '#f4f1dc';
+        ctx.fill();
+        ctx.beginPath(); // a bite out of it makes a crescent
+        ctx.arc(bx + 6, by - 3, 11, 0, Math.PI * 2);
+        ctx.fillStyle = skyColours(dayClock, dark)[0];
+        ctx.fill();
+      }
+    }
+
+    // warm glow low over the city at sunset and sunrise, and darkness at night
+    function drawNightAndGlow() {
+      if (glowAmt > 0.01) {
+        const gg = ctx.createLinearGradient(0, H * 0.45, 0, H);
+        gg.addColorStop(0, 'rgba(255, 150, 90, 0)');
+        gg.addColorStop(1, 'rgba(255, 130, 70, ' + 0.35 * glowAmt + ')');
+        ctx.fillStyle = gg;
+        ctx.fillRect(0, 0, W, H);
+      }
+      if (nightAmt > 0.01) {
+        ctx.fillStyle = 'rgba(6, 12, 32, ' + 0.3 * nightAmt + ')';
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
+    const phaseLabel = () => {
+      const p = dayClock;
+      if (p < 0.38) return '\u2600\uFE0F Day';
+      if (p < 0.52) return '\u{1F307} Sunset';
+      if (p < 0.88) return '\u{1F319} Night';
+      if (p < 0.97) return '\u{1F305} Sunrise';
+      return '\u2600\uFE0F Day';
+    };
+
+    function drawPhasePill() {
+      const label = phaseLabel();
+      ctx.font = 'bold 13px sans-serif';
+      const w = ctx.measureText(label).width + 18;
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.55)';
+      roundRect(10, deckH + 8, w, 24, 12);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, 19, deckH + 25);
+    }
+
+    function roundRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
+
     function drawCloud(x, y, scale) {
       ctx.beginPath();
       ctx.arc(x, y, 18 * scale, 0, Math.PI * 2);
       ctx.arc(x + 20 * scale, y - 8 * scale, 22 * scale, 0, Math.PI * 2);
       ctx.arc(x + 42 * scale, y, 18 * scale, 0, Math.PI * 2);
       ctx.arc(x + 20 * scale, y + 6 * scale, 20 * scale, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = mixHex('#ffffff', '#52638a', nightAmt * 0.85);
       ctx.fill();
       // A soft outline so clouds don't vanish against a very light sky.
       ctx.strokeStyle = 'rgba(120, 170, 200, 0.35)';
@@ -665,6 +840,7 @@
       sparkles = [];
       rainbowTime = 0;
       barsPassed = 0;
+      dayClock = 0; // every flight starts in the morning
       score = 0;
       level = 1;
       levelFlash = 0;
@@ -736,6 +912,10 @@
       frame += step;
 
       const running = started && !gameOver;
+      dayClock = (dayClock + step / dayLength) % 1;
+      nightAmt = nightAmount(dayClock);
+      glowAmt = glowAmount(dayClock);
+
       // speedometer: ease toward the speed we are really doing
       shownMph += ((running ? worldSpeed() * mphPerUnit : 0) - shownMph) * (1 - Math.pow(1 - 0.08, step));
       skylineScroll += (running ? worldSpeed() : 1.2) * step;
@@ -921,8 +1101,9 @@
       // windows
       for (let wy = y + 8; wy < y + h - 12; wy += 16) {
         for (let c = 0; c < 3; c++) {
-          const lit = hash(id * 31 + c, Math.floor(wy)) % 3 !== 0;
-          ctx.fillStyle = lit ? '#ffe9a6' : 'rgba(40, 55, 75, 0.6)';
+          const hv = hash(id * 31 + c, Math.floor(wy));
+          const lit = nightAmt > 0.5 ? hv % 6 !== 0 : hv % 3 !== 0; // more lights on at night
+          ctx.fillStyle = lit ? (nightAmt > 0.5 ? '#fff0b0' : '#ffe9a6') : 'rgba(40, 55, 75, 0.6)';
           ctx.fillRect(x + 7 + c * 13, wy, 8, 9);
         }
       }
@@ -965,8 +1146,8 @@
       for (let x = -off; x < W; x += 40) {
         ctx.fillStyle = '#ffe9a6';
         ctx.fillRect(x + 12, deckH - 6, 4, 4);
-        ctx.fillStyle = 'rgba(255, 233, 166, 0.25)';
-        ctx.fillRect(x + 9, deckH - 3, 10, 3);
+        ctx.fillStyle = 'rgba(255, 233, 166, ' + (0.25 + 0.4 * nightAmt) + ')';
+        ctx.fillRect(x + 8, deckH - 3, 12, 3 + 3 * nightAmt);
       }
     }
 
@@ -1108,6 +1289,7 @@
 
     function draw() {
       ctx.clearRect(0, 0, W, H);
+      drawSky();
 
       clouds.forEach((cloud) => drawCloud(cloud.x, cloud.y, cloud.scale));
       drawCityLayers();
@@ -1133,6 +1315,7 @@
       drawPlane();
       ctx.restore();
 
+      drawNightAndGlow();
       const dim = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dim')) || 0;
       if (dim > 0) {
         ctx.fillStyle = 'rgba(5, 12, 28, ' + dim + ')';
@@ -1140,6 +1323,7 @@
       }
 
       drawSpeedometer();
+      drawPhasePill();
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
