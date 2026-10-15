@@ -1610,7 +1610,7 @@
     // A bullet train, drawn from above, nose pointing up: white and sleek,
     // with a long pointed nose and a coloured stripe.
     const whiteBody = ['#dfe6ec', '#ffffff', '#cfd8e0'];
-    const redBody = ['#b41e1e', '#f04646', '#a01818'];
+    const blueBody = ['#1a56b0', '#3d8bf0', '#164a96'];
     function drawEngine(stripe, outline, headlight, body) {
       body = body || whiteBody;
       ctx.beginPath();
@@ -1689,11 +1689,11 @@
       ctx.save();
       ctx.translate(o.x, o.y + 22);
       ctx.rotate(Math.PI);
-      drawEngine('#1f6fd6', '#3b4752', true);
+      drawEngine('#e63946', '#3b4752', true);
       ctx.restore();
       ctx.save();
       ctx.translate(o.x, o.y - 30);
-      drawCarriage('#1f6fd6', '#3b4752');
+      drawCarriage('#e63946', '#3b4752');
       ctx.restore();
       ctx.beginPath();
       ctx.arc(o.x, o.y + 50, 14, 0, Math.PI * 2);
@@ -1917,8 +1917,8 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        if (i === 0) drawEngine('#ffffff', '#6b1212', true, redBody);
-        else drawCarriage('#ffffff', '#6b1212', redBody);
+        if (i === 0) drawEngine('#ffffff', '#0d2f66', true, blueBody);
+        else drawCarriage('#ffffff', '#0d2f66', blueBody);
         ctx.restore();
       }
     }
