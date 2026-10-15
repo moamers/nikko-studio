@@ -163,7 +163,7 @@
 
 <div class="wrap">
   <h1>&#9992;&#65039; Plane Dodge</h1>
-  <p class="sub">Drag your finger (or mouse) up and down to fly. Dodge the buildings and other planes, and grab a rainbow to be invincible for 10 seconds!</p>
+  <p class="sub">Drag your finger (or mouse) up and down to fly. Dodge the buildings and other planes, grab a rainbow to be invincible for 10 seconds, and press Night to turn your lights on!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -174,6 +174,7 @@
     <button type="button" id="easyBtn">&#128034; Easy</button>
     <button type="button" id="normalBtn">&#127918; Normal</button>
     <button type="button" id="boostBtn">&#128640; Boost</button>
+    <button type="button" id="nightBtn">&#127769; Night</button>
     <button type="button" id="soundBtn">&#128266; Sound on</button>
   </div>
 </div>
@@ -189,6 +190,7 @@
     const normalBtn = document.getElementById('normalBtn');
     const boostBtn = document.getElementById('boostBtn');
     const soundBtn = document.getElementById('soundBtn');
+    const nightBtn = document.getElementById('nightBtn');
     const pointsPerLevel = 5;
 
     const W = canvas.width;
@@ -213,6 +215,8 @@
     // then noon, sunset (about 0.45), night, and back to sunrise.
     let dayClock = 0;
     const dayLength = 6000; // frames
+    let nightMode = false; // the Night button: switches to night and turns the plane's lights on
+    let leavingNight = false; // gliding back to morning after pressing Day
     let nightAmt = 0; // 0 = bright day, 1 = deep night
     let glowAmt = 0; // how much sunset / sunrise colour there is
     let shownMph = 0; // the speedometer needle eases toward the real speed
@@ -359,10 +363,22 @@
           ctx.fill();
           ctx.globalAlpha = 1;
         };
-        lamp(-s * 0.55, -s * 0.72, 'rgba(255, 70, 70, 0.95)', 2.2); // red on the left wing tip
-        lamp(-s * 0.55, s * 0.72, 'rgba(80, 255, 120, 0.95)', 2.2); // green on the right
-        lamp(s * 0.98, 0, 'rgba(255, 255, 235, 0.95)', 2.4); // nose light
-        if (blink) lamp(-s * 1.05, 0, 'rgba(255, 255, 255, 0.95)', 2.2); // flashing tail light
+        // a headlight beam out in front of the nose
+        const beam = ctx.createLinearGradient(s, 0, s + 120, 0);
+        beam.addColorStop(0, 'rgba(255, 250, 200, ' + 0.4 * a + ')');
+        beam.addColorStop(1, 'rgba(255, 250, 200, 0)');
+        ctx.fillStyle = beam;
+        ctx.beginPath();
+        ctx.moveTo(s, -3);
+        ctx.lineTo(s + 120, -34);
+        ctx.lineTo(s + 120, 34);
+        ctx.lineTo(s, 3);
+        ctx.closePath();
+        ctx.fill();
+        lamp(-s * 0.55, -s * 0.72, 'rgba(255, 70, 70, 1)', 3.4); // red on the left wing tip
+        lamp(-s * 0.55, s * 0.72, 'rgba(80, 255, 120, 1)', 3.4); // green on the right
+        lamp(s * 0.98, 0, 'rgba(255, 255, 235, 1)', 3.6); // nose light
+        if (blink) lamp(-s * 1.05, 0, 'rgba(255, 255, 255, 1)', 3.4); // flashing tail light
       }
     }
 
@@ -572,6 +588,16 @@
     }
     easyBtn.addEventListener('click', () => setMode(true));
     normalBtn.addEventListener('click', () => setMode(false));
+
+    // ---------- night button ----------
+    function setNightMode(on) {
+      nightMode = on;
+      leavingNight = !on;
+      nightBtn.innerHTML = on ? '&#9728;&#65039; Day' : '&#127769; Night';
+      nightBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    nightBtn.addEventListener('click', () => setNightMode(!nightMode));
+    nightBtn.setAttribute('aria-pressed', 'false');
 
     // ---------- boost ----------
     let boostLabel = '';
@@ -850,7 +876,7 @@
       graceTime = 0;
       barsSinceRainbow = 0;
       barsPassed = 0;
-      dayClock = 0; // every flight starts in the morning
+      dayClock = nightMode ? 0.7 : 0; // every flight starts in the morning (unless you chose night)
       score = 0;
       level = 1;
       levelFlash = 0;
@@ -903,6 +929,7 @@
       unlockAudio();
       if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
       if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
+      if (e.code === 'KeyN') setNightMode(!nightMode);
       if (e.code === 'KeyB' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') useBoost();
       if (e.code === 'Space') {
         e.preventDefault();
@@ -922,7 +949,20 @@
       frame += step;
 
       const running = started && !gameOver;
-      dayClock = (dayClock + step / dayLength) % 1;
+      const inNight = dayClock >= 0.62 && dayClock <= 0.84;
+      if (nightMode) {
+        // glide forward through sunset into night, then stay there
+        if (!inNight) dayClock = (dayClock + 0.006 * step) % 1;
+      } else if (leavingNight) {
+        // glide forward through sunrise into the morning, then carry on as normal
+        dayClock += 0.006 * step;
+        if (dayClock >= 1) {
+          dayClock = 0;
+          leavingNight = false;
+        }
+      } else {
+        dayClock = (dayClock + step / dayLength) % 1;
+      }
       nightAmt = nightAmount(dayClock);
       glowAmt = glowAmount(dayClock);
 
