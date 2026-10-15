@@ -163,7 +163,7 @@
 
 <div class="wrap">
   <h1>&#9992;&#65039; Plane Dodge</h1>
-  <p class="sub">Drag your finger (or mouse) up and down to fly. Dodge the buildings and other planes, and collect the rainbows!</p>
+  <p class="sub">Drag your finger (or mouse) up and down to fly. Dodge the buildings and other planes, and grab a rainbow to be invincible for 10 seconds!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -218,7 +218,11 @@
     let shownMph = 0; // the speedometer needle eases toward the real speed
     const mphPerUnit = 35; // game speed -> miles per hour
     const mphMax = 900;
-    let rainbowTime = 0; // frames of rainbow trail left
+    let rainbowTime = 0; // frames of rainbow power left: you cannot crash while it lasts
+    let graceTime = 0; // a moment after it ends, to get clear of anything you are inside
+    let barsSinceRainbow = 0;
+    const rainbowPower = 600; // 10 seconds
+    const isInvincible = () => rainbowTime > 0 || graceTime > 0;
     let trail = []; // where the plane has just been, for the rainbow trail
     let sparkles = [];
     let score = 0;
@@ -601,7 +605,7 @@
 
     // Steady within a level, a little faster each level up.
     function baseSpeed() {
-      return Math.min(16.5, 4.7 + (level - 1) * 1.5) * (easy ? 0.75 : 1);
+      return Math.min(16, 4.5 + (level - 1) * 1.35) * (easy ? 0.75 : 1);
     }
 
     function worldSpeed() {
@@ -792,17 +796,21 @@
 
     function spawnBar() {
       // Each level has its own fixed gap size — a clear step down, not a slow crawl.
-      const gapHeight = Math.max(70, 182 - (level - 1) * 19) * (easy ? 1.25 : 1);
+      const gapHeight = Math.max(72, 188 - (level - 1) * 19) * (easy ? 1.25 : 1);
       const gapY = deckH + 50 + Math.random() * (H - gapHeight - 120 - deckH);
       const prev = bars[bars.length - 1];
       // From level 2, some pairs of buildings are followed by extra room with
       // another plane flying in the open air between them.
-      const jetNext = level >= 2 && Math.random() < (easy ? 0.2 : 0.5);
+      const jetNext = level >= 2 && Math.random() < (easy ? 0.2 : 0.4);
       // sometimes a rainbow floats in the gap, ready to collect
+      barsSinceRainbow++;
+      const rainbowChance = (easy ? 0.1 : 0.06) + barsSinceRainbow * 0.004;
+      const rainbowOnScreen = bars.some((b) => b.rainbow && !b.rainbow.collected);
       const rainbow =
-        Math.random() < (easy ? 0.5 : 0.38)
+        !isInvincible() && !rainbowOnScreen && Math.random() < rainbowChance
           ? { dy: (Math.random() - 0.5) * Math.max(0, gapHeight - 90), collected: false }
           : null;
+      if (rainbow) barsSinceRainbow = 0;
       bars.push({ x: W, gapY, gapHeight, passed: false, id: barId++, jetNext, rainbow });
       if (prev && prev.jetNext) {
         const c1 = prev.gapY + prev.gapHeight / 2;
@@ -839,6 +847,8 @@
       trail = [];
       sparkles = [];
       rainbowTime = 0;
+      graceTime = 0;
+      barsSinceRainbow = 0;
       barsPassed = 0;
       dayClock = 0; // every flight starts in the morning
       score = 0;
@@ -958,6 +968,7 @@
         bar.x -= dist;
 
         if (
+          !isInvincible() &&
           plane.x + hit > bar.x &&
           plane.x - hit < bar.x + buildingW &&
           (plane.y - hit < bar.gapY || plane.y + hit > bar.gapY + bar.gapHeight)
@@ -977,7 +988,8 @@
           const ry = bar.gapY + bar.gapHeight / 2 + bar.rainbow.dy;
           if (Math.hypot(rx - plane.x, ry - plane.y) < 34) {
             bar.rainbow.collected = true;
-            rainbowTime = 240; // a rainbow trail for 4 seconds
+            rainbowTime = rainbowPower; // invincible for 10 seconds!
+            graceTime = 0;
             playRainbow();
             for (let i = 0; i < 14; i++) {
               const a = (i / 14) * Math.PI * 2;
@@ -996,6 +1008,7 @@
         j.vy = (ny - j.y) / Math.max(step, 0.2);
         j.y = ny;
         if (
+          !isInvincible() &&
           Math.abs(plane.x - j.x) < hit + j.hw - 4 - slack &&
           Math.abs(plane.y - j.y) < hit + j.hh - 3 - slack
         ) {
@@ -1010,6 +1023,12 @@
       if (rainbowTime > 0) {
         rainbowTime = Math.max(0, rainbowTime - step);
         trail.push({ x: plane.x - 28, y: plane.y });
+        if (rainbowTime === 0) {
+          graceTime = 50; // a short extra moment, so you are never caught inside a building
+          tone('triangle', 900, 300, 0.5, 0.08);
+        }
+      } else if (graceTime > 0) {
+        graceTime = Math.max(0, graceTime - step);
       }
       trail.forEach((p) => (p.x -= dist));
       trail = trail.filter((p) => p.x > -10);
@@ -1157,6 +1176,16 @@
       const bob = Math.sin(frame * 0.08 + x * 0.05) * 3;
       ctx.save();
       ctx.translate(x, y + bob);
+      // a glowing halo so it looks like a power-up
+      const pulse = 0.5 + 0.5 * Math.sin(frame * 0.12);
+      const halo = ctx.createRadialGradient(0, 4, 4, 0, 4, 38);
+      halo.addColorStop(0, 'rgba(255, 255, 255, ' + (0.55 + 0.25 * pulse) + ')');
+      halo.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = halo;
+      ctx.beginPath();
+      ctx.arc(0, 4, 38, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.scale(1.35, 1.35);
       ctx.lineWidth = 3.2;
       rainbowColours.forEach((col, i) => {
         ctx.beginPath();
@@ -1188,6 +1217,48 @@
         ctx.stroke();
       });
       ctx.globalAlpha = 1;
+    }
+
+    function drawRainbowAura() {
+      if (rainbowTime <= 0) return;
+      if (rainbowTime < 120 && Math.floor(rainbowTime / 6) % 2 === 0) return; // flickers when it is about to end
+      ctx.save();
+      ctx.translate(plane.x - 4, plane.y);
+      const spin = frame * 0.09;
+      ctx.lineWidth = 3.2;
+      ctx.lineCap = 'round';
+      rainbowColours.forEach((col, i) => {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 44 - i * 0.5, 30 - i * 0.5, 0, spin + i * 0.5, spin + i * 0.5 + Math.PI * 1.1);
+        ctx.strokeStyle = col;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 44 - i * 0.5, 30 - i * 0.5, 0, spin + i * 0.5 + Math.PI, spin + i * 0.5 + Math.PI * 2.1);
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function drawRainbowBar() {
+      if (rainbowTime <= 0) return;
+      const x = 10;
+      const y = deckH + 38;
+      const w = 120;
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.55)';
+      roundRect(x, y, w + 34, 22, 11);
+      ctx.fill();
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('\u{1F308}', x + 6, y + 17);
+      const frac = rainbowTime / rainbowPower;
+      ctx.save();
+      roundRect(x + 28, y + 6, w * frac, 10, 5);
+      ctx.clip();
+      const g = ctx.createLinearGradient(x + 28, 0, x + 28 + w, 0);
+      rainbowColours.forEach((c, i) => g.addColorStop(i / (rainbowColours.length - 1), c));
+      ctx.fillStyle = g;
+      ctx.fillRect(x + 28, y + 6, w, 10);
+      ctx.restore();
     }
 
     function drawSparkles() {
@@ -1308,6 +1379,7 @@
 
       drawFlame();
       drawSparkles();
+      drawRainbowAura();
       ctx.save();
       ctx.translate(plane.x, plane.y);
       const angle = Math.max(-0.4, Math.min(0.4, (targetY - plane.y) / 60));
@@ -1324,6 +1396,7 @@
 
       drawSpeedometer();
       drawPhasePill();
+      drawRainbowBar();
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
