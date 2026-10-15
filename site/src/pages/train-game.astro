@@ -250,11 +250,6 @@
     let chuffIn = 0;
     let chuffFlip = false;
     let whistledSlot = -1;
-    let surpriseSlot = -1;
-    let dragon = null;
-    let singeFlash = 0;
-    let surpriseFlash = 0;
-    let surpriseText = '';
     const whistleBtn = document.getElementById('whistleBtn');
     const soundBtn = document.getElementById('soundBtn');
 
@@ -465,11 +460,6 @@
     // Honk! Any animal ahead of the train (and close) gets a fright and runs
     // away sideways, fast.
     function scareAnimals() {
-      if (dragon && dragon.deaf <= 0 && dragon.mode !== 'leave') {
-        dragon.mode = 'leave';
-        dragon.scared = true;
-        rings.push({ x: dragon.x, y: dragon.y, age: 12 });
-      }
       obstacles.forEach((o) => {
         if (o.kind === 'train') {
           moveOncomingTrain(o);
@@ -608,156 +598,6 @@
       else tone('square', 330, 270, 0.4, 0.04, 0.3);
     }
 
-    // Every tunnel hides a surprise. You only find out when you drive in!
-    function startSurprise(kind) {
-      const kinds = ['treasure', 'bats', 'ghost', 'dragon', 'animals'];
-      kind = kind || kinds[Math.floor(Math.random() * kinds.length)];
-      const yAt = (k) => engineY - 120 - k * 45;
-      if (kind === 'treasure') {
-        surpriseText = '\u{1F4B0} Treasure!';
-        const trail = [1, 1, 0, 0, 0, 1, 2, 2, 2, 1];
-        trail.forEach((l, k) => coins.push({ x: laneX[l], y: yAt(k), r: 12 }));
-        if (shieldTime <= 0 && !coins.some((c) => c.kind === 'shield')) coins.push({ x: laneX[1], y: yAt(trail.length), r: 15, kind: 'shield' });
-        [0, 1, 2, 3].forEach((k) => tone('sine', 700 + k * 200, 900 + k * 200, 0.2, 0.1, k * 0.09));
-      } else if (kind === 'bats') {
-        surpriseText = '\u{1F987} Bats!';
-        for (let i = 0; i < 4; i++) {
-          const dir = i % 2 ? 1 : -1;
-          obstacles.push({
-            kind: 'animal',
-            animal: 'bat',
-            lane: dir > 0 ? 0 : 2,
-            x: dir > 0 ? -20 - i * 40 : W + 20 + i * 40,
-            y: engineY - 170 - i * 75,
-            vx: dir * 3.4,
-            dir,
-            phase: i,
-            hw: 11,
-            hh: 8,
-            speedMul: 1,
-            passed: false,
-          });
-        }
-        [0, 1, 2].forEach((k) => tone('sine', 2400, 3300, 0.09, 0.05, k * 0.14));
-      } else if (kind === 'animals') {
-        surpriseText = '\u{1F404} Animals!';
-        for (let i = 0; i < 3; i++) {
-          const dir = i % 2 ? 1 : -1;
-          const cow = i !== 1;
-          obstacles.push({
-            kind: 'animal',
-            animal: cow ? 'cow' : 'sheep',
-            lane: dir > 0 ? 0 : 2,
-            x: dir > 0 ? 20 + i * 15 : W - 20 - i * 15,
-            y: engineY - 170 - i * 95,
-            vx: dir * 1.5,
-            dir,
-            phase: i,
-            hw: cow ? 21 : 17,
-            hh: cow ? 12 : 11,
-            speedMul: 1,
-            passed: false,
-          });
-        }
-        tone('sawtooth', 140, 95, 0.55, 0.07, 0, 600);
-        tone('square', 330, 270, 0.4, 0.04, 0.5, 900);
-      } else if (kind === 'dragon') {
-        surpriseText = '\u{1F409} A dragon!';
-        dragon = { x: laneX[1], y: -70, mode: 'enter', t: 0, rounds: 3, target: 1, fireX: laneX[1], hitDone: false, scared: false, singed: false, deaf: 20 };
-        tone('sawtooth', 170, 55, 0.8, 0.09, 0, 500);
-        noiseBurst(300, 0.7, 0.25, 'lowpass');
-      } else {
-        surpriseText = '\u{1F47B} A ghost train!';
-        obstacles.push({ kind: 'ghost', lane, x: laneX[lane], y: engineY - 300, hw: 15, hh: 48, speedMul: 1.5, ignore: true, passed: false });
-        tone('sine', 500, 220, 0.9, 0.08, 0, 700);
-        tone('sine', 530, 240, 0.9, 0.06, 0.05, 700);
-      }
-      surpriseFlash = 150;
-    }
-
-    // The dragon flies in from the top of the screen, warns which track it will
-    // aim at (red glow), then breathes fire down it. Honk and it flies away!
-    function pickDragonTarget(d) {
-      d.target = Math.random() < 0.7 ? lane : Math.floor(Math.random() * 3);
-    }
-
-    function updateDragon(step) {
-      const d = dragon;
-      if (!d) return;
-      d.t += step;
-      d.deaf = Math.max(0, d.deaf - step);
-      if (d.mode === 'enter') {
-        d.y += (72 - d.y) * (1 - Math.pow(1 - 0.12, step));
-        if (d.t > 45) {
-          d.mode = 'aim';
-          d.t = 0;
-          pickDragonTarget(d);
-        }
-      } else if (d.mode === 'aim') {
-        d.x += (laneX[d.target] - d.x) * (1 - Math.pow(1 - 0.15, step));
-        if (d.t > 80) {
-          d.mode = 'fire';
-          d.t = 0;
-          d.fireX = laneX[d.target];
-          d.x = d.fireX;
-          d.hitDone = false;
-          noiseBurst(700, 0.9, 0.3, 'lowpass');
-          tone('sawtooth', 140, 90, 0.5, 0.06, 0, 400);
-        }
-      } else if (d.mode === 'fire') {
-        if (!d.hitDone) {
-          for (let i = 0; i < cars.length; i++) {
-            if (Math.abs(cars[i].x - d.fireX) < cars[i].hw + 12) {
-              d.hitDone = true;
-              if (shieldTime > 0) {
-                shieldTime = 0;
-                rings.push({ x: d.fireX, y: engineY, age: 0 });
-                noiseBurst(700, 0.25, 0.3);
-                tone('sine', 900, 300, 0.3, 0.12);
-              } else {
-                // a singe, never a crash: lose up to 3 points and get a fright
-                const lost = Math.min(score, 3);
-                score -= lost;
-                scoreEl.textContent = 'Score: ' + score;
-                d.singed = true;
-                singeFlash = 30;
-                surpriseText = lost > 0 ? 'Ouch! Hot! -' + lost : 'Ouch! Hot!';
-                surpriseFlash = 70;
-                noiseBurst(500, 0.4, 0.3, 'lowpass');
-                tone('sawtooth', 300, 120, 0.3, 0.08, 0, 700);
-              }
-              break;
-            }
-          }
-        }
-        if (d.t > 55) {
-          d.rounds--;
-          d.mode = 'rest';
-          d.t = 0;
-        }
-      } else if (d.mode === 'rest') {
-        if (d.t > 30) {
-          if (d.rounds > 0) {
-            d.mode = 'aim';
-            d.t = 0;
-            pickDragonTarget(d);
-          } else {
-            d.mode = 'leave';
-            d.t = 0;
-            if (!d.singed) {
-              score += 5; // you dodged the dragon perfectly!
-              scoreEl.textContent = 'Score: ' + score;
-              rings.push({ x: d.x, y: d.y, age: 0 });
-              playDing();
-            }
-          }
-        }
-      } else {
-        d.y -= 6 * step;
-        if (d.y < -100) dragon = null;
-      }
-    }
-
     function spawnRow() {
       if (level >= 2 && Math.random() < 0.14) {
         spawnAnimal();
@@ -822,10 +662,6 @@
       levelEl.textContent = 'Level 1';
       const ev0 = eventInfo();
       whistledSlot = eventReach(ev0) >= engineY ? ev0.n : -1;
-      surpriseSlot = ev0.kind === 'tunnel' && eventReach(ev0) >= engineY ? ev0.n : -1;
-      surpriseFlash = 0;
-      dragon = null;
-      singeFlash = 0;
       spawnRow();
     }
 
@@ -1001,11 +837,6 @@
         whistledSlot = ev.n;
         playWhistle();
       }
-      if (ev.kind === 'tunnel' && ev.n !== surpriseSlot && eventReach(ev) >= engineY) {
-        surpriseSlot = ev.n;
-        startSurprise();
-      }
-      updateDragon(step);
 
       obstacles.forEach((o) => {
         o.y += dist * o.speedMul;
@@ -1022,17 +853,9 @@
           o.whooshed = true;
           if (Math.abs(o.x - cars[0].x) < 140) playPassBy();
         }
-        if (o.kind === 'ghost' && !o.boo && o.y > engineY - 10) {
-          o.boo = true; // the ghost floats straight through: a harmless fright, worth 5 points
-          score += 5;
-          scoreEl.textContent = 'Score: ' + score;
-          rings.push({ x: o.x, y: engineY, age: 0 });
-          playDing();
-        }
         if (o.kind === 'animal') {
-          if (o.animal === 'bat') o.y += Math.sin(o.phase * 1.7) * 1.6 * step;
           o.x += o.vx * step;
-          o.phase += step * (o.animal === 'bat' ? 0.5 : o.scared ? 0.9 : 0.35);
+          o.phase += step * (o.scared ? 0.9 : 0.35);
           o.lane = o.x < 140 ? 0 : o.x < 260 ? 1 : 2;
         }
         let hit = false;
@@ -1117,8 +940,6 @@
       }
 
       levelFlash = Math.max(0, levelFlash - step);
-      surpriseFlash = Math.max(0, surpriseFlash - step);
-      singeFlash = Math.max(0, singeFlash - step);
     }
 
     // ---------- drawing ----------
@@ -1365,176 +1186,12 @@
       });
     }
 
-    function drawGhost(o) {
-      ctx.save();
-      ctx.globalAlpha = 0.28 + 0.14 * Math.sin(frame * 0.3);
-      ctx.fillStyle = '#e8f4ff';
-      ctx.shadowColor = '#9fd4ff';
-      ctx.shadowBlur = 18;
-      roundedRect(o.x - 16, o.y - 50, 32, 98, 14);
-      ctx.fill();
-      ctx.restore();
-      ctx.fillStyle = 'rgba(20, 30, 50, 0.8)';
-      ctx.beginPath();
-      ctx.arc(o.x - 6, o.y + 22, 4, 0, Math.PI * 2);
-      ctx.arc(o.x + 6, o.y + 22, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(o.x, o.y + 33, 4, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    function drawDragon() {
-      const d = dragon;
-      if (!d) return;
-      // warning glow on the track it is about to burn
-      if (d.mode === 'aim') {
-        const a = 0.16 + 0.12 * Math.sin(frame * 0.5);
-        ctx.fillStyle = 'rgba(255, 60, 30, ' + a + ')';
-        ctx.fillRect(laneX[d.target] - 30, d.y + 30, 60, H);
-        ctx.fillStyle = 'rgba(255, 50, 30, ' + (0.5 + 0.5 * Math.sin(frame * 0.5)) + ')';
-        ctx.font = 'bold 30px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('!', laneX[d.target], 240);
-      }
-      // the fire
-      if (d.mode === 'fire') {
-        const top = d.y + 36;
-        const len = Math.min(1, d.t / 8) * (H - top);
-        const layers = [
-          ['rgba(255, 90, 20, 0.75)', 22],
-          ['rgba(255, 170, 40, 0.85)', 15],
-          ['rgba(255, 245, 160, 0.95)', 7],
-        ];
-        layers.forEach(([col, w]) => {
-          ctx.fillStyle = col;
-          ctx.beginPath();
-          ctx.moveTo(d.fireX - 5, top);
-          for (let y = 0; y <= len; y += 22) {
-            const spread = w * (0.45 + (y / Math.max(len, 1)) * 0.6);
-            ctx.lineTo(d.fireX - spread - Math.random() * 4, top + y);
-          }
-          for (let y = len; y >= 0; y -= 22) {
-            const spread = w * (0.45 + (y / Math.max(len, 1)) * 0.6);
-            ctx.lineTo(d.fireX + spread + Math.random() * 4, top + y);
-          }
-          ctx.closePath();
-          ctx.fill();
-        });
-      }
-      ctx.save();
-      ctx.translate(d.x, d.y);
-      const flap = Math.sin(frame * 0.25);
-      // tail
-      ctx.strokeStyle = '#2c8a52';
-      ctx.lineWidth = 8;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(0, -18);
-      ctx.quadraticCurveTo(Math.sin(frame * 0.12) * 16, -44, Math.sin(frame * 0.12 + 1) * 8, -70);
-      ctx.stroke();
-      ctx.lineCap = 'butt';
-      // wings
-      [-1, 1].forEach((side) => {
-        ctx.beginPath();
-        ctx.moveTo(side * 6, -8);
-        ctx.quadraticCurveTo(side * 38, -34 + flap * 8, side * 62, -14 + flap * 12);
-        ctx.quadraticCurveTo(side * 54, -4, side * 52, 6);
-        ctx.quadraticCurveTo(side * 40, -2, side * 36, 12);
-        ctx.quadraticCurveTo(side * 22, 2, side * 8, 14);
-        ctx.closePath();
-        ctx.fillStyle = '#2f8f4e';
-        ctx.fill();
-        ctx.strokeStyle = '#154a28';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      });
-      // body
-      ctx.fillStyle = '#3cb371';
-      ctx.beginPath();
-      ctx.ellipse(0, 4, 13, 28, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#154a28';
-      ctx.stroke();
-      ctx.fillStyle = '#a8e6a1';
-      ctx.beginPath();
-      ctx.ellipse(0, 8, 6, 20, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // head, horns, eyes
-      ctx.fillStyle = '#3cb371';
-      ctx.beginPath();
-      ctx.ellipse(0, 32, 11, 13, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#f2e6c9';
-      ctx.beginPath();
-      ctx.moveTo(-8, 24);
-      ctx.lineTo(-14, 12);
-      ctx.lineTo(-3, 22);
-      ctx.moveTo(8, 24);
-      ctx.lineTo(14, 12);
-      ctx.lineTo(3, 22);
-      ctx.fill();
-      ctx.fillStyle = '#ffd400';
-      ctx.fillRect(-8, 29, 5, 4);
-      ctx.fillRect(3, 29, 5, 4);
-      ctx.fillStyle = d.mode === 'aim' || d.mode === 'fire' ? '#ff5a1e' : '#1d6b3c';
-      ctx.beginPath();
-      ctx.ellipse(0, 41, 5, d.mode === 'fire' ? 5 : 3, 0, 0, Math.PI * 2);
-      ctx.fill();
-      if (d.scared) {
-        ctx.fillStyle = '#e63946';
-        ctx.font = 'bold 22px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('!', 0, -76);
-      }
-      ctx.restore();
-    }
-
-    function drawBat(o) {
-      const flap = Math.sin(o.phase * 4);
-      ctx.save();
-      ctx.translate(o.x, o.y);
-      ctx.fillStyle = '#3d2f52';
-      ctx.strokeStyle = '#1a1226';
-      ctx.lineWidth = 1.5;
-      [-1, 1].forEach((side) => {
-        ctx.beginPath();
-        ctx.moveTo(side * 3, -2);
-        ctx.quadraticCurveTo(side * 14, -10 - flap * 6, side * 21, 2 + flap * 3);
-        ctx.quadraticCurveTo(side * 16, 1, side * 13, 6);
-        ctx.quadraticCurveTo(side * 8, 2, side * 3, 6);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      });
-      ctx.fillStyle = '#2a2036';
-      ctx.beginPath();
-      ctx.ellipse(0, 1, 5, 7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(-4, -5);
-      ctx.lineTo(-3, -10);
-      ctx.lineTo(0, -6);
-      ctx.lineTo(3, -10);
-      ctx.lineTo(4, -5);
-      ctx.fill();
-      ctx.fillStyle = '#ff4d4d';
-      ctx.fillRect(-3, -3, 2, 2);
-      ctx.fillRect(1, -3, 2, 2);
-      ctx.restore();
-    }
-
     function drawAnimal(o) {
       if (o.scared) {
         ctx.fillStyle = '#e63946';
         ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('!', o.x, o.y - o.hh - 12);
-      }
-      if (o.animal === 'bat') {
-        drawBat(o);
-        return;
       }
       const d = o.dir;
       const swing = Math.sin(o.phase) * 3;
@@ -1900,10 +1557,6 @@
         }
         ctx.stroke();
       }
-      if (singeFlash > 0) {
-        ctx.fillStyle = 'rgba(255, 70, 20, ' + 0.3 * (singeFlash / 30) + ')';
-        ctx.fillRect(0, 0, W, H);
-      }
       if (flash > 0.02) {
         if (bolt && flash > 0.3) {
           ctx.lineJoin = 'round';
@@ -2039,23 +1692,14 @@
         if (o.kind === 'rock') drawRock(o);
         else if (o.kind === 'barrier') drawBarrier(o);
         else if (o.kind === 'train') drawOncoming(o);
-        else if (o.kind === 'ghost') drawGhost(o);
       });
-      if (singeFlash > 0) {
-        ctx.save();
-        ctx.translate((Math.random() - 0.5) * 5, 0);
-        drawTrain();
-        ctx.restore();
-      } else {
-        drawTrain();
-      }
+      drawTrain();
       drawShieldBubble();
       drawBoostEffects();
       drawTunnel();
       obstacles.forEach((o) => {
         if (o.kind === 'animal') drawAnimal(o);
       });
-      drawDragon();
       drawStationSign();
       drawEffects();
 
@@ -2063,13 +1707,6 @@
       drawStorm();
       drawShieldHud();
       drawSpeedometer();
-
-      if (surpriseFlash > 0 && started && !gameOver) {
-        ctx.fillStyle = 'rgba(190, 150, 255, ' + Math.min(1, surpriseFlash / 25) + ')';
-        ctx.font = 'bold 25px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText((surpriseText.indexOf('Ouch') === 0 ? '' : 'Surprise! ') + surpriseText, W / 2, 170);
-      }
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
