@@ -826,6 +826,8 @@
         rainSoundIn = 10;
       }
 
+      updateStreets(step);
+
       // speedometer: ease toward the speed we are really doing
       const liveSpeed = started && !gameOver && !crashing ? worldSpeed() * (boostTime > 0 ? boostSpeed : 1) : 0;
       shownMph += (liveSpeed * mphPerUnit - shownMph) * (1 - Math.pow(1 - 0.08, step));
@@ -1049,23 +1051,34 @@
       }
     }
 
+    function drawPalm(px, py) {
+      ctx.strokeStyle = '#2f8a46';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2 + 0.3;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.quadraticCurveTo(px + Math.cos(a) * 7, py + Math.sin(a) * 7 - 1, px + Math.cos(a) * 12, py + Math.sin(a) * 12 + 2);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#8d6e50';
+      ctx.fill();
+    }
+
     function drawPark(x, y, w, h, hv) {
       ctx.fillStyle = '#6fbf73';
       ctx.fillRect(x, y, w, h);
       ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
       ctx.lineWidth = 1.5;
       ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-      for (let i = 0; i < 3; i++) {
-        const tx = x + 10 + ((hv >>> (i * 3)) % Math.max(10, w - 20));
-        const ty = y + 12 + ((hv >>> (i * 3 + 1)) % Math.max(10, h - 24));
-        ctx.beginPath();
-        ctx.arc(tx, ty, 9, 0, Math.PI * 2);
-        ctx.fillStyle = '#2f8a46';
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(tx - 2, ty - 2, 4, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.fill();
+      for (let i = 0; i < 2; i++) {
+        const tx = x + 14 + ((hv >>> (i * 3)) % Math.max(10, w - 28));
+        const ty = y + 14 + ((hv >>> (i * 3 + 1)) % Math.max(10, h - 28));
+        drawPalm(tx, ty);
       }
     }
 
@@ -1103,24 +1116,112 @@
         ctx.fillRect(0, sy + 20, W, 3);
         ctx.fillStyle = 'rgba(255, 220, 90, 0.85)';
         for (let dx = -((scrollTotal * 0) % 28); dx < W; dx += 28) ctx.fillRect(dx, sy - 1, 14, 2);
-        // a few cars driving along the street
-        for (let i = 0; i < 3; i++) {
-          const dir = i % 2 ? -1 : 1;
-          const speed = 0.9 + ((cityHash(g, i + 9) % 8) / 8) * 1.4;
-          const span = W + 80;
-          let cx = (cityHash(g, i) % span) + dir * frame * speed;
-          cx = ((cx % span) + span) % span - 40;
-          const cy = sy + (dir > 0 ? 8 : -8);
-          const col = roofColours[(cityHash(g, i + 3) % roofColours.length)];
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-          ctx.fillRect(cx - 10, cy - 4, 22, 10);
-          ctx.fillStyle = col;
-          roundedRect(cx - 11, cy - 6, 22, 11, 3);
-          ctx.fill();
-          ctx.fillStyle = 'rgba(30, 40, 55, 0.75)';
-          ctx.fillRect(cx - dir * 1 - 3, cy - 4, 7, 7);
-        }
+        drawStreetExtras(sy, g);
       }
+    }
+
+    // ---------- traffic lights and the cars that obey them ----------
+    const streetSpacing = 620;
+    const lightCycle = 600; // frames: green, then yellow, then red
+    const stopEast = 122; // where eastbound cars wait (in the gap between tracks)
+    const stopWest = 278; // where westbound cars wait
+    let streetCars = {};
+
+    function lightState(g) {
+      const p = (frame + g * 173) % lightCycle;
+      return p < 260 ? 'green' : p < 320 ? 'yellow' : 'red';
+    }
+
+    function newStreetCars(g) {
+      const h = (i) => cityHash(g, i + 20);
+      const mk = (x, dir, i) => ({
+        x,
+        dir,
+        v: 0.9 + ((h(i) % 8) / 8) * 1.1,
+        colour: roofColours[h(i + 5) % roofColours.length],
+        stopped: false,
+      });
+      return [mk(-30 + (h(0) % 90), 1, 0), mk(180 + (h(1) % 110), 1, 1), mk(W - 20 - (h(2) % 120), -1, 2), mk(W + 70, -1, 3)];
+    }
+
+    function updateStreets(step) {
+      const sIdx = Math.floor(scrollTotal / streetSpacing);
+      const keep = {};
+      for (let k = -1; k < H / streetSpacing + 1; k++) {
+        const g = sIdx - k;
+        keep[g] = streetCars[g] || newStreetCars(g);
+        const cars = keep[g];
+        const state = lightState(g);
+        cars.forEach((c, i) => {
+          const stopX = c.dir > 0 ? stopEast : stopWest;
+          let nx = c.x + c.dir * c.v * step;
+          // wait at a red or yellow light (a car already past the line carries on)
+          if (state !== 'green') {
+            if (c.dir > 0 && c.x <= stopX - 14 && nx > stopX - 14) nx = stopX - 14;
+            if (c.dir < 0 && c.x >= stopX + 14 && nx < stopX + 14) nx = stopX + 14;
+          }
+          // keep a gap to the car in front
+          cars.forEach((o, j) => {
+            if (j === i || o.dir !== c.dir) return;
+            const ahead = (o.x - c.x) * c.dir;
+            if (ahead > 0 && ahead < 30 + c.v * step) nx = c.x;
+          });
+          c.stopped = Math.abs(nx - c.x) < 0.01;
+          c.x = nx;
+          if (c.dir > 0 && c.x > W + 40) c.x = -40;
+          if (c.dir < 0 && c.x < -40) c.x = W + 40;
+        });
+      }
+      streetCars = keep;
+    }
+
+    function drawSignal(px, py, state) {
+      ctx.fillStyle = '#4a4f55';
+      ctx.fillRect(px - 1, py - 8, 3, 8);
+      ctx.fillStyle = '#23272d';
+      roundedRect(px - 6, py, 12, 30, 4);
+      ctx.fill();
+      [['red', '#ff3b30'], ['yellow', '#ffcc00'], ['green', '#34d058']].forEach(([name, col], i) => {
+        const on = name === state;
+        ctx.beginPath();
+        ctx.arc(px, py + 7 + i * 8, 3.2, 0, Math.PI * 2);
+        ctx.fillStyle = on ? col : 'rgba(255, 255, 255, 0.14)';
+        ctx.fill();
+        if (on) {
+          ctx.beginPath();
+          ctx.arc(px, py + 7 + i * 8, 8, 0, Math.PI * 2);
+          ctx.fillStyle = col + '44';
+          ctx.fill();
+        }
+      });
+    }
+
+    function drawStreetExtras(sy, g) {
+      const state = lightState(g);
+      // stop lines
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fillRect(stopEast, sy + 1, 4, 18);
+      ctx.fillRect(stopWest - 4, sy - 19, 4, 18);
+      // cars (they drive under the railway bridges)
+      (streetCars[g] || []).forEach((c) => {
+        const cy = sy + (c.dir > 0 ? 9 : -9);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(c.x - 10, cy - 4, 22, 10);
+        ctx.fillStyle = c.colour;
+        roundedRect(c.x - 11, cy - 6, 22, 11, 3);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(30, 40, 55, 0.75)';
+        ctx.fillRect(c.x + c.dir * 3 - 3, cy - 4, 7, 7);
+        // brake lights glow while waiting
+        if (c.stopped) {
+          ctx.fillStyle = '#ff3b30';
+          ctx.fillRect(c.x - c.dir * 11 - 1, cy - 5, 2, 3);
+          ctx.fillRect(c.x - c.dir * 11 - 1, cy + 1, 2, 3);
+        }
+      });
+      // the traffic lights, one on each side of the street
+      drawSignal(stopEast + 2, sy + 26, state);
+      drawSignal(stopWest - 2, sy - 56, state);
     }
 
     function drawScenery() {
@@ -1162,7 +1263,7 @@
     // Every so often the line passes something special: a station, then a
     // tunnel, then a bridge over a river. One per slot, so they never overlap.
     const slotLength = 1500;
-    const stationNames = ['Nikko Central', 'Sunny Junction', 'Gold Hill', 'Pine Valley', 'Rocky Bridge', 'Seaside'];
+    const stationNames = ['Burj Khalifa', 'Dubai Marina', 'Mall of the Emirates', 'Business Bay', 'Union', 'Emirates Towers', 'Financial Centre', 'BurJuman', 'Expo 2020', 'Al Rigga'];
     const eventKinds = ['station', 'tunnel', 'bridge'];
     const eventLengths = { station: 300, tunnel: 440, bridge: 200 };
     function eventInfo() {
@@ -1192,12 +1293,12 @@
         ctx.fillStyle = '#ffd23f';
         ctx.fillRect(cx - 27, st.top, 3, stationLength);
         ctx.fillRect(cx + 24, st.top, 3, stationLength);
-        // little roof over the platform
-        ctx.fillStyle = 'rgba(190, 60, 60, 0.95)';
-        roundedRect(cx - 24, st.top + 60, 48, stationLength - 120, 6);
-        ctx.fill();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
-        ctx.fillRect(cx - 24, st.top + 60, 48, 6);
+        // platform screen doors along both edges
+        ctx.fillStyle = 'rgba(120, 190, 230, 0.9)';
+        for (let y = st.top + 8; y < st.top + stationLength - 14; y += 22) {
+          ctx.fillRect(cx - 27, y, 3, 16);
+          ctx.fillRect(cx + 24, y, 3, 16);
+        }
         // waiting passengers
         const colours = ['#2b7bd6', '#e8a33d', '#8e44ad', '#2a9d8f'];
         for (let i = 0; i < 5; i++) {
@@ -1212,6 +1313,34 @@
           ctx.fillStyle = '#f2c9a0';
           ctx.fill();
         }
+        // the silver "shell" roof that Dubai Metro stations are famous for
+        const rx = cx - 25;
+        const ry = st.top + 28;
+        const rw = 50;
+        const rh = stationLength - 56;
+        const shell = ctx.createLinearGradient(rx, 0, rx + rw, 0);
+        shell.addColorStop(0, 'rgba(150, 160, 172, 0.82)');
+        shell.addColorStop(0.35, 'rgba(245, 248, 252, 0.85)');
+        shell.addColorStop(0.65, 'rgba(230, 236, 244, 0.8)');
+        shell.addColorStop(1, 'rgba(140, 150, 165, 0.82)');
+        roundedRect(rx, ry, rw, rh, 24);
+        ctx.fillStyle = shell;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(80, 90, 105, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        // glass strip down the middle and ribs across
+        roundedRect(cx - 9, ry + 14, 18, rh - 28, 9);
+        ctx.fillStyle = 'rgba(140, 200, 235, 0.45)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(90, 100, 115, 0.4)';
+        ctx.lineWidth = 1;
+        for (let y = ry + 30; y < ry + rh - 24; y += 20) {
+          ctx.beginPath();
+          ctx.moveTo(rx + 6, y);
+          ctx.quadraticCurveTo(cx, y - 5, rx + rw - 6, y);
+          ctx.stroke();
+        }
       });
     }
 
@@ -1223,16 +1352,22 @@
       ctx.fillRect(0, y, W, 6);
       ctx.fillRect(6, y, 6, 20);
       ctx.fillRect(W - 12, y, 6, 20);
-      roundedRect(W / 2 - 100, y - 6, 200, 34, 8);
-      ctx.fillStyle = '#1d4e89';
+      roundedRect(W / 2 - 105, y - 6, 210, 34, 8);
+      ctx.fillStyle = '#c8102e';
       ctx.fill();
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 3;
       ctx.stroke();
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('🚉 ' + st.name, W / 2, y + 17);
+      const label = '\u{1F687} ' + st.name;
+      let size = 18;
+      ctx.font = 'bold ' + size + 'px sans-serif';
+      while (size > 10 && ctx.measureText(label).width > 190) {
+        size--;
+        ctx.font = 'bold ' + size + 'px sans-serif';
+      }
+      ctx.fillText(label, W / 2, y + 11 + size / 2);
     }
 
     function drawBridgeWater() {
