@@ -49,18 +49,99 @@
       const planeOutline = '#9c1c2b';
 
       function drawPlane() {
+        // A big white airliner seen from above, nose pointing right, with a red
+        // tail, red engine fronts, red wing tips and a gold stripe.
         const s = planeSize * 0.55;
+        const red = '#d71920';
+        const gold = '#c9a24a';
+        const edge = '#6f7c89';
+        ctx.save();
+        ctx.shadowColor = 'rgba(30, 50, 70, 0.3)';
+        ctx.shadowBlur = 5;
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = edge;
+        [-1, 1].forEach((side) => {
+          // swept wing
+          ctx.beginPath();
+          ctx.moveTo(s * 0.2, side * s * 0.12);
+          ctx.lineTo(-s * 0.4, side * s * 0.72);
+          ctx.lineTo(-s * 0.72, side * s * 0.72);
+          ctx.lineTo(-s * 0.5, side * s * 0.12);
+          ctx.closePath();
+          ctx.fillStyle = '#eef2f6';
+          ctx.fill();
+          ctx.stroke();
+          // tail plane
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.72, side * s * 0.1);
+          ctx.lineTo(-s * 0.98, side * s * 0.36);
+          ctx.lineTo(-s * 1.1, side * s * 0.36);
+          ctx.lineTo(-s * 1.0, side * s * 0.08);
+          ctx.closePath();
+          ctx.fillStyle = red;
+          ctx.fill();
+          ctx.stroke();
+        });
+        ctx.restore();
+        [-1, 1].forEach((side) => {
+          // red wing tip
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.4 + 0.5, side * s * 0.7);
+          ctx.lineTo(-s * 0.72, side * s * 0.72);
+          ctx.lineTo(-s * 0.64, side * s * 0.6);
+          ctx.lineTo(-s * 0.33, side * s * 0.6);
+          ctx.closePath();
+          ctx.fillStyle = red;
+          ctx.fill();
+          // two engines on each wing
+          [[-s * 0.08, side * s * 0.34], [-s * 0.3, side * s * 0.54]].forEach(([ex, ey]) => {
+            ctx.beginPath();
+            ctx.ellipse(ex, ey, s * 0.2, s * 0.085, 0, 0, Math.PI * 2);
+            ctx.fillStyle = '#dfe5eb';
+            ctx.fill();
+            ctx.strokeStyle = edge;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.ellipse(ex + s * 0.13, ey, s * 0.07, s * 0.07, 0, -Math.PI / 2, Math.PI / 2);
+            ctx.fillStyle = red;
+            ctx.fill();
+          });
+        });
+        // fuselage
         ctx.beginPath();
-        ctx.moveTo(s, 0);
-        ctx.lineTo(-s * 0.7, s * 0.55);
-        ctx.lineTo(-s * 0.15, 0);
-        ctx.lineTo(-s * 0.7, -s * 0.55);
-        ctx.closePath();
-        ctx.fillStyle = planeColor;
+        ctx.ellipse(0, 0, s, s * 0.17, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
         ctx.fill();
-        ctx.strokeStyle = planeOutline;
-        ctx.lineWidth = 2;
+        ctx.save();
+        ctx.clip();
+        ctx.fillStyle = red; // red tail cone
+        ctx.fillRect(-s * 1.1, -s * 0.3, s * 0.5, s * 0.6);
+        ctx.restore();
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, s, s * 0.17, 0, 0, Math.PI * 2);
         ctx.stroke();
+        // gold stripe along each side and little windows
+        ctx.strokeStyle = gold;
+        ctx.lineWidth = 1.6;
+        [-1, 1].forEach((side) => {
+          ctx.beginPath();
+          ctx.moveTo(-s * 0.56, side * s * 0.1);
+          ctx.lineTo(s * 0.72, side * s * 0.1);
+          ctx.stroke();
+        });
+        ctx.fillStyle = '#5a7184';
+        for (let i = 0; i < 9; i++) {
+          const wx = -s * 0.45 + i * s * 0.12;
+          ctx.fillRect(wx, -s * 0.045, 2, 2);
+          ctx.fillRect(wx, s * 0.025, 2, 2);
+        }
+        // cockpit
+        ctx.beginPath();
+        ctx.ellipse(s * 0.78, 0, s * 0.1, s * 0.07, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#2f4358';
+        ctx.fill();
       }
       const moveSpeed = 23; // how fast arrow keys move the plane
       const followSpeed = 0.58; // how smoothly the plane chases the pointer
@@ -108,14 +189,14 @@
 
       function spawnBar() {
         // Each level has its own fixed gap size — a clear step down, not a slow crawl.
-        const gapHeight = Math.max(66, 175 - (level - 1) * 20);
+        const gapHeight = Math.max(74, 190 - (level - 1) * 19);
         const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
         bars.push({ x: canvas.width, gapY, gapHeight, passed: false });
       }
 
       function barSpeed() {
         // Fast within a level, and a notch faster each level up.
-        return Math.min(17, 4.6 + (level - 1) * 1.6); // starts slow, ramps up higher in later levels
+        return Math.min(16, 4.4 + (level - 1) * 1.4); // starts slow, ramps up higher in later levels
       }
 
       function resetGame() {
