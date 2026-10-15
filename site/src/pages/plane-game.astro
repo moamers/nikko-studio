@@ -3,350 +3,1024 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Plane Game</title>
+    <title>Plane Dodge</title>
   </head>
   <body>
-    <h1>✈️ Plane Game</h1>
-    <p>Drag your finger (or mouse) up and down to fly the plane!</p>
-    <canvas id="game" width="400" height="600"></canvas>
-    <p id="score">Score: 0</p>
-    <p id="level">Level: 1</p>
+<style is:global>
+  /* Layout: centered single-column game card, canvas fills available width up to a max */
+  :root {
+    --bg: #f6fdff;
+    --card: #ffffff;
+    --ink: #1a2a33;
+    --ink-soft: #4a6572;
+    --sky: #fafdff;
+    --accent: #ff6b4a;
+    --good: #35b07a;
+    --skyline-far: rgba(130, 160, 185, 0.35);
+    --skyline-near: rgba(105, 135, 165, 0.5);
+    --ground: #6f8192;
+    --dim: 0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1b22;
+      --card: #16262f;
+      --ink: #eaf4f8;
+      --ink-soft: #9fb6c0;
+      --sky: #1c3440;
+      --accent: #ff8a6a;
+      --good: #4fd9a0;
+      --skyline-far: rgba(80, 120, 145, 0.35);
+      --skyline-near: rgba(70, 110, 135, 0.55);
+      --ground: #2d4351;
+      --dim: 0.3;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1b22;
+    --card: #16262f;
+    --ink: #eaf4f8;
+    --ink-soft: #9fb6c0;
+    --sky: #1c3440;
+    --accent: #ff8a6a;
+    --good: #4fd9a0;
+    --skyline-far: rgba(80, 120, 145, 0.35);
+    --skyline-near: rgba(70, 110, 135, 0.55);
+    --ground: #2d4351;
+    --dim: 0.3;
+    color-scheme: dark;
+  }
 
-    <style>
-      body {
-        font-family: sans-serif;
-        text-align: center;
-        background: #f6fdff;
-      }
-      canvas {
-        background: #fafdff;
-        border: 4px solid #333;
-        border-radius: 8px;
-        touch-action: none;
-      }
-      #score {
-        font-size: 24px;
-        font-weight: bold;
-      }
-      #level {
-        font-size: 16px;
-        color: #4a6572;
-        margin-top: -8px;
-      }
-    </style>
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding-inline: 16px;
+  }
 
-    <script>
-      const canvas = document.getElementById('game');
-      const ctx = canvas.getContext('2d');
-      const scoreEl = document.getElementById('score');
-      const levelEl = document.getElementById('level');
-      const pointsPerLevel = 5;
+  .wrap {
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-block: 24px;
+  }
 
-      const plane = { x: 80, y: 300 };
-      const planeSize = 52; // overall size the plane shape is drawn at
-      const planeHit = 21; // half-height/width used for collisions
-      const planeColor = '#e63946'; // red
-      const planeOutline = '#9c1c2b';
+  h1 {
+    font-size: clamp(22px, 6vw, 30px);
+    margin: 0;
+    text-align: center;
+  }
 
-      function drawPlane() {
-        // A big white airliner seen from above, nose pointing right, with a red
-        // tail, red engine fronts, red wing tips and a gold stripe.
-        const s = planeSize * 0.55;
-        const red = '#d71920';
-        const gold = '#c9a24a';
-        const edge = '#6f7c89';
-        ctx.save();
+  .sub {
+    color: var(--ink-soft);
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+  }
+
+  .stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    max-height: 70vh;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.15);
+  }
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+    background: var(--sky);
+    touch-action: manipulation;
+  }
+
+  .score {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .best {
+    font-size: 13px;
+    color: var(--ink-soft);
+  }
+
+  .level {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+  }
+
+  .controls button {
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    background: var(--card);
+    border: 2px solid var(--ink-soft);
+    border-radius: 999px;
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+
+  .controls button:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  #boostBtn:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .controls button[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
+  .controls button:active {
+    transform: scale(0.96);
+  }
+</style>
+
+<div class="wrap">
+  <h1>&#9992;&#65039; Plane Dodge</h1>
+  <p class="sub">Drag your finger (or mouse) up and down to fly. Dodge the buildings and other planes!</p>
+  <p class="score" id="score">Score: 0</p>
+  <p class="level" id="level">Level 1</p>
+  <p class="best" id="best">Best: 0</p>
+  <div class="stage">
+    <canvas id="game" width="400" height="600" aria-label="Plane dodge game"></canvas>
+  </div>
+  <div class="controls">
+    <button type="button" id="easyBtn">&#128034; Easy</button>
+    <button type="button" id="normalBtn">&#127918; Normal</button>
+    <button type="button" id="boostBtn">&#128640; Boost</button>
+    <button type="button" id="soundBtn">&#128266; Sound on</button>
+  </div>
+</div>
+
+<script is:inline>
+  (function () {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+    const levelEl = document.getElementById('level');
+    const easyBtn = document.getElementById('easyBtn');
+    const normalBtn = document.getElementById('normalBtn');
+    const boostBtn = document.getElementById('boostBtn');
+    const soundBtn = document.getElementById('soundBtn');
+    const pointsPerLevel = 5;
+
+    const W = canvas.width;
+    const H = canvas.height;
+
+    const plane = { x: 80, y: 300 };
+    const planeSize = 56; // overall size the plane shape is drawn at
+    const planeHit = 21; // half-height/width used for collisions
+    const moveSpeed = 23;
+    const followSpeed = 0.58;
+    const buildingW = 46;
+    const barSpacing = 260; // distance between pairs of buildings
+    const jetSpacing = barSpacing + 120; // more room when a plane flies between them
+    const deckH = 14; // the underside of the floating city along the top
+
+    let targetY = plane.y;
+    let keys = { up: false, down: false };
+    let bars = []; // pairs of buildings: one hanging from the sky city, one from the ground
+    let jets = []; // other planes crossing the sky
+    let score = 0;
+    let level = 1;
+    let levelFlash = 0;
+    let best = 0;
+    let bestNormal = 0;
+    let bestEasy = 0;
+    let easy = false;
+    let gameOver = false;
+    let started = false;
+    let frame = 0;
+    let lastTime = null;
+    let skylineScroll = 0;
+    let barId = 0;
+
+    // boost: a burst of speed and double points
+    let boostTime = 0;
+    let boostCool = 0;
+    const boostDuration = 120; // 2 seconds
+    const boostSpeed = 1.5;
+    let boostCooldown = 420; // 7 seconds (shorter in easy mode)
+
+    // ---------- the plane (and the other planes) ----------
+
+    // A big white airliner seen from above, nose pointing right.
+    function drawAirliner(s, red, gold, shadow) {
+      const edge = '#6f7c89';
+      ctx.save();
+      if (shadow) {
         ctx.shadowColor = 'rgba(30, 50, 70, 0.3)';
         ctx.shadowBlur = 5;
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = edge;
-        [-1, 1].forEach((side) => {
-          // swept wing
+      }
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = edge;
+      [-1, 1].forEach((side) => {
+        // swept wing
+        ctx.beginPath();
+        ctx.moveTo(s * 0.2, side * s * 0.12);
+        ctx.lineTo(-s * 0.4, side * s * 0.72);
+        ctx.lineTo(-s * 0.72, side * s * 0.72);
+        ctx.lineTo(-s * 0.5, side * s * 0.12);
+        ctx.closePath();
+        ctx.fillStyle = '#eef2f6';
+        ctx.fill();
+        ctx.stroke();
+        // tail plane
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.72, side * s * 0.1);
+        ctx.lineTo(-s * 0.98, side * s * 0.36);
+        ctx.lineTo(-s * 1.1, side * s * 0.36);
+        ctx.lineTo(-s * 1.0, side * s * 0.08);
+        ctx.closePath();
+        ctx.fillStyle = red;
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.restore();
+      [-1, 1].forEach((side) => {
+        // wing tip
+        ctx.beginPath();
+        ctx.moveTo(-s * 0.4 + 0.5, side * s * 0.7);
+        ctx.lineTo(-s * 0.72, side * s * 0.72);
+        ctx.lineTo(-s * 0.64, side * s * 0.6);
+        ctx.lineTo(-s * 0.33, side * s * 0.6);
+        ctx.closePath();
+        ctx.fillStyle = red;
+        ctx.fill();
+        // two engines on each wing
+        [[-s * 0.08, side * s * 0.34], [-s * 0.3, side * s * 0.54]].forEach(([ex, ey]) => {
           ctx.beginPath();
-          ctx.moveTo(s * 0.2, side * s * 0.12);
-          ctx.lineTo(-s * 0.4, side * s * 0.72);
-          ctx.lineTo(-s * 0.72, side * s * 0.72);
-          ctx.lineTo(-s * 0.5, side * s * 0.12);
-          ctx.closePath();
-          ctx.fillStyle = '#eef2f6';
+          ctx.ellipse(ex, ey, s * 0.2, s * 0.085, 0, 0, Math.PI * 2);
+          ctx.fillStyle = '#dfe5eb';
           ctx.fill();
+          ctx.strokeStyle = edge;
           ctx.stroke();
-          // tail plane
           ctx.beginPath();
-          ctx.moveTo(-s * 0.72, side * s * 0.1);
-          ctx.lineTo(-s * 0.98, side * s * 0.36);
-          ctx.lineTo(-s * 1.1, side * s * 0.36);
-          ctx.lineTo(-s * 1.0, side * s * 0.08);
-          ctx.closePath();
+          ctx.ellipse(ex + s * 0.13, ey, s * 0.07, s * 0.07, 0, -Math.PI / 2, Math.PI / 2);
           ctx.fillStyle = red;
           ctx.fill();
-          ctx.stroke();
         });
-        ctx.restore();
-        [-1, 1].forEach((side) => {
-          // red wing tip
-          ctx.beginPath();
-          ctx.moveTo(-s * 0.4 + 0.5, side * s * 0.7);
-          ctx.lineTo(-s * 0.72, side * s * 0.72);
-          ctx.lineTo(-s * 0.64, side * s * 0.6);
-          ctx.lineTo(-s * 0.33, side * s * 0.6);
-          ctx.closePath();
-          ctx.fillStyle = red;
-          ctx.fill();
-          // two engines on each wing
-          [[-s * 0.08, side * s * 0.34], [-s * 0.3, side * s * 0.54]].forEach(([ex, ey]) => {
-            ctx.beginPath();
-            ctx.ellipse(ex, ey, s * 0.2, s * 0.085, 0, 0, Math.PI * 2);
-            ctx.fillStyle = '#dfe5eb';
-            ctx.fill();
-            ctx.strokeStyle = edge;
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.ellipse(ex + s * 0.13, ey, s * 0.07, s * 0.07, 0, -Math.PI / 2, Math.PI / 2);
-            ctx.fillStyle = red;
-            ctx.fill();
-          });
-        });
-        // fuselage
+      });
+      // fuselage
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s, s * 0.17, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = red; // tail cone
+      ctx.fillRect(-s * 1.1, -s * 0.3, s * 0.5, s * 0.6);
+      ctx.restore();
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, s, s * 0.17, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      // stripe along each side and little windows
+      ctx.strokeStyle = gold;
+      ctx.lineWidth = 1.6;
+      [-1, 1].forEach((side) => {
         ctx.beginPath();
-        ctx.ellipse(0, 0, s, s * 0.17, 0, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.save();
-        ctx.clip();
-        ctx.fillStyle = red; // red tail cone
-        ctx.fillRect(-s * 1.1, -s * 0.3, s * 0.5, s * 0.6);
-        ctx.restore();
-        ctx.strokeStyle = edge;
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, s, s * 0.17, 0, 0, Math.PI * 2);
+        ctx.moveTo(-s * 0.56, side * s * 0.1);
+        ctx.lineTo(s * 0.72, side * s * 0.1);
         ctx.stroke();
-        // gold stripe along each side and little windows
-        ctx.strokeStyle = gold;
-        ctx.lineWidth = 1.6;
-        [-1, 1].forEach((side) => {
-          ctx.beginPath();
-          ctx.moveTo(-s * 0.56, side * s * 0.1);
-          ctx.lineTo(s * 0.72, side * s * 0.1);
-          ctx.stroke();
-        });
-        ctx.fillStyle = '#5a7184';
-        for (let i = 0; i < 9; i++) {
-          const wx = -s * 0.45 + i * s * 0.12;
-          ctx.fillRect(wx, -s * 0.045, 2, 2);
-          ctx.fillRect(wx, s * 0.025, 2, 2);
+      });
+      ctx.fillStyle = '#5a7184';
+      for (let i = 0; i < 9; i++) {
+        const wx = -s * 0.45 + i * s * 0.12;
+        ctx.fillRect(wx, -s * 0.045, 2, 2);
+        ctx.fillRect(wx, s * 0.025, 2, 2);
+      }
+      // cockpit
+      ctx.beginPath();
+      ctx.ellipse(s * 0.78, 0, s * 0.1, s * 0.07, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#2f4358';
+      ctx.fill();
+    }
+
+    function drawPlane() {
+      drawAirliner(planeSize * 0.55, '#d71920', '#c9a24a', true);
+    }
+
+    function drawJet(j) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, j.age / 20); // fades in so it does not pop up
+      ctx.translate(j.x, j.y);
+      ctx.rotate(Math.max(-0.3, Math.min(0.3, j.vy * 0.25)));
+      ctx.scale(-1, 1); // flying left, towards you
+      drawAirliner(24, j.accent, '#b8c2cc', false);
+      ctx.restore();
+    }
+
+    // ---------- sound (made with Web Audio, no files needed) ----------
+    let audio = null;
+    let noiseBuf = null;
+    let soundOn = true;
+    let hum = null;
+    let humIn = 0;
+
+    function getAudio() {
+      if (audio) return audio;
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return null;
+        audio = new AC();
+        noiseBuf = audio.createBuffer(1, audio.sampleRate * 0.5, audio.sampleRate);
+        const d = noiseBuf.getChannelData(0);
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      } catch (e) {
+        audio = null;
+      }
+      return audio;
+    }
+
+    function unlockAudio() {
+      try {
+        const a = getAudio();
+        if (a && a.state === 'suspended') a.resume();
+      } catch (e) {}
+    }
+
+    function noiseBurst(freq, dur, vol, type) {
+      try {
+        const a = getAudio();
+        if (!a || !soundOn) return;
+        const src = a.createBufferSource();
+        src.buffer = noiseBuf;
+        const f = a.createBiquadFilter();
+        f.type = type || 'bandpass';
+        f.frequency.value = freq;
+        const g = a.createGain();
+        const t = a.currentTime;
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        src.connect(f);
+        f.connect(g);
+        g.connect(a.destination);
+        src.start(t);
+        src.stop(t + dur + 0.02);
+      } catch (e) {}
+    }
+
+    function tone(type, f0, f1, dur, vol, delay) {
+      try {
+        const a = getAudio();
+        if (!a || !soundOn) return;
+        const o = a.createOscillator();
+        const g = a.createGain();
+        const t = a.currentTime + (delay || 0);
+        o.type = type;
+        o.frequency.setValueAtTime(f0, t);
+        o.frequency.linearRampToValueAtTime(f1, t + dur);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.04);
+        g.gain.setValueAtTime(vol, t + dur * 0.7);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g);
+        g.connect(a.destination);
+        o.start(t);
+        o.stop(t + dur + 0.05);
+      } catch (e) {}
+    }
+
+    // The jet engine: a low rumble plus rushing air that gets louder and
+    // higher the faster you fly.
+    function ensureHum() {
+      try {
+        const a = getAudio();
+        if (!a || hum) return;
+        const o = a.createOscillator();
+        o.type = 'sawtooth';
+        const f = a.createBiquadFilter();
+        f.type = 'lowpass';
+        f.frequency.value = 300;
+        const g = a.createGain();
+        g.gain.value = 0;
+        o.connect(f);
+        f.connect(g);
+        g.connect(a.destination);
+        o.start();
+        const n = a.createBufferSource();
+        n.buffer = noiseBuf;
+        n.loop = true;
+        const nf = a.createBiquadFilter();
+        nf.type = 'bandpass';
+        nf.frequency.value = 900;
+        nf.Q.value = 0.5;
+        const ng = a.createGain();
+        ng.gain.value = 0;
+        n.connect(nf);
+        nf.connect(ng);
+        ng.connect(a.destination);
+        n.start();
+        hum = { o, f, g, nf, ng };
+      } catch (e) {
+        hum = null;
+      }
+    }
+
+    function updateHum(on, speed) {
+      try {
+        if (!on || !soundOn) {
+          if (hum) {
+            const t0 = audio.currentTime;
+            hum.g.gain.setTargetAtTime(0, t0, 0.08);
+            hum.ng.gain.setTargetAtTime(0, t0, 0.08);
+          }
+          return;
         }
-        // cockpit
-        ctx.beginPath();
-        ctx.ellipse(s * 0.78, 0, s * 0.1, s * 0.07, 0, 0, Math.PI * 2);
-        ctx.fillStyle = '#2f4358';
-        ctx.fill();
-      }
-      const moveSpeed = 23; // how fast arrow keys move the plane
-      const followSpeed = 0.58; // how smoothly the plane chases the pointer
+        ensureHum();
+        if (!hum) return;
+        const t = audio.currentTime;
+        hum.o.frequency.setTargetAtTime(55 + speed * 7, t, 0.15);
+        hum.f.frequency.setTargetAtTime(220 + speed * 30, t, 0.15);
+        hum.g.gain.setTargetAtTime(0.035, t, 0.15);
+        hum.nf.frequency.setTargetAtTime(600 + speed * 90, t, 0.15);
+        hum.ng.gain.setTargetAtTime(0.014 + speed * 0.003, t, 0.15);
+      } catch (e) {}
+    }
 
-      let targetY = plane.y;
-      let keys = { up: false, down: false };
-      let bars = []; // the white obstacle bars you have to fly through
-      let score = 0;
-      let level = 1;
-      let levelFlash = 0; // frames left to show the "Level up!" banner
-      let gameOver = false;
+    function playDing() {
+      tone('sine', 900, 1400, 0.2, 0.1);
+      tone('sine', 1200, 1800, 0.2, 0.08, 0.1);
+    }
 
-      function levelFor(s) {
-        return Math.floor(s / pointsPerLevel) + 1;
-      }
+    function playBoost() {
+      noiseBurst(1200, 0.7, 0.25);
+      tone('sawtooth', 110, 460, 0.7, 0.06);
+    }
 
-      // Fluffy clouds drifting in the background, purely for looks — the
-      // plane can fly straight through them, they're not obstacles.
-      let clouds = [];
+    function playPassBy() {
+      noiseBurst(1700, 0.45, 0.2);
+      tone('sawtooth', 600, 240, 0.4, 0.035);
+    }
 
-      function spawnBackgroundClouds() {
-        clouds = [];
-        for (let i = 0; i < 6; i++) {
-          clouds.push({
-            x: Math.random() * canvas.width,
-            y: 40 + Math.random() * (canvas.height - 80),
-            scale: 0.6 + Math.random() * 0.8,
-          });
-        }
-      }
+    function playCrash() {
+      noiseBurst(300, 0.7, 0.4, 'lowpass');
+      tone('sawtooth', 200, 45, 0.6, 0.12);
+    }
 
-      function drawCloud(x, y, scale) {
-        ctx.beginPath();
-        ctx.arc(x, y, 18 * scale, 0, Math.PI * 2);
-        ctx.arc(x + 20 * scale, y - 8 * scale, 22 * scale, 0, Math.PI * 2);
-        ctx.arc(x + 42 * scale, y, 18 * scale, 0, Math.PI * 2);
-        ctx.arc(x + 20 * scale, y + 6 * scale, 20 * scale, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        // A soft outline so clouds don't vanish against a very light sky.
-        ctx.strokeStyle = 'rgba(120, 170, 200, 0.35)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
+    function setSound(on) {
+      soundOn = on;
+      soundBtn.innerHTML = on ? '&#128266; Sound on' : '&#128263; Sound off';
+      if (!on) updateHum(false, 0);
+    }
 
-      function spawnBar() {
-        // Each level has its own fixed gap size — a clear step down, not a slow crawl.
-        const gapHeight = Math.max(74, 190 - (level - 1) * 19);
-        const gapY = 60 + Math.random() * (canvas.height - gapHeight - 120);
-        bars.push({ x: canvas.width, gapY, gapHeight, passed: false });
-      }
+    soundBtn.addEventListener('click', () => {
+      unlockAudio();
+      setSound(!soundOn);
+    });
 
-      function barSpeed() {
-        // Fast within a level, and a notch faster each level up.
-        return Math.min(16, 4.4 + (level - 1) * 1.4); // starts slow, ramps up higher in later levels
-      }
+    // ---------- easy mode / normal mode ----------
+    try {
+      bestNormal = Number(localStorage.getItem('planeDodgeBest') || 0);
+      bestEasy = Number(localStorage.getItem('planeDodgeBestEasy') || 0);
+      easy = localStorage.getItem('planeEasy') === '1';
+    } catch (e) {}
 
-      function resetGame() {
-        plane.y = canvas.height / 2;
-        targetY = plane.y;
+    function applyMode() {
+      easyBtn.setAttribute('aria-pressed', easy ? 'true' : 'false');
+      normalBtn.setAttribute('aria-pressed', easy ? 'false' : 'true');
+      boostCooldown = easy ? 300 : 420;
+      best = easy ? bestEasy : bestNormal;
+      bestEl.textContent = 'Best: ' + best;
+    }
+
+    function setMode(wantEasy) {
+      if (easy === wantEasy) return;
+      easy = wantEasy;
+      try {
+        localStorage.setItem('planeEasy', easy ? '1' : '0');
+      } catch (e) {}
+      applyMode();
+      if (started) {
+        // switching in the middle of a game: go back to the start screen
+        resetGame();
+        started = false;
         bars = [];
-        score = 0;
-        level = 1;
-        levelFlash = 0;
-        gameOver = false;
+        jets = [];
+        updateBoostBtn(true);
+      }
+    }
+    easyBtn.addEventListener('click', () => setMode(true));
+    normalBtn.addEventListener('click', () => setMode(false));
+
+    // ---------- boost ----------
+    let boostLabel = '';
+    function updateBoostBtn(force) {
+      const running = started && !gameOver;
+      let label = '\u{1F680} Boost';
+      if (boostTime > 0) label = '\u{1F525} Zoom!';
+      else if (boostCool > 0) label = '\u{1F680} ' + Math.ceil(boostCool / 60) + 's';
+      const off = !running || boostTime > 0 || boostCool > 0;
+      if (force || label !== boostLabel || boostBtn.disabled !== off) {
+        boostLabel = label;
+        boostBtn.textContent = label;
+        boostBtn.disabled = off;
+      }
+    }
+
+    function useBoost() {
+      unlockAudio();
+      if (!started || gameOver || boostTime > 0 || boostCool > 0) return;
+      boostTime = boostDuration;
+      boostCool = boostCooldown;
+      playBoost();
+      updateBoostBtn();
+    }
+    boostBtn.addEventListener('click', useBoost);
+
+    // ---------- the world ----------
+    function levelFor(s) {
+      return Math.floor(s / pointsPerLevel) + 1;
+    }
+
+    // Steady within a level, a little faster each level up.
+    function baseSpeed() {
+      return Math.min(16, 4.4 + (level - 1) * 1.4) * (easy ? 0.75 : 1);
+    }
+
+    function worldSpeed() {
+      return baseSpeed() * (boostTime > 0 ? boostSpeed : 1);
+    }
+
+    // Fluffy clouds drifting in the background, purely for looks — the
+    // plane can fly straight through them, they're not obstacles.
+    let clouds = [];
+
+    function spawnBackgroundClouds() {
+      clouds = [];
+      for (let i = 0; i < 6; i++) {
+        clouds.push({
+          x: Math.random() * W,
+          y: 40 + Math.random() * (H - 200),
+          scale: 0.6 + Math.random() * 0.8,
+        });
+      }
+    }
+
+    function drawCloud(x, y, scale) {
+      ctx.beginPath();
+      ctx.arc(x, y, 18 * scale, 0, Math.PI * 2);
+      ctx.arc(x + 20 * scale, y - 8 * scale, 22 * scale, 0, Math.PI * 2);
+      ctx.arc(x + 42 * scale, y, 18 * scale, 0, Math.PI * 2);
+      ctx.arc(x + 20 * scale, y + 6 * scale, 20 * scale, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      // A soft outline so clouds don't vanish against a very light sky.
+      ctx.strokeStyle = 'rgba(120, 170, 200, 0.35)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // Clouds drift in the background right away, even before the first tap,
+    // so the start screen isn't empty.
+    spawnBackgroundClouds();
+
+    function spawnBar() {
+      // Each level has its own fixed gap size — a clear step down, not a slow crawl.
+      const gapHeight = Math.max(74, 190 - (level - 1) * 19) * (easy ? 1.25 : 1);
+      const gapY = deckH + 50 + Math.random() * (H - gapHeight - 120 - deckH);
+      const prev = bars[bars.length - 1];
+      // From level 2, some pairs of buildings are followed by extra room with
+      // another plane flying in the open air between them.
+      const jetNext = level >= 2 && Math.random() < (easy ? 0.2 : 0.4);
+      bars.push({ x: W, gapY, gapHeight, passed: false, id: barId++, jetNext });
+      if (prev && prev.jetNext) {
+        const c1 = prev.gapY + prev.gapHeight / 2;
+        const c2 = gapY + gapHeight / 2;
+        let y = (c1 + c2) / 2 + (Math.random() - 0.5) * 50;
+        if (Math.abs(y - c1) < 55) y = c1 + (y >= c1 ? 55 : -55); // never right where you just were
+        y = Math.max(deckH + 40, Math.min(H - 50, y));
+        const accents = ['#1f6fd6', '#2a9d8f', '#f4a261', '#8e44ad', '#e63946'];
+        jets.push({
+          x: W - jetSpacing / 2,
+          y,
+          baseY: y,
+          phase: Math.random() * 6,
+          vy: 0,
+          age: 0,
+          hw: 22,
+          hh: 9,
+          speedMul: easy ? 1.0 : 1.08,
+          accent: accents[Math.floor(Math.random() * accents.length)],
+          whooshed: false,
+        });
+      }
+    }
+
+    function resetGame() {
+      plane.y = H / 2;
+      targetY = plane.y;
+      bars = [];
+      jets = [];
+      score = 0;
+      level = 1;
+      levelFlash = 0;
+      boostTime = 0;
+      boostCool = 0;
+      scoreEl.textContent = 'Score: 0';
+      levelEl.textContent = 'Level 1';
+      gameOver = false;
+      started = true;
+      spawnBar();
+      spawnBackgroundClouds();
+      updateBoostBtn(true);
+    }
+
+    function startOrRestart() {
+      if (!started || gameOver) resetGame();
+    }
+
+    function pointerToY(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      return ((clientY - rect.top) / rect.height) * H;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      unlockAudio();
+      startOrRestart();
+      targetY = pointerToY(e.clientX, e.clientY);
+    });
+    canvas.addEventListener('mousemove', (e) => {
+      targetY = pointerToY(e.clientX, e.clientY);
+    });
+    canvas.addEventListener(
+      'touchstart',
+      (e) => {
+        unlockAudio();
+        startOrRestart();
+        targetY = pointerToY(e.touches[0].clientX, e.touches[0].clientY);
+      },
+      { passive: true }
+    );
+    canvas.addEventListener(
+      'touchmove',
+      (e) => {
+        targetY = pointerToY(e.touches[0].clientX, e.touches[0].clientY);
+      },
+      { passive: true }
+    );
+
+    window.addEventListener('keydown', (e) => {
+      unlockAudio();
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
+      if (e.code === 'KeyB' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') useBoost();
+      if (e.code === 'Space') {
+        e.preventDefault();
+        startOrRestart();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
+    });
+
+    function update() {
+      const now = performance.now();
+      let step = lastTime === null ? 1 : (now - lastTime) / (1000 / 60);
+      lastTime = now;
+      step = Math.min(Math.max(step, 0.2), 3); // same speed on 60Hz and 120Hz screens
+      frame += step;
+
+      const running = started && !gameOver;
+      skylineScroll += (running ? worldSpeed() : 1.2) * step;
+
+      // Clouds drift in the background even on the start / game-over screens.
+      clouds.forEach((cloud) => {
+        cloud.x -= 0.5 * step;
+        if (cloud.x < -60) {
+          cloud.x = W + 60;
+          cloud.y = 40 + Math.random() * (H - 200);
+        }
+      });
+
+      if (!running) {
+        humIn -= step;
+        if (humIn <= 0) {
+          updateHum(false, 0);
+          humIn = 10;
+        }
+        return;
+      }
+
+      humIn -= step;
+      if (humIn <= 0) {
+        updateHum(true, worldSpeed());
+        humIn = 8;
+      }
+
+      if (keys.up) targetY -= moveSpeed * step;
+      if (keys.down) targetY += moveSpeed * step;
+      targetY = Math.max(deckH + 8, Math.min(H - 20, targetY));
+
+      plane.y += (targetY - plane.y) * (1 - Math.pow(1 - followSpeed, step));
+
+      const dist = worldSpeed() * step;
+      const slack = easy ? 4 : 0; // easy mode forgives near misses
+      const hit = planeHit - slack;
+
+      bars.forEach((bar) => {
+        bar.x -= dist;
+
+        if (
+          plane.x + hit > bar.x &&
+          plane.x - hit < bar.x + buildingW &&
+          (plane.y - hit < bar.gapY || plane.y + hit > bar.gapY + bar.gapHeight)
+        ) {
+          endGame();
+        }
+
+        if (!bar.passed && bar.x + buildingW < plane.x) {
+          bar.passed = true;
+          score += boostTime > 0 ? 2 : 1; // double points while boosting
+          scoreEl.textContent = 'Score: ' + score;
+
+          const newLevel = levelFor(score);
+          if (newLevel > level) {
+            level = newLevel;
+            levelEl.textContent = 'Level ' + level;
+            levelFlash = 90; // ~1.5s at 60fps
+            playDing();
+          }
+        }
+      });
+
+      jets.forEach((j) => {
+        j.x -= dist * j.speedMul;
+        j.phase += 0.05 * step;
+        j.age += step;
+        const ny = j.baseY + Math.sin(j.phase) * 14;
+        j.vy = (ny - j.y) / Math.max(step, 0.2);
+        j.y = ny;
+        if (
+          Math.abs(plane.x - j.x) < hit + j.hw - 4 - slack &&
+          Math.abs(plane.y - j.y) < hit + j.hh - 3 - slack
+        ) {
+          endGame();
+        }
+        if (!j.whooshed && j.x < plane.x + 60) {
+          j.whooshed = true;
+          if (Math.abs(plane.y - j.y) < 90) playPassBy();
+        }
+      });
+
+      bars = bars.filter((bar) => bar.x > -buildingW - 10);
+      jets = jets.filter((j) => j.x > -80);
+
+      const lastBar = bars[bars.length - 1];
+      if (!lastBar || lastBar.x < W - (lastBar.jetNext ? jetSpacing : barSpacing)) {
         spawnBar();
-        spawnBackgroundClouds();
-        levelEl.textContent = 'Level: 1';
       }
 
-      function pointerToY(clientX, clientY) {
-        const rect = canvas.getBoundingClientRect();
-        return ((clientY - rect.top) / rect.height) * canvas.height;
+      if (boostTime > 0) boostTime = Math.max(0, boostTime - step);
+      else boostCool = Math.max(0, boostCool - step);
+      updateBoostBtn();
+
+      levelFlash = Math.max(0, levelFlash - step);
+    }
+
+    function endGame() {
+      if (gameOver) return;
+      gameOver = true;
+      boostTime = 0;
+      playCrash();
+      updateHum(false, 0);
+      updateBoostBtn();
+      if (score > best) {
+        best = score;
+        if (easy) bestEasy = best;
+        else bestNormal = best;
+        bestEl.textContent = 'Best: ' + best;
+        try {
+          localStorage.setItem(easy ? 'planeDodgeBestEasy' : 'planeDodgeBest', String(best));
+        } catch (e) {}
       }
+    }
 
-      canvas.addEventListener('mousedown', () => {
-        if (gameOver) resetGame();
-      });
-      canvas.addEventListener('mousemove', (e) => {
-        targetY = pointerToY(e.clientX, e.clientY);
-      });
-      canvas.addEventListener(
-        'touchstart',
-        (e) => {
-          if (gameOver) resetGame();
-          targetY = pointerToY(e.touches[0].clientX, e.touches[0].clientY);
-        },
-        { passive: true }
-      );
-      canvas.addEventListener(
-        'touchmove',
-        (e) => {
-          targetY = pointerToY(e.touches[0].clientX, e.touches[0].clientY);
-        },
-        { passive: true }
-      );
+    // ---------- drawing the city ----------
+    const palette = ['#7b8fa3', '#8a9aa8', '#6e8397', '#9a8f87', '#7d8f8a', '#8b86a0'];
+    const hash = (a, b) => (Math.imul(a + 7919, 73856093) ^ Math.imul(b + 104729, 19349663)) >>> 0;
 
-      window.addEventListener('keydown', (e) => {
-        if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
-        if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
-        if (e.code === 'Space' && gameOver) resetGame();
-      });
-      window.addEventListener('keyup', (e) => {
-        if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
-        if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
-      });
-
-      function update() {
-        if (gameOver) return;
-
-        // Arrow keys nudge the target directly; otherwise the plane
-        // smoothly glides toward wherever the pointer last was.
-        if (keys.up) targetY -= moveSpeed;
-        if (keys.down) targetY += moveSpeed;
-        targetY = Math.max(20, Math.min(canvas.height - 20, targetY));
-
-        plane.y += (targetY - plane.y) * followSpeed;
-
-        clouds.forEach((cloud) => {
-          cloud.x -= 0.5; // slower than the bars, so it feels far away
-          if (cloud.x < -60) {
-            cloud.x = canvas.width + 60;
-            cloud.y = 40 + Math.random() * (canvas.height - 80);
-          }
-        });
-
-        bars.forEach((bar) => {
-          bar.x -= barSpeed();
-
-          if (
-            plane.x + planeHit > bar.x &&
-            plane.x - planeHit < bar.x + 40 &&
-            (plane.y - planeHit < bar.gapY || plane.y + planeHit > bar.gapY + bar.gapHeight)
-          ) {
-            gameOver = true;
-          }
-
-          if (!bar.passed && bar.x + 40 < plane.x) {
-            bar.passed = true;
-            score++;
-
-            const newLevel = levelFor(score);
-            if (newLevel > level) {
-              level = newLevel;
-              levelEl.textContent = 'Level: ' + level;
-              levelFlash = 90; // ~1.5s at 60fps
-            }
-          }
-        });
-
-        bars = bars.filter((bar) => bar.x > -50);
-
-        if (bars.length === 0 || bars[bars.length - 1].x < canvas.width - 260) {
-          spawnBar();
-        }
-
-        if (levelFlash > 0) levelFlash--;
-
-        scoreEl.textContent = 'Score: ' + score;
+    // far-away towers drifting past at the bottom, in two layers
+    function drawSkyline(scroll, width, minH, maxH, colour, seed) {
+      const idx = Math.floor(scroll / width);
+      const off = scroll % width;
+      ctx.fillStyle = colour;
+      for (let i = -1; i < W / width + 2; i++) {
+        const g = idx + i;
+        const h = minH + (hash(g, seed) % (maxH - minH));
+        const x = i * width - off;
+        ctx.fillRect(x, H - h, width - 4, h);
+        if (hash(g, seed + 1) % 3 === 0) ctx.fillRect(x + width / 2 - 3, H - h - 14, 3, 14); // antenna
       }
+    }
 
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        clouds.forEach((cloud) => drawCloud(cloud.x, cloud.y, cloud.scale));
-
-        ctx.fillStyle = '#ffffff';
-        bars.forEach((bar) => {
-          ctx.fillRect(bar.x, 0, 40, bar.gapY);
-          ctx.fillRect(bar.x, bar.gapY + bar.gapHeight, 40, canvas.height);
-        });
-
-        ctx.save();
-        ctx.translate(plane.x, plane.y);
-        drawPlane();
-        ctx.restore();
-
-        if (levelFlash > 0) {
-          const alpha = Math.min(1, levelFlash / 20);
-          ctx.fillStyle = `rgba(255, 196, 0, ${alpha})`;
-          ctx.font = 'bold 40px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('Level ' + level + '!', canvas.width / 2, 80);
-        }
-
-        if (gameOver) {
-          ctx.fillStyle = 'rgba(0,0,0,0.5)';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = 'white';
-          ctx.font = '28px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('Game Over!', canvas.width / 2, canvas.height / 2 - 20);
-          ctx.font = '18px sans-serif';
-          ctx.fillText('Click or tap to try again', canvas.width / 2, canvas.height / 2 + 20);
+    function drawBuilding(x, y, w, h, hang, id) {
+      if (h <= 0) return;
+      const base = palette[id % palette.length];
+      ctx.fillStyle = base;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.fillRect(x + w - 8, y, 8, h); // shaded side
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.fillRect(x, y, 3, h); // lit edge
+      // windows
+      for (let wy = y + 8; wy < y + h - 12; wy += 16) {
+        for (let c = 0; c < 3; c++) {
+          const lit = hash(id * 31 + c, Math.floor(wy)) % 3 !== 0;
+          ctx.fillStyle = lit ? '#ffe9a6' : 'rgba(40, 55, 75, 0.6)';
+          ctx.fillRect(x + 7 + c * 13, wy, 8, 9);
         }
       }
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      // spire: an antenna on the ground ones, a point on the hanging ones
+      ctx.fillStyle = '#5a6672';
+      if (hang) {
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2 - 7, y + h);
+        ctx.lineTo(x + w / 2 + 7, y + h);
+        ctx.lineTo(x + w / 2, y + h + 14);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.fillRect(x + w / 2 - 1, y - 14, 2, 14);
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y - 15, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = Math.floor(frame / 30) % 2 ? '#ff4d4d' : '#7a2a2a';
+        ctx.fill();
+      }
+    }
 
-      function loop() {
-        update();
-        draw();
-        requestAnimationFrame(loop);
+    function drawCityLayers() {
+      const cs = getComputedStyle(document.documentElement);
+      drawSkyline(skylineScroll * 0.25, 46, 50, 140, cs.getPropertyValue('--skyline-far').trim() || 'rgba(130,160,185,0.35)', 3);
+      drawSkyline(skylineScroll * 0.5, 62, 40, 105, cs.getPropertyValue('--skyline-near').trim() || 'rgba(105,135,165,0.5)', 11);
+      ctx.fillStyle = cs.getPropertyValue('--ground').trim() || '#6f8192';
+      ctx.fillRect(0, H - 6, W, 6);
+    }
+
+    // the floating city we fly under: its underside runs along the top
+    function drawDeck() {
+      ctx.fillStyle = '#7c8a98';
+      ctx.fillRect(0, 0, W, deckH);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+      ctx.fillRect(0, deckH - 3, W, 3);
+      const off = skylineScroll % 40;
+      for (let x = -off; x < W; x += 40) {
+        ctx.fillStyle = '#ffe9a6';
+        ctx.fillRect(x + 12, deckH - 6, 4, 4);
+        ctx.fillStyle = 'rgba(255, 233, 166, 0.25)';
+        ctx.fillRect(x + 9, deckH - 3, 10, 3);
+      }
+    }
+
+    function drawFlame() {
+      if (boostTime <= 0) return;
+      // speed lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 9; i++) {
+        const y = 30 + ((i * 67) % (H - 60));
+        const x = W - (((i * 113 + frame * 30) % (W + 120)) - 40);
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + 40, y);
+        ctx.stroke();
+      }
+      // flame out of the back
+      const len = 22 + Math.random() * 12;
+      ctx.fillStyle = 'rgba(255, 140, 30, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(plane.x - 34, plane.y - 6);
+      ctx.lineTo(plane.x - 34, plane.y + 6);
+      ctx.lineTo(plane.x - 34 - len, plane.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 235, 120, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(plane.x - 34, plane.y - 3);
+      ctx.lineTo(plane.x - 34, plane.y + 3);
+      ctx.lineTo(plane.x - 34 - len * 0.55, plane.y);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      clouds.forEach((cloud) => drawCloud(cloud.x, cloud.y, cloud.scale));
+      drawCityLayers();
+
+      bars.forEach((bar) => {
+        drawBuilding(bar.x, deckH, buildingW, bar.gapY - deckH, true, bar.id * 2);
+        drawBuilding(bar.x, bar.gapY + bar.gapHeight, buildingW, H - 6 - (bar.gapY + bar.gapHeight), false, bar.id * 2 + 1);
+      });
+      drawDeck();
+
+      jets.forEach(drawJet);
+
+      drawFlame();
+      ctx.save();
+      ctx.translate(plane.x, plane.y);
+      const angle = Math.max(-0.4, Math.min(0.4, (targetY - plane.y) / 60));
+      ctx.rotate(angle);
+      drawPlane();
+      ctx.restore();
+
+      const dim = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--dim')) || 0;
+      if (dim > 0) {
+        ctx.fillStyle = 'rgba(5, 12, 28, ' + dim + ')';
+        ctx.fillRect(0, 0, W, H);
       }
 
-      resetGame();
+      if (levelFlash > 0 && started && !gameOver) {
+        const alpha = Math.min(1, levelFlash / 20);
+        ctx.fillStyle = `rgba(255, 196, 0, ${alpha})`;
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level ' + level + '!', W / 2, 70);
+      }
+
+      if (!started) {
+        drawOverlay('Tap to start', 'Dodge the buildings and other planes!');
+      } else if (gameOver) {
+        drawOverlay('Game Over!', 'Tap to try again • Score: ' + score);
+      }
+    }
+
+    function drawOverlay(title, subtitle) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'white';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 30px sans-serif';
+      ctx.fillText(title, W / 2, H / 2 - 16);
+      ctx.font = '18px sans-serif';
+      ctx.fillText(subtitle, W / 2, H / 2 + 20);
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function boot(data) {
+      if (data) {
+        const n = Math.max(data.bestNormal || 0, data.best || 0);
+        if (n > bestNormal) bestNormal = n;
+        if ((data.bestEasy || 0) > bestEasy) bestEasy = data.bestEasy;
+        best = easy ? bestEasy : bestNormal;
+        bestEl.textContent = 'Best: ' + best;
+      }
+      draw();
       loop();
-    </script>
+    }
+
+    applyMode();
+    updateBoostBtn(true);
+
+    if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
+      window.claude.hot.snapshot(() => ({ bestNormal, bestEasy }));
+    }
+
+    if (window.claude && window.claude.hot && window.claude.hot.ready) {
+      window.claude.hot.ready(boot);
+    } else {
+      boot(window.claude && window.claude.hot ? window.claude.hot.data : null);
+    }
+  })();
+</script>
   </body>
 </html>
