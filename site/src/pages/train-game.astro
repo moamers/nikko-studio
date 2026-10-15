@@ -12,7 +12,8 @@
     --card: #ffffff;
     --ink: #1a2a33;
     --ink-soft: #4a6572;
-    --land: #6fbf73;
+    --land: #a9b0b7;
+    --city-dim: 0;
     --bed: #b8a88a;
     --water: #4aa3d8;
     --accent: #e4572e;
@@ -23,7 +24,8 @@
       --card: #16262f;
       --ink: #eaf4f8;
       --ink-soft: #9fb6c0;
-      --land: #2f6b3a;
+      --land: #3b434b;
+      --city-dim: 0.38;
       --bed: #7d7360;
       --water: #2a6a99;
       --accent: #ff8a6a;
@@ -35,7 +37,8 @@
     --card: #16262f;
     --ink: #eaf4f8;
     --ink-soft: #9fb6c0;
-    --land: #2f6b3a;
+    --land: #3b434b;
+    --city-dim: 0.38;
     --bed: #7d7360;
     --water: #2a6a99;
     --accent: #ff8a6a;
@@ -991,29 +994,146 @@
 
     // ---------- drawing ----------
 
+    // The city rolling past: rooftops and parks beside the tracks, and a street
+    // every now and then that the railway crosses over.
+    const roofColours = ['#c1ad95', '#9db4c9', '#cdbfa8', '#a4aeb8', '#d1a58b', '#93ab9f', '#bdbdbd', '#d8c9aa', '#b49bbf'];
+    const cityColumns = [[0, 50], [110, 170], [230, 290], [350, 400]];
+    const cityHash = (a, b) => (Math.imul(a + 7919, 73856093) ^ Math.imul(b + 104729, 19349663)) >>> 0;
+
+    function drawRoof(x, y, w, h, hv) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.fillRect(x + 4, y + 4, w, h); // shadow
+      ctx.fillStyle = roofColours[hv % roofColours.length];
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+      ctx.fillRect(x + 2, y + 2, w - 4, 3); // sunny edge
+      const kind = (hv >>> 4) % 6;
+      if (kind === 0) {
+        // air-con boxes
+        ctx.fillStyle = '#7e868e';
+        ctx.fillRect(x + 6, y + 8, 12, 9);
+        ctx.fillRect(x + w - 18, y + h - 17, 12, 9);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(x + 8, y + 10, 8, 5);
+      } else if (kind === 1 && w >= 50) {
+        // helipad
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) * 0.32, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('H', x + w / 2, y + h / 2 + 5);
+      } else if (kind === 2) {
+        // skylight
+        ctx.fillStyle = 'rgba(190, 230, 255, 0.7)';
+        ctx.fillRect(x + w / 2 - 9, y + h / 2 - 7, 18, 14);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + w / 2 - 9, y + h / 2 - 7, 18, 14);
+      } else if (kind === 3) {
+        // water tank
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y + h / 2, 9, 0, Math.PI * 2);
+        ctx.fillStyle = '#8d6e50';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(x + w / 2 - 2, y + h / 2 - 2, 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fill();
+      }
+    }
+
+    function drawPark(x, y, w, h, hv) {
+      ctx.fillStyle = '#6fbf73';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      for (let i = 0; i < 3; i++) {
+        const tx = x + 10 + ((hv >>> (i * 3)) % Math.max(10, w - 20));
+        const ty = y + 12 + ((hv >>> (i * 3 + 1)) % Math.max(10, h - 24));
+        ctx.beginPath();
+        ctx.arc(tx, ty, 9, 0, Math.PI * 2);
+        ctx.fillStyle = '#2f8a46';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(tx - 2, ty - 2, 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.fill();
+      }
+    }
+
+    function drawCity() {
+      const period = 96;
+      const idx = Math.floor(scrollTotal / period);
+      const base = scrollTotal % period;
+      cityColumns.forEach(([x0, x1], c) => {
+        for (let r = -1; r < H / period + 1; r++) {
+          const g = idx - r;
+          const hv = cityHash(g, c);
+          const gap = 6 + (hv % 9);
+          const h = 56 + ((hv >>> 8) % 26);
+          const y = r * period + base + (period - h) / 2 - gap / 2;
+          const inset = (hv >>> 12) % 4;
+          const x = x0 + 2 + inset;
+          const w = x1 - x0 - 4 - inset - ((hv >>> 14) % 3);
+          if ((hv >>> 3) % 7 === 0) drawPark(x - 1, y, w + 2, h, hv);
+          else drawRoof(x, y, w, h, hv >>> 2);
+        }
+      });
+      // streets crossing under the railway
+      const ev = eventInfo();
+      const spacing = 620;
+      const sIdx = Math.floor(scrollTotal / spacing);
+      const sBase = scrollTotal % spacing;
+      for (let k = -1; k < H / spacing + 1; k++) {
+        const sy = k * spacing + sBase + 120;
+        if (sy > ev.top - 40 && sy < ev.top + ev.len + 40) continue; // not over a station, tunnel or river
+        const g = sIdx - k;
+        ctx.fillStyle = '#585e66';
+        ctx.fillRect(0, sy - 20, W, 40);
+        ctx.fillStyle = '#c9ccd1';
+        ctx.fillRect(0, sy - 23, W, 3);
+        ctx.fillRect(0, sy + 20, W, 3);
+        ctx.fillStyle = 'rgba(255, 220, 90, 0.85)';
+        for (let dx = -((scrollTotal * 0) % 28); dx < W; dx += 28) ctx.fillRect(dx, sy - 1, 14, 2);
+        // a few cars driving along the street
+        for (let i = 0; i < 3; i++) {
+          const dir = i % 2 ? -1 : 1;
+          const speed = 0.9 + ((cityHash(g, i + 9) % 8) / 8) * 1.4;
+          const span = W + 80;
+          let cx = (cityHash(g, i) % span) + dir * frame * speed;
+          cx = ((cx % span) + span) % span - 40;
+          const cy = sy + (dir > 0 ? 8 : -8);
+          const col = roofColours[(cityHash(g, i + 3) % roofColours.length)];
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+          ctx.fillRect(cx - 10, cy - 4, 22, 10);
+          ctx.fillStyle = col;
+          roundedRect(cx - 11, cy - 6, 22, 11, 3);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(30, 40, 55, 0.75)';
+          ctx.fillRect(cx - dir * 1 - 3, cy - 4, 7, 7);
+        }
+      }
+    }
+
     function drawScenery() {
       const land = getComputedStyle(document.documentElement).getPropertyValue('--land').trim() || '#6fbf73';
       const bed = getComputedStyle(document.documentElement).getPropertyValue('--bed').trim() || '#b8a88a';
       ctx.fillStyle = land;
       ctx.fillRect(0, 0, W, H);
 
-      // trees and bushes drifting past
-      const idx = Math.floor(scrollTotal / 90);
-      const base = scrollTotal % 90;
-      const treeXs = [22, 140, 260, 378];
-      for (let r = -1; r < H / 90 + 1; r++) {
-        const y = r * 90 + base;
-        const g = idx - r;
-        const x = treeXs[((g * 7) % 4 + 4) % 4];
-        const size = 11 + (((g * 13) % 5) + 5) % 5 * 2;
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(30, 90, 45, 0.85)';
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(x - size * 0.25, y - size * 0.25, size * 0.45, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
-        ctx.fill();
+      drawCity();
+      const dim = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--city-dim')) || 0;
+      if (dim > 0) {
+        ctx.fillStyle = 'rgba(6, 12, 26, ' + dim + ')';
+        ctx.fillRect(0, 0, W, H);
       }
 
       drawBridgeWater();
