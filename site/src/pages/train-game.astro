@@ -135,6 +135,12 @@
     color: var(--accent);
   }
 
+  .controls button[aria-pressed="true"] {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--bg);
+  }
+
   .controls button:active {
     transform: scale(0.96);
   }
@@ -155,6 +161,8 @@
     <canvas id="game" width="400" height="600" aria-label="Train dodge game"></canvas>
   </div>
   <div class="controls">
+    <button type="button" id="easyBtn">&#128034; Easy</button>
+    <button type="button" id="normalBtn">&#127918; Normal</button>
     <button type="button" id="whistleBtn">&#128226; Horn</button>
     <button type="button" id="boostBtn">&#128640; Boost</button>
     <button type="button" id="nightBtn">&#127769; Night</button>
@@ -196,18 +204,21 @@
     let score = 0;
     let level = 1;
     let levelFlash = 0;
-    let best = 0;
+    let best = 0; // best score for the mode you are playing
+    let bestNormal = 0;
+    let bestEasy = 0;
+    let easy = false; // easy mode: a calmer, slower game
     let started = false;
     let gameOver = false;
     let coinSpawnIn = 90;
     let boostTime = 0; // frames of boost left
     let boostCool = 0; // frames until the boost is ready again
     const boostDuration = 120; // 2 seconds
-    const boostCooldown = 420; // 7 seconds
+    let boostCooldown = 420; // 7 seconds (shorter in easy mode)
     const boostSpeed = 1.6;
     let shieldTime = 0; // frames of shield left
     let shieldSpawnIn = 1100;
-    const shieldDuration = 720; // about 12 seconds
+    let shieldDuration = 720; // about 12 seconds (longer in easy mode)
     let lastSpawnY = 0;
     let scrollTotal = 0;
     let smokeIn = 0;
@@ -239,8 +250,11 @@
     let crashT = 0;
 
     try {
-      best = Number(localStorage.getItem('trainDodgeBest') || 0);
+      bestNormal = Number(localStorage.getItem('trainDodgeBest') || 0);
+      bestEasy = Number(localStorage.getItem('trainDodgeBestEasy') || 0);
+      easy = localStorage.getItem('trainEasy') === '1';
     } catch (e) {}
+    best = easy ? bestEasy : bestNormal;
     bestEl.textContent = 'Best: ' + best;
 
     // ---------- sound (made with Web Audio, no files needed) ----------
@@ -561,24 +575,55 @@
     boostBtn.addEventListener('click', useBoost);
     updateBoostBtn(true);
 
+    // ---------- easy mode / normal mode ----------
+    const easyBtn = document.getElementById('easyBtn');
+    const normalBtn = document.getElementById('normalBtn');
+    function applyMode() {
+      easyBtn.setAttribute('aria-pressed', easy ? 'true' : 'false');
+      normalBtn.setAttribute('aria-pressed', easy ? 'false' : 'true');
+      shieldDuration = easy ? 1080 : 720;
+      boostCooldown = easy ? 300 : 420;
+      best = easy ? bestEasy : bestNormal;
+      bestEl.textContent = 'Best: ' + best;
+    }
+    function setMode(wantEasy) {
+      if (easy === wantEasy) return;
+      easy = wantEasy;
+      try {
+        localStorage.setItem('trainEasy', easy ? '1' : '0');
+      } catch (e) {}
+      applyMode();
+      if (started) {
+        // switching in the middle of a game: go back to the start screen
+        resetGame();
+        started = false;
+        obstacles = [];
+        coins = [];
+        updateBoostBtn(true);
+      }
+    }
+    easyBtn.addEventListener('click', () => setMode(true));
+    normalBtn.addEventListener('click', () => setMode(false));
+    applyMode();
+
     function levelFor(s) {
       return Math.floor(s / pointsPerLevel) + 1;
     }
 
     // Starts gentle at level 1 and steps up each level.
     function worldSpeed() {
-      return Math.min(11.5, 3.3 + (level - 1) * 0.9);
+      return Math.min(11.5, 3.3 + (level - 1) * 0.9) * (easy ? 0.7 : 1);
     }
 
     function spawnGap() {
-      return Math.max(145, 280 - (level - 1) * 13);
+      return Math.max(145, 280 - (level - 1) * 13) * (easy ? 1.3 : 1);
     }
 
     // A cow or a sheep wanders across the tracks from one side.
     function spawnAnimal() {
       const dir = Math.random() < 0.5 ? 1 : -1;
       const cow = Math.random() < 0.5;
-      const vx = dir * Math.min(4.2, 2.5 + level * 0.12);
+      const vx = dir * Math.min(4.2, 2.5 + level * 0.12) * (easy ? 0.7 : 1);
       obstacles.push({
         kind: 'animal',
         animal: cow ? 'cow' : 'sheep',
@@ -599,18 +644,18 @@
     }
 
     function spawnRow() {
-      if (level >= 2 && Math.random() < 0.14) {
+      if (level >= 2 && Math.random() < (easy ? 0.07 : 0.14)) {
         spawnAnimal();
         return;
       }
       const lanes = [0, 1, 2].sort(() => Math.random() - 0.5);
-      const blocked = level >= 4 && Math.random() < 0.3 ? 2 : 1; // never all three
+      const blocked = !easy && level >= 4 && Math.random() < 0.3 ? 2 : 1; // never all three
       for (let i = 0; i < blocked; i++) {
         const l = lanes[i];
         const roll = Math.random();
         const x = laneX[l];
         if (level >= 2 && blocked === 1 && roll < 0.3) {
-          obstacles.push({ kind: 'train', lane: l, x, y: -90, hw: 15, hh: 48, speedMul: 1.35, passed: false });
+          obstacles.push({ kind: 'train', lane: l, x, y: -90, hw: 15, hh: 48, speedMul: easy ? 1.15 : 1.35, passed: false });
         } else if (roll < 0.65) {
           obstacles.push({ kind: 'rock', lane: l, x, y: -40, hw: 17, hh: 15, seed: Math.random() * 10, speedMul: 1, passed: false });
         } else {
@@ -684,9 +729,11 @@
       gameOver = true;
       if (score > best) {
         best = score;
+        if (easy) bestEasy = best;
+        else bestNormal = best;
         bestEl.textContent = 'Best: ' + best;
         try {
-          localStorage.setItem('trainDodgeBest', String(best));
+          localStorage.setItem(easy ? 'trainDodgeBestEasy' : 'trainDodgeBest', String(best));
         } catch (e) {}
       }
     }
@@ -763,7 +810,7 @@
         flashAgain -= step;
         if (flashAgain <= 0) flash = 0.75;
       }
-      if (rainAmt > 0.8) {
+      if (rainAmt > 0.8 && !easy) {
         lightningIn -= step;
         if (lightningIn <= 0) {
           strikeLightning();
@@ -862,7 +909,7 @@
         if (!o.ignore && !o.dead) {
           for (let i = 0; i < cars.length; i++) {
             const c = cars[i];
-            if (Math.abs(c.x - o.x) < c.hw + o.hw - 4 && Math.abs(carY(i) - o.y) < c.hh + o.hh - 4) {
+            if (Math.abs(c.x - o.x) < c.hw + o.hw - (easy ? 7 : 4) && Math.abs(carY(i) - o.y) < c.hh + o.hh - (easy ? 7 : 4)) {
               hit = true;
               break;
             }
@@ -936,7 +983,7 @@
       shieldTime = Math.max(0, shieldTime - step);
       shieldSpawnIn -= step;
       if (shieldSpawnIn <= 0) {
-        shieldSpawnIn = spawnShield() ? 1500 + Math.random() * 900 : 10;
+        shieldSpawnIn = spawnShield() ? (1500 + Math.random() * 900) * (easy ? 0.6 : 1) : 10;
       }
 
       levelFlash = Math.max(0, levelFlash - step);
@@ -1730,8 +1777,11 @@
     }
 
     function boot(data) {
-      if (data && typeof data.best === 'number' && data.best > best) {
-        best = data.best;
+      if (data) {
+        const n = Math.max(data.bestNormal || 0, data.best || 0);
+        if (n > bestNormal) bestNormal = n;
+        if ((data.bestEasy || 0) > bestEasy) bestEasy = data.bestEasy;
+        best = easy ? bestEasy : bestNormal;
         bestEl.textContent = 'Best: ' + best;
       }
       draw();
@@ -1739,7 +1789,7 @@
     }
 
     if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
-      window.claude.hot.snapshot(() => ({ best }));
+      window.claude.hot.snapshot(() => ({ bestNormal, bestEasy }));
     }
 
     if (window.claude && window.claude.hot && window.claude.hot.ready) {
