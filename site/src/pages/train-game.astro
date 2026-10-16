@@ -162,7 +162,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union or BurJuman, and reach level 10 to finish the journey!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances \u2764\uFE0F\u2764\uFE0F before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union or BurJuman, and reach level 10 to finish the journey!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -320,6 +320,10 @@
     let lineStart = 0;
     let ridden = []; // the stations (positions on the current line) you have stopped at
     let changedHere = false; // you have already changed line at this stop
+    // Two chances: the first two bumps do not derail the train, the third does.
+    const maxChances = 2;
+    let chances = maxChances;
+    let hurtTime = 0; // after a bump the train cannot be hit again for a moment
     let mapOpen = false; // the metro line map; the game waits while it is open
     let lastStoppedK = -1; // the last station the train has stopped at
     let dwell = 0; // frames left standing at a station (doors open)
@@ -959,6 +963,8 @@
       recordThisRun = false;
       recordFlash = 0;
       newMedals = [];
+      chances = maxChances;
+      hurtTime = 0;
       terminusK = -1;
       won = false;
       finalFlash = 0;
@@ -1185,7 +1191,8 @@
       });
       boarding = boarding.filter((p) => !p.done);
       floaters.forEach((f) => (f.age += step));
-      floaters = floaters.filter((f) => f.age < 45);
+      floaters = floaters.filter((f) => f.age < (f.text && f.text.length > 4 ? 90 : 45));
+      hurtTime = Math.max(0, hurtTime - step);
 
       const kStop = nextStationK();
       const toStop = stationPassAt(kStop) - scrollTotal; // distance to where we stop
@@ -1382,7 +1389,7 @@
           o.lane = o.x < 140 ? 0 : o.x < 260 ? 1 : 2;
         }
         let hit = false;
-        if (!o.ignore && !o.dead) {
+        if (!o.ignore && !o.dead && hurtTime <= 0) {
           for (let i = 0; i < cars.length; i++) {
             const c = cars[i];
             if (Math.abs(c.x - o.x) < c.hw + o.hw - (easy ? 7 : 4) && Math.abs(carY(i) - o.y) < c.hh + o.hh - (easy ? 7 : 4)) {
@@ -1401,6 +1408,21 @@
             tone('sine', 900, 300, 0.3, 0.12);
             if (o.kind === 'animal') {
               o.ignore = true; // the animal gets a fright and runs off
+              o.vx = o.dir * 5;
+            } else {
+              o.dead = true;
+            }
+          } else if (chances > 0) {
+            // a bump, but you still have a chance left: no derailment
+            chances--;
+            hurtTime = 120; // about two seconds when nothing can hurt you
+            rings.push({ x: o.x, y: o.y, age: 0 });
+            rings.push({ x: o.x, y: o.y, age: 12 });
+            noiseBurst(500, 0.3, 0.3);
+            tone('sawtooth', 220, 90, 0.35, 0.1);
+            floaters.push({ x: cars[0].x, y: engineY - 30, age: 0, text: chances > 0 ? 'Ouch! 1 chance left' : 'Ouch! Last chance!' });
+            if (o.kind === 'animal') {
+              o.ignore = true; // the animal runs off
               o.vx = o.dir * 5;
             } else {
               o.dead = true;
@@ -2620,11 +2642,11 @@
 
     function drawFloaters() {
       floaters.forEach((f) => {
-        const a = 1 - f.age / 45;
-        ctx.fillStyle = 'rgba(255, 240, 120, ' + a + ')';
-        ctx.font = 'bold 16px sans-serif';
+        const a = 1 - f.age / (f.text && f.text.length > 4 ? 90 : 45);
+        ctx.fillStyle = f.text && f.text.length > 4 ? 'rgba(255, 110, 90, ' + a + ')' : 'rgba(255, 240, 120, ' + a + ')';
+        ctx.font = 'bold ' + (f.text && f.text.length > 4 ? 18 : 16) + 'px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(f.text || '+1', f.x, f.y - f.age * 0.6);
+        ctx.fillText(f.text || '+1', f.x, f.y - f.age * (f.text && f.text.length > 4 ? 0.3 : 0.6));
       });
     }
 
@@ -2639,6 +2661,34 @@
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
       ctx.fillText(label, 20, 55);
+    }
+
+    function drawChances() {
+      if (!started || gameOver) return;
+      const label = '\u2764\uFE0F'.repeat(chances) + '\u{1F90D}'.repeat(maxChances - chances);
+      ctx.font = '14px sans-serif';
+      const w = ctx.measureText(label).width + 20;
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.6)';
+      roundedRect(10, 68, w, 24, 12);
+      ctx.fill();
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, 20, 85);
+    }
+
+    function drawHurtGlow() {
+      if (hurtTime <= 0 || crashing) return;
+      const cx = (cars[0].x + cars[cars.length - 1].x) / 2;
+      const top = engineY - 30;
+      const bottom = carY(cars.length - 1) + 28;
+      const cy = (top + bottom) / 2;
+      const rx = 30 + Math.abs(cars[0].x - cars[cars.length - 1].x) / 2;
+      const a = 0.35 + 0.35 * Math.abs(Math.sin(frame * 0.25));
+      ctx.beginPath();
+      ctx.ellipse(cx, cy, rx, (bottom - top) / 2 + 4, 0, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 120, 80, ' + a + ')';
+      ctx.lineWidth = 4;
+      ctx.stroke();
     }
 
     function drawShieldHud() {
@@ -2900,6 +2950,7 @@
       });
       drawBoarding();
       drawTrain();
+      drawHurtGlow();
       drawFloaters();
       drawShieldBubble();
       drawBoostEffects();
@@ -2914,6 +2965,7 @@
       drawStorm();
       drawShieldHud();
       drawPassengerPill();
+      drawChances();
       drawSpeedometer();
       drawStationPanel();
       if (started && !gameOver && dwell > 0 && !changedHere && isInterchange(lastStoppedK)) {
