@@ -156,7 +156,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Listen for the station announcements.</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Listen for the station announcements in Arabic and English.</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -530,31 +530,60 @@
       } catch (e) {}
     }
 
-    function speak(text) {
+    // The voices come from the device, and can arrive a moment after the page loads.
+    let voicesCache = [];
+    function loadVoices() {
+      try {
+        if ('speechSynthesis' in window && window.speechSynthesis.getVoices) voicesCache = window.speechSynthesis.getVoices() || [];
+      } catch (e) {}
+    }
+    loadVoices();
+    try {
+      if ('speechSynthesis' in window) window.speechSynthesis.onvoiceschanged = loadVoices;
+    } catch (e) {}
+
+    // A calm, formal woman's voice if the device has one.
+    function pickVoice(lang) {
+      const mine = voicesCache.filter((v) => new RegExp('^' + lang, 'i').test(v.lang));
+      if (lang === 'en') {
+        const gb = mine.filter((v) => /^en[-_]GB/i.test(v.lang));
+        const woman = /female|serena|kate|fiona|hazel|sonia|libby|tessa|moira|karen|samantha|susan/i;
+        return gb.find((v) => woman.test(v.name)) || mine.find((v) => woman.test(v.name)) || gb[0] || mine[0] || null;
+      }
+      return mine.find((v) => /female|laila|leila|zeina|salma|hoda|noura|amira|mariam|maryam|google/i.test(v.name)) || mine[0] || null;
+    }
+
+    // parts: [{ text, lang: 'ar' | 'en' }], spoken one after the other, slowly
+    function speakParts(parts) {
       try {
         if (!soundOn || !('speechSynthesis' in window)) return;
         const synth = window.speechSynthesis;
+        loadVoices();
         synth.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        const voices = synth.getVoices ? synth.getVoices() : [];
-        const pick =
-          voices.find((v) => /^en[-_]GB/i.test(v.lang) && /female|google|serena|kate|martha|fiona/i.test(v.name)) ||
-          voices.find((v) => /^en[-_]GB/i.test(v.lang)) ||
-          voices.find((v) => /^en/i.test(v.lang));
-        if (pick) u.voice = pick;
-        u.lang = pick ? pick.lang : 'en-GB';
-        u.rate = 0.92;
-        u.pitch = 1.05;
-        u.volume = 0.9;
-        synth.speak(u);
+        parts.forEach((p) => {
+          const voice = pickVoice(p.lang);
+          if (p.lang === 'ar' && !voice) return; // no Arabic voice on this device: the panel still shows it
+          const u = new SpeechSynthesisUtterance(p.text);
+          if (voice) {
+            u.voice = voice;
+            u.lang = voice.lang;
+          } else {
+            u.lang = 'en-GB';
+          }
+          u.rate = p.lang === 'ar' ? 0.75 : 0.7; // unhurried, like the real announcements
+          u.pitch = 1;
+          u.volume = 0.9;
+          synth.speak(u);
+        });
       } catch (e) {}
     }
 
-    function announce(text) {
+    // A two-note chime, then the same message in Arabic and in English.
+    function announce(arabic, english) {
       tone('sine', 784, 784, 0.35, 0.09);
       tone('sine', 659, 659, 0.45, 0.09, 0.3);
       clearTimeout(speakTimer);
-      speakTimer = setTimeout(() => speak(text), 800);
+      speakTimer = setTimeout(() => speakParts([{ text: arabic, lang: 'ar' }, { text: english, lang: 'en' }]), 900);
     }
 
     function setSound(on) {
@@ -935,18 +964,21 @@
       {
         const k = nextStationK();
         const name = stationNames[k % stationNames.length];
+        const nameAr = stationNamesAr[k % stationNamesAr.length];
         const dist = stationPassAt(k) - scrollTotal;
+        const sayNext = () => announce('المحطة القادمة، ' + nameAr, 'The next station is ' + name + '.');
+        const sayArriving = () => announce('نصل الآن إلى محطة ' + nameAr, 'Arriving at ' + name + '.');
         if (k !== nextAnnouncedK) {
           nextAnnouncedK = k;
           if (dist < 1100) {
             arrivingAnnouncedK = k; // already close: go straight to "arriving"
-            announce('Arriving at ' + name + '. Please mind the gap.');
+            sayArriving();
           } else {
-            announce('The next station is ' + name + '.');
+            sayNext();
           }
         } else if (arrivingAnnouncedK !== k && dist < 1100) {
           arrivingAnnouncedK = k;
-          announce('Arriving at ' + name + '. Please mind the gap.');
+          sayArriving();
         }
       }
 
@@ -1323,6 +1355,7 @@
     // Every so often the line passes something special: a station, then a
     // tunnel, then a bridge over a river. One per slot, so they never overlap.
     const slotLength = 1500;
+    const stationNamesAr = ['برج خليفة', 'دبي مارينا', 'مول الإمارات', 'الخليج التجاري', 'الاتحاد', 'أبراج الإمارات', 'المركز المالي', 'برجمان', 'إكسبو 2020', 'الرقة'];
     const stationNames = ['Burj Khalifa', 'Dubai Marina', 'Mall of the Emirates', 'Business Bay', 'Union', 'Emirates Towers', 'Financial Centre', 'BurJuman', 'Expo 2020', 'Al Rigga'];
     const eventKinds = ['station', 'tunnel', 'bridge'];
     const eventLengths = { station: 300, tunnel: 440, bridge: 200 };
@@ -1342,7 +1375,7 @@
       const kind = eventKinds[n % 3];
       const len = eventLengths[kind];
       const top = (scrollTotal % slotLength) - len; // top edge on screen
-      return { n, kind, len, top, name: stationNames[Math.floor(n / 3) % stationNames.length] };
+      return { n, kind, len, top, name: stationNames[Math.floor(n / 3) % stationNames.length], nameAr: stationNamesAr[Math.floor(n / 3) % stationNamesAr.length] };
     }
     // the moment the engine reaches the thing (sign, tunnel mouth or river)
     function eventReach(ev) {
@@ -1350,7 +1383,7 @@
     }
     const stationInfo = () => {
       const ev = eventInfo();
-      return { top: ev.kind === 'station' ? ev.top : 9999, name: ev.name };
+      return { top: ev.kind === 'station' ? ev.top : 9999, name: ev.name, nameAr: ev.nameAr };
     };
     const stationLength = eventLengths.station;
 
@@ -1423,7 +1456,7 @@
       ctx.fillRect(0, y, W, 6);
       ctx.fillRect(6, y, 6, 20);
       ctx.fillRect(W - 12, y, 6, 20);
-      roundedRect(W / 2 - 105, y - 6, 210, 34, 8);
+      roundedRect(W / 2 - 105, y - 6, 210, 48, 8);
       ctx.fillStyle = '#c8102e';
       ctx.fill();
       ctx.strokeStyle = 'white';
@@ -1438,7 +1471,14 @@
         size--;
         ctx.font = 'bold ' + size + 'px sans-serif';
       }
-      ctx.fillText(label, W / 2, y + 11 + size / 2);
+      ctx.fillText(label, W / 2, y + 10 + size / 2);
+      let sizeAr = 15;
+      ctx.font = 'bold ' + sizeAr + 'px sans-serif';
+      while (sizeAr > 9 && ctx.measureText(st.nameAr).width > 190) {
+        sizeAr--;
+        ctx.font = 'bold ' + sizeAr + 'px sans-serif';
+      }
+      ctx.fillText(st.nameAr, W / 2, y + 36);
     }
 
     function drawBridgeWater() {
@@ -1884,25 +1924,33 @@
       ctx.arc(x + 10 + (w - 20) * frac, y + h - 5.5, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
+      const nameAr = stationNamesAr[k % stationNamesAr.length];
+      // small words on top: English on the left, Arabic on the right
       ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.font = 'bold 9px sans-serif';
-      ctx.fillText(arriving ? 'ARRIVING \u2022 MIND THE GAP' : 'NEXT STATION', x + 12, y + 13);
+      ctx.fillText((arriving ? 'ARRIVING' : 'NEXT STATION') + ' \u2022 ' + Math.round(dist / 5) + ' m', x + 12, y + 13);
+      ctx.textAlign = 'right';
+      ctx.font = '11px sans-serif';
+      ctx.fillText(arriving ? 'نصل الآن' : 'المحطة القادمة', x + w - 12, y + 13);
+      // the station's name in English and in Arabic
       ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
       let size = 17;
       ctx.font = 'bold ' + size + 'px sans-serif';
-      while (size > 11 && ctx.measureText(name).width > w - 120) {
+      while (size > 10 && ctx.measureText(name).width > w * 0.5) {
         size--;
         ctx.font = 'bold ' + size + 'px sans-serif';
       }
-      ctx.fillText(name, x + 12, y + 29);
-      // distance and the Arabic words for "next station", as on the real screens
+      ctx.fillText(name, x + 12, y + 30);
       ctx.textAlign = 'right';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText(Math.round(dist / 5) + ' m', x + w - 12, y + 29);
-      ctx.font = '11px sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.fillText('\u0627\u0644\u0645\u062D\u0637\u0629 \u0627\u0644\u062A\u0627\u0644\u064A\u0629', x + w - 12, y + 13);
+      size = 17;
+      ctx.font = 'bold ' + size + 'px sans-serif';
+      while (size > 10 && ctx.measureText(nameAr).width > w * 0.42) {
+        size--;
+        ctx.font = 'bold ' + size + 'px sans-serif';
+      }
+      ctx.fillText(nameAr, x + w - 12, y + 30);
     }
 
     function drawSpeedometer() {
