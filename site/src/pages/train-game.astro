@@ -156,7 +156,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Listen for the station announcements in Arabic and English.</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations and let the passengers hop on!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -270,6 +270,13 @@
     let whistledSlot = -1;
     let doorSide = 'right'; // which side the doors open on
     let doorK = 0; // which station the open doors belong to
+    // passengers: the ones waiting on the platform hop on while the train stands
+    let passengers = 0; // how many you have carried so far
+    let boarding = []; // passengers walking to the train right now
+    let floaters = []; // little "+1" signs
+    let boardedSlot = -1; // which station's platform has been emptied...
+    let boardedPlatformX = -1; // ...and which of its two platforms
+    const passengerColours = ['#2b7bd6', '#e8a33d', '#8e44ad', '#2a9d8f'];
     let mapOpen = false; // the metro line map; the game waits while it is open
     let lastStoppedK = -1; // the last station the train has stopped at
     let dwell = 0; // frames left standing at a station (doors open)
@@ -812,6 +819,11 @@
       whistledSlot = eventReach(ev0) >= engineY ? ev0.n : -1;
       nextAnnouncedK = -1;
       arrivingAnnouncedK = -1;
+      passengers = 0;
+      boarding = [];
+      floaters = [];
+      boardedSlot = -1;
+      boardedPlatformX = -1;
       lastStoppedK = -1;
       lastStoppedK = nextStationK() - 1; // do not stop at a station we are already past
       dwell = 0;
@@ -963,6 +975,34 @@
       }
 
       const running = started && !gameOver;
+      boarding.forEach((p) => {
+        if (p.done) return;
+        if (p.delay > 0) {
+          p.delay -= step;
+          return;
+        }
+        const dx = p.tx - p.x;
+        const dy = p.ty - p.y;
+        const d = Math.hypot(dx, dy);
+        p.hop += step * 0.5;
+        if (d < 3) {
+          // hopped on!
+          p.done = true;
+          passengers++;
+          score++;
+          scoreEl.textContent = 'Score: ' + score;
+          rings.push({ x: p.tx, y: p.ty, age: 26 });
+          floaters.push({ x: p.tx, y: p.ty - 10, age: 0 });
+          tone('sine', 700, 1000, 0.1, 0.08);
+        } else {
+          p.x += (dx / d) * Math.min(d, 1.9 * step);
+          p.y += (dy / d) * Math.min(d, 1.9 * step);
+        }
+      });
+      boarding = boarding.filter((p) => !p.done);
+      floaters.forEach((f) => (f.age += step));
+      floaters = floaters.filter((f) => f.age < 45);
+
       const kStop = nextStationK();
       const toStop = stationPassAt(kStop) - scrollTotal; // distance to where we stop
       let factor = 1;
@@ -1001,6 +1041,27 @@
         doorsClosingSaid = false;
         doorK = kStop;
         doorSide = lane === 0 ? 'right' : lane === 2 ? 'left' : kStop % 2 === 0 ? 'right' : 'left';
+        // the platform on the door side: its passengers hop on
+        const platX = doorSide === 'right' ? (lane === 0 ? 140 : 260) : lane === 2 ? 260 : 140;
+        const evNow = eventInfo();
+        boardedSlot = evNow.n;
+        boardedPlatformX = platX;
+        boarding = [];
+        const sx = doorSide === 'right' ? 1 : -1;
+        for (let i = 0; i < 5; i++) {
+          const px = platX - 16 + ((i * 11) % 32);
+          const py = evNow.top + 40 + i * 48 + (platX === 260 ? 18 : 0);
+          boarding.push({
+            x: px,
+            y: py,
+            colour: passengerColours[(i + (platX === 260 ? 2 : 0)) % 4],
+            delay: 40 + i * 26, // they queue up and board one after another
+            tx: cars[0].x + sx * 20,
+            ty: Math.max(carY(0) - 8, Math.min(carY(2) + 8, py)),
+            hop: Math.random() * 6,
+            done: false,
+          });
+        }
         noiseBurst(3500, 0.7, 0.09, 'highpass'); // the brakes hiss
         tone('sine', 880, 880, 0.25, 0.08, 0.5);
         announce(
@@ -1476,7 +1537,7 @@
     }
     const stationInfo = () => {
       const ev = eventInfo();
-      return { top: ev.kind === 'station' ? ev.top : 9999, name: ev.name, nameAr: ev.nameAr };
+      return { n: ev.n, top: ev.kind === 'station' ? ev.top : 9999, name: ev.name, nameAr: ev.nameAr };
     };
     const stationLength = eventLengths.station;
 
@@ -1497,8 +1558,9 @@
           ctx.fillRect(cx + 24, y, 3, 16);
         }
         // waiting passengers
-        const colours = ['#2b7bd6', '#e8a33d', '#8e44ad', '#2a9d8f'];
-        for (let i = 0; i < 5; i++) {
+        const colours = passengerColours;
+        const emptied = st.n === boardedSlot && cx === boardedPlatformX; // they have all gone on board
+        for (let i = 0; i < (emptied ? 0 : 5); i++) {
           const px = cx - 16 + ((i * 11) % 32);
           const py = st.top + 40 + i * 48 + (cx === 260 ? 18 : 0);
           ctx.beginPath();
@@ -2141,7 +2203,7 @@
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText('Stations stopped at: ' + stops + (lap > 1 ? '  \u2022  Lap ' + lap : ''), W / 2, y0 + h - 34);
+      ctx.fillText('Stations: ' + stops + '  \u2022  Passengers: ' + passengers + (lap > 1 ? '  \u2022  Lap ' + lap : ''), W / 2, y0 + h - 34);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.font = '12px sans-serif';
       ctx.fillText('Tap anywhere to carry on', W / 2, y0 + h - 14);
@@ -2247,6 +2309,45 @@
         ctx.fillStyle = 'rgba(235, 240, 255, ' + 0.5 * flash + ')';
         ctx.fillRect(0, 0, W, H);
       }
+    }
+
+    function drawPerson(x, y, colour, hop) {
+      const lift = Math.abs(Math.sin(hop)) * 3;
+      ctx.beginPath();
+      ctx.arc(x, y - lift, 5, 0, Math.PI * 2);
+      ctx.fillStyle = colour;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y - 7 - lift, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#f2c9a0';
+      ctx.fill();
+    }
+
+    function drawBoarding() {
+      boarding.forEach((p) => drawPerson(p.x, p.y, p.colour, p.delay > 0 ? 0 : p.hop));
+    }
+
+    function drawFloaters() {
+      floaters.forEach((f) => {
+        const a = 1 - f.age / 45;
+        ctx.fillStyle = 'rgba(255, 240, 120, ' + a + ')';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('+1', f.x, f.y - f.age * 0.6);
+      });
+    }
+
+    function drawPassengerPill() {
+      if (!started || gameOver) return;
+      const label = '\u{1F465} ' + passengers;
+      ctx.font = 'bold 14px sans-serif';
+      const w = ctx.measureText(label).width + 20;
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.6)';
+      roundedRect(10, 38, w, 24, 12);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.fillText(label, 20, 55);
     }
 
     function drawShieldHud() {
@@ -2379,7 +2480,9 @@
         else if (o.kind === 'barrier') drawBarrier(o);
         else if (o.kind === 'train') drawOncoming(o);
       });
+      drawBoarding();
       drawTrain();
+      drawFloaters();
       drawShieldBubble();
       drawBoostEffects();
       drawTunnel();
@@ -2392,6 +2495,7 @@
       if (night) drawNight();
       drawStorm();
       drawShieldHud();
+      drawPassengerPill();
       drawSpeedometer();
       drawStationPanel();
 
@@ -2409,7 +2513,7 @@
         drawOverlay('Derailed!', 'Tap to try again • Score: ' + score);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
         ctx.font = '15px sans-serif';
-        ctx.fillText('Stations stopped at: ' + (lastStoppedK + 1), W / 2, H / 2 + 50);
+        ctx.fillText('Stations: ' + (lastStoppedK + 1) + '  \u2022  Passengers carried: ' + passengers, W / 2, H / 2 + 50);
       }
 
       drawMapOverlay();
