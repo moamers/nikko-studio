@@ -2009,6 +2009,16 @@
       ctx.font = '10px sans-serif';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
       ctx.fillText('mph', cx, cy + 33);
+      // kilometres per hour too, in a little label under the dial
+      const kmh = Math.round(shownMph * 1.60934) + ' km/h';
+      ctx.font = 'bold 12px sans-serif';
+      const kw = ctx.measureText(kmh).width + 16;
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+      roundedRect(cx - kw / 2, cy + r + 8, kw, 19, 9.5);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.fillText(kmh, cx, cy + r + 22);
     }
 
     function drawStorm() {
