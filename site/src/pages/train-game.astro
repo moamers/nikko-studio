@@ -267,6 +267,10 @@
     let chuffIn = 0;
     let chuffFlip = false;
     let whistledSlot = -1;
+    let doorsAnnouncedK = -1; // the last station whose doors we announced
+    let doorSide = 'right'; // which side the doors open on
+    let doorK = 0; // which station the open doors belong to
+    let doorsEnd = -1; // the doors stay open until the train has travelled this far
     let nextAnnouncedK = -1; // the next station we have already announced
     let arrivingAnnouncedK = -1; // the station we have already said we are arriving at
     const whistleBtn = document.getElementById('whistleBtn');
@@ -554,12 +558,12 @@
     }
 
     // parts: [{ text, lang: 'ar' | 'en' }], spoken one after the other, slowly
-    function speakParts(parts) {
+    function speakParts(parts, queue) {
       try {
         if (!soundOn || !('speechSynthesis' in window)) return;
         const synth = window.speechSynthesis;
         loadVoices();
-        synth.cancel();
+        if (!queue) synth.cancel(); // a new message replaces the old one, unless it should wait its turn
         parts.forEach((p) => {
           const voice = pickVoice(p.lang);
           if (p.lang === 'ar' && !voice) return; // no Arabic voice on this device: the panel still shows it
@@ -579,11 +583,17 @@
     }
 
     // A two-note chime, then the same message in Arabic and in English.
-    function announce(arabic, english) {
+    function announce(arabic, english, queue) {
+      const parts = [{ text: arabic, lang: 'ar' }, { text: english, lang: 'en' }];
+      if (queue) {
+        // doors message: no chime, it just follows what is already being said
+        setTimeout(() => speakParts(parts, true), 300);
+        return;
+      }
       tone('sine', 784, 784, 0.35, 0.09);
       tone('sine', 659, 659, 0.45, 0.09, 0.3);
       clearTimeout(speakTimer);
-      speakTimer = setTimeout(() => speakParts([{ text: arabic, lang: 'ar' }, { text: english, lang: 'en' }]), 900);
+      speakTimer = setTimeout(() => speakParts(parts), 900);
     }
 
     function setSound(on) {
@@ -780,6 +790,8 @@
       whistledSlot = eventReach(ev0) >= engineY ? ev0.n : -1;
       nextAnnouncedK = -1;
       arrivingAnnouncedK = -1;
+      doorsAnnouncedK = nextStationK() - 1; // not the station we have just passed
+      doorsEnd = -1;
       stopSpeech();
       spawnRow();
     }
@@ -968,17 +980,35 @@
         const dist = stationPassAt(k) - scrollTotal;
         const sayNext = () => announce('المحطة القادمة، ' + nameAr, 'The next station is ' + name + '.');
         const sayArriving = () => announce('نصل الآن إلى محطة ' + nameAr, 'Arriving at ' + name + '.');
-        if (k !== nextAnnouncedK) {
-          nextAnnouncedK = k;
-          if (dist < 1100) {
-            arrivingAnnouncedK = k; // already close: go straight to "arriving"
+
+        // we have just reached a station: the doors open on the side with the platform
+        if (k >= 1 && k - 1 > doorsAnnouncedK) {
+          doorsAnnouncedK = k - 1;
+          doorK = k - 1;
+          doorSide = lane === 0 ? 'right' : lane === 2 ? 'left' : doorK % 2 === 0 ? 'right' : 'left';
+          doorsEnd = scrollTotal + stationLength;
+          announce(
+            doorSide === 'right' ? 'ستُفتح الأبواب على الجانب الأيمن' : 'ستُفتح الأبواب على الجانب الأيسر',
+            'Doors will open on the ' + doorSide + ' side.',
+            true
+          );
+        }
+
+        // say which station is next once we are clear of the last one
+        const clearOfLast = k === 0 || scrollTotal > stationPassAt(k - 1) + stationLength + 60;
+        if (clearOfLast) {
+          if (k !== nextAnnouncedK) {
+            nextAnnouncedK = k;
+            if (dist < 1100) {
+              arrivingAnnouncedK = k; // already close: go straight to "arriving"
+              sayArriving();
+            } else {
+              sayNext();
+            }
+          } else if (arrivingAnnouncedK !== k && dist < 1100) {
+            arrivingAnnouncedK = k;
             sayArriving();
-          } else {
-            sayNext();
           }
-        } else if (arrivingAnnouncedK !== k && dist < 1100) {
-          arrivingAnnouncedK = k;
-          sayArriving();
         }
       }
 
@@ -1898,24 +1928,25 @@
     // The "next station" information panel, like the screens inside the metro.
     function drawStationPanel() {
       if (!started || gameOver) return;
-      const k = nextStationK();
+      const doorsOpen = doorsEnd > scrollTotal;
+      const k = doorsOpen ? doorK : nextStationK();
       const name = stationNames[k % stationNames.length];
-      const dist = Math.max(0, stationPassAt(k) - scrollTotal);
-      const arriving = dist < 1100;
+      const dist = doorsOpen ? 0 : Math.max(0, stationPassAt(k) - scrollTotal);
+      const arriving = !doorsOpen && dist < 1100;
       const x = 40;
       const y = H - 52;
       const w = W - 80;
       const h = 42;
       const flash = arriving && Math.floor(frame / 24) % 2 === 0;
       roundedRect(x, y, w, h, 10);
-      ctx.fillStyle = arriving ? (flash ? 'rgba(200, 16, 46, 0.92)' : 'rgba(150, 12, 36, 0.92)') : 'rgba(16, 24, 38, 0.82)';
+      ctx.fillStyle = doorsOpen ? 'rgba(20, 120, 70, 0.93)' : arriving ? (flash ? 'rgba(200, 16, 46, 0.92)' : 'rgba(150, 12, 36, 0.92)') : 'rgba(16, 24, 38, 0.82)';
       ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
       // red route line along the bottom: how far to the next station
       const total = stationSpan;
-      const frac = 1 - Math.min(1, dist / total);
+      const frac = doorsOpen ? 1 : 1 - Math.min(1, dist / total);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
       ctx.fillRect(x + 10, y + h - 7, w - 20, 3);
       ctx.fillStyle = '#ff4d5a';
@@ -1929,10 +1960,10 @@
       ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.font = 'bold 9px sans-serif';
-      ctx.fillText((arriving ? 'ARRIVING' : 'NEXT STATION') + ' \u2022 ' + Math.round(dist / 5) + ' m', x + 12, y + 13);
+      ctx.fillText(doorsOpen ? 'DOORS OPEN \u2022 ' + doorSide.toUpperCase() + ' SIDE ' + (doorSide === 'left' ? '\u25C0' : '\u25B6') : (arriving ? 'ARRIVING' : 'NEXT STATION') + ' \u2022 ' + Math.round(dist / 5) + ' m', x + 12, y + 13);
       ctx.textAlign = 'right';
       ctx.font = '11px sans-serif';
-      ctx.fillText(arriving ? 'نصل الآن' : 'المحطة القادمة', x + w - 12, y + 13);
+      ctx.fillText(doorsOpen ? (doorSide === 'right' ? 'الأبواب على الجانب الأيمن' : 'الأبواب على الجانب الأيسر') : arriving ? 'نصل الآن' : 'المحطة القادمة', x + w - 12, y + 13);
       // the station's name in English and in Arabic
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'left';
@@ -2098,6 +2129,17 @@
         ctx.rotate(angle);
         if (i === 0) drawEngine('#ffffff', '#0d2f66', true, blueBody);
         else drawCarriage('#ffffff', '#0d2f66', blueBody);
+        if (doorsEnd > scrollTotal && !crashing) {
+          // open doors: bright green door panels on the platform side
+          const sx = doorSide === 'left' ? -1 : 1;
+          ctx.fillStyle = '#3ddc84';
+          ctx.strokeStyle = '#146b3a';
+          ctx.lineWidth = 1;
+          [-9, 5].forEach((dy) => {
+            ctx.fillRect(sx * 16 - 2, dy, 4, 10);
+            ctx.strokeRect(sx * 16 - 2, dy, 4, 10);
+          });
+        }
         ctx.restore();
       }
     }
