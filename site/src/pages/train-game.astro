@@ -156,7 +156,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations and let the passengers hop on!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -284,6 +284,11 @@
     // passengers: the ones waiting on the platform hop on while the train stands
     let passengers = 0; // how many you have carried so far
     let boarding = []; // passengers walking to the train right now
+    let onboard = []; // the passengers on the train, each with the station they are going to
+    let alighting = []; // passengers getting off right now
+    let delivered = 0; // passengers who reached their stop
+    let offHere = 0; // how many are getting off at this station
+    let onHere = 0; // how many are getting on at this station
     let floaters = []; // little "+1" signs
     let boardedSlot = -1; // which station's platform has been emptied...
     let boardedPlatformX = -1; // ...and which of its two platforms
@@ -294,7 +299,8 @@
     let departT = 0; // frames of pulling away after a station
     let doorsClosingSaid = false;
     let curSpeed = 0; // how fast the train is really going right now
-    const dwellFrames = 300; // about 5 seconds at each station
+    const dwellFrames = 300; // at least 5 seconds at each station
+    let dwellTotal = dwellFrames; // how long this stop lasts (longer when many passengers swap)
     const brakeDist = 650; // how far before the station the train starts slowing down
     let nextAnnouncedK = -1; // the next station we have already announced
     let arrivingAnnouncedK = -1; // the station we have already said we are arriving at
@@ -848,6 +854,11 @@
       recordThisRun = false;
       recordFlash = 0;
       passengers = 0;
+      onboard = [];
+      alighting = [];
+      delivered = 0;
+      offHere = 0;
+      onHere = 0;
       boarding = [];
       floaters = [];
       boardedSlot = -1;
@@ -1004,6 +1015,34 @@
       }
 
       const running = started && !gameOver;
+      alighting.forEach((p) => {
+        if (p.done) return;
+        if (p.delay > 0) {
+          p.delay -= step;
+          return;
+        }
+        const dx = p.tx - p.x;
+        const dy = p.ty - p.y;
+        const d = Math.hypot(dx, dy);
+        p.hop += step * 0.5;
+        if (d < 3) {
+          p.fade += step;
+          if (p.fade > 22) {
+            // home safe: two points for getting them to their stop
+            p.done = true;
+            delivered++;
+            score += 2;
+            scoreEl.textContent = 'Score: ' + score;
+            rings.push({ x: p.x, y: p.y, age: 26 });
+            floaters.push({ x: p.x, y: p.y - 10, age: 0, text: '+2' });
+            tone('sine', 880, 1320, 0.14, 0.08);
+          }
+        } else {
+          p.x += (dx / d) * Math.min(d, 1.7 * step);
+          p.y += (dy / d) * Math.min(d, 1.7 * step);
+        }
+      });
+      alighting = alighting.filter((p) => !p.done);
       boarding.forEach((p) => {
         if (p.done) return;
         if (p.delay > 0) {
@@ -1018,6 +1057,7 @@
           // hopped on!
           p.done = true;
           passengers++;
+          onboard.push({ dest: lastStoppedK + 1 + Math.floor(Math.random() * 3), colour: p.colour });
           score++;
           scoreEl.textContent = 'Score: ' + score;
           rings.push({ x: p.tx, y: p.ty, age: 26 });
@@ -1044,6 +1084,7 @@
             announce('الأبواب تُغلق الآن', 'The doors are closing.', true);
             [0, 1, 2].forEach((i) => tone('square', 1000, 1000, 0.1, 0.05, 0.3 + i * 0.2));
           }
+          if (dwell <= 0 && (boarding.length > 0 || alighting.length > 0)) dwell = 20; // never leave while someone is still walking to the train
           if (dwell <= 0) {
             dwell = 0;
             departT = 100; // pull away smoothly
@@ -1077,6 +1118,26 @@
         boardedPlatformX = platX;
         boarding = [];
         const sx = doorSide === 'right' ? 1 : -1;
+        // passengers whose stop this is get off first and walk onto the platform
+        const getOff = onboard.filter((p) => p.dest <= kStop);
+        onboard = onboard.filter((p) => p.dest > kStop);
+        alighting = getOff.map((p, i) => {
+          const y = carY(i % 3) + (i % 2 ? 6 : -6);
+          return {
+            x: cars[0].x + sx * 20,
+            y,
+            colour: p.colour,
+            delay: 30 + i * 24,
+            tx: platX + (i % 2 ? 8 : -8),
+            ty: y + (i % 2 ? 14 : -14),
+            hop: Math.random() * 6,
+            fade: 0,
+            done: false,
+          };
+        });
+        offHere = getOff.length;
+        onHere = 5;
+        const waitExtra = getOff.length * 24 + 20; // the waiting passengers board after the others are off
         for (let i = 0; i < 5; i++) {
           const px = platX - 16 + ((i * 11) % 32);
           const py = evNow.top + 40 + i * 48 + (platX === 260 ? 18 : 0);
@@ -1084,13 +1145,16 @@
             x: px,
             y: py,
             colour: passengerColours[(i + (platX === 260 ? 2 : 0)) % 4],
-            delay: 40 + i * 26, // they queue up and board one after another
+            delay: 40 + waitExtra + i * 26, // they queue up and board one after another
             tx: cars[0].x + sx * 20,
             ty: Math.max(carY(0) - 8, Math.min(carY(2) + 8, py)),
             hop: Math.random() * 6,
             done: false,
           });
         }
+        // stand long enough for everyone to get off and the new passengers to get on
+        dwell = Math.max(dwellFrames, 190 + offHere * 24 + onHere * 26);
+        dwellTotal = dwell;
         noiseBurst(3500, 0.7, 0.09, 'highpass'); // the brakes hiss
         tone('sine', 880, 880, 0.25, 0.08, 0.5);
         announce(
@@ -2110,7 +2174,7 @@
       ctx.stroke();
       // red route line along the bottom: how far to the next station
       const total = stationSpan;
-      const frac = doorsOpen ? dwell / dwellFrames : 1 - Math.min(1, dist / total);
+      const frac = doorsOpen ? Math.min(1, dwell / dwellTotal) : 1 - Math.min(1, dist / total);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
       ctx.fillRect(x + 10, y + h - 7, w - 20, 3);
       ctx.fillStyle = '#ff4d5a';
@@ -2242,7 +2306,7 @@
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText('Stations: ' + stops + '  \u2022  Passengers: ' + passengers + (lap > 1 ? '  \u2022  Lap ' + lap : ''), W / 2, y0 + h - 34);
+      ctx.fillText('Stations: ' + stops + '  \u2022  Delivered: ' + delivered + '  \u2022  On board: ' + onboard.length + (lap > 1 ? '  \u2022  Lap ' + lap : ''), W / 2, y0 + h - 34);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.font = '12px sans-serif';
       ctx.fillText('Tap anywhere to carry on', W / 2, y0 + h - 14);
@@ -2364,6 +2428,12 @@
 
     function drawBoarding() {
       boarding.forEach((p) => drawPerson(p.x, p.y, p.colour, p.delay > 0 ? 0 : p.hop));
+      alighting.forEach((p) => {
+        if (p.delay > 0) return; // still inside the train
+        ctx.globalAlpha = Math.max(0, 1 - p.fade / 22);
+        drawPerson(p.x, p.y, p.colour, p.hop);
+        ctx.globalAlpha = 1;
+      });
     }
 
     function drawFloaters() {
@@ -2372,13 +2442,13 @@
         ctx.fillStyle = 'rgba(255, 240, 120, ' + a + ')';
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('+1', f.x, f.y - f.age * 0.6);
+        ctx.fillText(f.text || '+1', f.x, f.y - f.age * 0.6);
       });
     }
 
     function drawPassengerPill() {
       if (!started || gameOver) return;
-      const label = '\u{1F465} ' + passengers;
+      const label = '\u{1F465} ' + onboard.length + (dwell > 0 ? '   \u2B07' + offHere + ' \u2B06' + onHere : '');
       ctx.font = 'bold 14px sans-serif';
       const w = ctx.measureText(label).width + 20;
       ctx.fillStyle = 'rgba(10, 18, 28, 0.6)';
@@ -2630,7 +2700,7 @@
         drawOverlay('Derailed!', 'Tap to try again • Score: ' + score);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
         ctx.font = '15px sans-serif';
-        ctx.fillText('Stations: ' + (lastStoppedK + 1) + '  \u2022  Passengers carried: ' + passengers, W / 2, H / 2 + 50);
+        ctx.fillText('Stations: ' + (lastStoppedK + 1) + '  \u2022  Passengers delivered: ' + delivered, W / 2, H / 2 + 50);
         const record = recordThisRun && level >= 2;
         drawTrophy(W / 2, 165, 46, bestLevel, record);
         ctx.fillStyle = record ? '#fff6b0' : '#ffe066';
