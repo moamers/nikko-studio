@@ -167,6 +167,7 @@
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
   <p class="best" id="trophy">&#127942; Best level: 0</p>
+  <p class="best" id="medals">&#127894;&#65039; Medals: none yet</p>
   <div class="stage">
     <canvas id="game" width="400" height="600" aria-label="Train dodge game"></canvas>
   </div>
@@ -190,6 +191,7 @@
     const levelEl = document.getElementById('level');
     const bestEl = document.getElementById('best');
     const trophyEl = document.getElementById('trophy');
+    const medalsEl = document.getElementById('medals');
 
     const W = canvas.width;
     const H = canvas.height;
@@ -224,6 +226,10 @@
     let bestLevel = 0;
     let bestLevelNormal = 0;
     let bestLevelEasy = 0;
+    // Medals: one for finishing each line (reaching its last station), and a
+    // gold Metro Master medal once you have finished both.
+    let medals = { red: 0, green: 0 }; // how many times you have finished each line
+    let newMedals = []; // the medals won on this journey
     let levelAtStart = 0; // the record when this journey began
     let recordThisRun = false;
     let recordFlash = 0;
@@ -274,6 +280,9 @@
       bestEasy = Number(localStorage.getItem('trainDodgeBestEasy') || 0);
       bestLevelNormal = Number(localStorage.getItem('trainBestLevel') || 0);
       bestLevelEasy = Number(localStorage.getItem('trainBestLevelEasy') || 0);
+      const savedMedals = JSON.parse(localStorage.getItem('trainMedals') || '{}');
+      medals.red = Number(savedMedals.red) || 0;
+      medals.green = Number(savedMedals.green) || 0;
       easy = localStorage.getItem('trainEasy') === '1';
     } catch (e) {}
     best = easy ? bestEasy : bestNormal;
@@ -755,8 +764,30 @@
       [523, 659, 784].forEach((f, i) => tone('triangle', f, f, 0.2, 0.08, i * 0.1));
     }
 
+    function saveMedals() {
+      try {
+        localStorage.setItem('trainMedals', JSON.stringify(medals));
+      } catch (e) {}
+    }
+
+    function updateMedalsEl() {
+      const m = (icon, name, n) => icon + ' ' + name + (n > 0 ? ' \u2713' + (n > 1 ? ' \u00D7' + n : '') : ' \u2014');
+      const master = medals.red > 0 && medals.green > 0 ? 1 : 0;
+      medalsEl.textContent = '\u{1F396}\uFE0F ' + m('\u{1F534}', 'Red Line', medals.red) + '   ' + m('\u{1F7E2}', 'Green Line', medals.green) + '   ' + m('\u2B50', 'Metro Master', master);
+    }
+    updateMedalsEl();
+
     function finishJourney() {
       won = true;
+      // a medal for the line you finished (the first time), and Metro Master for both
+      const key = currentLine;
+      const firstTime = medals[key] === 0;
+      medals[key]++;
+      newMedals = [];
+      if (firstTime) newMedals.push(key);
+      if (firstTime && medals.red > 0 && medals.green > 0) newMedals.push('master');
+      saveMedals();
+      updateMedalsEl();
       [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone('triangle', f, f, 0.3, 0.1, i * 0.12));
       announce('شكراً لسفركم معنا', 'Thank you for travelling with us.', true);
       endGame();
@@ -927,6 +958,7 @@
       levelAtStart = bestLevel;
       recordThisRun = false;
       recordFlash = 0;
+      newMedals = [];
       terminusK = -1;
       won = false;
       finalFlash = 0;
@@ -2780,6 +2812,71 @@
       ctx.restore();
     }
 
+    // A medal on a ribbon: red or green for the lines, gold with a star for Metro Master.
+    function drawMedal(cx, cy, r, kind, earned, shine) {
+      const colour = kind === 'green' ? '#00a04a' : kind === 'master' ? '#2a2a3a' : '#e21836';
+      const ribbon = kind === 'green' ? '#007a38' : kind === 'master' ? '#c99a1e' : '#a8112a';
+      ctx.save();
+      if (!earned) ctx.globalAlpha = 0.3;
+      // ribbon
+      ctx.fillStyle = ribbon;
+      [-1, 1].forEach((side) => {
+        ctx.beginPath();
+        ctx.moveTo(cx + side * r * 0.95, cy - r * 1.9);
+        ctx.lineTo(cx + side * r * 0.35, cy - r * 1.9);
+        ctx.lineTo(cx - side * r * 0.2, cy - r * 0.3);
+        ctx.lineTo(cx + side * r * 0.4, cy - r * 0.3);
+        ctx.closePath();
+        ctx.fill();
+      });
+      // the medal itself
+      const rim = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+      rim.addColorStop(0, '#ffe066');
+      rim.addColorStop(0.5, '#e0a81a');
+      rim.addColorStop(1, '#fff0a0');
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fillStyle = rim;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.74, 0, Math.PI * 2);
+      ctx.fillStyle = colour;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.textAlign = 'center';
+      if (kind === 'master') {
+        ctx.fillStyle = '#ffe066';
+        ctx.font = 'bold ' + Math.round(r * 1.1) + 'px sans-serif';
+        ctx.fillText('\u2605', cx, cy + r * 0.38);
+      } else {
+        ctx.font = Math.round(r * 0.95) + 'px sans-serif';
+        ctx.fillText('\u{1F684}', cx, cy + r * 0.33);
+      }
+      ctx.restore();
+      if (shine && earned) {
+        ctx.fillStyle = '#fff6b0';
+        for (let i = 0; i < 4; i++) {
+          const a = frame * 0.05 + i * 1.6;
+          const sx = cx + Math.cos(a) * r * 1.5;
+          const sy = cy - r * 0.2 + Math.sin(a * 1.3) * r * 1.2;
+          const q = 2 + 2 * Math.abs(Math.sin(frame * 0.12 + i));
+          ctx.beginPath();
+          ctx.moveTo(sx, sy - q * 2);
+          ctx.lineTo(sx + q * 0.6, sy - q * 0.6);
+          ctx.lineTo(sx + q * 2, sy);
+          ctx.lineTo(sx + q * 0.6, sy + q * 0.6);
+          ctx.lineTo(sx, sy + q * 2);
+          ctx.lineTo(sx - q * 0.6, sy + q * 0.6);
+          ctx.lineTo(sx - q * 2, sy);
+          ctx.lineTo(sx - q * 0.6, sy - q * 0.6);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+
     function drawOverlay(title, subtitle) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.fillRect(0, 0, W, H);
@@ -2871,6 +2968,16 @@
           ctx.textAlign = 'center';
           ctx.fillText('Your best level', W / 2, 242);
         }
+        // the medals you have won so far (faded when not yet won)
+        const have = [medals.red > 0, medals.green > 0, medals.red > 0 && medals.green > 0];
+        ['red', 'green', 'master'].forEach((kind, i) => {
+          const mx = W / 2 - 62 + i * 62;
+          drawMedal(mx, 66, 15, kind, have[i], false);
+          ctx.fillStyle = have[i] ? '#ffe066' : 'rgba(255, 255, 255, 0.45)';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(kind === 'master' ? 'Master' : kind === 'red' ? 'Red' : 'Green', mx, 92);
+        });
       } else if (gameOver) {
         drawOverlay(won ? 'Journey complete! \u{1F389}' : 'Derailed!', (won ? 'Tap to play again \u2022 Score: ' : 'Tap to try again • Score: ') + score);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -2882,11 +2989,23 @@
           ctx.fillText('\u{1F3C1} You reached ' + lineOf().end.name + '!', W / 2, H / 2 + 78);
         }
         const record = recordThisRun && level >= 2;
-        drawTrophy(W / 2, 165, 46, bestLevel, record);
+        if (won) {
+          // the trophy on the left, the medal for this line on the right
+          drawTrophy(W / 2 - 62, 165, 42, bestLevel, record);
+          drawMedal(W / 2 + 62, 178, 30, currentLine, true, newMedals.length > 0);
+          if (newMedals.includes('master')) drawMedal(W / 2 + 120, 190, 20, 'master', true, true);
+          ctx.fillStyle = '#ffe066';
+          ctx.font = 'bold 15px sans-serif';
+          ctx.textAlign = 'center';
+          const nm = newMedals.length ? '\u{1F396}\uFE0F New medal: ' + (newMedals.includes('master') ? lineOf().name + ' + Metro Master!' : lineOf().name + '!') : '\u{1F396}\uFE0F ' + lineOf().name + ' medal \u00D7' + medals[currentLine];
+          ctx.fillText(nm, W / 2, H / 2 + 106);
+        } else {
+          drawTrophy(W / 2, 165, 46, bestLevel, record);
+        }
         ctx.fillStyle = record ? '#fff6b0' : '#ffe066';
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(record ? '\u{1F3C6} New record! Level ' + level : 'Best level: ' + bestLevel + ' (you reached ' + level + ')', W / 2, 245);
+        ctx.fillText(won ? (record ? '\u{1F3C6} New record! Level ' + level : 'Level ' + level + ' \u2022 best ' + bestLevel) : record ? '\u{1F3C6} New record! Level ' + level : 'Best level: ' + bestLevel + ' (you reached ' + level + ')', W / 2, 245);
       }
 
       drawMapOverlay();
@@ -2905,6 +3024,10 @@
         if ((data.bestEasy || 0) > bestEasy) bestEasy = data.bestEasy;
         if ((data.bestLevelNormal || 0) > bestLevelNormal) bestLevelNormal = data.bestLevelNormal;
         if ((data.bestLevelEasy || 0) > bestLevelEasy) bestLevelEasy = data.bestLevelEasy;
+        if ((data.medals && data.medals.red || 0) > medals.red) medals.red = data.medals.red;
+        if ((data.medals && data.medals.green || 0) > medals.green) medals.green = data.medals.green;
+        saveMedals();
+        updateMedalsEl();
         applyMode();
       }
       draw();
@@ -2912,7 +3035,7 @@
     }
 
     if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
-      window.claude.hot.snapshot(() => ({ bestNormal, bestEasy, bestLevelNormal, bestLevelEasy }));
+      window.claude.hot.snapshot(() => ({ bestNormal, bestEasy, bestLevelNormal, bestLevelEasy, medals }));
     }
 
     if (window.claude && window.claude.hot && window.claude.hot.ready) {
