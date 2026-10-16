@@ -133,6 +133,12 @@
     cursor: default;
   }
 
+  #lineBtn:not(:disabled) {
+    border-color: #00a04a;
+    color: #00a04a;
+    font-weight: 700;
+  }
+
   #boostBtn:not(:disabled) {
     border-color: var(--accent);
     color: var(--accent);
@@ -156,7 +162,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union or BurJuman, and reach level 15 to finish the journey!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -169,6 +175,7 @@
     <button type="button" id="normalBtn">&#127918; Normal</button>
     <button type="button" id="whistleBtn">&#128226; Horn</button>
     <button type="button" id="boostBtn">&#128640; Boost</button>
+    <button type="button" id="lineBtn" disabled>&#128257; Change line</button>
     <button type="button" id="mapBtn">&#128506;&#65039; Map</button>
     <button type="button" id="nightBtn">&#127769; Night</button>
     <button type="button" id="soundBtn">&#128266; Sound on</button>
@@ -293,6 +300,17 @@
     let boardedSlot = -1; // which station's platform has been emptied...
     let boardedPlatformX = -1; // ...and which of its two platforms
     const passengerColours = ['#2b7bd6', '#e8a33d', '#8e44ad', '#2a9d8f'];
+    // Metro lines: you can change between the Red and Green lines at an interchange station.
+    // The journey ends at the last station of the line when you reach level 15.
+    const finalLevel = 15;
+    let terminusK = -1; // the station number of the last station, once it is scheduled
+    let won = false;
+    let finalFlash = 0;
+    let currentLine = 'red';
+    let lineBaseK = 0; // from this station number on, the current line's list starts at lineStart
+    let lineStart = 0;
+    let ridden = []; // the stations (positions on the current line) you have stopped at
+    let changedHere = false; // you have already changed line at this stop
     let mapOpen = false; // the metro line map; the game waits while it is open
     let lastStoppedK = -1; // the last station the train has stopped at
     let dwell = 0; // frames left standing at a station (doors open)
@@ -307,6 +325,7 @@
     const whistleBtn = document.getElementById('whistleBtn');
     const soundBtn = document.getElementById('soundBtn');
     const mapBtn = document.getElementById('mapBtn');
+    const lineBtn = document.getElementById('lineBtn');
 
     function getAudio() {
       if (audio) return audio;
@@ -722,6 +741,61 @@
     applyMode();
 
     // ---------- the metro line map ----------
+    // Level 15: the next (or the one after, if the next is too close) station
+    // becomes the last one of the line.
+    function scheduleTerminus() {
+      const k = nextStationK();
+      const dist = stationPassAt(k) - scrollTotal;
+      terminusK = dist > 2000 ? k : k + 1;
+      finalFlash = 200;
+      if (terminusK === k) {
+        nextAnnouncedK = -1; // announce it again, now as the final station
+        arrivingAnnouncedK = -1;
+      }
+      [523, 659, 784].forEach((f, i) => tone('triangle', f, f, 0.2, 0.08, i * 0.1));
+    }
+
+    function finishJourney() {
+      won = true;
+      [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone('triangle', f, f, 0.3, 0.1, i * 0.12));
+      announce('شكراً لسفركم معنا', 'Thank you for travelling with us.', true);
+      endGame();
+    }
+
+    function updateLineBtn() {
+      const here = started && !gameOver && dwell > 0 && !changedHere && isInterchange(lastStoppedK);
+      const o = metroLines[otherLineKey()];
+      const label = here ? '\u{1F501} To ' + o.name : '\u{1F501} Change line';
+      if (lineBtn.textContent !== label) lineBtn.textContent = label;
+      if (lineBtn.disabled === here) lineBtn.disabled = !here;
+    }
+
+    // Step off at an interchange and on to the other line: the stations after
+    // this one are the other line's.
+    function changeLine() {
+      unlockAudio();
+      if (!started || gameOver || dwell <= 0 || changedHere || !isInterchange(lastStoppedK)) return;
+      const name = stationName(lastStoppedK);
+      const target = otherLineKey();
+      const j = metroLines[target].names.indexOf(name);
+      currentLine = target;
+      lineBaseK = lastStoppedK;
+      lineStart = j;
+      ridden = [j];
+      changedHere = true;
+      score += 5; // a little bonus for changing line
+      scoreEl.textContent = 'Score: ' + score;
+      floaters.push({ x: cars[0].x, y: engineY - 30, age: 0, text: '+5' });
+      nextAnnouncedK = -1; // say the next station again, on the new line
+      arrivingAnnouncedK = lastStoppedK;
+      tone('sine', 660, 990, 0.2, 0.09);
+      tone('sine', 990, 1320, 0.25, 0.09, 0.15);
+      const o = metroLines[target];
+      announce('التحويل إلى ' + o.nameAr, 'Changing to the ' + o.name + '.', true);
+      updateLineBtn();
+    }
+    lineBtn.addEventListener('click', changeLine);
+
     function setMap(on) {
       mapOpen = on;
       mapBtn.innerHTML = on ? '&#10006;&#65039; Close map' : '&#128506;&#65039; Map';
@@ -853,6 +927,14 @@
       levelAtStart = bestLevel;
       recordThisRun = false;
       recordFlash = 0;
+      terminusK = -1;
+      won = false;
+      finalFlash = 0;
+      currentLine = 'red';
+      lineBaseK = 0;
+      lineStart = 0;
+      ridden = [];
+      changedHere = false;
       passengers = 0;
       onboard = [];
       alighting = [];
@@ -943,6 +1025,7 @@
       if (e.repeat) return;
       unlockAudio();
       if (e.code === 'KeyM') setMap(!mapOpen);
+      if (e.code === 'KeyL') changeLine();
       if (e.code === 'Escape' && mapOpen) setMap(false);
       if (e.code === 'ArrowUp' || e.code === 'KeyW') playWhistle();
       if (e.code === 'ArrowDown' || e.code === 'KeyB') useBoost();
@@ -1079,13 +1162,17 @@
         if (dwell > 0) {
           factor = 0; // standing at the station with the doors open
           dwell -= step;
-          if (!doorsClosingSaid && dwell < 110) {
+          if (!doorsClosingSaid && dwell < 110 && lastStoppedK !== terminusK) {
             doorsClosingSaid = true;
             announce('الأبواب تُغلق الآن', 'The doors are closing.', true);
             [0, 1, 2].forEach((i) => tone('square', 1000, 1000, 0.1, 0.05, 0.3 + i * 0.2));
           }
           if (dwell <= 0 && (boarding.length > 0 || alighting.length > 0)) dwell = 20; // never leave while someone is still walking to the train
-          if (dwell <= 0) {
+          if (dwell <= 0 && lastStoppedK === terminusK) {
+            dwell = 0;
+            doorsClosingSaid = true;
+            if (!won) finishJourney(); // the end of the line: the journey is complete
+          } else if (dwell <= 0) {
             dwell = 0;
             departT = 100; // pull away smoothly
           }
@@ -1119,8 +1206,9 @@
         boarding = [];
         const sx = doorSide === 'right' ? 1 : -1;
         // passengers whose stop this is get off first and walk onto the platform
-        const getOff = onboard.filter((p) => p.dest <= kStop);
-        onboard = onboard.filter((p) => p.dest > kStop);
+        const atEnd = kStop === terminusK;
+        const getOff = atEnd ? onboard.slice() : onboard.filter((p) => p.dest <= kStop);
+        onboard = atEnd ? [] : onboard.filter((p) => p.dest > kStop);
         alighting = getOff.map((p, i) => {
           const y = carY(i % 3) + (i % 2 ? 6 : -6);
           return {
@@ -1136,9 +1224,9 @@
           };
         });
         offHere = getOff.length;
-        onHere = 5;
+        onHere = atEnd ? 0 : 5;
         const waitExtra = getOff.length * 24 + 20; // the waiting passengers board after the others are off
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < (atEnd ? 0 : 5); i++) {
           const px = platX - 16 + ((i * 11) % 32);
           const py = evNow.top + 40 + i * 48 + (platX === 260 ? 18 : 0);
           boarding.push({
@@ -1162,7 +1250,14 @@
           'Doors will open on the ' + doorSide + ' side.',
           true
         );
+        changedHere = false;
+        if (!atEnd) ridden.push(lineIndexAt(kStop));
+        if (isInterchange(kStop)) {
+          const o = metroLines[otherLineKey()];
+          announce('للتحويل إلى ' + o.nameAr, 'Change here for the ' + o.name + '.', true);
+        }
       }
+      updateLineBtn();
 
       // The engine glides to the chosen track; each carriage trails the one
       // in front a little, so the train swings round corners like a snake.
@@ -1203,11 +1298,18 @@
       }
       {
         const k = nextStationK();
-        const name = stationNames[k % stationNames.length];
-        const nameAr = stationNamesAr[k % stationNamesAr.length];
+        const name = stationName(k);
+        const nameAr = stationNameAr(k);
         const dist = stationPassAt(k) - scrollTotal;
-        const sayNext = () => announce('المحطة القادمة، ' + nameAr, 'The next station is ' + name + '.');
-        const sayArriving = () => announce('نصل الآن إلى محطة ' + nameAr, 'Arriving at ' + name + '.');
+        const last = k === terminusK;
+        const sayNext = () =>
+          last
+            ? announce('المحطة القادمة هي المحطة الأخيرة، ' + nameAr, 'The next station is ' + name + ', the final station.')
+            : announce('المحطة القادمة، ' + nameAr, 'The next station is ' + name + '.');
+        const sayArriving = () =>
+          last
+            ? announce('نصل الآن إلى محطة ' + nameAr + '. هذه المحطة الأخيرة', 'Arriving at ' + name + '. This train terminates here.')
+            : announce('نصل الآن إلى محطة ' + nameAr, 'Arriving at ' + name + '.');
 
         // say which station is next once we have pulled away from the last one
         const clearOfLast = dwell <= 0 && (k === 0 || scrollTotal > stationPassAt(k - 1) + 150);
@@ -1294,6 +1396,7 @@
               recordThisRun = true;
             }
             noteLevelRecord();
+            if (level >= finalLevel && terminusK < 0) scheduleTerminus();
           }
         }
       });
@@ -1338,6 +1441,8 @@
       }
 
       levelFlash = Math.max(0, levelFlash - step);
+      finalFlash = Math.max(0, finalFlash - step);
+      updateLineBtn();
       recordFlash = Math.max(0, recordFlash - step);
     }
 
@@ -1610,8 +1715,36 @@
     // Every so often the line passes something special: a station, then a
     // tunnel, then a bridge over a river. One per slot, so they never overlap.
     const slotLength = 1500;
-    const stationNamesAr = ['برج خليفة', 'دبي مارينا', 'مول الإمارات', 'الخليج التجاري', 'الاتحاد', 'أبراج الإمارات', 'المركز المالي', 'برجمان', 'إكسبو 2020', 'الرقة'];
-    const stationNames = ['Burj Khalifa', 'Dubai Marina', 'Mall of the Emirates', 'Business Bay', 'Union', 'Emirates Towers', 'Financial Centre', 'BurJuman', 'Expo 2020', 'Al Rigga'];
+    const metroLines = {
+      red: {
+        name: 'Red Line',
+        nameAr: 'الخط الأحمر',
+        colour: '#e21836',
+        dark: '#8f0f22',
+        end: { name: 'Centrepoint', ar: 'سنتر بوينت' },
+        names: ['Burj Khalifa', 'Dubai Marina', 'Mall of the Emirates', 'Business Bay', 'Union', 'Emirates Towers', 'Financial Centre', 'BurJuman', 'Expo 2020', 'Al Rigga'],
+        ar: ['برج خليفة', 'دبي مارينا', 'مول الإمارات', 'الخليج التجاري', 'الاتحاد', 'أبراج الإمارات', 'المركز المالي', 'برجمان', 'إكسبو 2020', 'الرقة'],
+      },
+      green: {
+        name: 'Green Line',
+        nameAr: 'الخط الأخضر',
+        colour: '#00a04a',
+        dark: '#006b31',
+        end: { name: 'Etisalat', ar: 'اتصالات' },
+        names: ['Al Qusais', 'Al Nahda', 'Stadium', 'Abu Hail', 'Salah Al Din', 'Union', 'Baniyas Square', 'Al Ras', 'Al Ghubaiba', 'BurJuman'],
+        ar: ['القصيص', 'النهدة', 'الاستاد', 'أبو هيل', 'صلاح الدين', 'الاتحاد', 'ساحة بني ياس', 'الراس', 'الغبيبة', 'برجمان'],
+      },
+    };
+    const lineOf = () => metroLines[currentLine];
+    const otherLineKey = () => (currentLine === 'red' ? 'green' : 'red');
+    // which station of the current line is station number k
+    const lineIndexAt = (k) => {
+      const len = lineOf().names.length;
+      return (((k - lineBaseK + lineStart) % len) + len) % len;
+    };
+    const stationName = (k) => (k === terminusK ? lineOf().end.name : lineOf().names[lineIndexAt(k)]);
+    const stationNameAr = (k) => (k === terminusK ? lineOf().end.ar : lineOf().ar[lineIndexAt(k)]);
+    const isInterchange = (k) => k !== terminusK && metroLines[otherLineKey()].names.includes(stationName(k));
     const eventKinds = ['station', 'tunnel', 'bridge'];
     const eventLengths = { station: 300, tunnel: 440, bridge: 200 };
     // Station number k is passed when the train has travelled this far. The
@@ -1632,7 +1765,7 @@
       const kind = eventKinds[n % 3];
       const len = eventLengths[kind];
       const top = (scrollTotal % slotLength) - len; // top edge on screen
-      return { n, kind, len, top, name: stationNames[Math.floor(n / 3) % stationNames.length], nameAr: stationNamesAr[Math.floor(n / 3) % stationNamesAr.length] };
+      return { n, kind, len, top, name: stationName(Math.floor(n / 3)), nameAr: stationNameAr(Math.floor(n / 3)) };
     }
     // the moment the engine reaches the thing (sign, tunnel mouth or river)
     function eventReach(ev) {
@@ -1715,7 +1848,7 @@
       ctx.fillRect(6, y, 6, 20);
       ctx.fillRect(W - 12, y, 6, 20);
       roundedRect(W / 2 - 105, y - 6, 210, 48, 8);
-      ctx.fillStyle = '#c8102e';
+      ctx.fillStyle = lineOf().colour;
       ctx.fill();
       ctx.strokeStyle = 'white';
       ctx.lineWidth = 3;
@@ -2158,7 +2291,8 @@
       if (!started || gameOver) return;
       const doorsOpen = dwell > 0;
       const k = doorsOpen ? doorK : nextStationK();
-      const name = stationNames[k % stationNames.length];
+      const line = lineOf();
+      const name = stationName(k);
       const dist = doorsOpen ? 0 : Math.max(0, stationPassAt(k) - scrollTotal);
       const arriving = !doorsOpen && dist < 1100;
       const x = 40;
@@ -2167,7 +2301,7 @@
       const h = 42;
       const flash = arriving && Math.floor(frame / 24) % 2 === 0;
       roundedRect(x, y, w, h, 10);
-      ctx.fillStyle = doorsOpen ? 'rgba(20, 120, 70, 0.93)' : arriving ? (flash ? 'rgba(200, 16, 46, 0.92)' : 'rgba(150, 12, 36, 0.92)') : 'rgba(16, 24, 38, 0.82)';
+      ctx.fillStyle = doorsOpen ? 'rgba(20, 120, 70, 0.93)' : arriving ? (flash ? line.colour : line.dark) : 'rgba(16, 24, 38, 0.82)';
       ctx.fill();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
       ctx.lineWidth = 1.5;
@@ -2177,18 +2311,18 @@
       const frac = doorsOpen ? Math.min(1, dwell / dwellTotal) : 1 - Math.min(1, dist / total);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
       ctx.fillRect(x + 10, y + h - 7, w - 20, 3);
-      ctx.fillStyle = '#ff4d5a';
+      ctx.fillStyle = line.colour;
       ctx.fillRect(x + 10, y + h - 7, (w - 20) * frac, 3);
       ctx.beginPath();
       ctx.arc(x + 10 + (w - 20) * frac, y + h - 5.5, 4, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
       ctx.fill();
-      const nameAr = stationNamesAr[k % stationNamesAr.length];
+      const nameAr = stationNameAr(k);
       // small words on top: English on the left, Arabic on the right
       ctx.textAlign = 'left';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
       ctx.font = 'bold 9px sans-serif';
-      ctx.fillText(doorsOpen ? 'DOORS OPEN \u2022 ' + doorSide.toUpperCase() + ' SIDE ' + (doorSide === 'left' ? '\u25C0' : '\u25B6') + ' \u2022 ' + Math.ceil(dwell / 60) + 's' : (arriving ? 'ARRIVING' : 'NEXT STATION') + ' \u2022 ' + Math.round(dist / 5) + ' m', x + 12, y + 13);
+      ctx.fillText(doorsOpen ? 'DOORS OPEN \u2022 ' + doorSide.toUpperCase() + ' SIDE ' + (doorSide === 'left' ? '\u25C0' : '\u25B6') + ' \u2022 ' + Math.ceil(dwell / 60) + 's' : line.name.toUpperCase() + ' \u2022 ' + (arriving ? 'ARRIVING' : k === terminusK ? 'FINAL STOP' : 'NEXT') + ' \u2022 ' + Math.round(dist / 5) + ' m', x + 12, y + 13);
       ctx.textAlign = 'right';
       ctx.font = '11px sans-serif';
       ctx.fillText(doorsOpen ? (doorSide === 'right' ? 'الأبواب على الجانب الأيمن' : 'الأبواب على الجانب الأيسر') : arriving ? 'نصل الآن' : 'المحطة القادمة', x + w - 12, y + 13);
@@ -2212,14 +2346,17 @@
       ctx.fillText(nameAr, x + w - 12, y + 30);
     }
 
-    // The line map: every station in order, the ones you have stopped at filled
-    // in red, and a little train showing where you are right now.
+    // The line map: every station of the line you are on, the ones you have
+    // stopped at ticked, a little train showing where you are, and the
+    // interchanges where you can change to the other line.
     function drawMapOverlay() {
       if (!mapOpen) return;
-      const total = stationNames.length;
-      const stops = lastStoppedK + 1; // how many stations you have stopped at
-      const inLap = stops % total;
-      const lap = Math.floor(stops / total) + 1;
+      const line = lineOf();
+      const other = metroLines[otherLineKey()];
+      const names = line.names.concat([line.end.name]); // the last station comes at the end
+      const ars = line.ar.concat([line.end.ar]);
+      const total = names.length;
+      const endIdx = total - 1;
       const x0 = 30;
       const y0 = 24;
       const w = W - 60;
@@ -2227,41 +2364,43 @@
       roundedRect(x0, y0, w, h, 16);
       ctx.fillStyle = 'rgba(12, 18, 30, 0.95)';
       ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.lineWidth = 2;
+      ctx.strokeStyle = line.colour;
+      ctx.lineWidth = 3;
       ctx.stroke();
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.font = 'bold 19px sans-serif';
-      ctx.fillText('METRO LINE MAP', W / 2, y0 + 30);
+      ctx.fillText(line.name.toUpperCase() + ' MAP', W / 2, y0 + 30);
       ctx.font = '14px sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      ctx.fillText('خريطة الخط', W / 2, y0 + 50);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.fillText(line.nameAr, W / 2, y0 + 50);
 
       const lineX = x0 + 44;
       const top = y0 + 86;
       const gap = (h - 150) / (total - 1);
       const yOf = (i) => top + i * gap;
+      const nextIdx = nextStationK() === terminusK ? endIdx : lineIndexAt(nextStationK());
       // the track between the stations
       for (let i = 0; i < total - 1; i++) {
         ctx.beginPath();
         ctx.moveTo(lineX, yOf(i));
         ctx.lineTo(lineX, yOf(i + 1));
         ctx.lineWidth = 6;
-        ctx.strokeStyle = i < inLap - 0 && i + 1 <= inLap ? '#e21836' : 'rgba(255, 255, 255, 0.25)';
+        ctx.strokeStyle = ridden.includes(i) && ridden.includes(i + 1) ? line.colour : 'rgba(255, 255, 255, 0.25)';
         ctx.stroke();
       }
       // the stations
       for (let i = 0; i < total; i++) {
         const y = yOf(i);
-        const passed = i < inLap;
-        const isNext = i === inLap;
+        const passed = i === endIdx ? won : ridden.includes(i);
+        const isNext = i === nextIdx;
+        const change = i < endIdx && other.names.includes(names[i]);
         ctx.beginPath();
         ctx.arc(lineX, y, isNext ? 11 : 9, 0, Math.PI * 2);
-        ctx.fillStyle = passed ? '#e21836' : isNext ? '#ffffff' : 'rgba(12, 18, 30, 1)';
+        ctx.fillStyle = passed ? line.colour : isNext ? '#ffffff' : 'rgba(12, 18, 30, 1)';
         ctx.fill();
         ctx.lineWidth = isNext ? 4 : 3;
-        ctx.strokeStyle = passed ? '#ffffff' : isNext ? '#e21836' : 'rgba(255, 255, 255, 0.45)';
+        ctx.strokeStyle = passed ? '#ffffff' : isNext ? line.colour : change ? other.colour : 'rgba(255, 255, 255, 0.45)';
         ctx.stroke();
         if (passed) {
           ctx.beginPath();
@@ -2273,25 +2412,36 @@
           ctx.stroke();
         }
         ctx.textAlign = 'left';
-        ctx.fillStyle = passed ? '#ffffff' : isNext ? '#ffe066' : 'rgba(255, 255, 255, 0.55)';
-        ctx.font = (isNext ? 'bold ' : passed ? 'bold ' : '') + '15px sans-serif';
-        ctx.fillText(stationNames[i], lineX + 24, y + 5);
+        ctx.fillStyle = passed ? '#ffffff' : isNext ? '#ffe066' : 'rgba(255, 255, 255, 0.6)';
+        ctx.font = (isNext || passed ? 'bold ' : '') + '15px sans-serif';
+        ctx.fillText(names[i], lineX + 24, y + (change ? 1 : 5));
         ctx.textAlign = 'right';
         ctx.font = '13px sans-serif';
-        ctx.fillText(stationNamesAr[i], x0 + w - 18, y + 5);
+        ctx.fillText(ars[i], x0 + w - 18, y + 5);
+        if (change) {
+          ctx.textAlign = 'left';
+          ctx.fillStyle = other.colour;
+          ctx.font = 'bold 10px sans-serif';
+          ctx.fillText('\u21C4 Change for ' + other.name, lineX + 24, y + 14);
+        }
         if (isNext) {
           ctx.textAlign = 'left';
           ctx.fillStyle = '#ffe066';
           ctx.font = 'bold 9px sans-serif';
-          ctx.fillText('NEXT STOP', lineX + 24, y - 10);
+          ctx.fillText(i === endIdx ? 'FINAL STOP' : 'NEXT STOP', lineX + 24, y - 10);
+        } else if (i === endIdx) {
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#ffe066';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.fillText('\u{1F3C1} End of the line \u2022 reach level ' + finalLevel, lineX + 24, y + 14);
         }
       }
       // where the train is right now
       const toStop = stationPassAt(nextStationK()) - scrollTotal;
-      const P = stops - Math.min(1, Math.max(0, toStop / stationSpan));
-      const pos = Math.min(total - 0.5, Math.max(-0.4, ((P % total) + total) % total));
+      const frac = Math.min(1, Math.max(0, toStop / stationSpan));
+      const P = nextStationK() === terminusK ? endIdx - frac : lineIndexAt(lastStoppedK) + 1 - frac;
+      const pos = Math.min(total - 0.5, Math.max(-0.4, P));
       const ty = top + pos * gap;
-      ctx.beginPath();
       roundedRect(lineX - 17, ty - 9, 34, 18, 9);
       ctx.fillStyle = '#1f6fd6';
       ctx.fill();
@@ -2306,7 +2456,7 @@
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText('Stations: ' + stops + '  \u2022  Delivered: ' + delivered + '  \u2022  On board: ' + onboard.length + (lap > 1 ? '  \u2022  Lap ' + lap : ''), W / 2, y0 + h - 34);
+      ctx.fillText('Stations: ' + (lastStoppedK + 1) + '  \u2022  Delivered: ' + delivered + '  \u2022  On board: ' + onboard.length, W / 2, y0 + h - 34);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.font = '12px sans-serif';
       ctx.fillText('Tap anywhere to carry on', W / 2, y0 + h - 14);
@@ -2669,6 +2819,22 @@
       drawPassengerPill();
       drawSpeedometer();
       drawStationPanel();
+      if (started && !gameOver && dwell > 0 && !changedHere && isInterchange(lastStoppedK)) {
+        // a hint that you can change line here
+        const o = metroLines[otherLineKey()];
+        const text = '\u{1F501} Change here for the ' + o.name + '!';
+        ctx.font = 'bold 15px sans-serif';
+        const tw = ctx.measureText(text).width + 24;
+        roundedRect(W / 2 - tw / 2, 120, tw, 30, 15);
+        ctx.fillStyle = o.colour;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(text, W / 2, 140);
+      }
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
@@ -2676,6 +2842,15 @@
         ctx.font = 'bold 36px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Level ' + level + '!' + (level === stormLevel ? ' \u26C8\uFE0F Storm!' : ''), W / 2, 70);
+      }
+
+      // the last station is coming
+      if (finalFlash > 0 && started && !gameOver) {
+        const alpha = Math.min(1, finalFlash / 25);
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + alpha + ')';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F3C1} Last stop: ' + lineOf().end.name, W / 2, 150);
       }
 
       // banner when you beat your record level in the middle of a journey
@@ -2697,10 +2872,15 @@
           ctx.fillText('Your best level', W / 2, 242);
         }
       } else if (gameOver) {
-        drawOverlay('Derailed!', 'Tap to try again • Score: ' + score);
+        drawOverlay(won ? 'Journey complete! \u{1F389}' : 'Derailed!', (won ? 'Tap to play again \u2022 Score: ' : 'Tap to try again • Score: ') + score);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
         ctx.font = '15px sans-serif';
         ctx.fillText('Stations: ' + (lastStoppedK + 1) + '  \u2022  Passengers delivered: ' + delivered, W / 2, H / 2 + 50);
+        if (won) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 16px sans-serif';
+          ctx.fillText('\u{1F3C1} You reached ' + lineOf().end.name + '!', W / 2, H / 2 + 78);
+        }
         const record = recordThisRun && level >= 2;
         drawTrophy(W / 2, 165, 46, bestLevel, record);
         ctx.fillStyle = record ? '#fff6b0' : '#ffe066';
