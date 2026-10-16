@@ -162,7 +162,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union or BurJuman, and reach level 15 to finish the journey!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union or BurJuman, and reach level 10 to finish the journey!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -310,8 +310,8 @@
     let boardedPlatformX = -1; // ...and which of its two platforms
     const passengerColours = ['#2b7bd6', '#e8a33d', '#8e44ad', '#2a9d8f'];
     // Metro lines: you can change between the Red and Green lines at an interchange station.
-    // The journey ends at the last station of the line when you reach level 15.
-    const finalLevel = 15;
+    // The journey ends at the last station of the line when you reach level 10.
+    const finalLevel = 10;
     let terminusK = -1; // the station number of the last station, once it is scheduled
     let won = false;
     let finalFlash = 0;
@@ -750,7 +750,7 @@
     applyMode();
 
     // ---------- the metro line map ----------
-    // Level 15: the next (or the one after, if the next is too close) station
+    // Level 10: the next (or the one after, if the next is too close) station
     // becomes the last one of the line.
     function scheduleTerminus() {
       const k = nextStationK();
