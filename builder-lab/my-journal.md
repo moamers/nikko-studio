@@ -34,3 +34,4 @@ Where I am: **Rung 1 – Tweak** (changing numbers and colours and seeing what h
 
 ### Session 5
 - I asked for EVEN HARDER. Claude turned up the numbers: 4 hearts, rocks take 3, more and faster rocks and aliens, longer boost wait. Builders tune a game by changing numbers until it feels right!
+- Then I wanted the rocket SO fast: ROCKET_SPEED went from 6 to 14, and each level adds 35% more speed.
