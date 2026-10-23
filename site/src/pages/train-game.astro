@@ -162,7 +162,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances \u2764\uFE0F\u2764\uFE0F before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union, BurJuman, Business Bay or Creek between the Red, Green and Blue lines, and reach level 10 to finish the journey. The last two levels have no obstacles at all!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances \u2764\uFE0F\u2764\uFE0F before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union, BurJuman, Business Bay or Creek between the Red, Green and Blue lines, or at Dubai Marina walk down the road to the Dubai Tram, and reach level 10 to finish the journey. The last two levels have no obstacles at all!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -228,7 +228,7 @@
     let bestLevelEasy = 0;
     // Medals: one for finishing each line (reaching its last station), and a
     // gold Metro Master medal once you have finished both.
-    let medals = { red: 0, green: 0, blue: 0 }; // how many times you have finished each line
+    let medals = { red: 0, green: 0, blue: 0, tram: 0 }; // how many times you have finished each line
     let newMedals = []; // the medals won on this journey
     let levelAtStart = 0; // the record when this journey began
     let recordThisRun = false;
@@ -284,6 +284,7 @@
       medals.red = Number(savedMedals.red) || 0;
       medals.green = Number(savedMedals.green) || 0;
       medals.blue = Number(savedMedals.blue) || 0;
+      medals.tram = Number(savedMedals.tram) || 0;
       easy = localStorage.getItem('trainEasy') === '1';
     } catch (e) {}
     best = easy ? bestEasy : bestNormal;
@@ -710,7 +711,7 @@
 
     function useBoost() {
       unlockAudio();
-      if (!started || gameOver || crashing || boostTime > 0 || boostCool > 0) return;
+      if (!started || gameOver || crashing || walkMode || boostTime > 0 || boostCool > 0) return;
       boostTime = boostDuration;
       boostCool = boostCooldown;
       noiseBurst(1200, 0.6, 0.25);
@@ -813,8 +814,8 @@
 
     function updateMedalsEl() {
       const m = (icon, name, n) => icon + ' ' + name + (n > 0 ? ' \u2713' + (n > 1 ? ' \u00D7' + n : '') : ' \u2014');
-      const master = medals.red > 0 && medals.green > 0 && medals.blue > 0 ? 1 : 0;
-      medalsEl.textContent = '\u{1F396}\uFE0F ' + m('\u{1F534}', 'Red', medals.red) + '   ' + m('\u{1F7E2}', 'Green', medals.green) + '   ' + m('\u{1F535}', 'Blue', medals.blue) + '   ' + m('\u2B50', 'Metro Master', master);
+      const master = medals.red > 0 && medals.green > 0 && medals.blue > 0 && medals.tram > 0 ? 1 : 0;
+      medalsEl.textContent = '\u{1F396}\uFE0F ' + m('\u{1F534}', 'Red', medals.red) + '   ' + m('\u{1F7E2}', 'Green', medals.green) + '   ' + m('\u{1F535}', 'Blue', medals.blue) + '   ' + m('\u{1F7E0}', 'Tram', medals.tram) + '   ' + m('\u2B50', 'Metro Master', master);
     }
     updateMedalsEl();
 
@@ -826,7 +827,7 @@
       medals[key]++;
       newMedals = [];
       if (firstTime) newMedals.push(key);
-      if (firstTime && medals.red > 0 && medals.green > 0 && medals.blue > 0) newMedals.push('master');
+      if (firstTime && medals.red > 0 && medals.green > 0 && medals.blue > 0 && medals.tram > 0) newMedals.push('master');
       saveMedals();
       updateMedalsEl();
       [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone('triangle', f, f, 0.3, 0.1, i * 0.12));
@@ -835,7 +836,7 @@
     }
 
     function updateLineBtn() {
-      const here = started && !gameOver && dwell > 0 && !changedHere && isInterchange(lastStoppedK);
+      const here = started && !gameOver && dwell > 0 && !changedHere && !walkMode && isInterchange(lastStoppedK);
       const label = here ? '\u{1F501} To ' + metroLines[targetLineAt(lastStoppedK)].name : '\u{1F501} Change line';
       if (lineBtn.textContent !== label) lineBtn.textContent = label;
       if (lineBtn.disabled === here) lineBtn.disabled = !here;
@@ -846,17 +847,27 @@
     function changeLine() {
       unlockAudio();
       if (!started || gameOver || dwell <= 0 || changedHere || !isInterchange(lastStoppedK)) return;
-      const name = stationName(lastStoppedK);
       const target = targetLineAt(lastStoppedK);
+      if (target === 'tram' || currentLine === 'tram') {
+        // the tram stop is down the road: you have to walk there
+        changedHere = true;
+        startWalk(target);
+        return;
+      }
+      performLineChange(target, 5);
+    }
+
+    function performLineChange(target, bonus) {
+      const name = stationName(lastStoppedK);
       const j = metroLines[target].names.indexOf(name);
       currentLine = target;
       lineBaseK = lastStoppedK;
       lineStart = j;
       ridden = [j];
       changedHere = true;
-      score += 5; // a little bonus for changing line
+      score += bonus; // a little bonus for changing line
       scoreEl.textContent = 'Score: ' + score;
-      floaters.push({ x: cars[0].x, y: engineY - 30, age: 0, text: '+5' });
+      floaters.push({ x: cars[0].x, y: engineY - 30, age: 0, text: '+' + bonus });
       nextAnnouncedK = -1; // say the next station again, on the new line
       arrivingAnnouncedK = lastStoppedK;
       tone('sine', 660, 990, 0.2, 0.09);
@@ -867,7 +878,444 @@
     }
     lineBtn.addEventListener('click', changeLine);
 
+    // ---------- changing between the metro and the tram: a walk along the road ----------
+    // The tram stop is down the road from the metro station. You walk there,
+    // crossing roads where the cars drive and a railway crossing where a tram
+    // comes through, and the line changes when you arrive.
+    let walkMode = false;
+    let walkTarget = null; // the line we are walking to
+    let walkPointer = null; // where a finger or the mouse is pressing (canvas coordinates)
+    const walkKeys = { left: false, right: false, up: false, down: false };
+    const walkLen = 1700;
+    const walker = { x: 200, y: walkLen - 60, hurt: 0, stepT: 0, moving: false };
+    let walkCars = [];
+    let walkTime = 0;
+    let walkMsg = '';
+    let walkMsgT = 0;
+    let walkIntro = 0;
+    let walkTramX = -400;
+    let walkGate = 0; // 0 = the gates are up, 1 = down
+    let walkTramWarn = false;
+    const walkRoads = [
+      { y: 1420, h: 120, signal: true, speed: 2.4, gap: 190, phase: 0, next: [0, 0] },
+      { y: 1080, h: 120, signal: false, speed: 3.0, gap: 330, phase: 0, next: [0, 0] },
+      { y: 520, h: 120, signal: true, speed: 2.8, gap: 170, phase: 300, next: [0, 0] },
+    ];
+    const zebra = { x0: 140, x1: 260 };
+    const tramCross = { y0: 820, y1: 900 };
+    const walkCarColours = ['#e63946', '#1f6fd6', '#f4a261', '#2a9d8f', '#8e44ad', '#e9c46a', '#dfe6ec'];
+    const walkCamY = () => Math.max(0, Math.min(walkLen - H, walker.y - 400));
+    const canvasPos = (clientX, clientY) => {
+      const rect = canvas.getBoundingClientRect();
+      return { x: ((clientX - rect.left) / rect.width) * W, y: ((clientY - rect.top) / rect.height) * H };
+    };
+
+    // the traffic lights: cars stop while the light is yellow or red, and people can cross while it is red
+    function carsMustStop(road) {
+      if (!road.signal) return false;
+      const t = (walkTime + road.phase) % 900;
+      return t >= 420 && t < 800;
+    }
+    function pedGreen(road) {
+      if (!road.signal) return false;
+      const t = (walkTime + road.phase) % 900;
+      return t >= 500 && t < 780;
+    }
+
+    function addWalkCar(roadIdx, lane, x) {
+      const road = walkRoads[roadIdx];
+      const dir = lane === 0 ? -1 : 1;
+      if (walkCars.some((c) => c.road === roadIdx && c.lane === lane && Math.abs(c.x - x) < 70)) return;
+      walkCars.push({
+        road: roadIdx,
+        lane,
+        x,
+        y: road.y + (lane === 0 ? 38 : 90),
+        dir,
+        w: 40,
+        h: 22,
+        speed: road.speed * (easy ? 0.75 : 1) * (0.85 + Math.random() * 0.3), // calmer traffic in Easy mode
+        moving: true,
+        colour: walkCarColours[Math.floor(Math.random() * walkCarColours.length)],
+      });
+    }
+
+    function startWalk(target) {
+      walkMode = true;
+      walkTarget = target;
+      walker.x = 200;
+      walker.y = walkLen - 60;
+      walker.hurt = 0;
+      walkPointer = null;
+      walkTime = 0;
+      walkMsg = '';
+      walkMsgT = 0;
+      walkIntro = 300;
+      walkTramX = -400;
+      walkGate = 0;
+      walkCars = [];
+      walkRoads.forEach((road, ri) => {
+        for (let lane = 0; lane < 2; lane++) {
+          let x = Math.random() * road.gap;
+          while (x < W + 40) {
+            addWalkCar(ri, lane, x);
+            x += road.gap * (0.7 + Math.random() * 0.8);
+          }
+          road.next[lane] = (road.gap / road.speed) * (0.6 + Math.random() * 0.8);
+        }
+      });
+      updateHum(false, 0);
+      const t = metroLines[target];
+      announce('يرجى السير إلى ' + t.nameAr, 'Please walk to the ' + t.name + '.');
+      updateLineBtn();
+    }
+
+    function finishWalk(skipped) {
+      walkMode = false;
+      walkPointer = null;
+      walkKeys.left = walkKeys.right = walkKeys.up = walkKeys.down = false;
+      const target = walkTarget;
+      walkTarget = null;
+      performLineChange(target, skipped ? 5 : 10);
+    }
+
+    function walkHit(why) {
+      walker.hurt = 100;
+      score = Math.max(0, score - 3);
+      scoreEl.textContent = 'Score: ' + score;
+      walkMsg = why;
+      walkMsgT = 160;
+      walkPointer = null;
+      // back to the pavement just before whatever you walked into
+      const zones = walkRoads.map((r) => [r.y - 4, r.y + r.h + 4]).concat([[tramCross.y0, tramCross.y1]]);
+      let safe = walkLen - 60;
+      zones.forEach(([a, b]) => {
+        if (walker.y >= a - 2 && walker.y <= b + 2) safe = b + 24;
+      });
+      walker.y = safe;
+      noiseBurst(500, 0.3, 0.3);
+      tone('square', 380, 330, 0.3, 0.06);
+    }
+
+    function updateWalk(step) {
+      walkTime += step;
+      walkIntro = Math.max(0, walkIntro - step);
+      walkMsgT = Math.max(0, walkMsgT - step);
+      walker.hurt = Math.max(0, walker.hurt - step);
+
+      // walking: press and hold to walk towards your finger, or use the arrow keys
+      let dx = 0;
+      let dy = 0;
+      if (walkPointer) {
+        const tx = walkPointer.x;
+        const ty = walkPointer.y + walkCamY();
+        const d = Math.hypot(tx - walker.x, ty - walker.y);
+        if (d > 5) {
+          dx = (tx - walker.x) / d;
+          dy = (ty - walker.y) / d;
+        }
+      }
+      if (walkKeys.left) dx -= 1;
+      if (walkKeys.right) dx += 1;
+      if (walkKeys.up) dy -= 1;
+      if (walkKeys.down) dy += 1;
+      const len = Math.hypot(dx, dy);
+      walker.moving = len > 0.01;
+      if (walker.moving) {
+        dx /= Math.max(1, len);
+        dy /= Math.max(1, len);
+        let nx = walker.x + dx * 2.3 * step;
+        let ny = walker.y + dy * 2.3 * step;
+        // the railway gates are shut while a tram is coming: you cannot walk in
+        if (walkGate > 0.5) {
+          if (walker.y > tramCross.y1 + 6 && ny <= tramCross.y1 + 6) ny = tramCross.y1 + 6;
+          if (walker.y < tramCross.y0 - 6 && ny >= tramCross.y0 - 6) ny = tramCross.y0 - 6;
+        }
+        walker.x = Math.max(28, Math.min(W - 28, nx));
+        walker.y = Math.max(40, Math.min(walkLen - 16, ny));
+        walker.stepT += step;
+        if (walker.stepT > 15) {
+          walker.stepT = 0;
+          noiseBurst(1600, 0.03, 0.04);
+        }
+      }
+
+      // the tram timetable: warning lights and bell, gates down, tram passes, gates up
+      const t = (walkTime + 200) % 600;
+      walkTramWarn = t >= 140 && t < 440;
+      if (t >= 140 && t < 300) walkGate = Math.min(1, (t - 140) / 50);
+      else if (t >= 300 && t < 420) walkGate = 1;
+      else if (t >= 420 && t < 470) walkGate = Math.max(0, 1 - (t - 420) / 45);
+      else walkGate = 0;
+      const tramOn = t >= 300 && t < 420;
+      walkTramX = tramOn ? -260 + ((t - 300) / 120) * 740 : -400;
+      if (walkTramWarn && (t - 140) % 22 < step) tone('sine', 1650, 1650, 0.12, 0.05);
+      if (tramOn && walker.hurt <= 0 && Math.abs(walker.x - walkTramX) < 125 && walker.y > tramCross.y0 + 14 && walker.y < tramCross.y1 - 14) {
+        walkHit('A tram! Wait for the gates to open');
+      }
+
+      // the cars
+      walkRoads.forEach((road, ri) => {
+        for (let lane = 0; lane < 2; lane++) {
+          road.next[lane] -= step;
+          if (road.next[lane] <= 0) {
+            addWalkCar(ri, lane, lane === 0 ? W + 30 : -30);
+            road.next[lane] = (road.gap / road.speed) * (0.7 + Math.random() * 0.9);
+          }
+        }
+      });
+      walkCars.forEach((c) => {
+        const road = walkRoads[c.road];
+        let move = c.speed * c.dir * step;
+        // wait at a red light
+        if (carsMustStop(road)) {
+          if (c.dir > 0 && c.x + c.w / 2 <= zebra.x0 - 14 && c.x + c.w / 2 + move > zebra.x0 - 14) move = zebra.x0 - 14 - (c.x + c.w / 2);
+          if (c.dir < 0 && c.x - c.w / 2 >= zebra.x1 + 14 && c.x - c.w / 2 + move < zebra.x1 + 14) move = zebra.x1 + 14 - (c.x - c.w / 2);
+        }
+        // keep a gap to the car in front
+        walkCars.forEach((o) => {
+          if (o === c || o.road !== c.road || o.lane !== c.lane) return;
+          const ahead = (o.x - c.x) * c.dir;
+          if (ahead > 0 && ahead - Math.abs(move) < c.w + 12) move = c.dir * Math.max(0, ahead - (c.w + 12));
+        });
+        // slow down for a person on the crossing
+        if (walker.y > road.y - 22 && walker.y < road.y + road.h + 22 && walker.x > zebra.x0 - 12 && walker.x < zebra.x1 + 12) {
+          const ahead = (walker.x - c.x) * c.dir;
+          if (ahead > 0 && ahead < 130) move *= Math.max(0, (ahead - 34) / 96);
+        }
+        c.x += move;
+        c.moving = Math.abs(move) > 0.25 * step;
+        // bumped into the walker?
+        if (c.moving && walker.hurt <= 0 && Math.abs(walker.x - c.x) < c.w / 2 + 5 && Math.abs(walker.y - c.y) < c.h / 2 + 6) {
+          walkHit('Ouch! Watch out for the cars');
+        }
+      });
+      walkCars = walkCars.filter((c) => c.x > -80 && c.x < W + 80);
+
+      // arrived at the stop
+      if (walker.y < 238 && walker.x > 90 && walker.x < 310) finishWalk(false);
+    }
+
+    function drawWalk() {
+      const camY = walkCamY();
+      const cs = getComputedStyle(document.documentElement);
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = cs.getPropertyValue('--land').trim() || '#a9b0b7';
+      ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      ctx.translate(0, -camY);
+      // buildings along both sides
+      const first = Math.floor(camY / 96) - 1;
+      for (let i = first; i < first + H / 96 + 3; i++) {
+        const hv = cityHash(i, 40);
+        drawRoof(2, i * 96 + 6, 36, 76 - (hv % 18), hv >>> 2);
+        const hw = cityHash(i, 41);
+        drawRoof(W - 38, i * 96 + 6, 36, 76 - (hw % 18), hw >>> 2);
+      }
+      // pavement decorations: palms, benches and arrows
+      for (let y = 140; y < walkLen - 40; y += 64) {
+        const inRoad = walkRoads.some((r) => y > r.y - 30 && y < r.y + r.h + 30) || (y > tramCross.y0 - 40 && y < tramCross.y1 + 40);
+        if (inRoad || y < 270) continue;
+        const hv = cityHash(Math.floor(y / 64), 55);
+        drawPalm(hv % 2 ? 64 : 336, y);
+        if (hv % 5 === 0) {
+          ctx.fillStyle = '#8d6e50';
+          ctx.fillRect(hv % 2 ? 84 : 296, y - 5, 20, 8);
+        }
+      }
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.textAlign = 'center';
+      for (let y = 300; y < walkLen - 100; y += 150) {
+        if (walkRoads.some((r) => y > r.y - 40 && y < r.y + r.h + 40) || (y > tramCross.y0 - 50 && y < tramCross.y1 + 50)) continue;
+        ctx.fillText('▲', 200, y);
+      }
+      // roads, zebra crossings, traffic lights
+      walkRoads.forEach((road) => {
+        ctx.fillStyle = '#585e66';
+        ctx.fillRect(0, road.y, W, road.h);
+        ctx.fillStyle = '#c9ccd1';
+        ctx.fillRect(0, road.y - 3, W, 3);
+        ctx.fillRect(0, road.y + road.h, W, 3);
+        ctx.fillStyle = 'rgba(255, 220, 90, 0.85)';
+        for (let x = 0; x < W; x += 28) ctx.fillRect(x, road.y + road.h / 2 - 1, 14, 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        for (let x = zebra.x0; x < zebra.x1; x += 16) ctx.fillRect(x, road.y + 5, 9, road.h - 10);
+        if (road.signal) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.fillRect(zebra.x0 - 16, road.y + road.h / 2, 3, road.h / 2); // stop line, one way
+          ctx.fillRect(zebra.x1 + 13, road.y, 3, road.h / 2); // stop line, the other way
+          const green = pedGreen(road);
+          [zebra.x0 - 22, zebra.x1 + 22].forEach((px) => {
+            roundedRect(px - 10, road.y - 24, 20, 20, 5);
+            ctx.fillStyle = green ? '#27a844' : '#d4352a';
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(green ? '\u{1F6B6}' : '✋', px, road.y - 10);
+          });
+        }
+      });
+      // the railway crossing
+      ctx.fillStyle = '#b8a88a';
+      ctx.fillRect(0, tramCross.y0 + 6, W, tramCross.y1 - tramCross.y0 - 12);
+      ctx.fillStyle = '#7a5a3a';
+      for (let x = 0; x < W; x += 14) ctx.fillRect(x, tramCross.y0 + 14, 8, tramCross.y1 - tramCross.y0 - 28);
+      ctx.fillStyle = '#8d969e';
+      ctx.fillRect(0, 843, W, 4);
+      ctx.fillRect(0, 873, W, 4);
+      const flash = walkTramWarn && Math.floor(walkTime / 12) % 2 === 0;
+      [[44, tramCross.y0 - 16], [W - 44, tramCross.y1 + 16]].forEach(([px, py]) => {
+        ctx.fillStyle = '#3a3f46';
+        ctx.fillRect(px - 2, py - 8, 4, 22);
+        ctx.beginPath();
+        ctx.arc(px - 7, py - 10, 5, 0, Math.PI * 2);
+        ctx.arc(px + 7, py - 10, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#5a1d1d';
+        ctx.fill();
+        if (walkTramWarn) {
+          ctx.beginPath();
+          ctx.arc(flash ? px - 7 : px + 7, py - 10, 5, 0, Math.PI * 2);
+          ctx.fillStyle = '#ff3b30';
+          ctx.fill();
+        }
+      });
+      // the gates
+      [tramCross.y0 - 6, tramCross.y1 + 6].forEach((gy) => {
+        const lenArm = 26 + walkGate * (W - 100);
+        ctx.fillStyle = '#4a4f55';
+        ctx.fillRect(22, gy - 8, 10, 16);
+        for (let i = 0; i < lenArm / 18; i++) {
+          ctx.fillStyle = i % 2 ? '#ffffff' : '#e63946';
+          ctx.fillRect(32 + i * 18, gy - 3, Math.min(18, lenArm - i * 18), 6);
+        }
+      });
+      // the tram that comes through
+      if (walkTramX > -300) {
+        const tx = walkTramX - 120;
+        roundedRect(tx, 843, 240, 34, 10);
+        ctx.fillStyle = '#ffa83d';
+        ctx.fill();
+        ctx.strokeStyle = '#7a4208';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(tx + 8, 858, 224, 4);
+        ctx.fillStyle = '#2f4358';
+        for (let i = 0; i < 6; i++) ctx.fillRect(tx + 16 + i * 36, 848, 26, 7);
+        ctx.fillStyle = '#fff3a0';
+        ctx.fillRect(tx + 236, 852, 4, 16);
+      }
+      // the cars
+      walkCars.forEach((c) => {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(c.x - c.w / 2 + 2, c.y - c.h / 2 + 3, c.w, c.h);
+        roundedRect(c.x - c.w / 2, c.y - c.h / 2, c.w, c.h, 5);
+        ctx.fillStyle = c.colour;
+        ctx.fill();
+        ctx.fillStyle = 'rgba(30, 40, 55, 0.75)';
+        ctx.fillRect(c.x + c.dir * 7 - 5, c.y - c.h / 2 + 3, 10, c.h - 6);
+        if (!c.moving) {
+          ctx.fillStyle = '#ff3b30';
+          ctx.fillRect(c.x - c.dir * (c.w / 2) - 1, c.y - 8, 2, 4);
+          ctx.fillRect(c.x - c.dir * (c.w / 2) - 1, c.y + 4, 2, 4);
+        }
+      });
+      // where you came from (at the bottom) and where you are going (at the top)
+      const from = lineOf();
+      const to = metroLines[walkTarget];
+      const drawStop = (y, line, isTram, big) => {
+        ctx.fillStyle = '#d7dbe0';
+        ctx.fillRect(80, y, 240, 150);
+        ctx.fillStyle = line.colour;
+        ctx.fillRect(80, y, 240, 6);
+        roundedRect(110, y + 20, 180, 30, 8);
+        ctx.fillStyle = line.colour;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText((isTram ? '\u{1F68B} ' : '\u{1F687} ') + line.name, 200, y + 40);
+        if (isTram && big) {
+          // the tram waiting at the stop
+          roundedRect(176, y + 56, 48, 94, 10);
+          ctx.fillStyle = '#ffa83d';
+          ctx.fill();
+          ctx.strokeStyle = '#7a4208';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(198, y + 62, 4, 82);
+          ctx.fillStyle = '#2f4358';
+          for (let i = 0; i < 4; i++) ctx.fillRect(182, y + 66 + i * 20, 10, 14);
+          ctx.fillStyle = '#3ddc84';
+          ctx.fillRect(173, y + 80, 4, 14);
+          ctx.fillRect(223, y + 80, 4, 14);
+        }
+      };
+      drawStop(60, to, to === metroLines.tram, true);
+      drawStop(walkLen - 130, from, from === metroLines.tram, false);
+      // you
+      if (walker.hurt <= 0 || Math.floor(walker.hurt / 6) % 2 === 0) {
+        ctx.save();
+        ctx.translate(walker.x, walker.y);
+        ctx.scale(1.5, 1.5);
+        drawPerson(0, 0, '#d71920', walker.moving ? walkTime * 0.45 : 0);
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // the words on top
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+      roundedRect(W / 2 - 150, 10, 300, 30, 15);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('\u{1F6B6} Walk to the ' + to.name + '!', W / 2, 30);
+      // a bar showing how far you have to go
+      const frac = Math.max(0, Math.min(1, 1 - (walker.y - 238) / (walkLen - 60 - 238)));
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.55)';
+      roundedRect(10, 60, 14, 220, 7);
+      ctx.fill();
+      ctx.fillStyle = to.colour;
+      roundedRect(12, 62 + 216 * (1 - frac), 10, 216 * frac, 5);
+      ctx.fill();
+      // skip
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+      roundedRect(W - 86, 48, 76, 26, 13);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('Skip ▶', W - 48, 66);
+      if (walkIntro > 0) {
+        const a = Math.min(1, walkIntro / 40);
+        ctx.fillStyle = 'rgba(10, 18, 28, ' + 0.7 * a + ')';
+        roundedRect(30, 90, W - 60, 72, 14);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + a + ')';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillText('Press and hold to walk (or use the arrow keys)', W / 2, 118);
+        ctx.font = '13px sans-serif';
+        ctx.fillText('Cross when the cars stop • wait for the tram gates!', W / 2, 142);
+      }
+      if (walkMsgT > 0) {
+        const a = Math.min(1, walkMsgT / 30);
+        ctx.fillStyle = 'rgba(214, 40, 40, ' + 0.9 * a + ')';
+        roundedRect(W / 2 - 140, H - 70, 280, 34, 17);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + a + ')';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(walkMsg, W / 2, H - 48);
+      }
+    }
+
     function setMap(on) {
+      if (on && walkMode) return;
       mapOpen = on;
       mapBtn.innerHTML = on ? '&#10006;&#65039; Close map' : '&#128506;&#65039; Map';
       if (on) {
@@ -898,7 +1346,7 @@
 
     // Starts gentle at level 1 and steps up each level.
     function worldSpeed() {
-      return Math.min(11.5, 3.3 + (level - 1) * 0.9) * (easy ? 0.7 : 1);
+      return Math.min(11.5, 3.3 + (level - 1) * 0.9) * (easy ? 0.7 : 1) * (currentLine === 'tram' ? 0.75 : 1); // trams are a little slower
     }
 
     function spawnGap() {
@@ -1071,19 +1519,41 @@
       return Math.max(0, Math.min(2, Math.floor(x / (W / 3))));
     }
 
+    // while walking to the tram: press and hold to walk towards your finger
+    const walkPress = (clientX, clientY) => {
+      const p = canvasPos(clientX, clientY);
+      if (p.x > W - 90 && p.y > 44 && p.y < 78) return finishWalk(true); // Skip
+      walkPointer = p;
+    };
+    window.addEventListener('mouseup', () => (walkPointer = null));
+    window.addEventListener('touchend', () => (walkPointer = null));
+    window.addEventListener('touchcancel', () => (walkPointer = null));
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') walkKeys.left = false;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') walkKeys.right = false;
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') walkKeys.up = false;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') walkKeys.down = false;
+    });
+
     canvas.addEventListener('mousedown', (e) => {
       unlockAudio();
+      if (walkMode) return walkPress(e.clientX, e.clientY);
       if (mapOpen) return setMap(false);
       startOrRestart();
       lane = laneFromClientX(e.clientX);
     });
     canvas.addEventListener('mousemove', (e) => {
+      if (walkMode) {
+        if (walkPointer) walkPointer = canvasPos(e.clientX, e.clientY);
+        return;
+      }
       lane = laneFromClientX(e.clientX);
     });
     canvas.addEventListener(
       'touchstart',
       (e) => {
         unlockAudio();
+        if (walkMode) return walkPress(e.touches[0].clientX, e.touches[0].clientY);
         if (mapOpen) return setMap(false);
         startOrRestart();
         lane = laneFromClientX(e.touches[0].clientX);
@@ -1093,12 +1563,25 @@
     canvas.addEventListener(
       'touchmove',
       (e) => {
+        if (walkMode) {
+          if (walkPointer) walkPointer = canvasPos(e.touches[0].clientX, e.touches[0].clientY);
+          return;
+        }
         lane = laneFromClientX(e.touches[0].clientX);
       },
       { passive: true }
     );
 
     window.addEventListener('keydown', (e) => {
+      if (walkMode) {
+        // walking to the tram: the arrow keys steer
+        if (e.code === 'ArrowLeft' || e.code === 'KeyA') walkKeys.left = true;
+        if (e.code === 'ArrowRight' || e.code === 'KeyD') walkKeys.right = true;
+        if (e.code === 'ArrowUp' || e.code === 'KeyW') walkKeys.up = true;
+        if (e.code === 'ArrowDown' || e.code === 'KeyS') walkKeys.down = true;
+        if (e.code.startsWith('Arrow') || e.code === 'Space') e.preventDefault();
+        return;
+      }
       if (e.repeat) return;
       unlockAudio();
       if (e.code === 'KeyM') setMap(!mapOpen);
@@ -1120,6 +1603,11 @@
       lastTime = now;
       step = Math.min(Math.max(step, 0.2), 3); // same speed on 60Hz and 120Hz screens
       if (mapOpen) return; // everything waits while you look at the map
+      if (walkMode) {
+        frame += step; // the train waits at the station while you walk
+        updateWalk(step);
+        return;
+      }
       frame += step;
 
       // weather
@@ -1822,6 +2310,15 @@
         names: ['Al Qusais', 'Al Nahda', 'Stadium', 'Abu Hail', 'Salah Al Din', 'Union', 'Baniyas Square', 'Al Ras', 'BurJuman', 'Oud Metha', 'Al Jadaf', 'Creek'],
         ar: ['القصيص', 'النهدة', 'الاستاد', 'أبو هيل', 'صلاح الدين', 'الاتحاد', 'ساحة بني ياس', 'الراس', 'برجمان', 'عود ميثاء', 'الجداف', 'كريك'],
       },
+      tram: {
+        name: 'Dubai Tram',
+        nameAr: 'ترام دبي',
+        colour: '#f28c28',
+        dark: '#a85a0e',
+        end: { name: 'Palm Jumeirah', ar: 'نخلة جميرا' },
+        names: ['Dubai Marina', 'Marina Towers', 'JBR 1', 'JBR 2', 'Marina Mall', 'Mina Seyahi', 'Media City', 'Internet City', 'Al Sufouh', 'Sobha Realty'],
+        ar: ['دبي مارينا', 'أبراج المارينا', 'جي بي آر 1', 'جي بي آر 2', 'مارينا مول', 'ميناء السيهة', 'مدينة دبي للإعلام', 'مدينة دبي للإنترنت', 'السفوح', 'صبّا العقارية'],
+      },
       blue: {
         name: 'Blue Line',
         nameAr: 'الخط الأزرق',
@@ -2211,6 +2708,7 @@
     // with a long pointed nose and a coloured stripe.
     const whiteBody = ['#dfe6ec', '#ffffff', '#cfd8e0'];
     const blueBody = ['#1a56b0', '#3d8bf0', '#164a96'];
+    const tramBody = ['#d97a12', '#ffa83d', '#c26a0c'];
     function drawEngine(stripe, outline, headlight, body) {
       body = body || whiteBody;
       ctx.beginPath();
@@ -2777,8 +3275,9 @@
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        if (i === 0) drawEngine('#ffffff', '#0d2f66', true, blueBody);
-        else drawCarriage('#ffffff', '#0d2f66', blueBody);
+        const onTram = currentLine === 'tram';
+        if (i === 0) drawEngine('#ffffff', onTram ? '#7a4208' : '#0d2f66', true, onTram ? tramBody : blueBody);
+        else drawCarriage('#ffffff', onTram ? '#7a4208' : '#0d2f66', onTram ? tramBody : blueBody);
         if (dwell > 0 && !crashing) {
           // open doors: bright green door panels on the platform side
           const sx = doorSide === 'left' ? -1 : 1;
@@ -2909,8 +3408,8 @@
 
     // A medal on a ribbon: red or green for the lines, gold with a star for Metro Master.
     function drawMedal(cx, cy, r, kind, earned, shine) {
-      const colour = kind === 'green' ? '#00a04a' : kind === 'blue' ? '#0a6ed1' : kind === 'master' ? '#2a2a3a' : '#e21836';
-      const ribbon = kind === 'green' ? '#007a38' : kind === 'blue' ? '#064a8f' : kind === 'master' ? '#c99a1e' : '#a8112a';
+      const colour = kind === 'green' ? '#00a04a' : kind === 'blue' ? '#0a6ed1' : kind === 'tram' ? '#f28c28' : kind === 'master' ? '#2a2a3a' : '#e21836';
+      const ribbon = kind === 'green' ? '#007a38' : kind === 'blue' ? '#064a8f' : kind === 'tram' ? '#a85a0e' : kind === 'master' ? '#c99a1e' : '#a8112a';
       ctx.save();
       if (!earned) ctx.globalAlpha = 0.3;
       // ribbon
@@ -2984,6 +3483,10 @@
     }
 
     function draw() {
+      if (walkMode) {
+        drawWalk();
+        return;
+      }
       ctx.clearRect(0, 0, W, H);
       drawScenery();
 
@@ -3074,14 +3577,14 @@
           ctx.fillText('Your best level', W / 2, 242);
         }
         // the medals you have won so far (faded when not yet won)
-        const have = [medals.red > 0, medals.green > 0, medals.blue > 0, medals.red > 0 && medals.green > 0 && medals.blue > 0];
-        ['red', 'green', 'blue', 'master'].forEach((kind, i) => {
-          const mx = W / 2 - 84 + i * 56;
+        const have = [medals.red > 0, medals.green > 0, medals.blue > 0, medals.tram > 0, medals.red > 0 && medals.green > 0 && medals.blue > 0 && medals.tram > 0];
+        ['red', 'green', 'blue', 'tram', 'master'].forEach((kind, i) => {
+          const mx = W / 2 - 100 + i * 50;
           drawMedal(mx, 66, 15, kind, have[i], false);
           ctx.fillStyle = have[i] ? '#ffe066' : 'rgba(255, 255, 255, 0.45)';
           ctx.font = '10px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(kind === 'master' ? 'Master' : kind === 'red' ? 'Red' : kind === 'green' ? 'Green' : 'Blue', mx, 92);
+          ctx.fillText(kind === 'master' ? 'Master' : kind === 'red' ? 'Red' : kind === 'green' ? 'Green' : kind === 'blue' ? 'Blue' : 'Tram', mx, 92);
         });
       } else if (gameOver) {
         drawOverlay(won ? 'Journey complete! \u{1F389}' : 'Derailed!', (won ? 'Tap to play again \u2022 Score: ' : 'Tap to try again • Score: ') + score);
@@ -3132,6 +3635,7 @@
         if ((data.medals && data.medals.red || 0) > medals.red) medals.red = data.medals.red;
         if ((data.medals && data.medals.green || 0) > medals.green) medals.green = data.medals.green;
         if ((data.medals && data.medals.blue || 0) > medals.blue) medals.blue = data.medals.blue;
+        if ((data.medals && data.medals.tram || 0) > medals.tram) medals.tram = data.medals.tram;
         saveMedals();
         updateMedalsEl();
         applyMode();
