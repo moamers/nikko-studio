@@ -31,3 +31,6 @@ Where I am: **Rung 1 – Tweak** (changing numbers and colours and seeing what h
 - New words: **level** (a step in the game), **progress** (how far you've got), **cooldown** (waiting before you can use something again).
 - Fun fact: the real Moon is 384,400 km away.
 - Next ideas: more planets with names? a boss alien? two players?
+
+### Session 5
+- I asked for EVEN HARDER. Claude turned up the numbers: 4 hearts, rocks take 3, more and faster rocks and aliens, longer boost wait. Builders tune a game by changing numbers until it feels right!
