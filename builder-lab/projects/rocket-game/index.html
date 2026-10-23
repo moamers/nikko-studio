@@ -5,69 +5,192 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Rocket Game</title>
 <style>
-  body { margin: 0; background: #05061a; overflow: hidden; font-family: sans-serif; color: white; }
-  #space { position: relative; width: 100vw; height: 100vh; touch-action: none; }
-  #rocket { position: absolute; line-height: 1; }
-  #name { position: absolute; top: 10px; width: 100%; text-align: center; font-size: 24px; }
+  body { margin: 0; background: #05061a; overflow: hidden; font-family: sans-serif; color: white; user-select: none; }
+  #space { position: relative; width: 100vw; height: 100vh; touch-action: none; overflow: hidden; }
+  .thing { position: absolute; line-height: 1; pointer-events: none; }
+  #hud { position: absolute; top: 8px; width: 100%; text-align: center; font-size: 26px; z-index: 5; pointer-events: none; }
+  #message { position: absolute; top: 35%; width: 100%; text-align: center; font-size: 40px; z-index: 6; }
+  button { font-size: 26px; padding: 12px 28px; border-radius: 14px; border: none; cursor: pointer; margin-top: 16px; }
 </style>
 </head>
 <body>
 <div id="space">
-  <div id="name"></div>
-  <div id="rocket">🚀</div>
+  <div id="hud"></div>
+  <div id="message"></div>
+  <div id="rocket" class="thing">🚀</div>
 </div>
 
 <script>
 // =====================================================
 //  SETTINGS  -  CHANGE THESE AND REFRESH THE PAGE!
 // =====================================================
-const ROCKET_EMOJI  = "🚀";      // Try 🛸 or 🐝 or 🦄
-const ROCKET_SIZE   = 70;        // How big the rocket is. Try 140!
-const ROCKET_SPEED  = 6;         // How fast it flies with the arrow keys. Try 15!
-const SPACE_COLOUR  = "#05061a"; // Try "purple" or "#003366"
-const ROCKET_NAME   = "";        // Type a name between the quotes! Like "Zoom"
+const ROCKET_NAME    = "Zoom";    // Name your rocket! Put any name in the quotes.
+const ROCKET_EMOJI   = "🚀";      // Try 🛸 or 🐝 or 🦄
+const ROCKET_SIZE    = 70;        // How big the rocket is. Try 140!
+const ROCKET_SPEED   = 7;         // Arrow-key speed. Try 15!
+const SPACE_COLOUR   = "#05061a"; // Try "purple" or "#003366"
+
+const START_LIVES    = 3;         // How many hits you can take
+const ROCK_EMOJI     = "🪨";      // Try ☄️
+const ROCK_SPEED     = 3;         // How fast rocks fall. Try 8 if you're brave!
+const ROCK_EVERY     = 1200;      // Milliseconds between rocks. Smaller = more rocks!
+
+const STAR_EMOJI     = "⭐";
+const STAR_EVERY     = 1600;      // How often stars appear
+
+const ALIEN_EMOJI    = "👾";
+const ALIEN_EVERY    = 2500;      // How often aliens appear
+const ALIEN_SPEED    = 2;
+const BULLET_EMOJI   = "🔥";
+const BULLET_SPEED   = 10;
 
 // =====================================================
 //  THE GAME PART  -  ask Claude "what does this do?" any time
 // =====================================================
-const space  = document.getElementById("space");
-const rocket = document.getElementById("rocket");
+const space   = document.getElementById("space");
+const hud     = document.getElementById("hud");
+const message = document.getElementById("message");
+const rocket  = document.getElementById("rocket");
+const SIZE = 50;   // size of rocks, stars, aliens
+
 document.body.style.background = SPACE_COLOUR;
 rocket.textContent = ROCKET_EMOJI;
 rocket.style.fontSize = ROCKET_SIZE + "px";
-document.getElementById("name").textContent = ROCKET_NAME;
 
-// Where the rocket is (variables = labelled boxes that remember numbers)
-let x = window.innerWidth / 2 - ROCKET_SIZE / 2;
-let y = window.innerHeight - ROCKET_SIZE * 2;
-
-// Which arrow keys are being held down right now
+// Variables: labelled boxes that remember things
+let x, y, score, lives, playing, things, timers, frame;
 const keys = {};
-window.addEventListener("keydown", e => { keys[e.key] = true; });
-window.addEventListener("keyup",   e => { keys[e.key] = false; });
 
-// Mouse or finger: the rocket follows it
+window.addEventListener("keydown", e => {
+  keys[e.key] = true;
+  if (e.key === " ") { e.preventDefault(); shoot(); }   // space bar = fire!
+});
+window.addEventListener("keyup", e => { keys[e.key] = false; });
+
+// Mouse or finger moves the rocket. Tapping/clicking shoots.
 space.addEventListener("pointermove", e => {
   x = e.clientX - ROCKET_SIZE / 2;
   y = e.clientY - ROCKET_SIZE / 2;
 });
+space.addEventListener("pointerdown", e => {
+  if (e.target.tagName === "BUTTON") return;
+  x = e.clientX - ROCKET_SIZE / 2;
+  y = e.clientY - ROCKET_SIZE / 2;
+  shoot();
+});
+
+// Make a new thing on screen. kind = "rock", "star", "alien" or "bullet"
+function makeThing(kind, emoji, px, py, speed) {
+  const el = document.createElement("div");
+  el.className = "thing";
+  el.textContent = emoji;
+  el.style.fontSize = SIZE + "px";
+  space.appendChild(el);
+  things.push({ kind, el, x: px, y: py, speed });
+}
+
+function randomX() { return Math.random() * (window.innerWidth - SIZE); }
+
+function shoot() {
+  if (!playing) return;
+  makeThing("bullet", BULLET_EMOJI, x + ROCKET_SIZE / 2 - SIZE / 4, y - 20, -BULLET_SPEED);
+}
+
+// Are two things touching? (Compare their boxes)
+function touching(a, aSize, b, bSize) {
+  return a.x < b.x + bSize && a.x + aSize > b.x &&
+         a.y < b.y + bSize && a.y + aSize > b.y;
+}
+
+function removeThing(t) { t.el.remove(); things = things.filter(o => o !== t); }
+
+function showHud() {
+  hud.textContent = (ROCKET_NAME ? ROCKET_NAME + "   " : "") +
+                    "⭐ " + score + "    " + "❤️".repeat(Math.max(lives, 0));
+}
+
+function loseLife() {
+  lives = lives - 1;
+  showHud();
+  if (lives <= 0) endGame();
+}
 
 function gameLoop() {
-  // Arrow keys change x and y
-  if (keys["ArrowLeft"])  x = x - ROCKET_SPEED;
-  if (keys["ArrowRight"]) x = x + ROCKET_SPEED;
-  if (keys["ArrowUp"])    y = y - ROCKET_SPEED;
-  if (keys["ArrowDown"])  y = y + ROCKET_SPEED;
+  if (!playing) return;
 
-  // Keep the rocket on the screen
+  // Arrow keys move the rocket
+  if (keys["ArrowLeft"])  x -= ROCKET_SPEED;
+  if (keys["ArrowRight"]) x += ROCKET_SPEED;
+  if (keys["ArrowUp"])    y -= ROCKET_SPEED;
+  if (keys["ArrowDown"])  y += ROCKET_SPEED;
   x = Math.max(0, Math.min(window.innerWidth  - ROCKET_SIZE, x));
   y = Math.max(0, Math.min(window.innerHeight - ROCKET_SIZE, y));
-
   rocket.style.left = x + "px";
   rocket.style.top  = y + "px";
+
+  const me = { x: x, y: y };
+
+  for (const t of [...things]) {
+    t.y += t.speed;
+    t.el.style.left = t.x + "px";
+    t.el.style.top  = t.y + "px";
+
+    // Off the screen? Throw it away.
+    if (t.y > window.innerHeight || t.y < -100) { removeThing(t); continue; }
+
+    if (t.kind === "rock" && touching(me, ROCKET_SIZE, t, SIZE)) {
+      removeThing(t); loseLife();                       // ouch!
+    }
+    else if (t.kind === "alien" && touching(me, ROCKET_SIZE, t, SIZE)) {
+      removeThing(t); loseLife();                       // ouch!
+    }
+    else if (t.kind === "star" && touching(me, ROCKET_SIZE, t, SIZE)) {
+      removeThing(t); score += 1; showHud();            // yum, a star!
+    }
+    else if (t.kind === "bullet") {
+      for (const a of things.filter(o => o.kind === "alien")) {
+        if (touching(t, SIZE / 2, a, SIZE)) {           // shot an alien!
+          removeThing(a); removeThing(t); score += 3; showHud();
+          break;
+        }
+      }
+    }
+  }
   requestAnimationFrame(gameLoop);   // do it again, 60 times a second!
 }
-gameLoop();
+
+function startGame() {
+  things.forEach?.(t => t.el.remove());
+  things = [];
+  score = 0; lives = START_LIVES; playing = true;
+  x = window.innerWidth / 2 - ROCKET_SIZE / 2;
+  y = window.innerHeight - ROCKET_SIZE * 2;
+  message.innerHTML = "";
+  showHud();
+  timers = [
+    setInterval(() => makeThing("rock",  ROCK_EMOJI,  randomX(), -SIZE, ROCK_SPEED),  ROCK_EVERY),
+    setInterval(() => makeThing("star",  STAR_EMOJI,  randomX(), -SIZE, 3),           STAR_EVERY),
+    setInterval(() => makeThing("alien", ALIEN_EMOJI, randomX(), -SIZE, ALIEN_SPEED), ALIEN_EVERY)
+  ];
+  gameLoop();
+}
+
+function endGame() {
+  playing = false;
+  timers.forEach(clearInterval);
+  message.innerHTML = "Game over!<br>" + (ROCKET_NAME || "Your rocket") + " got " + score +
+                      " points!<br><button id='again'>Play again</button>";
+  document.getElementById("again").addEventListener("click", startGame);
+}
+
+things = [];
+score = 0; lives = START_LIVES; playing = false;
+x = window.innerWidth / 2 - ROCKET_SIZE / 2;
+y = window.innerHeight - ROCKET_SIZE * 2;
+rocket.style.left = x + "px"; rocket.style.top = y + "px";
+showHud();
+message.innerHTML = "🚀 Arrows or mouse to fly<br>Space or click to shoot 🔥<br><button id='go'>Start!</button>";
+document.getElementById("go").addEventListener("click", startGame);
 </script>
 </body>
 </html>
