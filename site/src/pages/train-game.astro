@@ -799,6 +799,8 @@
       const k = nextStationK();
       const dist = stationPassAt(k) - scrollTotal;
       terminusK = dist > 2000 ? k : k + 1;
+      // the monorail always runs its whole way, to Atlantis
+      if (currentLine === 'monorail') terminusK = Math.max(terminusK, lineBaseK + metroLines.monorail.names.length);
       finalFlash = 200;
       if (terminusK === k) {
         nextAnnouncedK = -1; // announce it again, now as the final station
@@ -865,6 +867,8 @@
       lineBaseK = lastStoppedK;
       lineStart = j;
       ridden = [j];
+      // a new line gets its own last station (the monorail goes all the way to Atlantis)
+      if (target === 'monorail' && terminusK >= 0) terminusK = lineBaseK + metroLines.monorail.names.length;
       changedHere = true;
       score += bonus; // a little bonus for changing line
       scoreEl.textContent = 'Score: ' + score;
