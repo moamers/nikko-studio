@@ -21,3 +21,7 @@ Where I am: **Rung 1 – Tweak** (changing numbers and colours and seeing what h
 ### Session 2
 - I asked for a rocket game with EVERYTHING. We're building it one piece at a time. Piece 1: the rocket flies (arrows + mouse).
 - Got frustrated waiting, so Claude built the whole rocket game at once. Next time: pick ONE thing to change and watch what happens.
+
+### Session 3
+- My idea: make it MUCH harder. Aliens now chase the rocket, rocks come faster and hurt more (2 hearts). I asked for it in my own words — that's how builders talk!
+- New word: **difficulty** (how hard a game is). We changed it by editing numbers in SETTINGS.

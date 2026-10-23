@@ -30,17 +30,18 @@ const ROCKET_SIZE    = 70;        // How big the rocket is. Try 140!
 const ROCKET_SPEED   = 7;         // Arrow-key speed. Try 15!
 const SPACE_COLOUR   = "#05061a"; // Try "purple" or "#003366"
 
-const START_LIVES    = 3;         // How many hits you can take
+const START_LIVES    = 6;         // How many hearts you start with
 const ROCK_EMOJI     = "🪨";      // Try ☄️
-const ROCK_SPEED     = 3;         // How fast rocks fall. Try 8 if you're brave!
-const ROCK_EVERY     = 1200;      // Milliseconds between rocks. Smaller = more rocks!
+const ROCK_SPEED     = 6;         // How fast rocks fall. Try 12 if you're brave!
+const ROCK_DAMAGE    = 2;         // Hearts a rock takes away. Try 3!
+const ROCK_EVERY     = 450;            // Milliseconds between rocks. Smaller = more rocks!
 
 const STAR_EMOJI     = "⭐";
 const STAR_EVERY     = 1600;      // How often stars appear
 
 const ALIEN_EMOJI    = "👾";
-const ALIEN_EVERY    = 2500;      // How often aliens appear
-const ALIEN_SPEED    = 2;
+const ALIEN_EVERY    = 1500;      // How often aliens appear
+const ALIEN_SPEED    = 2.5;       // Aliens CHASE you at this speed. Shoot them fast!
 const BULLET_EMOJI   = "🔥";
 const BULLET_SPEED   = 10;
 
@@ -109,8 +110,8 @@ function showHud() {
                     "⭐ " + score + "    " + "❤️".repeat(Math.max(lives, 0));
 }
 
-function loseLife() {
-  lives = lives - 1;
+function loseLife(amount) {
+  lives = lives - amount;
   showHud();
   if (lives <= 0) endGame();
 }
@@ -131,7 +132,15 @@ function gameLoop() {
   const me = { x: x, y: y };
 
   for (const t of [...things]) {
-    t.y += t.speed;
+    if (t.kind === "alien") {
+      // Aliens fly straight at the rocket!
+      const dx = x - t.x, dy = y - t.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      t.x += dx / dist * ALIEN_SPEED;
+      t.y += dy / dist * ALIEN_SPEED;
+    } else {
+      t.y += t.speed;
+    }
     t.el.style.left = t.x + "px";
     t.el.style.top  = t.y + "px";
 
@@ -139,10 +148,10 @@ function gameLoop() {
     if (t.y > window.innerHeight || t.y < -100) { removeThing(t); continue; }
 
     if (t.kind === "rock" && touching(me, ROCKET_SIZE, t, SIZE)) {
-      removeThing(t); loseLife();                       // ouch!
+      removeThing(t); loseLife(ROCK_DAMAGE);            // ouch, rocks hurt!
     }
     else if (t.kind === "alien" && touching(me, ROCKET_SIZE, t, SIZE)) {
-      removeThing(t); loseLife();                       // ouch!
+      removeThing(t); loseLife(1);                      // ouch!
     }
     else if (t.kind === "star" && touching(me, ROCKET_SIZE, t, SIZE)) {
       removeThing(t); score += 1; showHud();            // yum, a star!
