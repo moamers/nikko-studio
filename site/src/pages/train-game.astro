@@ -162,7 +162,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union, BurJuman, Business Bay or Creek between the Red, Green and Blue lines, or at Dubai Marina walk down the road to the Dubai Tram, and at Palm Gateway hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. The last two levels have no obstacles at all!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union, BurJuman, Business Bay or Creek between the Red, Green and Blue lines, or at Dubai Marina walk down the road to the Dubai Tram, and at Palm Gateway hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. From level 9 to level 20 there are no obstacles at all!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -757,8 +757,8 @@
     applyMode();
 
     // ---------- the metro line map ----------
-    // Levels 19 and 20 are a calm run to the end of the line: no obstacles at all.
-    const calmLevel = 19;
+    // Levels 9 to 20 are a calm run to the end of the line: no obstacles at all.
+    const calmLevel = 9;
     let calmTick = 0;
     let calmFlash = 0;
     let calmStarted = false;
@@ -1351,7 +1351,7 @@
 
     // Starts gentle at level 1 and steps up each level.
     function worldSpeed() {
-      return Math.min(11.5, 3.3 + (level - 1) * 0.9) * (easy ? 0.7 : 1) * (currentLine === 'tram' ? 0.75 : 1); // trams are a little slower
+      return Math.min(11.5, 3.3 + (Math.min(level, calmLevel) - 1) * 0.9) * (easy ? 0.7 : 1) * (currentLine === 'tram' ? 0.75 : 1); // trams are a little slower
     }
 
     function spawnGap() {
