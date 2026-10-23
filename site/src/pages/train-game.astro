@@ -162,7 +162,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union, BurJuman, Business Bay or Creek between the Red, Green and Blue lines, or at Dubai Marina walk down the road to the Dubai Tram, and reach level 10 to finish the journey. The last two levels have no obstacles at all!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union, BurJuman, Business Bay or Creek between the Red, Green and Blue lines, or at Dubai Marina walk down the road to the Dubai Tram, and at Palm Jumeirah hop on the Palm Monorail to Atlantis. Reach level 10 to finish the journey. The last two levels have no obstacles at all!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -228,7 +228,7 @@
     let bestLevelEasy = 0;
     // Medals: one for finishing each line (reaching its last station), and a
     // gold Metro Master medal once you have finished both.
-    let medals = { red: 0, green: 0, blue: 0, tram: 0 }; // how many times you have finished each line
+    let medals = { red: 0, green: 0, blue: 0, tram: 0, monorail: 0 }; // how many times you have finished each line
     let newMedals = []; // the medals won on this journey
     let levelAtStart = 0; // the record when this journey began
     let recordThisRun = false;
@@ -285,6 +285,7 @@
       medals.green = Number(savedMedals.green) || 0;
       medals.blue = Number(savedMedals.blue) || 0;
       medals.tram = Number(savedMedals.tram) || 0;
+      medals.monorail = Number(savedMedals.monorail) || 0;
       easy = localStorage.getItem('trainEasy') === '1';
     } catch (e) {}
     best = easy ? bestEasy : bestNormal;
@@ -815,7 +816,7 @@
     function updateMedalsEl() {
       const m = (icon, name, n) => icon + ' ' + name + (n > 0 ? ' \u2713' + (n > 1 ? ' \u00D7' + n : '') : ' \u2014');
       const master = medals.red > 0 && medals.green > 0 && medals.blue > 0 && medals.tram > 0 ? 1 : 0;
-      medalsEl.textContent = '\u{1F396}\uFE0F ' + m('\u{1F534}', 'Red', medals.red) + '   ' + m('\u{1F7E2}', 'Green', medals.green) + '   ' + m('\u{1F535}', 'Blue', medals.blue) + '   ' + m('\u{1F7E0}', 'Tram', medals.tram) + '   ' + m('\u2B50', 'Metro Master', master);
+      medalsEl.textContent = '\u{1F396}\uFE0F ' + m('\u{1F534}', 'Red', medals.red) + '   ' + m('\u{1F7E2}', 'Green', medals.green) + '   ' + m('\u{1F535}', 'Blue', medals.blue) + '   ' + m('\u{1F7E0}', 'Tram', medals.tram) + '   ' + m('\u{1F7E3}', 'Monorail', medals.monorail) + '   ' + m('\u2B50', 'Metro Master', master);
     }
     updateMedalsEl();
 
@@ -848,7 +849,7 @@
       unlockAudio();
       if (!started || gameOver || dwell <= 0 || changedHere || !isInterchange(lastStoppedK)) return;
       const target = targetLineAt(lastStoppedK);
-      if (target === 'tram' || currentLine === 'tram') {
+      if ((target === 'tram' || currentLine === 'tram') && target !== 'monorail' && currentLine !== 'monorail') {
         // the tram stop is down the road: you have to walk there
         changedHere = true;
         startWalk(target);
@@ -2112,6 +2113,46 @@
 
     // The Dubai Tram runs along the ground, in the road, instead of up on a viaduct.
     const onGround = () => currentLine === 'tram';
+    const onMono = () => currentLine === 'monorail';
+
+    // The Palm Monorail glides above the sea: a beach with palm trees and hotels
+    // beside the track, and waves in between.
+    function drawPalmIsland(x0, x1, c) {
+      const period = 96;
+      const idx = Math.floor(scrollTotal / period);
+      const base = scrollTotal % period;
+      const w = x1 - x0;
+      for (let r = -1; r < H / period + 1; r++) {
+        const g = idx - r;
+        const hv = cityHash(g, c + 60);
+        const y = r * period + base;
+        const edge = c === 0 ? x1 : x0; // the shore
+        ctx.fillStyle = '#ecd9a6';
+        ctx.fillRect(x0, y, w, period + 1);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // surf along the shore
+        ctx.fillRect(c === 0 ? edge - 5 : edge, y, 5, period + 1);
+        if ((hv >>> 3) % 5 === 0) {
+          drawRoof(x0 + 4, y + 14, w - 8, 66, hv >>> 2); // a hotel
+        } else {
+          drawPalm(x0 + 14 + (hv % (w - 28)), y + 20 + ((hv >>> 6) % 20));
+          if ((hv >>> 9) % 2) drawPalm(x0 + 12 + ((hv >>> 12) % (w - 24)), y + 62 + ((hv >>> 15) % 20));
+        }
+      }
+    }
+
+    function drawSeaWaves() {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 26; i++) {
+        const wy = ((i * 97 + scrollTotal * 0.9) % (H + 40)) - 20;
+        const wx = 55 + ((i * 131) % 290);
+        ctx.beginPath();
+        ctx.moveTo(wx, wy);
+        ctx.quadraticCurveTo(wx + 8, wy - 4, wx + 16, wy);
+        ctx.quadraticCurveTo(wx + 24, wy + 4, wx + 32, wy);
+        ctx.stroke();
+      }
+    }
     const carBodies = ['#e8e8ea', '#2f3f58', '#c0392b', '#d9b44a', '#4d7a5a', '#7d7f86'];
 
     function drawCarV(x, y, colour, up) {
@@ -2152,6 +2193,12 @@
       const idx = Math.floor(scrollTotal / period);
       const base = scrollTotal % period;
       const ground = onGround();
+      if (onMono()) {
+        drawSeaWaves();
+        drawPalmIsland(0, 50, 0);
+        drawPalmIsland(350, 400, 3);
+        return;
+      }
       cityColumns.forEach(([x0, x1], c) => {
         if (ground && (c === 1 || c === 2)) return;
         for (let r = -1; r < H / period + 1; r++) {
@@ -2326,7 +2373,7 @@
     function drawScenery() {
       const land = getComputedStyle(document.documentElement).getPropertyValue('--land').trim() || '#6fbf73';
       const bed = getComputedStyle(document.documentElement).getPropertyValue('--bed').trim() || '#b8a88a';
-      ctx.fillStyle = land;
+      ctx.fillStyle = onMono() ? (getComputedStyle(document.documentElement).getPropertyValue('--water').trim() || '#4aa3d8') : land;
       ctx.fillRect(0, 0, W, H);
 
       drawCity();
@@ -2342,6 +2389,25 @@
       if (ground) {
         drawRoadGap(110, 170, 1);
         drawRoadGap(230, 290, 2);
+      }
+      if (onMono()) {
+        // a concrete guideway on pillars, with its shadow on the sea
+        laneX.forEach((x) => {
+          ctx.fillStyle = 'rgba(0, 40, 80, 0.25)';
+          ctx.fillRect(x - 17, 0, 40, H);
+          ctx.fillStyle = '#dfe3e8';
+          ctx.fillRect(x - 20, 0, 40, H);
+          ctx.fillStyle = '#b3bac2';
+          ctx.fillRect(x - 20, 0, 3, H);
+          ctx.fillRect(x + 17, 0, 3, H);
+          ctx.fillStyle = '#8f96a0';
+          ctx.fillRect(x - 3, 0, 6, H);
+          ctx.fillStyle = '#c4cad1';
+          const jb = scrollTotal % 90;
+          for (let y = -90 + jb; y < H + 90; y += 90) ctx.fillRect(x - 20, y, 40, 3);
+        });
+        drawStationGround();
+        return;
       }
       laneX.forEach((x) => {
         // gravel bed (the tram's bed is paved into the road)
@@ -2397,9 +2463,18 @@
         nameAr: 'ترام دبي',
         colour: '#f28c28',
         dark: '#a85a0e',
-        end: { name: 'Palm Jumeirah', ar: 'نخلة جميرا' },
-        names: ['Dubai Marina', 'Marina Towers', 'Marina Walk', 'JBR 1', 'The Walk', 'JBR 2', 'Marina Mall', 'Mina Seyahi', 'Media City', 'Internet City', 'Knowledge Village', 'Al Sufouh', 'Sobha Realty', 'Marina Yacht Club', 'Dubai Harbour'],
-        ar: ['دبي مارينا', 'أبراج المارينا', 'مارينا ووك', 'جي بي آر 1', 'ذا ووك', 'جي بي آر 2', 'مارينا مول', 'ميناء السيهة', 'مدينة دبي للإعلام', 'مدينة دبي للإنترنت', 'القرية المعرفية', 'السفوح', 'صبّا العقارية', 'نادي مارينا لليخوت', 'ميناء دبي'],
+        end: { name: 'Dubai Harbour', ar: 'ميناء دبي' },
+        names: ['Dubai Marina', 'Marina Towers', 'Marina Walk', 'JBR 1', 'Palm Jumeirah', 'The Walk', 'JBR 2', 'Marina Mall', 'Mina Seyahi', 'Media City', 'Internet City', 'Knowledge Village', 'Al Sufouh', 'Sobha Realty', 'Marina Yacht Club'],
+        ar: ['دبي مارينا', 'أبراج المارينا', 'مارينا ووك', 'جي بي آر 1', 'نخلة جميرا', 'ذا ووك', 'جي بي آر 2', 'مارينا مول', 'ميناء السيهة', 'مدينة دبي للإعلام', 'مدينة دبي للإنترنت', 'القرية المعرفية', 'السفوح', 'صبّا العقارية', 'نادي مارينا لليخوت'],
+      },
+      monorail: {
+        name: 'Palm Monorail',
+        nameAr: 'مونوريل النخلة',
+        colour: '#8e44ad',
+        dark: '#5b2c6f',
+        end: { name: 'Atlantis The Palm', ar: 'أتلانتس النخلة' },
+        names: ['Palm Jumeirah', 'Al Ittihad Park', 'The Trunk', 'Palm Jumeirah Mall', 'Golden Mile', 'Palm West Beach', 'The Crescent', 'Aquaventure'],
+        ar: ['نخلة جميرا', 'حديقة الاتحاد', 'الجذع', 'نخلة جميرا مول', 'الميل الذهبي', 'شاطئ النخلة الغربي', 'الهلال', 'أكوافنتشر'],
       },
       blue: {
         name: 'Blue Line',
@@ -2485,8 +2560,8 @@
           ctx.fillStyle = '#f2c9a0';
           ctx.fill();
         }
-        if (onGround()) {
-          // a simple orange tram shelter
+        if (onGround() || onMono()) {
+          // a simple shelter in the line's colour
           const tx = cx - 20;
           const ty = st.top + 70;
           const th = stationLength - 140;
@@ -2568,7 +2643,7 @@
 
     function drawBridgeWater() {
       const ev = eventInfo();
-      if (onGround() || ev.kind !== 'bridge' || ev.top > H || ev.top + ev.len < 0) return;
+      if (onGround() || onMono() || ev.kind !== 'bridge' || ev.top > H || ev.top + ev.len < 0) return;
       const water = getComputedStyle(document.documentElement).getPropertyValue('--water').trim() || '#4aa3d8';
       ctx.fillStyle = '#7a5b3a';
       ctx.fillRect(0, ev.top - 6, W, ev.len + 12); // muddy banks
@@ -2656,7 +2731,7 @@
 
     function drawTunnel() {
       const ev = eventInfo();
-      if (onGround() || ev.kind !== 'tunnel' || ev.top > H || ev.top + ev.len < 0) return;
+      if (onGround() || onMono() || ev.kind !== 'tunnel' || ev.top > H || ev.top + ev.len < 0) return;
       const y0 = ev.top;
       const bands = [[0, 50], [110, 170], [230, 290], [350, W]];
       bands.forEach(([x0, x1]) => drawBricks(x0, y0, x1 - x0, ev.len, '#a8543b'));
@@ -2808,6 +2883,7 @@
     const whiteBody = ['#dfe6ec', '#ffffff', '#cfd8e0'];
     const blueBody = ['#1a56b0', '#3d8bf0', '#164a96'];
     const tramBody = ['#d97a12', '#ffa83d', '#c26a0c'];
+    const monoBody = ['#8e44ad', '#b576d3', '#6c3483'];
     function drawEngine(stripe, outline, headlight, body) {
       body = body || whiteBody;
       ctx.beginPath();
@@ -3375,8 +3451,11 @@
         ctx.translate(x, y);
         ctx.rotate(angle);
         const onTram = currentLine === 'tram';
-        if (i === 0) drawEngine('#ffffff', onTram ? '#7a4208' : '#0d2f66', true, onTram ? tramBody : blueBody);
-        else drawCarriage('#ffffff', onTram ? '#7a4208' : '#0d2f66', onTram ? tramBody : blueBody);
+        const onMonoLine = currentLine === 'monorail';
+        const bodyCols = onMonoLine ? monoBody : onTram ? tramBody : blueBody;
+        const darkCol = onMonoLine ? '#4a235a' : onTram ? '#7a4208' : '#0d2f66';
+        if (i === 0) drawEngine('#ffffff', darkCol, true, bodyCols);
+        else drawCarriage('#ffffff', darkCol, bodyCols);
         if (dwell > 0 && !crashing) {
           // open doors: bright green door panels on the platform side
           const sx = doorSide === 'left' ? -1 : 1;
@@ -3507,8 +3586,8 @@
 
     // A medal on a ribbon: red or green for the lines, gold with a star for Metro Master.
     function drawMedal(cx, cy, r, kind, earned, shine) {
-      const colour = kind === 'green' ? '#00a04a' : kind === 'blue' ? '#0a6ed1' : kind === 'tram' ? '#f28c28' : kind === 'master' ? '#2a2a3a' : '#e21836';
-      const ribbon = kind === 'green' ? '#007a38' : kind === 'blue' ? '#064a8f' : kind === 'tram' ? '#a85a0e' : kind === 'master' ? '#c99a1e' : '#a8112a';
+      const colour = kind === 'green' ? '#00a04a' : kind === 'blue' ? '#0a6ed1' : kind === 'tram' ? '#f28c28' : kind === 'monorail' ? '#8e44ad' : kind === 'master' ? '#2a2a3a' : '#e21836';
+      const ribbon = kind === 'green' ? '#007a38' : kind === 'blue' ? '#064a8f' : kind === 'tram' ? '#a85a0e' : kind === 'monorail' ? '#5b2c6f' : kind === 'master' ? '#c99a1e' : '#a8112a';
       ctx.save();
       if (!earned) ctx.globalAlpha = 0.3;
       // ribbon
@@ -3676,14 +3755,14 @@
           ctx.fillText('Your best level', W / 2, 242);
         }
         // the medals you have won so far (faded when not yet won)
-        const have = [medals.red > 0, medals.green > 0, medals.blue > 0, medals.tram > 0, medals.red > 0 && medals.green > 0 && medals.blue > 0 && medals.tram > 0];
-        ['red', 'green', 'blue', 'tram', 'master'].forEach((kind, i) => {
-          const mx = W / 2 - 100 + i * 50;
+        const have = [medals.red > 0, medals.green > 0, medals.blue > 0, medals.tram > 0, medals.monorail > 0, medals.red > 0 && medals.green > 0 && medals.blue > 0 && medals.tram > 0];
+        ['red', 'green', 'blue', 'tram', 'monorail', 'master'].forEach((kind, i) => {
+          const mx = W / 2 - 125 + i * 50;
           drawMedal(mx, 66, 15, kind, have[i], false);
           ctx.fillStyle = have[i] ? '#ffe066' : 'rgba(255, 255, 255, 0.45)';
           ctx.font = '10px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText(kind === 'master' ? 'Master' : kind === 'red' ? 'Red' : kind === 'green' ? 'Green' : kind === 'blue' ? 'Blue' : 'Tram', mx, 92);
+          ctx.fillText(kind === 'master' ? 'Master' : kind === 'red' ? 'Red' : kind === 'green' ? 'Green' : kind === 'blue' ? 'Blue' : kind === 'monorail' ? 'Mono' : 'Tram', mx, 92);
         });
       } else if (gameOver) {
         drawOverlay(won ? 'Journey complete! \u{1F389}' : 'Derailed!', (won ? 'Tap to play again \u2022 Score: ' : 'Tap to try again • Score: ') + score);
@@ -3735,6 +3814,7 @@
         if ((data.medals && data.medals.green || 0) > medals.green) medals.green = data.medals.green;
         if ((data.medals && data.medals.blue || 0) > medals.blue) medals.blue = data.medals.blue;
         if ((data.medals && data.medals.tram || 0) > medals.tram) medals.tram = data.medals.tram;
+        if ((data.medals && data.medals.monorail || 0) > medals.monorail) medals.monorail = data.medals.monorail;
         saveMedals();
         updateMedalsEl();
         applyMode();
