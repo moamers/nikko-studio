@@ -868,7 +868,7 @@
       lineStart = j;
       ridden = [j];
       // a new line gets its own last station (the monorail goes all the way to Atlantis)
-      if (target === 'monorail' && terminusK >= 0) terminusK = lineBaseK + metroLines.monorail.names.length;
+      if (target === 'monorail') terminusK = lineBaseK + metroLines.monorail.names.length;
       changedHere = true;
       score += bonus; // a little bonus for changing line
       scoreEl.textContent = 'Score: ' + score;
@@ -2477,8 +2477,8 @@
         colour: '#8e44ad',
         dark: '#5b2c6f',
         end: { name: 'Atlantis The Palm', ar: 'أتلانتس النخلة' },
-        names: ['Palm Gateway', 'Al Ittihad Park', 'The Trunk', 'Palm Jumeirah Mall', 'Golden Mile', 'Palm West Beach', 'The Crescent', 'Aquaventure'],
-        ar: ['بوابة النخلة', 'حديقة الاتحاد', 'الجذع', 'نخلة جميرا مول', 'الميل الذهبي', 'شاطئ النخلة الغربي', 'الهلال', 'أكوافنتشر'],
+        names: ['Palm Gateway', 'Palm Jumeirah Station'],
+        ar: ['بوابة النخلة', 'محطة نخلة جميرا'],
       },
       blue: {
         name: 'Blue Line',
