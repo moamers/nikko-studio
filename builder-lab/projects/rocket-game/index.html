@@ -6,44 +6,58 @@
 <title>Rocket Game</title>
 <style>
   body { margin: 0; background: #05061a; overflow: hidden; font-family: sans-serif; color: white; user-select: none; }
-  #space { position: relative; width: 100vw; height: 100vh; touch-action: none; overflow: hidden; }
-  .thing, #rocket { position: absolute; line-height: 1; pointer-events: none; z-index: 3; }
-  .planet { position: absolute; line-height: 1; pointer-events: none; z-index: 1; opacity: 0.9; }
-  #moon { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); line-height: 1; pointer-events: none; z-index: 1; display: none; }
-  #hud { position: absolute; top: 8px; left: 0; width: 100%; text-align: center; font-size: 24px; z-index: 5; pointer-events: none; }
-  #bar { position: absolute; top: 46px; left: 20%; width: 60%; height: 10px; background: #ffffff33; border-radius: 6px; z-index: 5; }
+  #space { position: relative; width: 100vw; height: 100vh; touch-action: none; overflow: hidden;
+           background: radial-gradient(ellipse at 20% 25%, #4a2f8a44, transparent 60%),
+                       radial-gradient(ellipse at 80% 75%, #1b6aa033, transparent 55%); }
+  #stars { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  .thing, #rocket, .planet, #moon { position: absolute; pointer-events: none; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .thing, #rocket { z-index: 3; }
+  .planet { z-index: 1; }
+  #moon { top: 40px; left: 50%; transform: translateX(-50%); z-index: 1; display: none; }
+  #hud { position: absolute; top: 8px; left: 0; width: 100%; text-align: center; font-size: 22px; z-index: 5; pointer-events: none; text-shadow: 0 0 6px #000; }
+  #bar { position: absolute; top: 46px; left: 20%; width: 60%; height: 8px; background: #ffffff33; border-radius: 6px; z-index: 5; }
   #fill { height: 100%; width: 0; background: #ffd23f; border-radius: 6px; }
-  #message { position: absolute; top: 28%; width: 100%; text-align: center; font-size: 36px; z-index: 6; }
-  #banner { position: absolute; top: 20%; width: 100%; text-align: center; font-size: 56px; z-index: 6; pointer-events: none; display: none; }
+  #message { position: absolute; top: 26%; width: 100%; text-align: center; font-size: 34px; z-index: 6; line-height: 1.4; text-shadow: 0 0 10px #000; }
+  #banner { position: absolute; top: 20%; width: 100%; text-align: center; font-size: 56px; z-index: 6; pointer-events: none; display: none; text-shadow: 0 0 12px #000; }
   button { font-size: 22px; padding: 10px 22px; border-radius: 14px; border: none; cursor: pointer; margin-top: 12px; }
   #topButtons { position: fixed; top: 8px; right: 8px; z-index: 7; display: flex; flex-direction: column; gap: 4px; }
   #topButtons button { font-size: 16px; margin: 0; padding: 8px 12px; }
-  #boost { position: fixed; bottom: 20px; right: 20px; z-index: 7; font-size: 28px; padding: 18px 26px; background: #ff7a00; color: white; font-weight: bold; }
+  #boost { position: fixed; bottom: 20px; right: 20px; z-index: 7; font-size: 26px; padding: 18px 26px; background: #ff7a00; color: white; font-weight: bold; }
   #boost.cooling { background: #666; }
   #boost.on { background: #ffd23f; color: #222; }
-  #map { position: fixed; inset: 0; z-index: 9; background: #05061aee; display: none; text-align: center; padding-top: 12vh; }
+  #shieldBtn { position: fixed; bottom: 20px; left: 20px; z-index: 7; font-size: 26px; padding: 18px 26px; margin: 0; background: #1e90ff; color: white; font-weight: bold; }
+  #shieldBtn.cooling { background: #666; }
+  #shieldBtn.on { background: #7fe9ff; color: #06283d; }
+  #shield { position: absolute; z-index: 4; pointer-events: none; display: none; border-radius: 50%;
+            background: radial-gradient(circle, rgba(80,200,255,0.06) 55%, rgba(80,200,255,0.35) 68%, rgba(190,245,255,0.9) 71%, rgba(80,200,255,0) 74%);
+            box-shadow: 0 0 30px 6px rgba(80,200,255,0.35); }
+  #map { position: fixed; inset: 0; z-index: 9; background: #05061af0; display: none; text-align: center; padding-top: 12vh; }
   #track { position: relative; width: 80%; height: 8px; background: #ffffff55; margin: 90px auto 70px; border-radius: 4px; }
-  .mark { position: absolute; top: -34px; transform: translateX(-50%); font-size: 36px; }
-  .mark small { display: block; font-size: 13px; margin-top: 2px; white-space: nowrap; }
-  #me { position: absolute; top: 20px; transform: translateX(-50%) rotate(45deg); font-size: 40px; }
+  .mark { position: absolute; top: -52px; transform: translateX(-50%); }
+  .mark img { width: 44px; height: 44px; display: block; margin: 0 auto; }
+  .mark small { display: block; font-size: 13px; margin-top: 6px; white-space: nowrap; position: relative; top: 24px; }
+  #me { position: absolute; top: 14px; width: 48px; height: 48px; transform: translateX(-50%) rotate(90deg); }
 </style>
 </head>
 <body>
 <div id="space">
-  <div id="moon">🌕</div>
+  <canvas id="stars"></canvas>
+  <div id="moon"></div>
   <div id="hud"></div>
   <div id="bar"><div id="fill"></div></div>
   <div id="banner"></div>
   <div id="message"></div>
-  <div id="rocket">🚀</div>
+  <div id="rocket"></div>
+  <div id="shield"></div>
 </div>
 <div id="topButtons">
-  <button id="mapBtn">🗺️ Map (M)</button>
-  <button id="easyBtn">😌 Easy: OFF (E)</button>
+  <button id="mapBtn">Map (M)</button>
+  <button id="easyBtn">Easy: OFF (E)</button>
 </div>
-<button id="boost">🔥 BOOST (B)</button>
+<button id="boost">BOOST (B)</button>
+<button id="shieldBtn">SHIELD (S)</button>
 <div id="map">
-  <h1>🗺️ Map to the Moon</h1>
+  <h1>Map to the Moon</h1>
   <div id="track"></div>
   <h2 id="mapText"></h2>
   <button id="mapClose">Back to flying!</button>
@@ -54,10 +68,11 @@
 //  SETTINGS  -  CHANGE THESE AND REFRESH THE PAGE!
 // =====================================================
 const ROCKET_NAME    = "Zoom";    // Name your rocket! Put any name in the quotes.
-const ROCKET_EMOJI   = "🚀";      // Try 🛸 or 🐝 or 🦄
-const ROCKET_SIZE    = 70;        // How big the rocket is. Try 140!
+const ROCKET_COLOUR  = "#d62828"; // Nose and fins. Try "blue" or "#00cc66" or "gold"
+const ALIEN_COLOUR   = "#7CFC00"; // Skin of the alien pilots. Try "purple" or "pink"
+const ROCKET_SIZE    = 100;       // How big the rocket is. Try 160!
 const ROCKET_SPEED   = 14;        // Arrow-key speed at Level 1. Try 25 for SUPER fast!
-const SPACE_COLOUR   = "#05061a"; // Try "purple" or "#003366"
+const SPACE_COLOUR   = "#05061a"; // Try "#0a0030" or "#001a2e"
 
 // ---- The journey to the Moon ----
 const LEVELS            = 5;      // How many levels before the Moon. Try 10!
@@ -71,30 +86,243 @@ const BOOST_POWER    = 2.5;       // How much faster boost makes you go. Try 5!
 const BOOST_TIME     = 1500;      // How long boost lasts (1000 = 1 second)
 const BOOST_COOLDOWN = 6000;      // How long you wait before you can boost again
 
+// ---- Shield: rocks and aliens bounce off, no damage! ----
+const SHIELD_TIME     = 15000;    // How long the shield lasts (15000 = 15 seconds)
+const SHIELD_COOLDOWN = 30000;    // How long you wait before you can use it again. Try 5000!
+
 // ---- Danger ----
-const START_LIVES    = 4;         // How many hearts you start with
-const ROCK_EMOJI     = "🪨";      // Try ☄️
+const START_LIVES    = 4;         // How many hull blocks you start with
 const ROCK_SPEED     = 7;         // How fast rocks fall. Try 12 if you're brave!
-const ROCK_DAMAGE    = 3;         // Hearts a rock takes away. Try 1 for easier!
+const ROCK_DAMAGE    = 3;         // Hull blocks a rock takes away. Try 1 for easier!
 const ROCK_EVERY     = 350;       // Milliseconds between rocks. Smaller = MORE rocks!
-const ALIEN_EMOJI    = "👾";
-const ALIEN_EVERY    = 1400;      // How often aliens appear
-const ALIEN_SPEED    = 3;         // Aliens CHASE you at this speed. Shoot them fast!
-const BULLET_EMOJI   = "🔥";
+const ALIEN_EVERY    = 1400;      // How often alien ships appear
+const ALIEN_SPEED    = 3;         // Alien ships CHASE you at this speed. Shoot them fast!
 const BULLET_SPEED   = 10;
 
 // ---- Easy button ----
-const EASY_LIVES     = 10;        // Hearts you get in easy mode
-const EASY_DAMAGE    = 1;         // Rocks only take 1 heart in easy mode
+const EASY_LIVES     = 10;        // Hull blocks you get in easy mode
+const EASY_DAMAGE    = 1;         // Rocks only take 1 block in easy mode
 const EASY_SLOWER    = 0.6;       // Rocks and aliens move at 60% speed in easy mode
 const EASY_FEWER     = 1.8;       // Rocks and aliens come 1.8x less often in easy mode
 
 // ---- Score ----
-const STAR_EMOJI     = "⭐";
 const STAR_EVERY     = 1600;      // How often stars appear
 const STAR_SCORE     = 10;        // Score for grabbing a star
 const ALIEN_SCORE    = 30;        // Score for shooting an alien
 const LEVEL_SCORE    = 100;       // Score for finishing a level
+
+// =====================================================
+//  THE PICTURES  -  we DRAW everything with code!
+//  Each function below paints one picture on a tiny
+//  invisible canvas. Later we use that picture in the game.
+// =====================================================
+function makeCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
+function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }   // same "random" every time
+
+function drawRocket(flame) {
+  const c = makeCanvas(200, 200), g = c.getContext("2d");
+  if (flame > 0) {                                   // fire!
+    const fg = g.createLinearGradient(0, 158, 0, 158 + flame);
+    fg.addColorStop(0, "#fffbe0"); fg.addColorStop(0.35, "#ffb02e"); fg.addColorStop(1, "rgba(255,80,0,0)");
+    g.fillStyle = fg;
+    g.beginPath(); g.moveTo(86, 158); g.quadraticCurveTo(100, 158 + flame * 1.8, 114, 158); g.closePath(); g.fill();
+  }
+  g.fillStyle = ROCKET_COLOUR; g.strokeStyle = "rgba(0,0,0,0.45)"; g.lineWidth = 1.5;   // fins
+  g.beginPath(); g.moveTo(72, 105); g.lineTo(44, 158); g.lineTo(72, 150); g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(128, 105); g.lineTo(156, 158); g.lineTo(128, 150); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle = "#3a3f46";                           // engine nozzle
+  g.beginPath(); g.moveTo(84, 150); g.lineTo(116, 150); g.lineTo(110, 165); g.lineTo(90, 165); g.closePath(); g.fill();
+  const bg = g.createLinearGradient(70, 0, 130, 0);  // metal body
+  bg.addColorStop(0, "#8a939e"); bg.addColorStop(0.3, "#ffffff"); bg.addColorStop(0.7, "#dfe5ea"); bg.addColorStop(1, "#6f7883");
+  g.beginPath(); g.moveTo(100, 6); g.bezierCurveTo(132, 40, 135, 95, 130, 152);
+  g.lineTo(70, 152); g.bezierCurveTo(65, 95, 68, 40, 100, 6); g.closePath();
+  g.fillStyle = bg; g.fill(); g.stroke();
+  g.save(); g.clip();                                // coloured nose and stripe
+  g.fillStyle = ROCKET_COLOUR; g.fillRect(60, 0, 80, 52); g.fillRect(60, 108, 80, 9);
+  const sh = g.createLinearGradient(70, 0, 130, 0);
+  sh.addColorStop(0, "rgba(0,0,0,0.35)"); sh.addColorStop(0.3, "rgba(255,255,255,0.35)"); sh.addColorStop(1, "rgba(0,0,0,0.4)");
+  g.fillStyle = sh; g.fillRect(60, 0, 80, 160);
+  g.restore();
+  g.beginPath(); g.arc(100, 78, 16, 0, 7); g.fillStyle = "#3b4651"; g.fill();   // window
+  const wg = g.createRadialGradient(95, 72, 1, 100, 78, 13);
+  wg.addColorStop(0, "#d9f1ff"); wg.addColorStop(1, "#1b5e9e");
+  g.beginPath(); g.arc(100, 78, 12, 0, 7); g.fillStyle = wg; g.fill();
+  g.fillStyle = "rgba(255,255,255,0.7)"; g.beginPath(); g.ellipse(96, 72, 4, 2.5, -0.6, 0, 7); g.fill();
+  return c.toDataURL();
+}
+
+function drawRock(seed) {
+  const R = rng(seed), c = makeCanvas(100, 100), g = c.getContext("2d");
+  const n = 11, pts = [];
+  for (let i = 0; i < n; i++) {
+    const a = i / n * Math.PI * 2 + R() * 0.3, r = 31 + R() * 15;
+    pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]);
+  }
+  g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath();
+  const rg = g.createRadialGradient(36, 34, 4, 50, 50, 56);
+  rg.addColorStop(0, "#c2b8ac"); rg.addColorStop(0.55, "#7a7168"); rg.addColorStop(1, "#27231f");
+  g.fillStyle = rg; g.fill();
+  g.save(); g.clip();
+  for (let i = 0; i < 4; i++) {                      // craters
+    const cx = 28 + R() * 44, cy = 28 + R() * 44, cr = 5 + R() * 8;
+    g.fillStyle = "rgba(0,0,0,0.28)"; g.beginPath(); g.arc(cx, cy, cr, 0, 7); g.fill();
+    g.strokeStyle = "rgba(255,255,255,0.2)"; g.lineWidth = 1.5; g.beginPath(); g.arc(cx + 1, cy + 1, cr, 0.2, 2.4); g.stroke();
+  }
+  g.restore();
+  g.strokeStyle = "rgba(0,0,0,0.55)"; g.lineWidth = 1.5;
+  g.beginPath(); pts.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.stroke();
+  return c.toDataURL();
+}
+
+function drawAlien() {   // an alien flying saucer
+  const c = makeCanvas(100, 100), g = c.getContext("2d");
+  const glow = g.createRadialGradient(50, 72, 2, 50, 72, 30);
+  glow.addColorStop(0, "rgba(130,255,160,0.5)"); glow.addColorStop(1, "rgba(130,255,160,0)");
+  g.fillStyle = glow; g.fillRect(0, 40, 100, 60);
+  const dg = g.createRadialGradient(42, 30, 2, 50, 44, 26);        // glass dome
+  dg.addColorStop(0, "rgba(220,255,235,0.9)"); dg.addColorStop(1, "rgba(90,200,150,0.55)");
+  g.fillStyle = dg; g.beginPath(); g.ellipse(50, 48, 19, 22, 0, Math.PI, 0); g.closePath(); g.fill();
+  g.fillStyle = ALIEN_COLOUR; g.beginPath(); g.ellipse(50, 42, 9, 11, 0, 0, 7); g.fill();   // alien head
+  g.fillStyle = "#050505";
+  g.beginPath(); g.ellipse(46, 41, 3.2, 1.8, 0.5, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(54, 41, 3.2, 1.8, -0.5, 0, 7); g.fill();
+  const hg = g.createLinearGradient(0, 50, 0, 72);                // metal body
+  hg.addColorStop(0, "#e3e8ee"); hg.addColorStop(0.5, "#8f99a5"); hg.addColorStop(1, "#4a525c");
+  g.fillStyle = hg; g.strokeStyle = "rgba(0,0,0,0.5)"; g.lineWidth = 1.5;
+  g.beginPath(); g.ellipse(50, 58, 44, 13, 0, 0, 7); g.fill(); g.stroke();
+  g.fillStyle = "rgba(255,255,255,0.25)"; g.beginPath(); g.ellipse(50, 54, 38, 6, 0, 0, 7); g.fill();
+  ["#ff4d4d", "#ffd23f", "#4dd2ff", "#ffd23f", "#ff4d4d"].forEach((col, i) => {   // lights
+    const lx = 18 + i * 16, ly = 62 + Math.sin(i / 4 * Math.PI) * 2;
+    g.shadowColor = col; g.shadowBlur = 6; g.fillStyle = col; g.beginPath(); g.arc(lx, ly, 3, 0, 7); g.fill();
+  });
+  return c.toDataURL();
+}
+
+function drawStar() {   // a glowing power star
+  const c = makeCanvas(100, 100), g = c.getContext("2d");
+  const gl = g.createRadialGradient(50, 50, 4, 50, 50, 48);
+  gl.addColorStop(0, "rgba(255,225,90,0.7)"); gl.addColorStop(1, "rgba(255,200,40,0)");
+  g.fillStyle = gl; g.fillRect(0, 0, 100, 100);
+  g.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 13 : 30;
+    g.lineTo(50 + Math.cos(a) * r, 50 + Math.sin(a) * r);
+  }
+  g.closePath();
+  const sg = g.createRadialGradient(44, 42, 2, 50, 50, 32);
+  sg.addColorStop(0, "#fffbc4"); sg.addColorStop(1, "#ffa800");
+  g.fillStyle = sg; g.fill(); g.strokeStyle = "#ff8c00"; g.lineWidth = 2; g.stroke();
+  return c.toDataURL();
+}
+
+function drawBolt() {   // a laser bolt
+  const c = makeCanvas(40, 100), g = c.getContext("2d");
+  g.shadowColor = "#ff7a00"; g.shadowBlur = 14;
+  const bg = g.createLinearGradient(14, 0, 26, 0);
+  bg.addColorStop(0, "#ff6a00"); bg.addColorStop(0.5, "#ffffff"); bg.addColorStop(1, "#ff6a00");
+  g.fillStyle = bg; g.beginPath(); g.roundRect(14, 12, 12, 76, 6); g.fill();
+  return c.toDataURL();
+}
+
+// Planet shading: light comes from the top-left, dark edge on the bottom-right
+function shade(g, cx, cy, r) {
+  const sg = g.createRadialGradient(cx - r * 0.4, cy - r * 0.4, r * 0.1, cx, cy, r * 1.05);
+  sg.addColorStop(0, "rgba(255,255,255,0.28)"); sg.addColorStop(0.45, "rgba(255,255,255,0)"); sg.addColorStop(1, "rgba(0,0,0,0.72)");
+  g.fillStyle = sg; g.fillRect(cx - r, cy - r, r * 2, r * 2);
+}
+
+function drawPlanet(type, seed) {   // 0 = ringed gas giant, 1 = red planet, 2 = blue planet, 3 = purple ice giant
+  const R = rng(seed), c = makeCanvas(300, 300), g = c.getContext("2d");
+  const cx = 150, cy = 150, r = type === 0 ? 85 : 100;
+  const ring = (a, b) => {
+    [[1.6, 0.38, 14, "rgba(224,202,160,0.9)"], [1.33, 0.31, 6, "rgba(140,120,92,0.85)"]].forEach(s => {
+      g.strokeStyle = s[3]; g.lineWidth = s[2];
+      g.beginPath(); g.ellipse(cx, cy, r * s[0], r * s[1], -0.35, a, b); g.stroke();
+    });
+  };
+  if (type === 0) ring(Math.PI, Math.PI * 2);     // back of the ring
+  g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip();
+  if (type === 0) {
+    g.fillStyle = "#d9b27c"; g.fillRect(0, 0, 300, 300);
+    for (let i = 0; i < 12; i++) {
+      g.fillStyle = i % 2 ? "rgba(150,100,60,0.4)" : "rgba(255,235,200,0.3)";
+      g.fillRect(0, cy - r + i * (2 * r / 12), 300, (2 * r / 12) * (0.5 + R() * 0.8));
+    }
+  } else if (type === 1) {
+    g.fillStyle = "#b5482b"; g.fillRect(0, 0, 300, 300);
+    for (let i = 0; i < 34; i++) {
+      g.fillStyle = R() > 0.5 ? "rgba(110,35,18,0.4)" : "rgba(235,160,110,0.3)";
+      g.beginPath(); g.ellipse(cx - r + R() * 2 * r, cy - r + R() * 2 * r, 8 + R() * 26, 5 + R() * 14, R() * 3, 0, 7); g.fill();
+    }
+    g.fillStyle = "rgba(255,255,255,0.85)"; g.beginPath(); g.ellipse(cx, cy - r, 55, 18, 0, 0, 7); g.fill();
+  } else if (type === 2) {
+    g.fillStyle = "#1f5fa8"; g.fillRect(0, 0, 300, 300);
+    for (let i = 0; i < 9; i++) {
+      const bx = cx - r + R() * 2 * r, by = cy - r + R() * 2 * r;
+      g.fillStyle = R() > 0.3 ? "#4a8f4e" : "#8a7a4a";
+      for (let j = 0; j < 5; j++) { g.beginPath(); g.arc(bx + (R() - 0.5) * 36, by + (R() - 0.5) * 26, 8 + R() * 14, 0, 7); g.fill(); }
+    }
+    for (let i = 0; i < 16; i++) {
+      g.fillStyle = "rgba(255,255,255,0.55)";
+      g.beginPath(); g.ellipse(cx - r + R() * 2 * r, cy - r + R() * 2 * r, 18 + R() * 30, 3 + R() * 5, (R() - 0.5) * 0.6, 0, 7); g.fill();
+    }
+  } else {
+    g.fillStyle = "#7a5bd0"; g.fillRect(0, 0, 300, 300);
+    for (let i = 0; i < 9; i++) {
+      g.fillStyle = i % 2 ? "rgba(190,170,255,0.35)" : "rgba(60,30,130,0.3)";
+      g.fillRect(0, cy - r + i * (2 * r / 9), 300, (2 * r / 9) * (0.4 + R() * 0.7));
+    }
+  }
+  shade(g, cx, cy, r);
+  g.restore();
+  g.strokeStyle = type === 2 ? "rgba(150,205,255,0.55)" : "rgba(255,255,255,0.14)"; g.lineWidth = 3;
+  g.beginPath(); g.arc(cx, cy, r - 1, 0, 7); g.stroke();
+  if (type === 0) ring(0, Math.PI);                // front of the ring
+  return c.toDataURL();
+}
+
+function drawMoon() {
+  const R = rng(77), c = makeCanvas(300, 300), g = c.getContext("2d"), cx = 150, cy = 150, r = 130;
+  g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip();
+  const bg = g.createRadialGradient(cx - 40, cy - 40, 10, cx, cy, r);
+  bg.addColorStop(0, "#e6e6e1"); bg.addColorStop(1, "#8d8d88");
+  g.fillStyle = bg; g.fillRect(0, 0, 300, 300);
+  for (let i = 0; i < 6; i++) {                    // dark "seas"
+    g.fillStyle = "rgba(70,70,72,0.35)";
+    g.beginPath(); g.ellipse(cx - r * 0.7 + R() * r * 1.4, cy - r * 0.7 + R() * r * 1.4, 25 + R() * 35, 18 + R() * 28, R() * 3, 0, 7); g.fill();
+  }
+  for (let i = 0; i < 40; i++) {                   // craters
+    const px = cx - r + R() * 2 * r, py = cy - r + R() * 2 * r, pr = 3 + R() * 14;
+    g.fillStyle = "rgba(60,60,62,0.3)"; g.beginPath(); g.arc(px, py, pr, 0, 7); g.fill();
+    g.strokeStyle = "rgba(255,255,255,0.3)"; g.lineWidth = 1.5; g.beginPath(); g.arc(px + 1, py + 1, pr, 0.3, 2.5); g.stroke();
+  }
+  shade(g, cx, cy, r);
+  g.restore();
+  return c.toDataURL();
+}
+
+function drawStation() {   // a little satellite for the map
+  const c = makeCanvas(100, 100), g = c.getContext("2d");
+  [[4, 40], [66, 40]].forEach(p => {
+    g.fillStyle = "#1d3f7a"; g.fillRect(p[0], p[1], 30, 20);
+    g.strokeStyle = "rgba(140,185,240,0.7)"; g.lineWidth = 1;
+    for (let i = 1; i < 5; i++) { g.beginPath(); g.moveTo(p[0] + i * 6, p[1]); g.lineTo(p[0] + i * 6, p[1] + 20); g.stroke(); }
+    g.strokeRect(p[0], p[1], 30, 20);
+  });
+  g.fillStyle = "#d9b44a"; g.fillRect(36, 36, 28, 28);
+  g.strokeStyle = "#7a6320"; g.lineWidth = 2; g.strokeRect(36, 36, 28, 28);
+  g.fillStyle = "#e8e8e8"; g.fillRect(48, 22, 4, 14);
+  g.beginPath(); g.arc(50, 20, 4, 0, 7); g.fill();
+  return c.toDataURL();
+}
+
+// All the finished pictures
+const PIC = {
+  rocket: drawRocket(26), rocketBoost: drawRocket(48),
+  rocks: [drawRock(3), drawRock(11), drawRock(29), drawRock(47)],
+  alien: drawAlien(), star: drawStar(), bolt: drawBolt(), moon: drawMoon(), station: drawStation(),
+  planets: [drawPlanet(0, 5), drawPlanet(1, 9), drawPlanet(2, 13), drawPlanet(3, 21)]
+};
 
 // =====================================================
 //  THE GAME PART  -  ask Claude "what does this do?" any time
@@ -109,25 +337,32 @@ const fill    = document.getElementById("fill");
 const boostBtn = document.getElementById("boost");
 const easyBtn  = document.getElementById("easyBtn");
 const mapEl    = document.getElementById("map");
-const SIZE = 50;   // size of rocks, stars, aliens
+const shieldEl  = document.getElementById("shield");
+const shieldBtn = document.getElementById("shieldBtn");
+const starCanvas = document.getElementById("stars");
+const starPen = starCanvas.getContext("2d");
+const SIZE = 56;          // size of rocks, aliens, stars
+const BOLT_SIZE = 40;     // size of a laser bolt
 
 document.body.style.background = SPACE_COLOUR;
-rocket.textContent = ROCKET_EMOJI;
-rocket.style.fontSize = ROCKET_SIZE + "px";
+rocket.style.width = rocket.style.height = ROCKET_SIZE + "px";
+moon.style.backgroundImage = "url(" + PIC.moon + ")";
+function setPicture(el, src) { el.style.backgroundImage = "url(" + src + ")"; }
+setPicture(rocket, PIC.rocket);
 
 // Places on the map (0 = Earth, 1 = Moon)
 const PLACES = [
-  { at: 0,    emoji: "🌍", name: "Earth" },
-  { at: 0.25, emoji: "🛰️", name: "Space Station" },
-  { at: 0.5,  emoji: "🪐", name: "Ring Planet" },
-  { at: 0.75, emoji: "🔴", name: "Red Planet" },
-  { at: 1,    emoji: "🌕", name: "Moon" }
+  { at: 0,    pic: PIC.planets[2], name: "Earth" },
+  { at: 0.25, pic: PIC.station,    name: "Space Station" },
+  { at: 0.5,  pic: PIC.planets[0], name: "Ring Planet" },
+  { at: 0.75, pic: PIC.planets[1], name: "Red Planet" },
+  { at: 1,    pic: PIC.moon,       name: "Moon" }
 ];
-const PLANET_EMOJIS = ["🪐", "🌎", "🔴", "🟣", "🟠"];
 
 // Variables: labelled boxes that remember things
 let x, y, score, lives, playing, paused, things, planets, progress, level, last;
-let boostUntil = 0, boostReadyAt = 0;
+let boostUntil = 0, boostReadyAt = 0, rocketLooksBoosted = false;
+let shieldUntil = 0, shieldReadyAt = 0;
 let rockTimer = 0, alienTimer = 0, starTimer = 0, planetTimer = 0;
 let easy = false, best = 0;
 const keys = {};
@@ -136,6 +371,7 @@ const keys = {};
 try { easy = localStorage.getItem("rocketEasy") === "1"; best = Number(localStorage.getItem("rocketBest")) || 0; } catch (e) {}
 
 function boosting() { return performance.now() < boostUntil; }
+function shielding() { return performance.now() < shieldUntil; }
 function rocketSpeed() {
   return ROCKET_SPEED * (1 + LEVEL_SPEEDUP * (level - 1)) * (boosting() ? 1.8 : 1);
 }
@@ -147,6 +383,7 @@ window.addEventListener("keydown", e => {
   keys[e.key] = true;
   if (e.key === " ") { e.preventDefault(); shoot(); }
   if (e.key === "b" || e.key === "B") boost();
+  if (e.key === "s" || e.key === "S") useShield();
   if (e.key === "m" || e.key === "M") toggleMap();
   if (e.key === "e" || e.key === "E") toggleEasy();
   if (e.key === "Escape" && paused) toggleMap();
@@ -166,6 +403,7 @@ space.addEventListener("pointerdown", e => {
 });
 
 boostBtn.addEventListener("click", boost);
+shieldBtn.addEventListener("click", useShield);
 easyBtn.addEventListener("click", toggleEasy);
 document.getElementById("mapBtn").addEventListener("click", toggleMap);
 document.getElementById("mapClose").addEventListener("click", toggleMap);
@@ -177,6 +415,13 @@ function boost() {
   boostReadyAt = now + BOOST_TIME + BOOST_COOLDOWN;
 }
 
+function useShield() {
+  const now = performance.now();
+  if (!playing || paused || now < shieldReadyAt) return;
+  shieldUntil = now + SHIELD_TIME;
+  shieldReadyAt = now + SHIELD_TIME + SHIELD_COOLDOWN;
+}
+
 function toggleEasy() {
   easy = !easy;
   try { localStorage.setItem("rocketEasy", easy ? "1" : "0"); } catch (e) {}
@@ -184,7 +429,7 @@ function toggleEasy() {
 }
 
 function showButtons() {
-  easyBtn.textContent = "😌 Easy: " + (easy ? "ON" : "OFF") + " (E)";
+  easyBtn.textContent = "Easy: " + (easy ? "ON" : "OFF") + " (E)";
   easyBtn.style.background = easy ? "#7CFC00" : "";
 }
 
@@ -196,33 +441,30 @@ function toggleMap() {
   paused = !paused;
   mapEl.style.display = paused ? "block" : "none";
   if (paused) {
-    const track = document.getElementById("track");
-    track.innerHTML = PLACES.map(p =>
-      '<div class="mark" style="left:' + p.at * 100 + '%">' + p.emoji + '<small>' + p.name + '</small></div>'
-    ).join("") + '<div id="me" style="left:' + progress * 100 + '%">' + ROCKET_EMOJI + '</div>';
+    document.getElementById("track").innerHTML = PLACES.map(p =>
+      '<div class="mark" style="left:' + p.at * 100 + '%"><img src="' + p.pic + '"><small>' + p.name + '</small></div>'
+    ).join("") + '<img id="me" src="' + PIC.rocket + '" style="left:' + progress * 100 + '%">';
     document.getElementById("mapText").innerHTML =
       "You are " + kmLeft().toLocaleString() + " km from the Moon!<br>Level " + level + " of " + LEVELS;
-  } else {
-    last = performance.now();
   }
 }
 
 // ---------- Making things ----------
-function makeThing(kind, emoji, px, py, speed) {
+function makeThing(kind, pic, px, py, speed, size) {
   const el = document.createElement("div");
   el.className = "thing";
-  el.textContent = emoji;
-  el.style.fontSize = SIZE + "px";
+  setPicture(el, pic);
+  el.style.width = el.style.height = size + "px";
   space.appendChild(el);
-  things.push({ kind, el, x: px, y: py, speed });
+  things.push({ kind, el, x: px, y: py, speed, size });
 }
 
 function makePlanet() {
-  const size = 90 + Math.random() * 110;
+  const size = 140 + Math.random() * 130;
   const el = document.createElement("div");
   el.className = "planet";
-  el.textContent = PLANET_EMOJIS[Math.floor(Math.random() * PLANET_EMOJIS.length)];
-  el.style.fontSize = size + "px";
+  setPicture(el, PIC.planets[Math.floor(Math.random() * PIC.planets.length)]);
+  el.style.width = el.style.height = size + "px";
   space.appendChild(el);
   planets.push({ el, x: Math.random() * (window.innerWidth - size), y: -size, speed: 0.6 + Math.random() * 0.8 });
 }
@@ -231,19 +473,19 @@ function randomX() { return Math.random() * (window.innerWidth - SIZE); }
 
 function shoot() {
   if (!playing || paused) return;
-  makeThing("bullet", BULLET_EMOJI, x + ROCKET_SIZE / 2 - SIZE / 4, y - 20, -BULLET_SPEED);
+  makeThing("bullet", PIC.bolt, x + ROCKET_SIZE / 2 - BOLT_SIZE / 2, y - 30, -BULLET_SPEED, BOLT_SIZE);
 }
 
-function touching(a, aSize, b, bSize) {
-  return a.x < b.x + bSize && a.x + aSize > b.x &&
-         a.y < b.y + bSize && a.y + aSize > b.y;
-}
+// Is a box touching another box? (Boxes are a little smaller than the pictures,
+// so a near-miss feels fair.)
+function boxOf(px, py, size, inset) { return { x: px + size * inset, y: py + size * inset, w: size * (1 - 2 * inset), h: size * (1 - 2 * inset) }; }
+function touching(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
 
 function removeThing(t) { t.el.remove(); things = things.filter(o => o !== t); }
 
 function showHud() {
-  hud.textContent = (ROCKET_NAME ? ROCKET_NAME + "   " : "") +
-                    "Score " + score + "    Level " + level + "/" + LEVELS + "    " + "❤️".repeat(Math.max(lives, 0));
+  hud.textContent = (ROCKET_NAME ? ROCKET_NAME + "     " : "") +
+                    "Score " + score + "     Level " + level + "/" + LEVELS + "     Hull " + "█".repeat(Math.max(lives, 0));
   fill.style.width = progress * 100 + "%";
 }
 
@@ -259,101 +501,150 @@ function showBanner(text) {
   setTimeout(() => { banner.style.display = "none"; }, 1500);
 }
 
+// ---------- The star field: it rushes past faster when you go faster ----------
+const starList = [];
+for (let i = 0; i < 170; i++) {
+  const size = 0.5 + Math.random() * 1.5;
+  starList.push({ x: Math.random(), y: Math.random(), size, speed: size * 0.9 });
+}
+function drawStars(k, moving) {
+  const w = starCanvas.width = window.innerWidth, h = starCanvas.height = window.innerHeight;
+  const rush = moving ? 1 + ((level || 1) - 1) * 0.3 + (boosting() ? 5 : 0) : 0.3;
+  starPen.clearRect(0, 0, w, h);
+  for (const s of starList) {
+    s.y += s.speed * rush * k / h * 3;
+    if (s.y > 1) { s.y = 0; s.x = Math.random(); }
+    starPen.fillStyle = "rgba(255,255,255," + (0.35 + s.size / 2.4) + ")";
+    starPen.fillRect(s.x * w, s.y * h, s.size, s.size * (1 + (rush > 3 ? rush : 0)));   // streaks when boosting
+  }
+}
+
 // ---------- The game loop: runs 60 times a second ----------
-function gameLoop(now) {
-  if (!playing) return;
+function frame(now) {
   const dt = Math.min(now - last, 50);   // time since last frame (ms)
   last = now;
   const k = dt / 16.67;                  // 1 when the game runs smoothly
+  const running = playing && !paused;
 
-  if (!paused) {
-    // Fly the rocket
-    const speed = rocketSpeed() * k;
-    if (keys["ArrowLeft"])  x -= speed;
-    if (keys["ArrowRight"]) x += speed;
-    if (keys["ArrowUp"])    y -= speed;
-    if (keys["ArrowDown"])  y += speed;
-    x = Math.max(0, Math.min(window.innerWidth  - ROCKET_SIZE, x));
-    y = Math.max(0, Math.min(window.innerHeight - ROCKET_SIZE, y));
-    rocket.style.left = x + "px";
-    rocket.style.top  = y + "px";
-    rocket.style.filter = boosting() ? "drop-shadow(0 0 22px orange)" : "none";
-
-    // The journey: we get closer to the Moon!
-    progress += dt / 1000 / (LEVELS * SECONDS_PER_LEVEL) * (boosting() ? BOOST_POWER : 1);
-    const newLevel = Math.min(LEVELS, Math.floor(progress * LEVELS) + 1);
-    if (newLevel > level) {
-      level = newLevel;
-      score += LEVEL_SCORE;
-      showBanner("Level " + level + "!  🚀 Faster!");
-    }
-    // The Moon grows as we get close
-    if (progress > 0.82) {
-      moon.style.display = "block";
-      moon.style.fontSize = 40 + Math.min(1, (progress - 0.82) / 0.18) * 260 + "px";
-    }
-    if (progress >= 1) { progress = 1; showHud(); endGame(true); return; }
-
-    // New rocks, stars, aliens and planets
-    rockTimer += dt; alienTimer += dt; starTimer += dt; planetTimer += dt;
-    const fewer = easy ? EASY_FEWER : 1;
-    if (rockTimer  > ROCK_EVERY  * fewer / tough()) { rockTimer = 0;  makeThing("rock",  ROCK_EMOJI,  randomX(), -SIZE, ROCK_SPEED * tough() * mean()); }
-    if (alienTimer > ALIEN_EVERY * fewer / tough()) { alienTimer = 0; makeThing("alien", ALIEN_EMOJI, randomX(), -SIZE, ALIEN_SPEED * tough() * mean()); }
-    if (starTimer  > STAR_EVERY)                    { starTimer = 0;  makeThing("star",  STAR_EMOJI,  randomX(), -SIZE, 3); }
-    if (planetTimer > 5000)                         { planetTimer = 0; makePlanet(); }
-
-    // Planets drift past
-    for (const p of [...planets]) {
-      p.y += p.speed * k;
-      p.el.style.left = p.x + "px";
-      p.el.style.top  = p.y + "px";
-      if (p.y > window.innerHeight) { p.el.remove(); planets = planets.filter(o => o !== p); }
-    }
-
-    const me = { x: x, y: y };
-    for (const t of [...things]) {
-      if (t.kind === "alien") {
-        // Aliens fly straight at the rocket!
-        const dx = x - t.x, dy = y - t.y;
-        const dist = Math.hypot(dx, dy) || 1;
-        t.x += dx / dist * t.speed * k;
-        t.y += dy / dist * t.speed * k;
-      } else {
-        t.y += t.speed * k;
-      }
-      t.el.style.left = t.x + "px";
-      t.el.style.top  = t.y + "px";
-
-      if (t.y > window.innerHeight || t.y < -100) { removeThing(t); continue; }
-
-      if (t.kind === "rock" && touching(me, ROCKET_SIZE, t, SIZE)) {
-        removeThing(t); loseLife(easy ? EASY_DAMAGE : ROCK_DAMAGE);   // ouch, rocks hurt!
-      }
-      else if (t.kind === "alien" && touching(me, ROCKET_SIZE, t, SIZE)) {
-        removeThing(t); loseLife(1);                                   // ouch!
-      }
-      else if (t.kind === "star" && touching(me, ROCKET_SIZE, t, SIZE)) {
-        removeThing(t); score += STAR_SCORE; showHud();                // yum, a star!
-      }
-      else if (t.kind === "bullet") {
-        for (const a of things.filter(o => o.kind === "alien")) {
-          if (touching(t, SIZE / 2, a, SIZE)) {                        // shot an alien!
-            removeThing(a); removeThing(t); score += ALIEN_SCORE; showHud();
-            break;
-          }
-        }
-      }
-    }
-    showHud();
-  }
+  drawStars(paused ? 0 : k, running);
+  if (running) update(dt, k);
 
   // The boost button shows if it's ready
   const t0 = performance.now();
-  if (boosting()) { boostBtn.textContent = "🔥 BOOSTING!"; boostBtn.className = "on"; }
-  else if (t0 < boostReadyAt) { boostBtn.textContent = "⏳ " + Math.ceil((boostReadyAt - t0) / 1000) + "s"; boostBtn.className = "cooling"; }
-  else { boostBtn.textContent = "🔥 BOOST (B)"; boostBtn.className = ""; }
+  if (boosting()) { boostBtn.textContent = "BOOSTING!"; boostBtn.className = "on"; }
+  else if (t0 < boostReadyAt) { boostBtn.textContent = "Wait " + Math.ceil((boostReadyAt - t0) / 1000) + "s"; boostBtn.className = "cooling"; }
+  else { boostBtn.textContent = "BOOST (B)"; boostBtn.className = ""; }
 
-  requestAnimationFrame(gameLoop);   // do it again, 60 times a second!
+  if (shielding()) { shieldBtn.textContent = "SHIELD " + Math.ceil((shieldUntil - t0) / 1000) + "s"; shieldBtn.className = "on"; }
+  else if (t0 < shieldReadyAt) { shieldBtn.textContent = "Wait " + Math.ceil((shieldReadyAt - t0) / 1000) + "s"; shieldBtn.className = "cooling"; }
+  else { shieldBtn.textContent = "SHIELD (S)"; shieldBtn.className = ""; }
+  if (!shielding()) shieldEl.style.display = "none";
+
+  requestAnimationFrame(frame);   // do it again, 60 times a second!
+}
+
+function update(dt, k) {
+  // Fly the rocket
+  const speed = rocketSpeed() * k;
+  if (keys["ArrowLeft"])  x -= speed;
+  if (keys["ArrowRight"]) x += speed;
+  if (keys["ArrowUp"])    y -= speed;
+  if (keys["ArrowDown"])  y += speed;
+  x = Math.max(0, Math.min(window.innerWidth  - ROCKET_SIZE, x));
+  y = Math.max(0, Math.min(window.innerHeight - ROCKET_SIZE, y));
+  rocket.style.left = x + "px";
+  rocket.style.top  = y + "px";
+  if (boosting() !== rocketLooksBoosted) {              // big flame when boosting
+    rocketLooksBoosted = boosting();
+    setPicture(rocket, rocketLooksBoosted ? PIC.rocketBoost : PIC.rocket);
+  }
+
+  // The journey: we get closer to the Moon!
+  progress += dt / 1000 / (LEVELS * SECONDS_PER_LEVEL) * (boosting() ? BOOST_POWER : 1);
+  const newLevel = Math.min(LEVELS, Math.floor(progress * LEVELS) + 1);
+  if (newLevel > level) {
+    level = newLevel;
+    score += LEVEL_SCORE;
+    showBanner("Level " + level + "!  Faster!");
+  }
+  // The Moon grows as we get close
+  if (progress > 0.82) {
+    const moonSize = 40 + Math.min(1, (progress - 0.82) / 0.18) * 280;
+    moon.style.display = "block";
+    moon.style.width = moon.style.height = moonSize + "px";
+  }
+  if (progress >= 1) { progress = 1; showHud(); endGame(true); return; }
+
+  // New rocks, stars, aliens and planets
+  rockTimer += dt; alienTimer += dt; starTimer += dt; planetTimer += dt;
+  const fewer = easy ? EASY_FEWER : 1;
+  if (rockTimer  > ROCK_EVERY  * fewer / tough()) {
+    rockTimer = 0;
+    makeThing("rock", PIC.rocks[Math.floor(Math.random() * PIC.rocks.length)], randomX(), -SIZE, ROCK_SPEED * tough() * mean(), SIZE);
+  }
+  if (alienTimer > ALIEN_EVERY * fewer / tough()) { alienTimer = 0; makeThing("alien", PIC.alien, randomX(), -SIZE, ALIEN_SPEED * tough() * mean(), SIZE); }
+  if (starTimer  > STAR_EVERY)                    { starTimer = 0;  makeThing("star",  PIC.star,  randomX(), -SIZE, 3, SIZE); }
+  if (planetTimer > 5000)                         { planetTimer = 0; makePlanet(); }
+
+  // Planets drift past
+  for (const p of [...planets]) {
+    p.y += p.speed * k;
+    p.el.style.left = p.x + "px";
+    p.el.style.top  = p.y + "px";
+    if (p.y > window.innerHeight) { p.el.remove(); planets = planets.filter(o => o !== p); }
+  }
+
+  // Where is my rocket? (a box around the body)
+  let me = { x: x + ROCKET_SIZE * 0.3, y: y + ROCKET_SIZE * 0.05, w: ROCKET_SIZE * 0.4, h: ROCKET_SIZE * 0.75 };
+  const shielded = shielding();
+  if (shielded) {                                       // the shield bubble is bigger than the rocket
+    const bubble = ROCKET_SIZE * 1.7;
+    shieldEl.style.display = "block";
+    shieldEl.style.width = shieldEl.style.height = bubble + "px";
+    shieldEl.style.left = x + ROCKET_SIZE / 2 - bubble / 2 + "px";
+    shieldEl.style.top  = y + ROCKET_SIZE / 2 - bubble / 2 + "px";
+    shieldEl.style.opacity = shieldUntil - performance.now() < 3000 && Math.floor(performance.now() / 150) % 2 ? 0.35 : 1;  // blinks when it's about to run out
+    const r = ROCKET_SIZE * 0.7;
+    me = { x: x + ROCKET_SIZE / 2 - r, y: y + ROCKET_SIZE / 2 - r, w: r * 2, h: r * 2 };
+  }
+
+  for (const t of [...things]) {
+    if (t.kind === "alien") {
+      // Alien ships fly straight at the rocket!
+      const dx = x - t.x, dy = y - t.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      t.x += dx / dist * t.speed * k;
+      t.y += dy / dist * t.speed * k;
+    } else {
+      t.y += t.speed * k;
+    }
+    t.el.style.left = t.x + "px";
+    t.el.style.top  = t.y + "px";
+
+    if (t.y > window.innerHeight || t.y < -100) { removeThing(t); continue; }
+
+    const box = boxOf(t.x, t.y, t.size, t.kind === "bullet" ? 0.1 : 0.15);
+    if (t.kind === "rock" && touching(me, box)) {
+      removeThing(t);
+      if (!shielded) loseLife(easy ? EASY_DAMAGE : ROCK_DAMAGE);     // ouch, rocks hurt! (but not with a shield)
+    }
+    else if (t.kind === "alien" && touching(me, box)) {
+      removeThing(t);
+      if (!shielded) loseLife(1);                                    // ouch! (but not with a shield)
+    }
+    else if (t.kind === "star" && touching(me, box)) {
+      removeThing(t); score += STAR_SCORE; showHud();                // got a star!
+    }
+    else if (t.kind === "bullet") {
+      for (const a of things.filter(o => o.kind === "alien")) {
+        if (touching(box, boxOf(a.x, a.y, a.size, 0.1))) {           // shot an alien ship!
+          removeThing(a); removeThing(t); score += ALIEN_SCORE; showHud();
+          break;
+        }
+      }
+    }
+  }
+  showHud();
 }
 
 function startGame() {
@@ -362,15 +653,13 @@ function startGame() {
   things = []; planets = [];
   score = 0; progress = 0; level = 1; paused = false; playing = true;
   lives = easy ? EASY_LIVES : START_LIVES;
-  boostUntil = 0; boostReadyAt = 0;
+  boostUntil = 0; boostReadyAt = 0; shieldUntil = 0; shieldReadyAt = 0;
   rockTimer = alienTimer = starTimer = planetTimer = 0;
   x = window.innerWidth / 2 - ROCKET_SIZE / 2;
-  y = window.innerHeight - ROCKET_SIZE * 2;
+  y = window.innerHeight - ROCKET_SIZE * 1.6;
   moon.style.display = "none";
   message.innerHTML = "";
   showHud();
-  last = performance.now();
-  requestAnimationFrame(gameLoop);
 }
 
 function endGame(won) {
@@ -381,7 +670,7 @@ function endGame(won) {
   }
   const name = ROCKET_NAME || "Your rocket";
   message.innerHTML = (won
-      ? "🌕 " + name + " landed on the Moon! 🎉"
+      ? name + " landed on the Moon!"
       : "Game over!<br>" + name + " was " + kmLeft().toLocaleString() + " km from the Moon") +
     "<br>Score: " + score + "   Best: " + best +
     "<br><button id='again'>Play again</button>";
@@ -392,11 +681,13 @@ function endGame(won) {
 things = []; planets = [];
 score = 0; progress = 0; level = 1; lives = easy ? EASY_LIVES : START_LIVES; playing = false; paused = false;
 x = window.innerWidth / 2 - ROCKET_SIZE / 2;
-y = window.innerHeight - ROCKET_SIZE * 2;
+y = window.innerHeight - ROCKET_SIZE * 1.6;
 rocket.style.left = x + "px"; rocket.style.top = y + "px";
 showHud(); showButtons();
-message.innerHTML = "🚀 Fly to the Moon! 🌕<br>Arrows or mouse to fly &middot; Space or click to shoot 🔥<br>B = boost &middot; M = map &middot; E = easy<br><button id='go'>Start!</button>";
+message.innerHTML = "Fly to the Moon!<br><span style='font-size:20px'>Arrows or mouse to fly &middot; Space or click to shoot<br>B = boost &middot; S = shield &middot; M = map &middot; E = easy</span><br><button id='go'>Start!</button>";
 document.getElementById("go").addEventListener("click", startGame);
+last = performance.now();
+requestAnimationFrame(frame);
 </script>
 </body>
 </html>

@@ -35,3 +35,8 @@ Where I am: **Rung 1 – Tweak** (changing numbers and colours and seeing what h
 ### Session 5
 - I asked for EVEN HARDER. Claude turned up the numbers: 4 hearts, rocks take 3, more and faster rocks and aliens, longer boost wait. Builders tune a game by changing numbers until it feels right!
 - Then I wanted the rocket SO fast: ROCKET_SPEED went from 6 to 14, and each level adds 35% more speed.
+
+### Session 6
+- I wanted a realistic game, so Claude drew everything with code instead of emojis: a metal rocket, rocks, alien saucers, planets and a cratered moon.
+- I invented the **SHIELD** button (my idea!): 15 seconds where rocks and aliens can't hurt the rocket.
+- New words: **canvas** (a drawing board the computer paints on), **shield time** is just a number: SHIELD_TIME = 15000 (that's milliseconds: 1000 = 1 second).
