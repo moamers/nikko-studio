@@ -25,3 +25,9 @@ Where I am: **Rung 1 – Tweak** (changing numbers and colours and seeing what h
 ### Session 3
 - My idea: make it MUCH harder. Aliens now chase the rocket, rocks come faster and hurt more (2 hearts). I asked for it in my own words — that's how builders talk!
 - New word: **difficulty** (how hard a game is). We changed it by editing numbers in SETTINGS.
+
+### Session 4
+- I asked for a LOT: the Moon, planets, levels, boost, easy button, map, and scores. Now the aim is to fly to the Moon!
+- New words: **level** (a step in the game), **progress** (how far you've got), **cooldown** (waiting before you can use something again).
+- Fun fact: the real Moon is 384,400 km away.
+- Next ideas: more planets with names? a boss alien? two players?

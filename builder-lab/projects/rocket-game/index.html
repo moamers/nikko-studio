@@ -7,17 +7,46 @@
 <style>
   body { margin: 0; background: #05061a; overflow: hidden; font-family: sans-serif; color: white; user-select: none; }
   #space { position: relative; width: 100vw; height: 100vh; touch-action: none; overflow: hidden; }
-  .thing { position: absolute; line-height: 1; pointer-events: none; }
-  #hud { position: absolute; top: 8px; width: 100%; text-align: center; font-size: 26px; z-index: 5; pointer-events: none; }
-  #message { position: absolute; top: 35%; width: 100%; text-align: center; font-size: 40px; z-index: 6; }
-  button { font-size: 26px; padding: 12px 28px; border-radius: 14px; border: none; cursor: pointer; margin-top: 16px; }
+  .thing, #rocket { position: absolute; line-height: 1; pointer-events: none; z-index: 3; }
+  .planet { position: absolute; line-height: 1; pointer-events: none; z-index: 1; opacity: 0.9; }
+  #moon { position: absolute; top: 40px; left: 50%; transform: translateX(-50%); line-height: 1; pointer-events: none; z-index: 1; display: none; }
+  #hud { position: absolute; top: 8px; left: 0; width: 100%; text-align: center; font-size: 24px; z-index: 5; pointer-events: none; }
+  #bar { position: absolute; top: 46px; left: 20%; width: 60%; height: 10px; background: #ffffff33; border-radius: 6px; z-index: 5; }
+  #fill { height: 100%; width: 0; background: #ffd23f; border-radius: 6px; }
+  #message { position: absolute; top: 28%; width: 100%; text-align: center; font-size: 36px; z-index: 6; }
+  #banner { position: absolute; top: 20%; width: 100%; text-align: center; font-size: 56px; z-index: 6; pointer-events: none; display: none; }
+  button { font-size: 22px; padding: 10px 22px; border-radius: 14px; border: none; cursor: pointer; margin-top: 12px; }
+  #topButtons { position: fixed; top: 8px; right: 8px; z-index: 7; display: flex; flex-direction: column; gap: 4px; }
+  #topButtons button { font-size: 16px; margin: 0; padding: 8px 12px; }
+  #boost { position: fixed; bottom: 20px; right: 20px; z-index: 7; font-size: 28px; padding: 18px 26px; background: #ff7a00; color: white; font-weight: bold; }
+  #boost.cooling { background: #666; }
+  #boost.on { background: #ffd23f; color: #222; }
+  #map { position: fixed; inset: 0; z-index: 9; background: #05061aee; display: none; text-align: center; padding-top: 12vh; }
+  #track { position: relative; width: 80%; height: 8px; background: #ffffff55; margin: 90px auto 70px; border-radius: 4px; }
+  .mark { position: absolute; top: -34px; transform: translateX(-50%); font-size: 36px; }
+  .mark small { display: block; font-size: 13px; margin-top: 2px; white-space: nowrap; }
+  #me { position: absolute; top: 20px; transform: translateX(-50%) rotate(45deg); font-size: 40px; }
 </style>
 </head>
 <body>
 <div id="space">
+  <div id="moon">🌕</div>
   <div id="hud"></div>
+  <div id="bar"><div id="fill"></div></div>
+  <div id="banner"></div>
   <div id="message"></div>
-  <div id="rocket" class="thing">🚀</div>
+  <div id="rocket">🚀</div>
+</div>
+<div id="topButtons">
+  <button id="mapBtn">🗺️ Map (M)</button>
+  <button id="easyBtn">😌 Easy: OFF (E)</button>
+</div>
+<button id="boost">🔥 BOOST (B)</button>
+<div id="map">
+  <h1>🗺️ Map to the Moon</h1>
+  <div id="track"></div>
+  <h2 id="mapText"></h2>
+  <button id="mapClose">Back to flying!</button>
 </div>
 
 <script>
@@ -27,23 +56,45 @@
 const ROCKET_NAME    = "Zoom";    // Name your rocket! Put any name in the quotes.
 const ROCKET_EMOJI   = "🚀";      // Try 🛸 or 🐝 or 🦄
 const ROCKET_SIZE    = 70;        // How big the rocket is. Try 140!
-const ROCKET_SPEED   = 7;         // Arrow-key speed. Try 15!
+const ROCKET_SPEED   = 6;         // Arrow-key speed at Level 1. Try 12!
 const SPACE_COLOUR   = "#05061a"; // Try "purple" or "#003366"
 
+// ---- The journey to the Moon ----
+const LEVELS            = 5;      // How many levels before the Moon. Try 10!
+const SECONDS_PER_LEVEL = 25;     // How long each level takes. Try 10 for a quick game!
+const LEVEL_SPEEDUP     = 0.25;   // Rocket gets this much faster every level (0.25 = 25%)
+const HARDER_PER_LEVEL  = 0.15;   // Rocks and aliens get this much tougher every level
+const MOON_KM           = 384400; // The REAL distance from Earth to the Moon, in kilometres!
+
+// ---- Boost ----
+const BOOST_POWER    = 2.5;       // How much faster boost makes you go. Try 5!
+const BOOST_TIME     = 1500;      // How long boost lasts (1000 = 1 second)
+const BOOST_COOLDOWN = 4000;      // How long you wait before you can boost again
+
+// ---- Danger ----
 const START_LIVES    = 6;         // How many hearts you start with
 const ROCK_EMOJI     = "🪨";      // Try ☄️
-const ROCK_SPEED     = 6;         // How fast rocks fall. Try 12 if you're brave!
+const ROCK_SPEED     = 5;         // How fast rocks fall. Try 12 if you're brave!
 const ROCK_DAMAGE    = 2;         // Hearts a rock takes away. Try 3!
-const ROCK_EVERY     = 450;            // Milliseconds between rocks. Smaller = more rocks!
-
-const STAR_EMOJI     = "⭐";
-const STAR_EVERY     = 1600;      // How often stars appear
-
+const ROCK_EVERY     = 600;       // Milliseconds between rocks. Smaller = MORE rocks!
 const ALIEN_EMOJI    = "👾";
-const ALIEN_EVERY    = 1500;      // How often aliens appear
-const ALIEN_SPEED    = 2.5;       // Aliens CHASE you at this speed. Shoot them fast!
+const ALIEN_EVERY    = 2200;      // How often aliens appear
+const ALIEN_SPEED    = 2.2;       // Aliens CHASE you at this speed. Shoot them fast!
 const BULLET_EMOJI   = "🔥";
 const BULLET_SPEED   = 10;
+
+// ---- Easy button ----
+const EASY_LIVES     = 10;        // Hearts you get in easy mode
+const EASY_DAMAGE    = 1;         // Rocks only take 1 heart in easy mode
+const EASY_SLOWER    = 0.6;       // Rocks and aliens move at 60% speed in easy mode
+const EASY_FEWER     = 1.8;       // Rocks and aliens come 1.8x less often in easy mode
+
+// ---- Score ----
+const STAR_EMOJI     = "⭐";
+const STAR_EVERY     = 1600;      // How often stars appear
+const STAR_SCORE     = 10;        // Score for grabbing a star
+const ALIEN_SCORE    = 30;        // Score for shooting an alien
+const LEVEL_SCORE    = 100;       // Score for finishing a level
 
 // =====================================================
 //  THE GAME PART  -  ask Claude "what does this do?" any time
@@ -51,36 +102,112 @@ const BULLET_SPEED   = 10;
 const space   = document.getElementById("space");
 const hud     = document.getElementById("hud");
 const message = document.getElementById("message");
+const banner  = document.getElementById("banner");
 const rocket  = document.getElementById("rocket");
+const moon    = document.getElementById("moon");
+const fill    = document.getElementById("fill");
+const boostBtn = document.getElementById("boost");
+const easyBtn  = document.getElementById("easyBtn");
+const mapEl    = document.getElementById("map");
 const SIZE = 50;   // size of rocks, stars, aliens
 
 document.body.style.background = SPACE_COLOUR;
 rocket.textContent = ROCKET_EMOJI;
 rocket.style.fontSize = ROCKET_SIZE + "px";
 
+// Places on the map (0 = Earth, 1 = Moon)
+const PLACES = [
+  { at: 0,    emoji: "🌍", name: "Earth" },
+  { at: 0.25, emoji: "🛰️", name: "Space Station" },
+  { at: 0.5,  emoji: "🪐", name: "Ring Planet" },
+  { at: 0.75, emoji: "🔴", name: "Red Planet" },
+  { at: 1,    emoji: "🌕", name: "Moon" }
+];
+const PLANET_EMOJIS = ["🪐", "🌎", "🔴", "🟣", "🟠"];
+
 // Variables: labelled boxes that remember things
-let x, y, score, lives, playing, things, timers, frame;
+let x, y, score, lives, playing, paused, things, planets, progress, level, last;
+let boostUntil = 0, boostReadyAt = 0;
+let rockTimer = 0, alienTimer = 0, starTimer = 0, planetTimer = 0;
+let easy = false, best = 0;
 const keys = {};
 
+// The computer can remember your Easy choice and best score
+try { easy = localStorage.getItem("rocketEasy") === "1"; best = Number(localStorage.getItem("rocketBest")) || 0; } catch (e) {}
+
+function boosting() { return performance.now() < boostUntil; }
+function rocketSpeed() {
+  return ROCKET_SPEED * (1 + LEVEL_SPEEDUP * (level - 1)) * (boosting() ? 1.8 : 1);
+}
+function tough() { return 1 + HARDER_PER_LEVEL * (level - 1); }      // how mean this level is
+function mean()  { return easy ? EASY_SLOWER : 1; }
+
+// ---------- Keys, mouse and buttons ----------
 window.addEventListener("keydown", e => {
   keys[e.key] = true;
-  if (e.key === " ") { e.preventDefault(); shoot(); }   // space bar = fire!
+  if (e.key === " ") { e.preventDefault(); shoot(); }
+  if (e.key === "b" || e.key === "B") boost();
+  if (e.key === "m" || e.key === "M") toggleMap();
+  if (e.key === "e" || e.key === "E") toggleEasy();
+  if (e.key === "Escape" && paused) toggleMap();
 });
 window.addEventListener("keyup", e => { keys[e.key] = false; });
 
-// Mouse or finger moves the rocket. Tapping/clicking shoots.
 space.addEventListener("pointermove", e => {
+  if (e.target.closest("button")) return;
   x = e.clientX - ROCKET_SIZE / 2;
   y = e.clientY - ROCKET_SIZE / 2;
 });
 space.addEventListener("pointerdown", e => {
-  if (e.target.tagName === "BUTTON") return;
+  if (e.target.closest("button")) return;
   x = e.clientX - ROCKET_SIZE / 2;
   y = e.clientY - ROCKET_SIZE / 2;
   shoot();
 });
 
-// Make a new thing on screen. kind = "rock", "star", "alien" or "bullet"
+boostBtn.addEventListener("click", boost);
+easyBtn.addEventListener("click", toggleEasy);
+document.getElementById("mapBtn").addEventListener("click", toggleMap);
+document.getElementById("mapClose").addEventListener("click", toggleMap);
+
+function boost() {
+  const now = performance.now();
+  if (!playing || paused || now < boostReadyAt) return;
+  boostUntil = now + BOOST_TIME;
+  boostReadyAt = now + BOOST_TIME + BOOST_COOLDOWN;
+}
+
+function toggleEasy() {
+  easy = !easy;
+  try { localStorage.setItem("rocketEasy", easy ? "1" : "0"); } catch (e) {}
+  showButtons();
+}
+
+function showButtons() {
+  easyBtn.textContent = "😌 Easy: " + (easy ? "ON" : "OFF") + " (E)";
+  easyBtn.style.background = easy ? "#7CFC00" : "";
+}
+
+// ---------- The map ----------
+function kmLeft() { return Math.round(MOON_KM * (1 - progress) / 100) * 100; }
+
+function toggleMap() {
+  if (!playing) return;
+  paused = !paused;
+  mapEl.style.display = paused ? "block" : "none";
+  if (paused) {
+    const track = document.getElementById("track");
+    track.innerHTML = PLACES.map(p =>
+      '<div class="mark" style="left:' + p.at * 100 + '%">' + p.emoji + '<small>' + p.name + '</small></div>'
+    ).join("") + '<div id="me" style="left:' + progress * 100 + '%">' + ROCKET_EMOJI + '</div>';
+    document.getElementById("mapText").innerHTML =
+      "You are " + kmLeft().toLocaleString() + " km from the Moon!<br>Level " + level + " of " + LEVELS;
+  } else {
+    last = performance.now();
+  }
+}
+
+// ---------- Making things ----------
 function makeThing(kind, emoji, px, py, speed) {
   const el = document.createElement("div");
   el.className = "thing";
@@ -90,14 +217,23 @@ function makeThing(kind, emoji, px, py, speed) {
   things.push({ kind, el, x: px, y: py, speed });
 }
 
+function makePlanet() {
+  const size = 90 + Math.random() * 110;
+  const el = document.createElement("div");
+  el.className = "planet";
+  el.textContent = PLANET_EMOJIS[Math.floor(Math.random() * PLANET_EMOJIS.length)];
+  el.style.fontSize = size + "px";
+  space.appendChild(el);
+  planets.push({ el, x: Math.random() * (window.innerWidth - size), y: -size, speed: 0.6 + Math.random() * 0.8 });
+}
+
 function randomX() { return Math.random() * (window.innerWidth - SIZE); }
 
 function shoot() {
-  if (!playing) return;
+  if (!playing || paused) return;
   makeThing("bullet", BULLET_EMOJI, x + ROCKET_SIZE / 2 - SIZE / 4, y - 20, -BULLET_SPEED);
 }
 
-// Are two things touching? (Compare their boxes)
 function touching(a, aSize, b, bSize) {
   return a.x < b.x + bSize && a.x + aSize > b.x &&
          a.y < b.y + bSize && a.y + aSize > b.y;
@@ -107,98 +243,159 @@ function removeThing(t) { t.el.remove(); things = things.filter(o => o !== t); }
 
 function showHud() {
   hud.textContent = (ROCKET_NAME ? ROCKET_NAME + "   " : "") +
-                    "⭐ " + score + "    " + "❤️".repeat(Math.max(lives, 0));
+                    "Score " + score + "    Level " + level + "/" + LEVELS + "    " + "❤️".repeat(Math.max(lives, 0));
+  fill.style.width = progress * 100 + "%";
 }
 
 function loseLife(amount) {
   lives = lives - amount;
   showHud();
-  if (lives <= 0) endGame();
+  if (lives <= 0) endGame(false);
 }
 
-function gameLoop() {
+function showBanner(text) {
+  banner.textContent = text;
+  banner.style.display = "block";
+  setTimeout(() => { banner.style.display = "none"; }, 1500);
+}
+
+// ---------- The game loop: runs 60 times a second ----------
+function gameLoop(now) {
   if (!playing) return;
+  const dt = Math.min(now - last, 50);   // time since last frame (ms)
+  last = now;
+  const k = dt / 16.67;                  // 1 when the game runs smoothly
 
-  // Arrow keys move the rocket
-  if (keys["ArrowLeft"])  x -= ROCKET_SPEED;
-  if (keys["ArrowRight"]) x += ROCKET_SPEED;
-  if (keys["ArrowUp"])    y -= ROCKET_SPEED;
-  if (keys["ArrowDown"])  y += ROCKET_SPEED;
-  x = Math.max(0, Math.min(window.innerWidth  - ROCKET_SIZE, x));
-  y = Math.max(0, Math.min(window.innerHeight - ROCKET_SIZE, y));
-  rocket.style.left = x + "px";
-  rocket.style.top  = y + "px";
+  if (!paused) {
+    // Fly the rocket
+    const speed = rocketSpeed() * k;
+    if (keys["ArrowLeft"])  x -= speed;
+    if (keys["ArrowRight"]) x += speed;
+    if (keys["ArrowUp"])    y -= speed;
+    if (keys["ArrowDown"])  y += speed;
+    x = Math.max(0, Math.min(window.innerWidth  - ROCKET_SIZE, x));
+    y = Math.max(0, Math.min(window.innerHeight - ROCKET_SIZE, y));
+    rocket.style.left = x + "px";
+    rocket.style.top  = y + "px";
+    rocket.style.filter = boosting() ? "drop-shadow(0 0 22px orange)" : "none";
 
-  const me = { x: x, y: y };
-
-  for (const t of [...things]) {
-    if (t.kind === "alien") {
-      // Aliens fly straight at the rocket!
-      const dx = x - t.x, dy = y - t.y;
-      const dist = Math.hypot(dx, dy) || 1;
-      t.x += dx / dist * ALIEN_SPEED;
-      t.y += dy / dist * ALIEN_SPEED;
-    } else {
-      t.y += t.speed;
+    // The journey: we get closer to the Moon!
+    progress += dt / 1000 / (LEVELS * SECONDS_PER_LEVEL) * (boosting() ? BOOST_POWER : 1);
+    const newLevel = Math.min(LEVELS, Math.floor(progress * LEVELS) + 1);
+    if (newLevel > level) {
+      level = newLevel;
+      score += LEVEL_SCORE;
+      showBanner("Level " + level + "!  🚀 Faster!");
     }
-    t.el.style.left = t.x + "px";
-    t.el.style.top  = t.y + "px";
+    // The Moon grows as we get close
+    if (progress > 0.82) {
+      moon.style.display = "block";
+      moon.style.fontSize = 40 + Math.min(1, (progress - 0.82) / 0.18) * 260 + "px";
+    }
+    if (progress >= 1) { progress = 1; showHud(); endGame(true); return; }
 
-    // Off the screen? Throw it away.
-    if (t.y > window.innerHeight || t.y < -100) { removeThing(t); continue; }
+    // New rocks, stars, aliens and planets
+    rockTimer += dt; alienTimer += dt; starTimer += dt; planetTimer += dt;
+    const fewer = easy ? EASY_FEWER : 1;
+    if (rockTimer  > ROCK_EVERY  * fewer / tough()) { rockTimer = 0;  makeThing("rock",  ROCK_EMOJI,  randomX(), -SIZE, ROCK_SPEED * tough() * mean()); }
+    if (alienTimer > ALIEN_EVERY * fewer / tough()) { alienTimer = 0; makeThing("alien", ALIEN_EMOJI, randomX(), -SIZE, ALIEN_SPEED * tough() * mean()); }
+    if (starTimer  > STAR_EVERY)                    { starTimer = 0;  makeThing("star",  STAR_EMOJI,  randomX(), -SIZE, 3); }
+    if (planetTimer > 5000)                         { planetTimer = 0; makePlanet(); }
 
-    if (t.kind === "rock" && touching(me, ROCKET_SIZE, t, SIZE)) {
-      removeThing(t); loseLife(ROCK_DAMAGE);            // ouch, rocks hurt!
+    // Planets drift past
+    for (const p of [...planets]) {
+      p.y += p.speed * k;
+      p.el.style.left = p.x + "px";
+      p.el.style.top  = p.y + "px";
+      if (p.y > window.innerHeight) { p.el.remove(); planets = planets.filter(o => o !== p); }
     }
-    else if (t.kind === "alien" && touching(me, ROCKET_SIZE, t, SIZE)) {
-      removeThing(t); loseLife(1);                      // ouch!
-    }
-    else if (t.kind === "star" && touching(me, ROCKET_SIZE, t, SIZE)) {
-      removeThing(t); score += 1; showHud();            // yum, a star!
-    }
-    else if (t.kind === "bullet") {
-      for (const a of things.filter(o => o.kind === "alien")) {
-        if (touching(t, SIZE / 2, a, SIZE)) {           // shot an alien!
-          removeThing(a); removeThing(t); score += 3; showHud();
-          break;
+
+    const me = { x: x, y: y };
+    for (const t of [...things]) {
+      if (t.kind === "alien") {
+        // Aliens fly straight at the rocket!
+        const dx = x - t.x, dy = y - t.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        t.x += dx / dist * t.speed * k;
+        t.y += dy / dist * t.speed * k;
+      } else {
+        t.y += t.speed * k;
+      }
+      t.el.style.left = t.x + "px";
+      t.el.style.top  = t.y + "px";
+
+      if (t.y > window.innerHeight || t.y < -100) { removeThing(t); continue; }
+
+      if (t.kind === "rock" && touching(me, ROCKET_SIZE, t, SIZE)) {
+        removeThing(t); loseLife(easy ? EASY_DAMAGE : ROCK_DAMAGE);   // ouch, rocks hurt!
+      }
+      else if (t.kind === "alien" && touching(me, ROCKET_SIZE, t, SIZE)) {
+        removeThing(t); loseLife(1);                                   // ouch!
+      }
+      else if (t.kind === "star" && touching(me, ROCKET_SIZE, t, SIZE)) {
+        removeThing(t); score += STAR_SCORE; showHud();                // yum, a star!
+      }
+      else if (t.kind === "bullet") {
+        for (const a of things.filter(o => o.kind === "alien")) {
+          if (touching(t, SIZE / 2, a, SIZE)) {                        // shot an alien!
+            removeThing(a); removeThing(t); score += ALIEN_SCORE; showHud();
+            break;
+          }
         }
       }
     }
+    showHud();
   }
+
+  // The boost button shows if it's ready
+  const t0 = performance.now();
+  if (boosting()) { boostBtn.textContent = "🔥 BOOSTING!"; boostBtn.className = "on"; }
+  else if (t0 < boostReadyAt) { boostBtn.textContent = "⏳ " + Math.ceil((boostReadyAt - t0) / 1000) + "s"; boostBtn.className = "cooling"; }
+  else { boostBtn.textContent = "🔥 BOOST (B)"; boostBtn.className = ""; }
+
   requestAnimationFrame(gameLoop);   // do it again, 60 times a second!
 }
 
 function startGame() {
-  things.forEach?.(t => t.el.remove());
-  things = [];
-  score = 0; lives = START_LIVES; playing = true;
+  things.forEach(t => t.el.remove());
+  planets.forEach(p => p.el.remove());
+  things = []; planets = [];
+  score = 0; progress = 0; level = 1; paused = false; playing = true;
+  lives = easy ? EASY_LIVES : START_LIVES;
+  boostUntil = 0; boostReadyAt = 0;
+  rockTimer = alienTimer = starTimer = planetTimer = 0;
   x = window.innerWidth / 2 - ROCKET_SIZE / 2;
   y = window.innerHeight - ROCKET_SIZE * 2;
+  moon.style.display = "none";
   message.innerHTML = "";
   showHud();
-  timers = [
-    setInterval(() => makeThing("rock",  ROCK_EMOJI,  randomX(), -SIZE, ROCK_SPEED),  ROCK_EVERY),
-    setInterval(() => makeThing("star",  STAR_EMOJI,  randomX(), -SIZE, 3),           STAR_EVERY),
-    setInterval(() => makeThing("alien", ALIEN_EMOJI, randomX(), -SIZE, ALIEN_SPEED), ALIEN_EVERY)
-  ];
-  gameLoop();
+  last = performance.now();
+  requestAnimationFrame(gameLoop);
 }
 
-function endGame() {
+function endGame(won) {
   playing = false;
-  timers.forEach(clearInterval);
-  message.innerHTML = "Game over!<br>" + (ROCKET_NAME || "Your rocket") + " got " + score +
-                      " points!<br><button id='again'>Play again</button>";
+  if (score > best) {
+    best = score;
+    try { localStorage.setItem("rocketBest", String(best)); } catch (e) {}
+  }
+  const name = ROCKET_NAME || "Your rocket";
+  message.innerHTML = (won
+      ? "🌕 " + name + " landed on the Moon! 🎉"
+      : "Game over!<br>" + name + " was " + kmLeft().toLocaleString() + " km from the Moon") +
+    "<br>Score: " + score + "   Best: " + best +
+    "<br><button id='again'>Play again</button>";
   document.getElementById("again").addEventListener("click", startGame);
 }
 
-things = [];
-score = 0; lives = START_LIVES; playing = false;
+// ---------- Start screen ----------
+things = []; planets = [];
+score = 0; progress = 0; level = 1; lives = easy ? EASY_LIVES : START_LIVES; playing = false; paused = false;
 x = window.innerWidth / 2 - ROCKET_SIZE / 2;
 y = window.innerHeight - ROCKET_SIZE * 2;
 rocket.style.left = x + "px"; rocket.style.top = y + "px";
-showHud();
-message.innerHTML = "🚀 Arrows or mouse to fly<br>Space or click to shoot 🔥<br><button id='go'>Start!</button>";
+showHud(); showButtons();
+message.innerHTML = "🚀 Fly to the Moon! 🌕<br>Arrows or mouse to fly &middot; Space or click to shoot 🔥<br>B = boost &middot; M = map &middot; E = easy<br><button id='go'>Start!</button>";
 document.getElementById("go").addEventListener("click", startGame);
 </script>
 </body>
