@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Star Catcher</title>
+<style>
+  body { margin: 0; background: #0b1030; color: white; font-family: sans-serif; text-align: center; user-select: none; }
+  #scoreBar { padding: 12px; font-size: 28px; }
+  #sky { position: relative; width: 100%; height: calc(100vh - 60px); overflow: hidden; }
+  .star { position: absolute; cursor: pointer; line-height: 1; }
+  #message { position: absolute; top: 40%; width: 100%; font-size: 40px; }
+  button { font-size: 24px; padding: 10px 24px; border-radius: 12px; border: none; cursor: pointer; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<div id="scoreBar">Score: <span id="score">0</span> &nbsp; Lives: <span id="lives"></span></div>
+<div id="sky"><div id="message"></div></div>
+
+<script>
+// =====================================================
+//  SETTINGS  -  CHANGE THESE NUMBERS AND REFRESH THE PAGE!
+// =====================================================
+const STAR_EMOJI      = "⭐";   // Try 🍕 or 🐱 or 🚀  (any emoji works!)
+const STAR_SIZE       = 60;     // How big the stars are. Try 120!
+const FALL_SPEED      = 2;      // How fast stars fall. Try 6!
+const NEW_STAR_EVERY  = 900;    // Milliseconds between new stars. Smaller = more stars!
+const START_LIVES     = 3;      // How many stars you can miss before the game ends
+const SKY_COLOUR      = "#0b1030"; // Try "purple" or "black" or "#ff8800"
+
+// =====================================================
+//  THE GAME  -  you don't need to understand this yet.
+//  When you're ready, ask Claude: "What does this part do?"
+// =====================================================
+const sky = document.getElementById("sky");
+const scoreText = document.getElementById("score");
+const livesText = document.getElementById("lives");
+const message = document.getElementById("message");
+
+let score = 0;            // a variable: a labelled box that remembers a number
+let lives = START_LIVES;
+let playing = false;
+let stars = [];
+let spawnTimer;
+
+document.body.style.background = SKY_COLOUR;
+
+function showLives() { livesText.textContent = "❤️".repeat(lives); }
+
+function makeStar() {
+  const star = document.createElement("div");
+  star.className = "star";
+  star.textContent = STAR_EMOJI;
+  star.style.fontSize = STAR_SIZE + "px";
+  star.style.left = Math.random() * (sky.clientWidth - STAR_SIZE) + "px";
+  star.y = -STAR_SIZE;
+  star.style.top = star.y + "px";
+
+  // "When the star is clicked, do this:"
+  star.addEventListener("pointerdown", function () {
+    score = score + 1;                 // score goes up by 1
+    scoreText.textContent = score;
+    star.remove();
+    stars = stars.filter(s => s !== star);
+  });
+
+  sky.appendChild(star);
+  stars.push(star);
+}
+
+function moveStars() {
+  if (!playing) return;
+  for (const star of stars) {
+    star.y += FALL_SPEED;
+    star.style.top = star.y + "px";
+    if (star.y > sky.clientHeight) {   // it fell off the bottom!
+      star.remove();
+      stars = stars.filter(s => s !== star);
+      lives = lives - 1;
+      showLives();
+      if (lives <= 0) endGame();
+    }
+  }
+  requestAnimationFrame(moveStars);
+}
+
+function startGame() {
+  score = 0; lives = START_LIVES;
+  scoreText.textContent = score;
+  showLives();
+  stars.forEach(s => s.remove());
+  stars = [];
+  message.innerHTML = "";
+  playing = true;
+  spawnTimer = setInterval(makeStar, NEW_STAR_EVERY);
+  moveStars();
+}
+
+function endGame() {
+  playing = false;
+  clearInterval(spawnTimer);
+  message.innerHTML = "Game over! You caught " + score + " stars!<br><button id='again'>Play again</button>";
+  document.getElementById("again").addEventListener("click", startGame);
+}
+
+message.innerHTML = "<button id='go'>Start!</button>";
+document.getElementById("go").addEventListener("click", startGame);
+showLives();
+</script>
+</body>
+</html>
