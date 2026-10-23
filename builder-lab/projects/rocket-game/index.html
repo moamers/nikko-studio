@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rocket Game</title>
+<style>
+  body { margin: 0; background: #05061a; overflow: hidden; font-family: sans-serif; color: white; }
+  #space { position: relative; width: 100vw; height: 100vh; touch-action: none; }
+  #rocket { position: absolute; line-height: 1; }
+  #name { position: absolute; top: 10px; width: 100%; text-align: center; font-size: 24px; }
+</style>
+</head>
+<body>
+<div id="space">
+  <div id="name"></div>
+  <div id="rocket">🚀</div>
+</div>
+
+<script>
+// =====================================================
+//  SETTINGS  -  CHANGE THESE AND REFRESH THE PAGE!
+// =====================================================
+const ROCKET_EMOJI  = "🚀";      // Try 🛸 or 🐝 or 🦄
+const ROCKET_SIZE   = 70;        // How big the rocket is. Try 140!
+const ROCKET_SPEED  = 6;         // How fast it flies with the arrow keys. Try 15!
+const SPACE_COLOUR  = "#05061a"; // Try "purple" or "#003366"
+const ROCKET_NAME   = "";        // Type a name between the quotes! Like "Zoom"
+
+// =====================================================
+//  THE GAME PART  -  ask Claude "what does this do?" any time
+// =====================================================
+const space  = document.getElementById("space");
+const rocket = document.getElementById("rocket");
+document.body.style.background = SPACE_COLOUR;
+rocket.textContent = ROCKET_EMOJI;
+rocket.style.fontSize = ROCKET_SIZE + "px";
+document.getElementById("name").textContent = ROCKET_NAME;
+
+// Where the rocket is (variables = labelled boxes that remember numbers)
+let x = window.innerWidth / 2 - ROCKET_SIZE / 2;
+let y = window.innerHeight - ROCKET_SIZE * 2;
+
+// Which arrow keys are being held down right now
+const keys = {};
+window.addEventListener("keydown", e => { keys[e.key] = true; });
+window.addEventListener("keyup",   e => { keys[e.key] = false; });
+
+// Mouse or finger: the rocket follows it
+space.addEventListener("pointermove", e => {
+  x = e.clientX - ROCKET_SIZE / 2;
+  y = e.clientY - ROCKET_SIZE / 2;
+});
+
+function gameLoop() {
+  // Arrow keys change x and y
+  if (keys["ArrowLeft"])  x = x - ROCKET_SPEED;
+  if (keys["ArrowRight"]) x = x + ROCKET_SPEED;
+  if (keys["ArrowUp"])    y = y - ROCKET_SPEED;
+  if (keys["ArrowDown"])  y = y + ROCKET_SPEED;
+
+  // Keep the rocket on the screen
+  x = Math.max(0, Math.min(window.innerWidth  - ROCKET_SIZE, x));
+  y = Math.max(0, Math.min(window.innerHeight - ROCKET_SIZE, y));
+
+  rocket.style.left = x + "px";
+  rocket.style.top  = y + "px";
+  requestAnimationFrame(gameLoop);   // do it again, 60 times a second!
+}
+gameLoop();
+</script>
+</body>
+</html>
