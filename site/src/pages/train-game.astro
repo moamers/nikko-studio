@@ -190,7 +190,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. At Union, BurJuman, Business Bay or Creek get off the train and walk through the city to the other line (Red, Green or Blue), or at Dubai Marina walk down the road to the Dubai Tram, and at the end of the tram, Palm Jumeirah, hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. From level 9 to level 20 there are no obstacles at all!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. At Union, BurJuman, Business Bay or Creek get off the train and walk through the city to the tunnels at the end: there is one to every line (Red, Green, Blue, Tram and Monorail), so you pick where to go. At Dubai Marina the walk goes down the road to the Dubai Tram, and at the end of the tram, Palm Jumeirah, hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. From level 9 to level 20 there are no obstacles at all!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -907,7 +907,7 @@
     function updateLineBtn() {
       const here = started && !gameOver && dwell > 0 && !changedHere && !walkMode && isInterchange(lastStoppedK);
       const tl = here ? targetLineAt(lastStoppedK) : null;
-      const label = here ? (tl === 'monorail' || currentLine === 'monorail' ? '\u{1F501} To ' : '\u{1F6B6} Walk to ') + metroLines[tl].name : '\u{1F501} Change line';
+      const label = here ? (tl === 'monorail' || currentLine === 'monorail' ? '\u{1F501} To ' + metroLines[tl].name : '\u{1F6B6} Walk to the lines') : '\u{1F501} Change line';
       if (lineBtn.textContent !== label) lineBtn.textContent = label;
       if (lineBtn.disabled === here) lineBtn.disabled = !here;
     }
@@ -929,7 +929,8 @@
 
     function performLineChange(target, bonus) {
       const name = stationName(lastStoppedK);
-      const j = metroLines[target].names.indexOf(name);
+      let j = metroLines[target].names.indexOf(name);
+      if (j < 0) j = 0; // you walked to a tunnel for a line that does not stop here: join it at its first station
       currentLine = target;
       lineBaseK = lastStoppedK;
       lineStart = j;
@@ -959,7 +960,7 @@
     let walkPointer = null; // where a finger or the mouse is pressing (canvas coordinates)
     const walkKeys = { left: false, right: false, up: false, down: false };
     const walkLen = 1700;
-    const walker = { x: 200, y: walkLen - 60, hurt: 0, stepT: 0, moving: false };
+    const walker = { x: 200, y: walkLen - 60, hurt: 0, fallT: 0, safeY: 0, stepT: 0, moving: false };
     let walkCars = [];
     let walkTime = 0;
     let walkMsg = '';
@@ -1018,6 +1019,7 @@
       walker.x = 200;
       walker.y = walkLen - 60;
       walker.hurt = 0;
+      walker.fallT = 0;
       walkPointer = null;
       walkTime = 0;
       walkMsg = '';
@@ -1042,17 +1044,28 @@
       updateLineBtn();
     }
 
-    function finishWalk(skipped) {
+    // At the end of the walk there is a tunnel to every line. The one you came
+    // to change to is in the middle, so walking straight on picks it.
+    const walkLineKeys = ['red', 'green', 'blue', 'tram', 'monorail'];
+    function walkTunnels() {
+      const others = walkLineKeys.filter((k) => k !== walkTarget);
+      const order = [others[0], others[1], walkTarget, others[2], others[3]];
+      return order.map((key, i) => ({ key, cx: 56 + i * 72 }));
+    }
+    const tunnelMouthY = 215; // you are in the tunnel once you reach this high
+
+    function finishWalk(skipped, chosen) {
       walkMode = false;
       walkPointer = null;
       walkKeys.left = walkKeys.right = walkKeys.up = walkKeys.down = false;
-      const target = walkTarget;
+      const target = chosen || walkTarget;
       walkTarget = null;
       performLineChange(target, skipped ? 5 : 10);
     }
 
     function walkHit(why) {
-      walker.hurt = 100;
+      walker.hurt = 130;
+      walker.fallT = 90; // knocked over, then gets back up
       score = Math.max(0, score - 3);
       scoreEl.textContent = 'Score: ' + score;
       walkMsg = why;
@@ -1064,7 +1077,7 @@
       zones.forEach(([a, b]) => {
         if (walker.y >= a - 2 && walker.y <= b + 2) safe = b + 24;
       });
-      walker.y = safe;
+      walker.safeY = safe; // you are helped back to the pavement when you get up
       noiseBurst(500, 0.3, 0.3);
       tone('square', 380, 330, 0.3, 0.06);
     }
@@ -1074,6 +1087,13 @@
       walkIntro = Math.max(0, walkIntro - step);
       walkMsgT = Math.max(0, walkMsgT - step);
       walker.hurt = Math.max(0, walker.hurt - step);
+      if (walker.fallT > 0) {
+        walker.fallT -= step;
+        if (walker.fallT <= 0) {
+          walker.fallT = 0;
+          walker.y = walker.safeY;
+        }
+      }
 
       // walking: press and hold to walk towards your finger, or use the arrow keys
       let dx = 0;
@@ -1091,6 +1111,10 @@
       if (walkKeys.right) dx += 1;
       if (walkKeys.up) dy -= 1;
       if (walkKeys.down) dy += 1;
+      if (walker.fallT > 0) {
+        dx = 0;
+        dy = 0;
+      }
       const len = Math.hypot(dx, dy);
       walker.moving = len > 0.01;
       if (walker.moving) {
@@ -1165,7 +1189,10 @@
       walkCars = walkCars.filter((c) => c.x > -80 && c.x < W + 80);
 
       // arrived at the stop
-      if (walker.y < 238 && walker.x > 90 && walker.x < 310) finishWalk(false);
+      if (walker.fallT <= 0 && walker.y < tunnelMouthY) {
+        const tun = walkTunnels().find((t) => Math.abs(walker.x - t.cx) < 32);
+        if (tun) finishWalk(false, tun.key);
+      }
     }
 
     function drawWalk() {
@@ -1329,10 +1356,71 @@
           ctx.fillRect(223, y + 80, 4, 14);
         }
       };
-      drawStop(60, to, to === metroLines.tram, true);
       drawStop(walkLen - 130, from, from === metroLines.tram, false);
+      // the plaza at the end of the walk, with a tunnel to every line
+      ctx.fillStyle = '#d7dbe0';
+      ctx.fillRect(0, 50, W, 190);
+      ctx.fillStyle = '#b8bec6';
+      ctx.fillRect(0, 232, W, 8);
+      walkTunnels().forEach((t) => {
+        const line = metroLines[t.key];
+        const suggested = t.key === walkTarget;
+        const x = t.cx - 31;
+        // the arch: dark inside, in the line's colour round the edge
+        roundedRect(x, 96, 62, 120, 30);
+        ctx.fillStyle = line.colour;
+        ctx.fill();
+        roundedRect(x + 6, 102, 50, 114, 25);
+        const dark = ctx.createLinearGradient(0, 102, 0, 216);
+        dark.addColorStop(0, '#0b0f14');
+        dark.addColorStop(1, '#2a323c');
+        ctx.fillStyle = dark;
+        ctx.fill();
+        // stairs going down
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+        for (let i = 0; i < 5; i++) ctx.fillRect(x + 12, 196 - i * 14, 38, 3);
+        // the sign above
+        roundedRect(x - 2, 62, 66, 28, 8);
+        ctx.fillStyle = line.colour;
+        ctx.fill();
+        ctx.strokeStyle = suggested ? '#fff3a0' : '#ffffff';
+        ctx.lineWidth = suggested ? 3 : 2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        const short = t.key === 'monorail' ? 'Monorail' : t.key === 'tram' ? 'Tram' : line.name.replace(' Line', '');
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText((t.key === 'tram' ? '🚋 ' : t.key === 'monorail' ? '🚝 ' : '🚇 ') + short, t.cx + 1, 80);
+        if (suggested) {
+          const bob = Math.sin(walkTime / 8) * 4;
+          ctx.fillStyle = '#fff3a0';
+          ctx.beginPath();
+          ctx.moveTo(t.cx - 8, 98 + bob);
+          ctx.lineTo(t.cx + 8, 98 + bob);
+          ctx.lineTo(t.cx, 108 + bob);
+          ctx.fill();
+        }
+      });
       // you
-      if (walker.hurt <= 0 || Math.floor(walker.hurt / 6) % 2 === 0) {
+      if (walker.fallT > 0) {
+        // knocked over: lying on the ground with stars, then getting back up
+        const lie = Math.min(1, walker.fallT / 30);
+        ctx.save();
+        ctx.translate(walker.x, walker.y);
+        ctx.scale(1.5, 1.5);
+        ctx.rotate((Math.PI / 2) * lie);
+        drawPerson(0, 0, '#d71920', 0);
+        ctx.restore();
+        if (lie >= 1) {
+          ctx.fillStyle = '#ffd400';
+          ctx.font = 'bold 16px sans-serif';
+          ctx.textAlign = 'center';
+          for (let i = 0; i < 3; i++) {
+            const a = walkTime / 6 + i * 2.1;
+            ctx.fillText('\u2605', walker.x + Math.cos(a) * 16, walker.y - 22 + Math.sin(a) * 5);
+          }
+        }
+      } else if (walker.hurt <= 0 || Math.floor(walker.hurt / 6) % 2 === 0) {
         ctx.save();
         ctx.translate(walker.x, walker.y);
         ctx.scale(1.5, 1.5);
@@ -1348,9 +1436,9 @@
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText('\u{1F6B6} Walk to the ' + to.name + '!', W / 2, 30);
+      ctx.fillText('\u{1F6B6} Pick a tunnel: ' + to.name + ' or any line', W / 2, 30);
       // a bar showing how far you have to go
-      const frac = Math.max(0, Math.min(1, 1 - (walker.y - 238) / (walkLen - 60 - 238)));
+      const frac = Math.max(0, Math.min(1, 1 - (walker.y - tunnelMouthY) / (walkLen - 60 - tunnelMouthY)));
       ctx.fillStyle = 'rgba(10, 18, 28, 0.55)';
       roundedRect(10, 60, 14, 220, 7);
       ctx.fill();
@@ -1359,11 +1447,11 @@
       ctx.fill();
       // skip
       ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
-      roundedRect(W - 86, 48, 76, 26, 13);
+      roundedRect(W - 86, H - 36, 76, 26, 13);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 13px sans-serif';
-      ctx.fillText('Skip ▶', W - 48, 66);
+      ctx.fillText('Skip ▶', W - 48, H - 18);
       if (walkIntro > 0) {
         const a = Math.min(1, walkIntro / 40);
         ctx.fillStyle = 'rgba(10, 18, 28, ' + 0.7 * a + ')';
@@ -1596,7 +1684,7 @@
     // while walking to the tram: press and hold to walk towards your finger
     const walkPress = (clientX, clientY) => {
       const p = canvasPos(clientX, clientY);
-      if (p.x > W - 90 && p.y > 44 && p.y < 78) return finishWalk(true); // Skip
+      if (p.x > W - 90 && p.y > H - 40 && p.y < H - 6) return finishWalk(true); // Skip
       walkPointer = p;
     };
     window.addEventListener('mouseup', () => (walkPointer = null));
