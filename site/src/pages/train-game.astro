@@ -135,6 +135,12 @@
 
   /* the change-line button grows big and bright whenever you can change line */
   #lineBtn:not(:disabled) {
+    border-color: #00a04a;
+    color: #00a04a;
+    font-weight: 700;
+  }
+
+  #lineBtn.big:not(:disabled) {
     order: -1;
     flex: 1 1 100%;
     font-size: 24px;
@@ -153,7 +159,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    #lineBtn:not(:disabled) { animation: none; }
+    #lineBtn.big:not(:disabled) { animation: none; }
   }
 
   #quietBtn:not(:disabled) {
@@ -190,7 +196,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. At Union, BurJuman, Business Bay or Creek get off the train and walk through the city to the tunnels at the end: there is one to every line (Red, Green, Blue, Tram and Monorail), so you pick where to go. At Dubai Marina the walk goes down the road to the Dubai Tram, and at the end of the tram, Palm Jumeirah, hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. From level 9 to level 20 there are no obstacles at all!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. At Union, BurJuman, Business Bay or Creek get off the train and walk through the city to the tunnels at the end: there is one to every line (Red, Green, Blue, Tram and Monorail), so you pick where to go. At any station you can press "Get off & walk" if you like. At Dubai Marina the walk goes down the road to the Dubai Tram, and at the end of the tram, Palm Jumeirah, hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. From level 9 to level 20 there are no obstacles at all!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -905,18 +911,28 @@
     }
 
     function updateLineBtn() {
-      const here = started && !gameOver && dwell > 0 && !changedHere && !walkMode && isInterchange(lastStoppedK);
-      const tl = here ? targetLineAt(lastStoppedK) : null;
-      const label = here ? (tl === 'monorail' || currentLine === 'monorail' ? '\u{1F501} To ' + metroLines[tl].name : '\u{1F6B6} Walk to the lines') : '\u{1F501} Change line';
+      // at any station you can get off and walk (except at the very end of a line)
+      const inter = isInterchange(lastStoppedK);
+      const here = started && !gameOver && dwell > 0 && !changedHere && !walkMode && lastStoppedK >= 0 && (lastStoppedK !== terminusK || inter);
+      const tl = here && inter ? targetLineAt(lastStoppedK) : null;
+      const label = here ? (inter ? (tl === 'monorail' || currentLine === 'monorail' ? '\u{1F501} To ' + metroLines[tl].name : '\u{1F6B6} Walk to the lines') : '\u{1F6B6} Get off & walk') : '\u{1F501} Change line';
       if (lineBtn.textContent !== label) lineBtn.textContent = label;
       if (lineBtn.disabled === here) lineBtn.disabled = !here;
+      lineBtn.classList.toggle('big', here && inter);
     }
 
     // Step off at an interchange and on to the other line: the stations after
     // this one are the other line's.
     function changeLine() {
       unlockAudio();
-      if (!started || gameOver || dwell <= 0 || changedHere || !isInterchange(lastStoppedK)) return;
+      if (!started || gameOver || dwell <= 0 || changedHere || lastStoppedK < 0) return;
+      if (!isInterchange(lastStoppedK)) {
+        // any ordinary station: get off if you like and pick any line in the tunnels
+        if (lastStoppedK === terminusK) return;
+        changedHere = true;
+        startWalk(null);
+        return;
+      }
       const target = targetLineAt(lastStoppedK);
       if (target !== 'monorail' && currentLine !== 'monorail') {
         // the other line is down the road in the city: get off and walk there
@@ -1039,8 +1055,12 @@
         }
       });
       updateHum(false, 0);
-      const t = metroLines[target];
-      announce('يرجى السير إلى ' + t.nameAr, 'Please walk to the ' + t.name + '.');
+      if (target) {
+        const t = metroLines[target];
+        announce('يرجى السير إلى ' + t.nameAr, 'Please walk to the ' + t.name + '.');
+      } else {
+        announce('يرجى اختيار الخط الذي تريده', 'Please choose the line you want.');
+      }
       updateLineBtn();
     }
 
@@ -1048,6 +1068,7 @@
     // to change to is in the middle, so walking straight on picks it.
     const walkLineKeys = ['red', 'green', 'blue', 'tram', 'monorail'];
     function walkTunnels() {
+      if (!walkTarget) return walkLineKeys.map((key, i) => ({ key, cx: 56 + i * 72 }));
       const others = walkLineKeys.filter((k) => k !== walkTarget);
       const order = [others[0], others[1], walkTarget, others[2], others[3]];
       return order.map((key, i) => ({ key, cx: 56 + i * 72 }));
@@ -1058,8 +1079,13 @@
       walkMode = false;
       walkPointer = null;
       walkKeys.left = walkKeys.right = walkKeys.up = walkKeys.down = false;
-      const target = chosen || walkTarget;
+      const target = chosen || walkTarget || currentLine;
       walkTarget = null;
+      if (target === currentLine) {
+        // back on the same line: nothing changes
+        updateLineBtn();
+        return;
+      }
       performLineChange(target, skipped ? 5 : 10);
     }
 
@@ -1323,7 +1349,7 @@
       });
       // where you came from (at the bottom) and where you are going (at the top)
       const from = lineOf();
-      const to = metroLines[walkTarget];
+      const to = walkTarget ? metroLines[walkTarget] : lineOf();
       const drawStop = (y, line, isTram, big) => {
         ctx.fillStyle = '#d7dbe0';
         ctx.fillRect(80, y, 240, 150);
@@ -1388,9 +1414,15 @@
         ctx.stroke();
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
+        const here = t.key === currentLine;
         const short = t.key === 'monorail' ? 'Monorail' : t.key === 'tram' ? 'Tram' : line.name.replace(' Line', '');
         ctx.font = 'bold 12px sans-serif';
         ctx.fillText((t.key === 'tram' ? '🚋 ' : t.key === 'monorail' ? '🚝 ' : '🚇 ') + short, t.cx + 1, 80);
+        if (here && !walkTarget) {
+          ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.fillText('your line', t.cx, 232);
+        }
         if (suggested) {
           const bob = Math.sin(walkTime / 8) * 4;
           ctx.fillStyle = '#fff3a0';
@@ -1436,7 +1468,7 @@
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText('\u{1F6B6} Pick a tunnel: ' + to.name + ' or any line', W / 2, 30);
+      ctx.fillText(walkTarget ? '\u{1F6B6} Pick a tunnel: ' + to.name + ' or any line' : '\u{1F6B6} Pick a tunnel to the line you want', W / 2, 30);
       // a bar showing how far you have to go
       const frac = Math.max(0, Math.min(1, 1 - (walker.y - tunnelMouthY) / (walkLen - 60 - tunnelMouthY)));
       ctx.fillStyle = 'rgba(10, 18, 28, 0.55)';
@@ -2607,6 +2639,43 @@
       drawBridgeDecks();
       if (ground) drawGroundStreets();
       drawStationGround();
+      drawMallBuildings();
+    }
+
+    // A shopping mall beside the station: a big roof with a glass dome and its sign.
+    function drawMallBuildings() {
+      const st = stationInfo();
+      if (!isMallName(st.name) || st.top > H || st.top + stationLength < 0) return;
+      [[2, 46], [352, 46]].forEach(([x, w], side) => {
+        const y = st.top - 10;
+        const h = stationLength + 20;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(x + 4, y + 4, w, h);
+        ctx.fillStyle = '#d9a5e8';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#7d4a92';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+        // a glass dome and a car park
+        ctx.fillStyle = 'rgba(190, 230, 255, 0.85)';
+        ctx.beginPath();
+        ctx.ellipse(x + w / 2, y + 48, 17, 32, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#9b9ea6';
+        ctx.fillRect(x + 4, y + h - 62, w - 8, 52);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        for (let i = 0; i < 3; i++) ctx.fillRect(x + 8 + i * 12, y + h - 58, 2, 44);
+        // the sign
+        ctx.save();
+        ctx.translate(x + w / 2, y + h / 2 + 8);
+        ctx.rotate(side === 0 ? -Math.PI / 2 : Math.PI / 2);
+        ctx.fillStyle = '#7d4a92';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('MALL \u{1F6CD}\uFE0F', 0, 0);
+        ctx.restore();
+      });
     }
 
     // Every so often the line passes something special: a station, then a
@@ -2619,8 +2688,8 @@
         colour: '#e21836',
         dark: '#8f0f22',
         end: { name: 'Centrepoint', ar: 'سنتر بوينت' },
-        names: ['Burj Khalifa', 'Dubai Marina', 'Mall of the Emirates', 'Business Bay', 'Union', 'Emirates Towers', 'Financial Centre', 'BurJuman', 'Expo 2020', 'Al Rigga'],
-        ar: ['برج خليفة', 'دبي مارينا', 'مول الإمارات', 'الخليج التجاري', 'الاتحاد', 'أبراج الإمارات', 'المركز المالي', 'برجمان', 'إكسبو 2020', 'الرقة'],
+        names: ['Burj Khalifa', 'Dubai Mall', 'Dubai Marina', 'Mall of the Emirates', 'Ibn Battuta Mall', 'Business Bay', 'Union', 'Emirates Towers', 'Financial Centre', 'BurJuman', 'Expo 2020', 'Al Rigga'],
+        ar: ['برج خليفة', 'دبي مول', 'دبي مارينا', 'مول الإمارات', 'ابن بطوطة مول', 'الخليج التجاري', 'الاتحاد', 'أبراج الإمارات', 'المركز المالي', 'برجمان', 'إكسبو 2020', 'الرقة'],
       },
       green: {
         name: 'Green Line',
@@ -2628,8 +2697,8 @@
         colour: '#00a04a',
         dark: '#006b31',
         end: { name: 'Etisalat', ar: 'اتصالات' },
-        names: ['Al Qusais', 'Al Nahda', 'Stadium', 'Abu Hail', 'Salah Al Din', 'Union', 'Baniyas Square', 'Al Ras', 'BurJuman', 'Oud Metha', 'Al Jadaf', 'Creek'],
-        ar: ['القصيص', 'النهدة', 'الاستاد', 'أبو هيل', 'صلاح الدين', 'الاتحاد', 'ساحة بني ياس', 'الراس', 'برجمان', 'عود ميثاء', 'الجداف', 'كريك'],
+        names: ['Al Qusais', 'Al Nahda', 'City Centre Deira', 'Stadium', 'Abu Hail', 'Al Ghurair Centre', 'Salah Al Din', 'Union', 'Baniyas Square', 'Al Ras', 'BurJuman', 'Oud Metha', 'Al Jadaf', 'Creek'],
+        ar: ['القصيص', 'النهدة', 'سيتي سنتر ديرة', 'الاستاد', 'أبو هيل', 'الغرير سنتر', 'صلاح الدين', 'الاتحاد', 'ساحة بني ياس', 'الراس', 'برجمان', 'عود ميثاء', 'الجداف', 'كريك'],
       },
       tram: {
         name: 'Dubai Tram',
@@ -2637,8 +2706,8 @@
         colour: '#f28c28',
         dark: '#a85a0e',
         end: { name: 'Palm Jumeirah', ar: 'نخلة جميرا' },
-        names: ['Dubai Marina', 'Marina Towers', 'Marina Walk', 'JBR 1', 'The Walk', 'JBR 2', 'Marina Mall', 'Mina Seyahi', 'Media City', 'Internet City', 'Knowledge Village', 'Al Sufouh', 'Sobha Realty', 'Marina Yacht Club', 'Dubai Harbour'],
-        ar: ['دبي مارينا', 'أبراج المارينا', 'مارينا ووك', 'جي بي آر 1', 'ذا ووك', 'جي بي آر 2', 'مارينا مول', 'ميناء السيهة', 'مدينة دبي للإعلام', 'مدينة دبي للإنترنت', 'القرية المعرفية', 'السفوح', 'صبّا العقارية', 'نادي مارينا لليخوت', 'ميناء دبي'],
+        names: ['Dubai Marina', 'Marina Towers', 'Marina Walk', 'JBR 1', 'The Walk', 'JBR 2', 'Marina Mall', 'The Beach Mall', 'Mina Seyahi', 'Media City', 'Internet City', 'Knowledge Village', 'Al Sufouh', 'Sobha Realty', 'Marina Yacht Club', 'Dubai Harbour'],
+        ar: ['دبي مارينا', 'أبراج المارينا', 'مارينا ووك', 'جي بي آر 1', 'ذا ووك', 'جي بي آر 2', 'مارينا مول', 'ذا بيتش مول', 'ميناء السيهة', 'مدينة دبي للإعلام', 'مدينة دبي للإنترنت', 'القرية المعرفية', 'السفوح', 'صبّا العقارية', 'نادي مارينا لليخوت', 'ميناء دبي'],
       },
       monorail: {
         name: 'Palm Monorail',
@@ -2655,11 +2724,13 @@
         colour: '#0a6ed1',
         dark: '#064a8f',
         end: { name: 'Academic City', ar: 'المدينة الأكاديمية' },
-        names: ['Mirdif', 'Al Warqa', 'International City', 'Silicon Oasis', 'Ras Al Khor', 'Creek', 'Dubai Creek Harbour', 'Business Bay', 'Al Safa', 'Al Quoz'],
-        ar: ['مردف', 'الورقاء', 'المدينة العالمية', 'واحة السيليكون', 'رأس الخور', 'كريك', 'ميناء خور دبي', 'الخليج التجاري', 'الصفا', 'القوز'],
+        names: ['Mirdif', 'Dubai Festival City Mall', 'Al Warqa', 'Dubai Hills Mall', 'International City', 'Silicon Oasis', 'Ras Al Khor', 'Creek', 'Dubai Creek Harbour', 'Business Bay', 'Al Safa', 'Al Quoz'],
+        ar: ['مردف', 'دبي فستيفال سيتي مول', 'الورقاء', 'دبي هيلز مول', 'المدينة العالمية', 'واحة السيليكون', 'رأس الخور', 'كريك', 'ميناء خور دبي', 'الخليج التجاري', 'الصفا', 'القوز'],
       },
     };
     const lineOf = () => metroLines[currentLine];
+    // the shopping malls: they get a big mall building beside the station
+    const isMallName = (name) => /Mall|City Centre|Ghurair|Centrepoint/.test(name);
     const lineWith = (name) => Object.keys(metroLines).find((key) => key !== currentLine && metroLines[key].names.includes(name)) || null;
     // which station of the current line is station number k
     const lineIndexAt = (k) => {
@@ -2798,7 +2869,7 @@ const isInterchange = (k) => (k !== terminusK || currentLine === 'tram') && targ
       ctx.stroke();
       ctx.fillStyle = 'white';
       ctx.textAlign = 'center';
-      const label = '\u{1F687} ' + st.name;
+      const label = (isMallName(st.name) ? '\u{1F6CD}\uFE0F ' : '\u{1F687} ') + st.name;
       let size = 18;
       ctx.font = 'bold ' + size + 'px sans-serif';
       while (size > 10 && ctx.measureText(label).width > 190) {
