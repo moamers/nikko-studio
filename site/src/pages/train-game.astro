@@ -140,6 +140,30 @@
     font-weight: 700;
   }
 
+  /* inside the mall: a big purple button to go back outside */
+  #mallBtn:not(:disabled) {
+    order: -2;
+    flex: 1 1 100%;
+    font-size: 24px;
+    font-weight: 800;
+    padding: 18px 20px;
+    border-color: #5b2c6f;
+    background: #8e44ad;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(142, 68, 173, 0.45);
+  }
+
+  #mallBtn.late:not(:disabled) {
+    border-color: #8f0f22;
+    background: #e21836;
+    box-shadow: 0 4px 14px rgba(226, 24, 54, 0.55);
+    animation: lineBtnPulse 0.5s ease-in-out infinite;
+  }
+
+  #mallBtn:disabled {
+    display: none;
+  }
+
   #lineBtn.big:not(:disabled) {
     order: -1;
     flex: 1 1 100%;
@@ -211,6 +235,7 @@
     <button type="button" id="whistleBtn">&#128226; Horn</button>
     <button type="button" id="boostBtn">&#128640; Boost</button>
     <button type="button" id="lineBtn" disabled>&#128257; Change line</button>
+    <button type="button" id="mallBtn" disabled>&#128682; Leave the mall</button>
     <button type="button" id="quietBtn" disabled>&#128330;&#65039; Calm minute</button>
     <button type="button" id="mapBtn">&#128506;&#65039; Map</button>
     <button type="button" id="nightBtn">&#127769; Night</button>
@@ -748,7 +773,7 @@
 
     function useBoost() {
       unlockAudio();
-      if (!started || gameOver || crashing || walkMode || boostTime > 0 || boostCool > 0) return;
+      if (!started || gameOver || crashing || walkMode || mallMode || boostTime > 0 || boostCool > 0) return;
       boostTime = boostDuration;
       boostCool = boostCooldown;
       noiseBurst(1200, 0.6, 0.25);
@@ -809,7 +834,7 @@
       return '\u{1F54A}\uFE0F Calm minute';
     }
     function updateQuietBtn() {
-      const usable = started && !gameOver && !walkMode && quietT <= 0 && quietCool <= 0 && level < calmLevel;
+      const usable = started && !gameOver && !walkMode && !mallMode && quietT <= 0 && quietCool <= 0 && level < calmLevel;
       const label = quietLabel();
       if (quietBtn.textContent !== label) quietBtn.textContent = label;
       if (quietBtn.disabled === usable) quietBtn.disabled = !usable;
@@ -817,7 +842,7 @@
     }
     function startQuiet() {
       unlockAudio();
-      if (!started || gameOver || walkMode || quietT > 0 || quietCool > 0 || level >= calmLevel) return;
+      if (!started || gameOver || walkMode || mallMode || quietT > 0 || quietCool > 0 || level >= calmLevel) return;
       quietT = quietLength;
       calmFlash = 170;
       // everything on the track pops away
@@ -913,7 +938,7 @@
     function updateLineBtn() {
       // at any station you can get off and walk (except at the very end of a line)
       const inter = isInterchange(lastStoppedK);
-      const here = started && !gameOver && dwell > 0 && !changedHere && !walkMode && lastStoppedK >= 0 && (lastStoppedK !== terminusK || inter);
+      const here = started && !gameOver && dwell > 0 && !changedHere && !walkMode && !mallMode && lastStoppedK >= 0 && (lastStoppedK !== terminusK || inter);
       const tl = here && inter ? targetLineAt(lastStoppedK) : null;
       const mall = here && isMallName(stationName(lastStoppedK));
       const label = here ? (inter ? (tl === 'monorail' || currentLine === 'monorail' ? '\u{1F501} To ' + metroLines[tl].name : mall ? '\u{1F6CD}\uFE0F Go to the mall or a line' : '\u{1F6B6} Walk to the lines') : mall ? '\u{1F6CD}\uFE0F Go to the mall' : '\u{1F6B6} Get off & walk') : '\u{1F501} Change line';
@@ -1089,15 +1114,8 @@
       walkPointer = null;
       walkKeys.left = walkKeys.right = walkKeys.up = walkKeys.down = false;
       if (chosen === 'mall') {
-        // into the mall: some shopping, then back on the train
-        walkTarget = null;
-        walkMall = null;
-        score += 10;
-        scoreEl.textContent = 'Score: ' + score;
-        floaters.push({ x: cars[0].x, y: engineY - 30, age: 0, text: '\u{1F6CD}\uFE0F +10' });
-        [659, 784, 988, 1319].forEach((f, i) => tone('triangle', f, f, 0.2, 0.08, i * 0.09));
-        announce('أهلاً بكم في ' + stationNameAr(lastStoppedK), 'You had a great time shopping at ' + stationName(lastStoppedK) + '!', true);
-        updateLineBtn();
+        // into the mall for some shopping
+        startMall();
         return;
       }
       const target = chosen || walkTarget || currentLine;
@@ -1546,8 +1564,355 @@
       }
     }
 
+    // ---------- inside the mall: some real shopping, against the clock ----------
+    // You walk in from the plaza, buy things from the shops with your coins
+    // (there is a shopping list for bonus points), then press the button to
+    // go back outside and pick your line. Stay too long and a buzzer sounds;
+    // if you still have not left a few seconds later you lose the game and
+    // one Green Line medal.
+    const mallShops = [
+      { id: 'icecream', emoji: '\u{1F366}', name: 'Ice cream', price: 1, colour: '#ff8fab' },
+      { id: 'books', emoji: '\u{1F4DA}', name: 'Books', price: 2, colour: '#8ecae6' },
+      { id: 'pizza', emoji: '\u{1F355}', name: 'Pizza', price: 2, colour: '#ffb703' },
+      { id: 'toys', emoji: '\u{1F9F8}', name: 'Toys', price: 3, colour: '#b388eb' },
+      { id: 'clothes', emoji: '\u{1F457}', name: 'Clothes', price: 3, colour: '#f28482' },
+      { id: 'shoes', emoji: '\u{1F45F}', name: 'Shoes', price: 4, colour: '#52b788' },
+    ];
+    const mallRowY = [112, 217, 322];
+    const mallRowH = 92;
+    const mallLimit = 2700; // 45 seconds inside
+    const mallGraceLength = 600; // 10 more seconds after the buzzer
+    const mallPerson = { x: 200, y: 500, moving: false, stepT: 0 };
+    let mallMode = false;
+    let mallName = '';
+    let mallTime = 0;
+    let mallGrace = 0;
+    let mallBuzzT = 0;
+    let mallWallet = 0;
+    let mallBag = [];
+    let mallList = [];
+    let mallDone = [];
+    let mallListBonus = false;
+    let mallInShop = -1;
+    let mallMsg = '';
+    let mallMsgT = 0;
+    let mallLost = false;
+    let mallLostMedal = false;
+    let mallFlash = 0;
+    const mallBtn = document.getElementById('mallBtn');
+
+    function mallShopRect(i) {
+      const left = i % 2 === 0;
+      return { x: left ? 0 : W - 96, y: mallRowY[Math.floor(i / 2)], w: 96, h: mallRowH, left };
+    }
+
+    function startMall() {
+      mallMode = true;
+      mallName = walkMall || 'the mall';
+      walkMode = false;
+      walkPointer = null;
+      walkKeys.left = walkKeys.right = walkKeys.up = walkKeys.down = false;
+      mallPerson.x = 200;
+      mallPerson.y = 500;
+      mallTime = mallLimit;
+      mallGrace = 0;
+      mallBuzzT = 0;
+      mallWallet = 10;
+      mallBag = [];
+      mallDone = mallShops.map(() => false);
+      mallListBonus = false;
+      mallInShop = -1;
+      mallFlash = 0;
+      // a shopping list of three things you can afford
+      let pick = [];
+      do {
+        pick = mallShops
+          .map((sh, i) => i)
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 3);
+      } while (pick.reduce((t, i) => t + mallShops[i].price, 0) > mallWallet - 1);
+      mallList = pick;
+      mallMsg = 'Buy the things on your list! Walk into a shop.';
+      mallMsgT = 240;
+      updateHum(false, 0);
+      mallBtn.disabled = false;
+      mallBtn.classList.remove('late');
+      mallBtn.textContent = '\u{1F6AA} Leave the mall';
+      updateLineBtn();
+      updateQuietBtn();
+      announce('أهلاً بكم في ' + stationNameAr(lastStoppedK), 'Welcome to ' + stationName(lastStoppedK) + '. You have forty five seconds to shop!', true);
+    }
+
+    // Back outside: pick a line in the tunnels and carry on.
+    function leaveMall() {
+      if (!mallMode) return;
+      mallMode = false;
+      mallBtn.disabled = true;
+      mallBtn.classList.remove('late');
+      mallBtn.textContent = '\u{1F6AA} Leave the mall';
+      walkMode = true;
+      walkTarget = null;
+      walkMall = null;
+      walkPointer = null;
+      walkIntro = 0;
+      walker.x = 200;
+      walker.y = 340;
+      walker.fallT = 0;
+      walker.hurt = 0;
+      walkMsg = 'Back outside! Pick a tunnel to your line.';
+      walkMsgT = 220;
+      [784, 659, 523].forEach((f, i) => tone('triangle', f, f, 0.2, 0.08, i * 0.09));
+      updateLineBtn();
+      updateQuietBtn();
+    }
+
+    // Too slow: you lose the game and a Green Line medal.
+    function mallLose() {
+      mallMode = false;
+      mallBtn.disabled = true;
+      mallBtn.classList.remove('late');
+      mallBtn.textContent = '\u{1F6AA} Leave the mall';
+      mallLost = true;
+      mallLostMedal = medals.green > 0;
+      medals.green = Math.max(0, medals.green - 1);
+      saveMedals();
+      updateMedalsEl();
+      finalFlash = 0;
+      endGame();
+    }
+
+    function mallBuy(i) {
+      const sh = mallShops[i];
+      if (mallDone[i]) {
+        mallMsg = 'You already bought ' + sh.name.toLowerCase() + '!';
+        mallMsgT = 90;
+        return;
+      }
+      if (mallWallet < sh.price) {
+        mallMsg = 'Not enough coins for ' + sh.name.toLowerCase() + '!';
+        mallMsgT = 110;
+        tone('square', 220, 160, 0.2, 0.06);
+        return;
+      }
+      mallWallet -= sh.price;
+      mallDone[i] = true;
+      mallBag.push(sh.emoji);
+      const onList = mallList.includes(i);
+      const pts = onList ? 7 : 2;
+      score += pts;
+      scoreEl.textContent = 'Score: ' + score;
+      mallMsg = (onList ? 'From your list! ' : 'Bought ') + sh.emoji + ' +' + pts;
+      mallMsgT = 110;
+      [880, 1175, 1568].forEach((f, k) => tone('triangle', f, f, 0.12, 0.08, k * 0.06));
+      if (!mallListBonus && mallList.every((j) => mallDone[j])) {
+        mallListBonus = true;
+        score += 15;
+        scoreEl.textContent = 'Score: ' + score;
+        mallMsg = '\u{1F389} Shopping list complete! +15';
+        mallMsgT = 200;
+        [523, 659, 784, 1047, 1319].forEach((f, k) => tone('triangle', f, f, 0.2, 0.09, 0.25 + k * 0.08));
+      }
+    }
+
+    function updateMall(step) {
+      mallMsgT = Math.max(0, mallMsgT - step);
+      mallFlash = Math.max(0, mallFlash - step);
+      // walking about: press and hold towards your finger, or the arrow keys
+      let dx = 0;
+      let dy = 0;
+      if (walkPointer) {
+        const d = Math.hypot(walkPointer.x - mallPerson.x, walkPointer.y - mallPerson.y);
+        if (d > 5) {
+          dx = (walkPointer.x - mallPerson.x) / d;
+          dy = (walkPointer.y - mallPerson.y) / d;
+        }
+      }
+      if (walkKeys.left) dx -= 1;
+      if (walkKeys.right) dx += 1;
+      if (walkKeys.up) dy -= 1;
+      if (walkKeys.down) dy += 1;
+      const len = Math.hypot(dx, dy);
+      mallPerson.moving = len > 0.01;
+      if (mallPerson.moving) {
+        dx /= Math.max(1, len);
+        dy /= Math.max(1, len);
+        mallPerson.x = Math.max(104, Math.min(W - 104, mallPerson.x + dx * 2.8 * step));
+        mallPerson.y = Math.max(104, Math.min(515, mallPerson.y + dy * 2.8 * step));
+        mallPerson.stepT += step;
+      }
+      // stepping into a shop's doorway to buy
+      let inShop = -1;
+      mallShops.forEach((sh, i) => {
+        const r = mallShopRect(i);
+        const near = r.left ? mallPerson.x < 140 : mallPerson.x > W - 140;
+        if (near && mallPerson.y > r.y - 4 && mallPerson.y < r.y + r.h + 4) inShop = i;
+      });
+      if (inShop >= 0 && inShop !== mallInShop) mallBuy(inShop);
+      mallInShop = inShop;
+
+      // the clock
+      if (mallTime > 0) {
+        mallTime -= step;
+        const secs = Math.ceil(mallTime / 60);
+        if (mallTime > 0 && mallTime < 600 && Math.floor(mallTime / 60) !== Math.floor((mallTime + step) / 60)) {
+          tone('sine', 880, 880, 0.12, 0.07); // a tick each second at the end
+        }
+        if (mallTime <= 0) {
+          mallTime = 0;
+          mallGrace = mallGraceLength;
+          mallBuzzT = 0;
+          mallBtn.classList.add('late');
+          mallBtn.textContent = '\u{1F514} TIME’S UP! LEAVE NOW!';
+          announce('انتهى الوقت! غادر المول الآن', 'Time is up! Leave the mall now!', true);
+        }
+        void secs;
+      } else {
+        // the buzzer, until you press the button
+        mallBuzzT -= step;
+        if (mallBuzzT <= 0) {
+          mallBuzzT = 45;
+          mallFlash = 24;
+          tone('square', 150, 150, 0.3, 0.14);
+          tone('square', 118, 118, 0.3, 0.14, 0.32);
+        }
+        mallGrace -= step;
+        if (mallGrace <= 0) mallLose();
+      }
+    }
+
+    function drawMall() {
+      // the floor
+      ctx.fillStyle = '#efe6f5';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#e2d6ec';
+      for (let y = 0; y < H; y += 40) for (let x = (y / 40) % 2 ? 0 : 40; x < W; x += 80) ctx.fillRect(x, y, 40, 40);
+      // the middle of the mall: a long red carpet and a fountain
+      ctx.fillStyle = 'rgba(214, 40, 70, 0.18)';
+      ctx.fillRect(150, 100, 100, 420);
+      ctx.beginPath();
+      ctx.arc(200, 300, 30, 0, Math.PI * 2);
+      ctx.fillStyle = '#8ecae6';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(200, 300, 12 + Math.sin(frame / 10) * 2, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      // the shops
+      mallShops.forEach((sh, i) => {
+        const r = mallShopRect(i);
+        ctx.fillStyle = sh.colour;
+        ctx.fillRect(r.x, r.y, r.w, r.h);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillRect(r.left ? r.x + r.w - 6 : r.x, r.y, 6, r.h);
+        // the shop window
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.fillRect(r.left ? r.x + 8 : r.x + 20, r.y + 8, 68, r.h - 16);
+        ctx.font = '30px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000000';
+        ctx.globalAlpha = mallDone[i] ? 0.3 : 1;
+        ctx.fillText(sh.emoji, r.x + 48, r.y + 44);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#2a2a3a';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(sh.name, r.x + 48, r.y + 64);
+        ctx.fillText(mallDone[i] ? '✅ bought' : '\u{1F4B0} ' + sh.price, r.x + 48, r.y + 82);
+        // on your list?
+        if (mallList.includes(i) && !mallDone[i]) {
+          ctx.fillStyle = '#d62828';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.fillText('★ on your list', r.x + 48, r.y + 14);
+        }
+        // the doorway
+        ctx.fillStyle = mallInShop === i ? 'rgba(255, 255, 160, 0.9)' : 'rgba(255, 220, 120, 0.45)';
+        ctx.fillRect(r.left ? r.w : r.x - 36, r.y + 20, 36, r.h - 40);
+      });
+      // you
+      ctx.save();
+      ctx.translate(mallPerson.x, mallPerson.y);
+      ctx.scale(1.5, 1.5);
+      drawPerson(0, 0, '#d71920', mallPerson.moving ? mallPerson.stepT * 0.45 : 0);
+      ctx.restore();
+
+      // the words on top
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#7d4a92';
+      roundedRect(W / 2 - 150, 8, 300, 32, 16);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('\u{1F6CD}️ ' + mallName, W / 2, 30);
+      // the clock
+      const frac = mallTime / mallLimit;
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.55)';
+      roundedRect(20, 50, W - 40, 18, 9);
+      ctx.fill();
+      ctx.fillStyle = mallTime > 0 ? (frac > 0.25 ? '#3ddc84' : '#ffb703') : '#d62828';
+      if (frac > 0) {
+        roundedRect(22, 52, Math.max(10, (W - 44) * frac), 14, 7);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(mallTime > 0 ? '⏱️ ' + Math.ceil(mallTime / 60) + 's left' : '⏱️ TIME’S UP!', W / 2, 63);
+      // the message
+      if (mallMsgT > 0) {
+        const a = Math.min(1, mallMsgT / 30);
+        ctx.fillStyle = 'rgba(10, 18, 28, ' + 0.75 * a + ')';
+        roundedRect(W / 2 - 160, 76, 320, 28, 14);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + a + ')';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(mallMsg, W / 2, 95);
+      }
+      // the bottom panel: your list, your coins and your bag
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+      roundedRect(8, 536, W - 16, 56, 12);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('List:', 20, 556);
+      ctx.font = '18px sans-serif';
+      mallList.forEach((j, k) => {
+        ctx.fillText((mallDone[j] ? '✅' : mallShops[j].emoji), 58 + k * 40, 558);
+      });
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillStyle = '#ffd400';
+      ctx.fillText('\u{1F4B0} ' + mallWallet, 175, 556);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('Bag:', 20, 580);
+      ctx.font = '16px sans-serif';
+      ctx.fillText(mallBag.length ? mallBag.join(' ') : 'empty', 56, 582);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#c9b6e4';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('Done? Press Leave below', W - 18, 556);
+      // the buzzer: the whole screen flashes red
+      if (mallTime <= 0) {
+        const a = mallFlash > 0 ? 0.35 * (mallFlash / 24) : 0.08;
+        ctx.fillStyle = 'rgba(214, 40, 40, ' + a + ')';
+        ctx.fillRect(0, 0, W, H);
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#d62828';
+        ctx.font = 'bold 28px sans-serif';
+        ctx.fillText('\u{1F514} BZZZT! Leave now!', W / 2, 462);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillText(Math.ceil(mallGrace / 60) + 's or you lose a Green Line medal!', W / 2, 490);
+      }
+    }
+    mallBtn.addEventListener('click', () => {
+      unlockAudio();
+      leaveMall();
+    });
+
     function setMap(on) {
-      if (on && walkMode) return;
+      if (on && (walkMode || mallMode)) return;
       mapOpen = on;
       mapBtn.innerHTML = on ? '&#10006;&#65039; Close map' : '&#128506;&#65039; Map';
       if (on) {
@@ -1686,6 +2051,9 @@
       calmFlash = 0;
       quietT = 0;
       quietCool = 0;
+      mallMode = false;
+      mallLost = false;
+      mallBtn.disabled = true;
       terminusK = -1;
       won = false;
       finalFlash = 0;
@@ -1756,6 +2124,10 @@
     // while walking to the tram: press and hold to walk towards your finger
     const walkPress = (clientX, clientY) => {
       const p = canvasPos(clientX, clientY);
+      if (mallMode) {
+        walkPointer = p;
+        return;
+      }
       if (p.x > W - 90 && p.y > H - 40 && p.y < H - 6) return finishWalk(true); // Skip
       walkPointer = p;
     };
@@ -1771,13 +2143,13 @@
 
     canvas.addEventListener('mousedown', (e) => {
       unlockAudio();
-      if (walkMode) return walkPress(e.clientX, e.clientY);
+      if (walkMode || mallMode) return walkPress(e.clientX, e.clientY);
       if (mapOpen) return setMap(false);
       startOrRestart();
       lane = laneFromClientX(e.clientX);
     });
     canvas.addEventListener('mousemove', (e) => {
-      if (walkMode) {
+      if (walkMode || mallMode) {
         if (walkPointer) walkPointer = canvasPos(e.clientX, e.clientY);
         return;
       }
@@ -1787,7 +2159,7 @@
       'touchstart',
       (e) => {
         unlockAudio();
-        if (walkMode) return walkPress(e.touches[0].clientX, e.touches[0].clientY);
+        if (walkMode || mallMode) return walkPress(e.touches[0].clientX, e.touches[0].clientY);
         if (mapOpen) return setMap(false);
         startOrRestart();
         lane = laneFromClientX(e.touches[0].clientX);
@@ -1797,7 +2169,7 @@
     canvas.addEventListener(
       'touchmove',
       (e) => {
-        if (walkMode) {
+        if (walkMode || mallMode) {
           if (walkPointer) walkPointer = canvasPos(e.touches[0].clientX, e.touches[0].clientY);
           return;
         }
@@ -1807,7 +2179,8 @@
     );
 
     window.addEventListener('keydown', (e) => {
-      if (walkMode) {
+      if (walkMode || mallMode) {
+        if (mallMode && (e.code === 'Enter' || e.code === 'Escape')) leaveMall();
         // walking to the tram: the arrow keys steer
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') walkKeys.left = true;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') walkKeys.right = true;
@@ -1837,6 +2210,11 @@
       lastTime = now;
       step = Math.min(Math.max(step, 0.2), 3); // same speed on 60Hz and 120Hz screens
       if (mapOpen) return; // everything waits while you look at the map
+      if (mallMode) {
+        frame += step;
+        updateMall(step);
+        return;
+      }
       if (walkMode) {
         frame += step; // the train waits at the station while you walk
         updateWalk(step);
@@ -3946,6 +4324,10 @@ const isInterchange = (k) => (k !== terminusK || currentLine === 'tram') && targ
     }
 
     function draw() {
+      if (mallMode) {
+        drawMall();
+        return;
+      }
       if (walkMode) {
         drawWalk();
         return;
@@ -4056,7 +4438,7 @@ const isInterchange = (k) => (k !== terminusK || currentLine === 'tram') && targ
           ctx.fillText(kind === 'master' ? 'Master' : kind === 'red' ? 'Red' : kind === 'green' ? 'Green' : kind === 'blue' ? 'Blue' : kind === 'monorail' ? 'Mono' : 'Tram', mx, 92);
         });
       } else if (gameOver) {
-        drawOverlay(won ? 'Journey complete! \u{1F389}' : 'Derailed!', (won ? 'Tap to play again \u2022 Score: ' : 'Tap to try again • Score: ') + score);
+        drawOverlay(won ? 'Journey complete! \u{1F389}' : mallLost ? 'Stuck in the mall! \u{1F6CD}\uFE0F' : 'Derailed!', (won ? 'Tap to play again \u2022 Score: ' : 'Tap to try again • Score: ') + score);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
         ctx.font = '15px sans-serif';
         ctx.fillText('Stations: ' + (lastStoppedK + 1) + '  \u2022  Passengers delivered: ' + delivered, W / 2, H / 2 + 50);
@@ -4064,6 +4446,12 @@ const isInterchange = (k) => (k !== terminusK || currentLine === 'tram') && targ
           ctx.fillStyle = '#ffffff';
           ctx.font = 'bold 16px sans-serif';
           ctx.fillText('\u{1F3C1} You reached ' + lineOf().end.name + '!', W / 2, H / 2 + 78);
+        }
+        if (mallLost) {
+          ctx.fillStyle = '#ffb3b3';
+          ctx.font = 'bold 15px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(mallLostMedal ? '\u{1F396}\uFE0F You lost a Green Line medal!' : 'Luckily you had no Green Line medal to lose', W / 2, H / 2 + 78);
         }
         const record = recordThisRun && level >= 2;
         if (won) {
