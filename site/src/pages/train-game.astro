@@ -915,10 +915,11 @@
       const inter = isInterchange(lastStoppedK);
       const here = started && !gameOver && dwell > 0 && !changedHere && !walkMode && lastStoppedK >= 0 && (lastStoppedK !== terminusK || inter);
       const tl = here && inter ? targetLineAt(lastStoppedK) : null;
-      const label = here ? (inter ? (tl === 'monorail' || currentLine === 'monorail' ? '\u{1F501} To ' + metroLines[tl].name : '\u{1F6B6} Walk to the lines') : '\u{1F6B6} Get off & walk') : '\u{1F501} Change line';
+      const mall = here && isMallName(stationName(lastStoppedK));
+      const label = here ? (inter ? (tl === 'monorail' || currentLine === 'monorail' ? '\u{1F501} To ' + metroLines[tl].name : mall ? '\u{1F6CD}\uFE0F Go to the mall or a line' : '\u{1F6B6} Walk to the lines') : mall ? '\u{1F6CD}\uFE0F Go to the mall' : '\u{1F6B6} Get off & walk') : '\u{1F501} Change line';
       if (lineBtn.textContent !== label) lineBtn.textContent = label;
       if (lineBtn.disabled === here) lineBtn.disabled = !here;
-      lineBtn.classList.toggle('big', here && inter);
+      lineBtn.classList.toggle('big', here && (inter || mall));
     }
 
     // Step off at an interchange and on to the other line: the stations after
@@ -973,6 +974,7 @@
     // comes through, and the line changes when you arrive.
     let walkMode = false;
     let walkTarget = null; // the line we are walking to
+    let walkMall = null; // at a mall station: the mall you can walk into
     let walkPointer = null; // where a finger or the mouse is pressing (canvas coordinates)
     const walkKeys = { left: false, right: false, up: false, down: false };
     const walkLen = 1700;
@@ -1032,6 +1034,7 @@
     function startWalk(target) {
       walkMode = true;
       walkTarget = target;
+      walkMall = isMallName(stationName(lastStoppedK)) ? stationName(lastStoppedK) : null;
       walker.x = 200;
       walker.y = walkLen - 60;
       walker.hurt = 0;
@@ -1055,7 +1058,9 @@
         }
       });
       updateHum(false, 0);
-      if (target) {
+      if (walkMall) {
+        announce('يرجى السير إلى المول أو اختيار الخط', 'Please walk to ' + walkMall + ', or choose a line.');
+      } else if (target) {
         const t = metroLines[target];
         announce('يرجى السير إلى ' + t.nameAr, 'Please walk to the ' + t.name + '.');
       } else {
@@ -1068,10 +1073,14 @@
     // to change to is in the middle, so walking straight on picks it.
     const walkLineKeys = ['red', 'green', 'blue', 'tram', 'monorail'];
     function walkTunnels() {
-      if (!walkTarget) return walkLineKeys.map((key, i) => ({ key, cx: 56 + i * 72 }));
-      const others = walkLineKeys.filter((k) => k !== walkTarget);
-      const order = [others[0], others[1], walkTarget, others[2], others[3]];
-      return order.map((key, i) => ({ key, cx: 56 + i * 72 }));
+      let order = walkLineKeys.slice();
+      if (walkTarget) {
+        const others = walkLineKeys.filter((k) => k !== walkTarget);
+        order = [others[0], others[1], walkTarget, others[2], others[3]];
+      }
+      if (walkMall) order.unshift('mall'); // at a mall station there is a door into the mall as well
+      const step = 360 / order.length;
+      return order.map((key, i) => ({ key, cx: 20 + step / 2 + i * step, w: step - 10 }));
     }
     const tunnelMouthY = 215; // you are in the tunnel once you reach this high
 
@@ -1079,8 +1088,21 @@
       walkMode = false;
       walkPointer = null;
       walkKeys.left = walkKeys.right = walkKeys.up = walkKeys.down = false;
+      if (chosen === 'mall') {
+        // into the mall: some shopping, then back on the train
+        walkTarget = null;
+        walkMall = null;
+        score += 10;
+        scoreEl.textContent = 'Score: ' + score;
+        floaters.push({ x: cars[0].x, y: engineY - 30, age: 0, text: '\u{1F6CD}\uFE0F +10' });
+        [659, 784, 988, 1319].forEach((f, i) => tone('triangle', f, f, 0.2, 0.08, i * 0.09));
+        announce('أهلاً بكم في ' + stationNameAr(lastStoppedK), 'You had a great time shopping at ' + stationName(lastStoppedK) + '!', true);
+        updateLineBtn();
+        return;
+      }
       const target = chosen || walkTarget || currentLine;
       walkTarget = null;
+      walkMall = null;
       if (target === currentLine) {
         // back on the same line: nothing changes
         updateLineBtn();
@@ -1216,7 +1238,7 @@
 
       // arrived at the stop
       if (walker.fallT <= 0 && walker.y < tunnelMouthY) {
-        const tun = walkTunnels().find((t) => Math.abs(walker.x - t.cx) < 32);
+        const tun = walkTunnels().find((t) => Math.abs(walker.x - t.cx) < t.w / 2 + 1);
         if (tun) finishWalk(false, tun.key);
       }
     }
@@ -1389,24 +1411,42 @@
       ctx.fillStyle = '#b8bec6';
       ctx.fillRect(0, 232, W, 8);
       walkTunnels().forEach((t) => {
-        const line = metroLines[t.key];
+        const isMall = t.key === 'mall';
+        const line = isMall ? { colour: '#7d4a92', name: 'Mall' } : metroLines[t.key];
         const suggested = t.key === walkTarget;
-        const x = t.cx - 31;
+        const x = t.cx - t.w / 2;
         // the arch: dark inside, in the line's colour round the edge
-        roundedRect(x, 96, 62, 120, 30);
+        roundedRect(x, 96, t.w, 120, t.w / 2);
         ctx.fillStyle = line.colour;
         ctx.fill();
-        roundedRect(x + 6, 102, 50, 114, 25);
-        const dark = ctx.createLinearGradient(0, 102, 0, 216);
-        dark.addColorStop(0, '#0b0f14');
-        dark.addColorStop(1, '#2a323c');
-        ctx.fillStyle = dark;
+        roundedRect(x + 6, 102, t.w - 12, 114, (t.w - 12) / 2);
+        if (isMall) {
+          // bright shop doors with a glow
+          const glow = ctx.createLinearGradient(0, 102, 0, 216);
+          glow.addColorStop(0, '#fff3c4');
+          glow.addColorStop(1, '#f2c0ff');
+          ctx.fillStyle = glow;
+        } else {
+          const dark = ctx.createLinearGradient(0, 102, 0, 216);
+          dark.addColorStop(0, '#0b0f14');
+          dark.addColorStop(1, '#2a323c');
+          ctx.fillStyle = dark;
+        }
         ctx.fill();
-        // stairs going down
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
-        for (let i = 0; i < 5; i++) ctx.fillRect(x + 12, 196 - i * 14, 38, 3);
+        if (isMall) {
+          ctx.fillStyle = 'rgba(125, 74, 146, 0.35)';
+          ctx.fillRect(t.cx - 1, 120, 2, 96);
+          ctx.font = '20px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#7d4a92';
+          ctx.fillText('\u{1F6CD}\uFE0F', t.cx, 160);
+        } else {
+          // stairs going down
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.16)';
+          for (let i = 0; i < 5; i++) ctx.fillRect(x + 12, 196 - i * 14, t.w - 24, 3);
+        }
         // the sign above
-        roundedRect(x - 2, 62, 66, 28, 8);
+        roundedRect(x - 2, 62, t.w + 4, 28, 8);
         ctx.fillStyle = line.colour;
         ctx.fill();
         ctx.strokeStyle = suggested ? '#fff3a0' : '#ffffff';
@@ -1415,9 +1455,9 @@
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         const here = t.key === currentLine;
-        const short = t.key === 'monorail' ? 'Monorail' : t.key === 'tram' ? 'Tram' : line.name.replace(' Line', '');
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText((t.key === 'tram' ? '🚋 ' : t.key === 'monorail' ? '🚝 ' : '🚇 ') + short, t.cx + 1, 80);
+        const short = isMall ? 'Mall' : t.key === 'monorail' ? (t.w < 56 ? 'Mono' : 'Monorail') : t.key === 'tram' ? 'Tram' : line.name.replace(' Line', '');
+        ctx.font = 'bold ' + (t.w < 56 ? 10 : 12) + 'px sans-serif';
+        ctx.fillText((isMall ? '\u{1F6CD}\uFE0F ' : t.key === 'tram' ? '\u{1F68B} ' : t.key === 'monorail' ? '\u{1F69D} ' : '\u{1F687} ') + short, t.cx + 1, 80);
         if (here && !walkTarget) {
           ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
           ctx.font = 'bold 10px sans-serif';
@@ -1468,7 +1508,7 @@
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText(walkTarget ? '\u{1F6B6} Pick a tunnel: ' + to.name + ' or any line' : '\u{1F6B6} Pick a tunnel to the line you want', W / 2, 30);
+      ctx.fillText(walkMall ? '\u{1F6CD}\uFE0F ' + walkMall + ' or pick a line' : walkTarget ? '\u{1F6B6} Pick a tunnel: ' + to.name + ' or any line' : '\u{1F6B6} Pick a tunnel to the line you want', W / 2, 30);
       // a bar showing how far you have to go
       const frac = Math.max(0, Math.min(1, 1 - (walker.y - tunnelMouthY) / (walkLen - 60 - tunnelMouthY)));
       ctx.fillStyle = 'rgba(10, 18, 28, 0.55)';
