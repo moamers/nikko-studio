@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Motorcycle Dodge</title>
+    <title>Motorcycle Off-Road</title>
   </head>
   <body>
 <style is:global>
@@ -12,7 +12,7 @@
     --card: #ffffff;
     --ink: #2a1f1a;
     --ink-soft: #6b5a50;
-    --road: #4a4d52;
+    --road: #b9824a;
     --sand: #e8c98a;
     --accent: #e8590c;
   }
@@ -22,7 +22,7 @@
       --card: #2a2019;
       --ink: #f6ece4;
       --ink-soft: #c2ad9e;
-      --road: #33363a;
+      --road: #6e4a2b;
       --sand: #8c7448;
       --accent: #ff8a3d;
       color-scheme: dark;
@@ -33,7 +33,7 @@
     --card: #2a2019;
     --ink: #f6ece4;
     --ink-soft: #c2ad9e;
-    --road: #33363a;
+    --road: #6e4a2b;
     --sand: #8c7448;
     --accent: #ff8a3d;
     color-scheme: dark;
@@ -154,6 +154,19 @@
     background: #e63946;
   }
 
+  #turboBtn {
+    font-weight: 800;
+    font-size: 17px;
+    border: 3px solid #5a1a8c;
+    background: #8e44ad;
+    color: #fff;
+    touch-action: none;
+  }
+
+  #turboBtn:active {
+    background: #6c3483;
+  }
+
   .boost-bar {
     width: 100px;
     height: 13px;
@@ -172,17 +185,19 @@
 </style>
 
 <div class="wrap">
-  <h1>&#127949;&#65039; Motorcycle Dodge</h1>
-  <p class="sub">Drag your finger (or mouse) left and right to steer. Weave between the cars, grab coins and the blue shield, and hold Boost to zoom!</p>
+  <h1>&#127949;&#65039; Motorcycle Off-Road</h1>
+  <p class="sub">Drag your finger (or mouse) left and right to steer. Dodge the rocks and logs, hit the ramps to jump, grab coins and the blue shield, and hold Boost for speed!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
   <div class="stage">
-    <canvas id="game" width="400" height="600" aria-label="Motorcycle dodge game"></canvas>
+    <canvas id="game" width="400" height="600" aria-label="Motorcycle off-road game"></canvas>
   </div>
   <div class="controls">
+    <button id="turboBtn">&#9889; VERY FAST</button>
     <button id="boostBtn">&#128640; BOOST</button>
     <div class="boost-bar"><div id="boostFill" class="boost-fill"></div></div>
+    <button id="easyBtn" aria-pressed="false">&#128034; Easy</button>
     <button id="soundBtn" aria-pressed="false">&#128266; Sound on</button>
   </div>
 </div>
@@ -196,6 +211,8 @@
     const levelEl = document.getElementById('level');
     const boostBtn = document.getElementById('boostBtn');
     const boostFill = document.getElementById('boostFill');
+    const turboBtn = document.getElementById('turboBtn');
+    const easyBtn = document.getElementById('easyBtn');
     const soundBtn = document.getElementById('soundBtn');
     const pointsPerLevel = 5;
 
@@ -205,7 +222,7 @@
     const roadLeft = 60;
     const roadRight = W - 60;
 
-    const bikeStartY = H - 120;
+    const bikeStartY = H - 130;
     const bike = { x: W / 2, y: bikeStartY, w: 20, h: 52 };
 
     // ---------- sound: a synthesized engine, made on the first tap ----------
@@ -251,7 +268,7 @@
         // the engine buzzes higher the faster you go, with a rattle on top
         engineOsc.frequency.setTargetAtTime(55 + rev * 9 + Math.sin(frameCount / 3) * 2, t, 0.05);
         engineOsc2.frequency.setTargetAtTime(27 + rev * 4.5, t, 0.05);
-        engineGain.gain.setTargetAtTime(running ? (boosting && boostEnergy > 0 ? 0.075 : 0.045) : 0, t, 0.08);
+        engineGain.gain.setTargetAtTime(running ? (fastNow() ? 0.075 : 0.045) : 0, t, 0.08);
       } catch (e) {}
     }
 
@@ -302,6 +319,15 @@
     const moveSpeed = 15;
     const followSpeed = 0.35;
     let lean = 0; // how far the bike leans into a turn
+    let easy = false; // easy mode: slower, with more room between things to dodge
+    let air = 0; // frames left in the air after a jump
+    const airTotal = 55;
+    let airBonus = 0; // things cleared while flying
+    let ramps = [];
+    let rampSpawnIn = 200;
+    let turbo = false;
+    let smashed = []; // obstacles blown away by the very fast button
+    let popups = []; // little "+1" and "Nice!" texts
 
     let traffic = [];
     let coins = [];
@@ -320,6 +346,8 @@
     const boostDrain = 1.3;
     const boostRegen = 0.5;
     const boostMultiplier = 2.4;
+    const turboMultiplier = 3.4; // the very fast button: faster, and it lasts about three times as long
+    const turboDrain = 0.45;
 
     let coinSpawnIn = 90;
     let shieldOn = false;
@@ -350,8 +378,21 @@
     }
 
     try {
-      best = Number(localStorage.getItem('motorcycleDodgeBest') || 0);
+      best = Number(localStorage.getItem('motorcycleOffroadBest') || 0);
+      easy = localStorage.getItem('motorcycleEasy') === '1';
     } catch (e) {}
+    function applyEasy() {
+      easyBtn.setAttribute('aria-pressed', String(easy));
+      easyBtn.innerHTML = easy ? '&#128034; Easy: on' : '&#128034; Easy';
+    }
+    applyEasy();
+    easyBtn.addEventListener('click', () => {
+      easy = !easy;
+      applyEasy();
+      try {
+        localStorage.setItem('motorcycleEasy', easy ? '1' : '0');
+      } catch (e) {}
+    });
     bestEl.textContent = 'Best: ' + best;
 
     function startCrash() {
@@ -369,16 +410,24 @@
     }
 
     // ---------- spawning ----------
-    const carColours = ['#6a4c93', '#ffb703', '#2a9d8f', '#f4a261', '#457b9d', '#e76f51', '#e9ecef'];
-
+    // Things in the way: boulders, logs and cacti.
     function spawnTraffic() {
-      const truck = Math.random() < 0.2 && level >= 2;
-      const w = truck ? 44 : 34;
-      const h = truck ? 100 : 58;
-      const x = roadLeft + 14 + w / 2 + Math.random() * (roadRight - roadLeft - 28 - w);
-      const color = truck ? '#8d99ae' : carColours[Math.floor(Math.random() * carColours.length)];
-      traffic.push({ x, y: -h, w, h, color, truck, passed: false });
+      const r = Math.random();
+      const kind = r < 0.4 ? 'rock' : r < 0.75 || level < 2 ? 'cactus' : 'log';
+      const size = kind === 'rock' ? 34 + Math.random() * 14 : kind === 'cactus' ? 24 : 78;
+      const w = size;
+      const h = kind === 'log' ? 24 : kind === 'cactus' ? 34 : size;
+      const x = roadLeft + 10 + w / 2 + Math.random() * (roadRight - roadLeft - 20 - w);
+      traffic.push({ x, y: -h, w, h, kind, seed: Math.random() * 6, passed: false });
     }
+
+    // A jump: ride up the ramp and you fly.
+    function spawnRamp() {
+      const x = roadLeft + 44 + Math.random() * (roadRight - roadLeft - 88);
+      ramps.push({ x, y: -40, w: 64, h: 46, used: false });
+    }
+
+    const fastNow = () => (turbo || boosting) && boostEnergy > 0;
 
     function spawnShield() {
       shields.push({ x: roadLeft + 24 + Math.random() * (roadRight - roadLeft - 48), y: -30, r: 15 });
@@ -390,16 +439,17 @@
 
     function baseSpeed() {
       // Starts gentle at level 1, a clear step up with each level.
-      return Math.min(14, 4.2 + (level - 1) * 1.2);
+      return Math.min(14, 4.2 + (level - 1) * 1.2) * (easy ? 0.7 : 1);
     }
 
     function worldSpeed() {
+      if (turbo && boostEnergy > 0) return Math.min(40, baseSpeed() * turboMultiplier);
       return boosting && boostEnergy > 0 ? baseSpeed() * boostMultiplier : baseSpeed();
     }
 
     function spawnGap() {
       // A little room is always left for a bike to squeeze through.
-      return Math.max(130, 230 - (level - 1) * 12);
+      return Math.max(130, 230 - (level - 1) * 12) * (easy ? 1.45 : 1);
     }
 
     function spawnLaneLines() {
@@ -407,7 +457,7 @@
       for (let i = 0; i < 8; i++) laneLines.push({ y: i * 80 });
       scenery = [];
       for (let i = 0; i < 9; i++) {
-        scenery.push({ side: i % 2, y: i * 75, off: 6 + ((i * 17) % 26), kind: i % 3 === 0 ? 'rock' : 'palm' });
+        scenery.push({ side: i % 2, y: i * 75, off: 6 + ((i * 17) % 26), kind: i % 3 === 0 ? 'rock' : i % 3 === 1 ? 'bush' : 'palm' });
       }
     }
     spawnLaneLines();
@@ -420,6 +470,12 @@
       traffic = [];
       coins = [];
       shields = [];
+      ramps = [];
+      rampSpawnIn = 200;
+      air = 0;
+      airBonus = 0;
+      turbo = false;
+      popups = [];
       dust = [];
       score = 0;
       level = 1;
@@ -483,6 +539,20 @@
     function stopBoost() {
       boosting = false;
     }
+    function startTurbo(e) {
+      e.preventDefault();
+      ensureAudio();
+      turbo = true;
+    }
+    function stopTurbo() {
+      turbo = false;
+    }
+    turboBtn.addEventListener('mousedown', startTurbo);
+    turboBtn.addEventListener('touchstart', startTurbo, { passive: false });
+    turboBtn.addEventListener('mouseup', stopTurbo);
+    turboBtn.addEventListener('mouseleave', stopTurbo);
+    turboBtn.addEventListener('touchend', stopTurbo);
+    turboBtn.addEventListener('touchcancel', stopTurbo);
     boostBtn.addEventListener('mousedown', startBoost);
     boostBtn.addEventListener('touchstart', startBoost, { passive: false });
     boostBtn.addEventListener('mouseup', stopBoost);
@@ -494,6 +564,7 @@
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
       if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = true;
+      if (e.code === 'KeyF') turbo = true;
       if (e.code === 'Space') {
         e.preventDefault();
         startOrRestart();
@@ -503,6 +574,7 @@
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
       if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = false;
+      if (e.code === 'KeyF') turbo = false;
     });
 
     // ---------- update ----------
@@ -522,6 +594,7 @@
         if (frameCount % 3 < step) dust.push({ x: bike.x, y: bike.y + 10, age: 0 });
         dust.forEach((d) => (d.age += step));
         dust = dust.filter((d) => d.age < 30);
+        air = 0;
         if (crashTimer <= 0) {
           crashing = false;
           endGame();
@@ -543,6 +616,7 @@
 
       if (!started || gameOver) {
         boosting = false;
+        turbo = false;
         updateEngine();
         return;
       }
@@ -557,22 +631,56 @@
       const sway = (bike.x - before) / step;
       lean += (Math.max(-0.4, Math.min(0.4, sway * 0.06)) - lean) * (1 - Math.pow(1 - 0.25, step));
 
-      if (boosting && boostEnergy > 0) {
+      if (turbo && boostEnergy > 0) {
+        boostEnergy = Math.max(0, boostEnergy - turboDrain * step);
+      } else if (boosting && boostEnergy > 0) {
         boostEnergy = Math.max(0, boostEnergy - boostDrain * step);
       } else {
         boosting = false;
+        turbo = false;
         boostEnergy = Math.min(100, boostEnergy + boostRegen * step);
       }
+      if (air > 0) {
+        air -= step;
+        if (air <= 0) {
+          air = 0;
+          // landing: a puff of dust and the points for the jump
+          const pts = 3 + airBonus;
+          score += pts;
+          scoreEl.textContent = 'Score: ' + score;
+          popups.push({ x: bike.x, y: bike.y - 40, text: airBonus > 0 ? 'Great jump! +' + pts : 'Jump! +' + pts, age: 0 });
+          for (let i = 0; i < 4; i++) dust.push({ x: bike.x + (i - 1.5) * 8, y: bike.y + 14, age: 0 });
+          airBonus = 0;
+          invuln = Math.max(invuln, 30); // a moment to steer clear after landing
+          blip(260, 120, 0.15, 0.2);
+        }
+      }
+      popups.forEach((p) => (p.age += step));
+      popups = popups.filter((p) => p.age < 60);
+      dust.forEach((d) => (d.age += step));
+      dust = dust.filter((d) => d.age < 30);
       boostFill.style.width = boostEnergy + '%';
 
       traffic.forEach((other) => {
         other.y += dist;
 
         if (
+          !other.smashed &&
           Math.abs(bike.x - other.x) < (bike.w + other.w) / 2 - 3 &&
           Math.abs(bike.y - other.y) < (bike.h + other.h) / 2 - 5
         ) {
-          if (invuln > 0) {
+          if (air > 0) {
+            // flying over it
+          } else if (turbo && boostEnergy > 0) {
+            // the very fast button: you smash straight through
+            other.smashed = true;
+            other.passed = true;
+            score += 2;
+            scoreEl.textContent = 'Score: ' + score;
+            popups.push({ x: other.x, y: other.y, text: 'Smash! +2', age: 0 });
+            for (let i = 0; i < 5; i++) dust.push({ x: other.x + (i - 2) * 8, y: other.y, age: 0 });
+            blip(200, 90, 0.18, 0.2);
+          } else if (invuln > 0) {
             // still protected for a moment after the shield popped
           } else if (shieldOn) {
             shieldOn = false;
@@ -588,6 +696,7 @@
 
         if (!other.passed && other.y - other.h / 2 > bike.y + bike.h / 2) {
           other.passed = true;
+          if (air > 0) airBonus++;
           score++;
           scoreEl.textContent = 'Score: ' + score;
           const newLevel = levelFor(score);
@@ -599,7 +708,29 @@
           }
         }
       });
-      traffic = traffic.filter((other) => other.y < H + 120);
+      traffic = traffic.filter((other) => !other.smashed && other.y < H + 120);
+
+      // ramps: ride onto one to jump
+      ramps.forEach((r) => {
+        r.y += dist;
+        if (!r.used && air <= 0 && Math.abs(bike.x - r.x) < r.w / 2 + 4 && Math.abs(bike.y - r.y) < r.h / 2) {
+          r.used = true;
+          air = airTotal;
+          airBonus = 0;
+          blip(360, 880, 0.35, 0.2);
+        }
+      });
+      ramps = ramps.filter((r) => r.y < H + 60);
+      rampSpawnIn -= dist / 5;
+      if (rampSpawnIn <= 0) {
+        // never put a ramp right in front of a thing, so landing is not unfair
+        if (traffic.every((o) => o.y > 110)) {
+          spawnRamp();
+          rampSpawnIn = (easy ? 330 : 480) + Math.random() * 250;
+        } else {
+          rampSpawnIn = 20;
+        }
+      }
 
       if (traffic.length === 0 || traffic[traffic.length - 1].y - traffic[traffic.length - 1].h / 2 > spawnGap()) {
         spawnTraffic();
@@ -651,7 +782,7 @@
         best = score;
         bestEl.textContent = 'Best: ' + best;
         try {
-          localStorage.setItem('motorcycleDodgeBest', String(best));
+          localStorage.setItem('motorcycleOffroadBest', String(best));
         } catch (e) {}
       }
     }
@@ -667,43 +798,108 @@
       ctx.closePath();
     }
 
-    function drawVehicle(v) {
-      const x = v.x - v.w / 2;
-      const y = v.y - v.h / 2;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-      roundedBox(x + 3, y + 3, v.w, v.h, 7);
-      ctx.fill();
-      ctx.fillStyle = v.color;
-      roundedBox(x, y, v.w, v.h, 7);
-      ctx.fill();
-      ctx.strokeStyle = '#2b2b2b';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      if (v.truck) {
-        // a cab at the front (bottom) and a box behind
-        ctx.fillStyle = '#c5ccd6';
-        ctx.fillRect(x + 4, y + 4, v.w - 8, v.h - 36);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
-        ctx.fillRect(x + 6, y + v.h - 28, v.w - 12, 12);
+    function drawObstacle(o) {
+      const x = o.x;
+      const y = o.y;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      if (o.kind === 'rock') {
+        ctx.beginPath();
+        ctx.ellipse(x + 4, y + 5, o.w / 2, o.h / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8d8f94';
+        ctx.beginPath();
+        ctx.moveTo(x - o.w / 2, y + 4);
+        ctx.lineTo(x - o.w * 0.3, y - o.h / 2);
+        ctx.lineTo(x + o.w * 0.15, y - o.h * 0.42);
+        ctx.lineTo(x + o.w / 2, y - 2);
+        ctx.lineTo(x + o.w * 0.3, y + o.h / 2);
+        ctx.lineTo(x - o.w * 0.25, y + o.h * 0.45);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = '#4f5155';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+        ctx.beginPath();
+        ctx.ellipse(x - o.w * 0.12, y - o.h * 0.15, o.w * 0.18, o.h * 0.12, -0.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (o.kind === 'cactus') {
+        ctx.fillRect(x - 8, y - 14, 20, 34);
+        ctx.fillStyle = '#2f8a46';
+        roundedBox(x - 6, y - 17, 12, 34, 6);
+        ctx.fill();
+        roundedBox(x - 15, y - 4, 8, 14, 4);
+        ctx.fill();
+        roundedBox(x + 7, y - 10, 8, 14, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#1d5c2f';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(x, y - 14);
+        ctx.lineTo(x, y + 14);
+        ctx.stroke();
       } else {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.fillRect(x + 6, y + v.h - 30, v.w - 12, 14);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-        ctx.fillRect(x + 6, y + 8, v.w - 12, 10);
+        ctx.fillRect(x - o.w / 2 + 3, y - o.h / 2 + 4, o.w, o.h);
+        ctx.fillStyle = '#7a4a21';
+        roundedBox(x - o.w / 2, y - o.h / 2, o.w, o.h, 10);
+        ctx.fill();
+        ctx.strokeStyle = '#4a2c12';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#c28a52';
+        ctx.beginPath();
+        ctx.ellipse(x + o.w / 2 - 6, y, 5, o.h / 2 - 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.beginPath();
+        ctx.moveTo(x - o.w / 2 + 10, y - 5);
+        ctx.lineTo(x + o.w / 2 - 16, y - 5);
+        ctx.moveTo(x - o.w / 2 + 16, y + 5);
+        ctx.lineTo(x + o.w / 2 - 22, y + 5);
+        ctx.stroke();
       }
-      ctx.fillStyle = '#ff3b30';
-      ctx.fillRect(x + 3, y, 6, 3);
-      ctx.fillRect(x + v.w - 9, y, 6, 3);
     }
 
-    function drawBike(x, y, angle, flame) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(angle);
+    function drawRamp(r) {
+      const x = r.x - r.w / 2;
+      const y = r.y - r.h / 2;
       ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-      ctx.fillRect(-7, -22, 18, 52);
+      ctx.fillRect(x + 4, y + 5, r.w, r.h);
+      // a dirt mound, narrower at the top where you launch
+      ctx.fillStyle = '#9a6a3a';
+      ctx.beginPath();
+      ctx.moveTo(x, y + r.h);
+      ctx.lineTo(x + 8, y);
+      ctx.lineTo(x + r.w - 8, y);
+      ctx.lineTo(x + r.w, y + r.h);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#5c3a1a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // yellow chevrons pointing along the ramp
+      ctx.strokeStyle = '#ffd400';
+      ctx.lineWidth = 4;
+      for (let i = 0; i < 3; i++) {
+        const cy = y + 12 + i * 11;
+        ctx.beginPath();
+        ctx.moveTo(r.x - 12, cy + 5);
+        ctx.lineTo(r.x, cy - 3);
+        ctx.lineTo(r.x + 12, cy + 5);
+        ctx.stroke();
+      }
+    }
+
+    function drawBike(x, y, angle, flame, lift) {
+      // the shadow stays on the ground while the bike flies
+      ctx.fillStyle = 'rgba(0, 0, 0, ' + (0.25 - lift * 0.12) + ')';
+      ctx.fillRect(x - 7 + lift * 12, y - 22 + lift * 14, 18, 52);
+      ctx.save();
+      ctx.translate(x, y - lift * 34);
+      ctx.scale(1 + lift * 0.45, 1 + lift * 0.45);
+      ctx.rotate(angle);
       if (flame) {
-        const f = 10 + Math.random() * 12;
+        const f = (turbo ? 20 : 10) + Math.random() * 12;
         ctx.fillStyle = '#ffd400';
         ctx.beginPath();
         ctx.moveTo(-5, 28);
@@ -835,6 +1031,13 @@
         const x = s.side === 0 ? roadLeft - 22 - s.off : roadRight + 22 + s.off;
         if (s.kind === 'palm') {
           drawPalm(x, s.y);
+        } else if (s.kind === 'bush') {
+          ctx.fillStyle = '#6f8f4a';
+          ctx.beginPath();
+          ctx.arc(x, s.y, 9, 0, Math.PI * 2);
+          ctx.arc(x + 8, s.y + 3, 7, 0, Math.PI * 2);
+          ctx.arc(x - 7, s.y + 4, 6, 0, Math.PI * 2);
+          ctx.fill();
         } else {
           ctx.fillStyle = '#a08a63';
           ctx.beginPath();
@@ -843,35 +1046,34 @@
         }
       });
 
-      // the highway
+      // the dirt trail, with tyre tracks and little stones
       ctx.fillStyle = road;
       ctx.fillRect(roadLeft, 0, roadRight - roadLeft, H);
-      ctx.fillStyle = '#f2ecdf';
-      ctx.fillRect(roadLeft + 4, 0, 3, H);
-      ctx.fillRect(roadRight - 7, 0, 3, H);
-      ctx.strokeStyle = '#f2ecdf';
-      ctx.lineWidth = 4;
-      ctx.setLineDash([24, 24]);
-      laneLines.forEach((line) => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+      [W / 2 - 46, W / 2 - 38, W / 2 + 38, W / 2 + 46].forEach((tx) => ctx.fillRect(tx - 2, 0, 4, H));
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      laneLines.forEach((line, i) => {
         ctx.beginPath();
-        ctx.moveTo(W / 2, line.y);
-        ctx.lineTo(W / 2, line.y + 24);
-        ctx.stroke();
+        ctx.arc(roadLeft + 20 + ((i * 53) % 190), line.y + 20 + (i % 3) * 22, 3, 0, Math.PI * 2);
+        ctx.arc(roadLeft + 40 + ((i * 71) % 150), line.y + 55, 2.5, 0, Math.PI * 2);
+        ctx.fill();
       });
-      ctx.setLineDash([]);
-      // crash barriers
-      ctx.fillStyle = '#c9c2b2';
-      ctx.fillRect(roadLeft - 8, 0, 8, H);
-      ctx.fillRect(roadRight, 0, 8, H);
-      ctx.fillStyle = '#e63946';
-      laneLines.forEach((line) => {
-        ctx.fillRect(roadLeft - 8, line.y, 8, 16);
-        ctx.fillRect(roadRight, line.y, 8, 16);
+      // the edges of the trail: stones and dry tufts instead of barriers
+      ctx.fillStyle = 'rgba(80, 50, 20, 0.35)';
+      ctx.fillRect(roadLeft - 4, 0, 4, H);
+      ctx.fillRect(roadRight, 0, 4, H);
+      laneLines.forEach((line, i) => {
+        ctx.fillStyle = '#8d8f94';
+        ctx.beginPath();
+        ctx.ellipse(roadLeft - 8, line.y + 10 + (i % 3) * 20, 6, 4, 0, 0, Math.PI * 2);
+        ctx.ellipse(roadRight + 8, line.y + 40 - (i % 3) * 12, 6, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
       });
 
       coins.forEach((coin) => drawCoin(coin.x, coin.y, coin.r));
       shields.forEach((sh) => drawShieldPickup(sh.x, sh.y, sh.r));
-      traffic.forEach(drawVehicle);
+      ramps.forEach(drawRamp);
+      traffic.forEach(drawObstacle);
 
       dust.forEach((d) => {
         const p = d.age / 30;
@@ -882,8 +1084,11 @@
       });
 
       // the bike is always visible, even on the start screen
-      if (crashing) drawBike(bike.x, bike.y, crashAngle, false);
-      else drawBike(bike.x, bike.y, lean, started && !gameOver && boosting && boostEnergy > 0);
+      if (crashing) drawBike(bike.x, bike.y, crashAngle, false, 0);
+      else {
+        const lift = air > 0 ? Math.sin(Math.PI * (1 - air / airTotal)) : 0;
+        drawBike(bike.x, bike.y, lean + (air > 0 ? Math.sin(frameCount / 5) * 0.12 : 0), started && !gameOver && fastNow(), lift);
+      }
 
       if (shieldOn && !crashing && !gameOver) {
         ctx.beginPath();
@@ -910,14 +1115,34 @@
       }
 
       if (started && !gameOver) {
-        if (boosting && boostEnergy > 0) {
+        if (turbo && boostEnergy > 0) {
+          ctx.fillStyle = 'rgba(190, 110, 255, 0.98)';
+          ctx.font = 'bold 22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('\u26A1 VERY FAST! \u26A1', W / 2, 30);
+        } else if (boosting && boostEnergy > 0) {
           ctx.fillStyle = 'rgba(255, 180, 0, 0.95)';
           ctx.font = 'bold 20px sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('BOOST!', W / 2, 30);
         }
+        if (easy) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.font = 'bold 13px sans-serif';
+          ctx.textAlign = 'right';
+          ctx.fillText('\u{1F422} Easy mode', W - 12, H - 22);
+        }
+        popups.forEach((p) => {
+          ctx.fillStyle = 'rgba(255, 255, 255, ' + (1 - p.age / 60) + ')';
+          ctx.strokeStyle = 'rgba(0, 0, 0, ' + 0.6 * (1 - p.age / 60) + ')';
+          ctx.lineWidth = 3;
+          ctx.font = 'bold 18px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.strokeText(p.text, p.x, p.y - p.age * 0.6);
+          ctx.fillText(p.text, p.x, p.y - p.age * 0.6);
+        });
         // speedometer
-        const kmh = Math.round(worldSpeed() * 14);
+        const kmh = Math.round(worldSpeed() * 10);
         roundedBox(10, H - 44, 96, 32, 10);
         ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
         ctx.fill();
@@ -935,9 +1160,9 @@
       }
 
       if (!started) {
-        drawOverlay('Tap to start', 'Weave between the cars!');
+        drawOverlay('Tap to start', 'Dodge the rocks. Hit the ramps!');
       } else if (gameOver) {
-        drawOverlay('Crashed!', 'Tap to try again • Score: ' + score);
+        drawOverlay('Wipe out!', 'Tap to try again • Score: ' + score);
       }
     }
 
