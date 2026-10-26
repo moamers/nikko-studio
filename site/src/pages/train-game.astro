@@ -156,6 +156,17 @@
     #lineBtn:not(:disabled) { animation: none; }
   }
 
+  #quietBtn:not(:disabled) {
+    border-color: #2a9d8f;
+    color: #2a9d8f;
+  }
+
+  #quietBtn[aria-pressed="true"] {
+    background: #2a9d8f;
+    border-color: #2a9d8f;
+    color: #ffffff;
+  }
+
   #boostBtn:not(:disabled) {
     border-color: var(--accent);
     color: var(--accent);
@@ -179,7 +190,7 @@
 
 <div class="wrap">
   <h1>&#128644; Train Dodge</h1>
-  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. Change line at Union, BurJuman, Business Bay or Creek between the Red, Green and Blue lines, or at Dubai Marina walk down the road to the Dubai Tram, and at the end of the tram, Palm Jumeirah, hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. From level 9 to level 20 there are no obstacles at all!</p>
+  <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. At Union, BurJuman, Business Bay or Creek get off the train and walk through the city to the other line (Red, Green or Blue), or at Dubai Marina walk down the road to the Dubai Tram, and at the end of the tram, Palm Jumeirah, hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. From level 9 to level 20 there are no obstacles at all!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -194,6 +205,7 @@
     <button type="button" id="whistleBtn">&#128226; Horn</button>
     <button type="button" id="boostBtn">&#128640; Boost</button>
     <button type="button" id="lineBtn" disabled>&#128257; Change line</button>
+    <button type="button" id="quietBtn" disabled>&#128330;&#65039; Calm minute</button>
     <button type="button" id="mapBtn">&#128506;&#65039; Map</button>
     <button type="button" id="nightBtn">&#127769; Night</button>
     <button type="button" id="soundBtn">&#128266; Sound on</button>
@@ -359,6 +371,7 @@
     const soundBtn = document.getElementById('soundBtn');
     const mapBtn = document.getElementById('mapBtn');
     const lineBtn = document.getElementById('lineBtn');
+    const quietBtn = document.getElementById('quietBtn');
 
     function getAudio() {
       if (audio) return audio;
@@ -776,6 +789,42 @@
     // ---------- the metro line map ----------
     // Levels 9 to 20 are a calm run to the end of the line: no obstacles at all.
     const calmLevel = 9;
+    // The Calm minute button: no obstacles at all for one minute. It has to
+    // recharge for a minute before you can use it again.
+    const quietLength = 3600;
+    const quietRecharge = 3600;
+    let quietT = 0; // frames of calm left
+    let quietCool = 0; // frames until the button works again
+    function quietLabel() {
+      const secs = (f) => Math.ceil(f / 60);
+      const mmss = (f) => Math.floor(secs(f) / 60) + ':' + String(secs(f) % 60).padStart(2, '0');
+      if (quietT > 0) return '\u{1F54A}\uFE0F Calm ' + mmss(quietT);
+      if (quietCool > 0) return '\u{1F54A}\uFE0F Recharging ' + mmss(quietCool);
+      return '\u{1F54A}\uFE0F Calm minute';
+    }
+    function updateQuietBtn() {
+      const usable = started && !gameOver && !walkMode && quietT <= 0 && quietCool <= 0 && level < calmLevel;
+      const label = quietLabel();
+      if (quietBtn.textContent !== label) quietBtn.textContent = label;
+      if (quietBtn.disabled === usable) quietBtn.disabled = !usable;
+      quietBtn.setAttribute('aria-pressed', String(quietT > 0));
+    }
+    function startQuiet() {
+      unlockAudio();
+      if (!started || gameOver || walkMode || quietT > 0 || quietCool > 0 || level >= calmLevel) return;
+      quietT = quietLength;
+      calmFlash = 170;
+      // everything on the track pops away
+      obstacles.forEach((o) => {
+        if (!o.dead) {
+          o.dead = true;
+          rings.push({ x: o.x, y: o.y, age: 18 });
+        }
+      });
+      [523, 659, 784].forEach((f, i) => tone('triangle', f, f, 0.2, 0.08, i * 0.1));
+      updateQuietBtn();
+    }
+    quietBtn.addEventListener('click', startQuiet);
     let calmTick = 0;
     let calmFlash = 0;
     let calmStarted = false;
@@ -857,7 +906,8 @@
 
     function updateLineBtn() {
       const here = started && !gameOver && dwell > 0 && !changedHere && !walkMode && isInterchange(lastStoppedK);
-      const label = here ? '\u{1F501} To ' + metroLines[targetLineAt(lastStoppedK)].name : '\u{1F501} Change line';
+      const tl = here ? targetLineAt(lastStoppedK) : null;
+      const label = here ? (tl === 'monorail' || currentLine === 'monorail' ? '\u{1F501} To ' : '\u{1F6B6} Walk to ') + metroLines[tl].name : '\u{1F501} Change line';
       if (lineBtn.textContent !== label) lineBtn.textContent = label;
       if (lineBtn.disabled === here) lineBtn.disabled = !here;
     }
@@ -868,8 +918,8 @@
       unlockAudio();
       if (!started || gameOver || dwell <= 0 || changedHere || !isInterchange(lastStoppedK)) return;
       const target = targetLineAt(lastStoppedK);
-      if ((target === 'tram' || currentLine === 'tram') && target !== 'monorail' && currentLine !== 'monorail') {
-        // the tram stop is down the road: you have to walk there
+      if (target !== 'monorail' && currentLine !== 'monorail') {
+        // the other line is down the road in the city: get off and walk there
         changedHere = true;
         startWalk(target);
         return;
@@ -1474,6 +1524,8 @@
       calmStarted = false;
       calmTick = 0;
       calmFlash = 0;
+      quietT = 0;
+      quietCool = 0;
       terminusK = -1;
       won = false;
       finalFlash = 0;
@@ -1990,7 +2042,7 @@
       });
       lastSpawnY += dist;
       obstacles = obstacles.filter((o) => o.y - o.hh < H + 20 && !o.dead);
-      if (lastSpawnY > spawnGap() && dwell <= 0 && toStop > 900 && level < calmLevel) spawnRow(); // keep the line clear around a station
+      if (lastSpawnY > spawnGap() && dwell <= 0 && toStop > 900 && level < calmLevel && quietT <= 0) spawnRow(); // keep the line clear around a station
 
       coins.forEach((c) => {
         c.y += dist;
@@ -2028,7 +2080,17 @@
         shieldSpawnIn = spawnShield() ? (1500 + Math.random() * 900) * (easy ? 0.6 : 1) : 10;
       }
 
-      if (level >= calmLevel && !won && dwell <= 0) {
+      if (quietT > 0) {
+        quietT -= step;
+        if (quietT <= 0) {
+          quietT = 0;
+          quietCool = quietRecharge;
+          tone('triangle', 660, 440, 0.25, 0.08);
+        }
+      } else if (quietCool > 0) {
+        quietCool = Math.max(0, quietCool - step);
+      }
+      if ((level >= calmLevel || quietT > 0) && !won && dwell <= 0) {
         // smooth sailing: a point every second and a half, so the journey still moves on
         calmTick += step;
         if (calmTick >= 90) {
@@ -2042,6 +2104,7 @@
       levelFlash = Math.max(0, levelFlash - step);
       finalFlash = Math.max(0, finalFlash - step);
       updateLineBtn();
+      updateQuietBtn();
       recordFlash = Math.max(0, recordFlash - step);
     }
 
@@ -3748,6 +3811,12 @@ const isInterchange = (k) => (k !== terminusK || currentLine === 'tram') && targ
         ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('\u{1F308} Clear track ahead!', W / 2, 185);
+      }
+      if (quietT > 0 && started && !gameOver) {
+        ctx.fillStyle = 'rgba(190, 255, 235, 0.95)';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F54A}\uFE0F Calm minute \u2022 ' + Math.ceil(quietT / 60) + 's', W / 2, 205);
       }
 
       // the last station is coming
