@@ -133,10 +133,27 @@
     cursor: default;
   }
 
+  /* the change-line button grows big and bright whenever you can change line */
   #lineBtn:not(:disabled) {
-    border-color: #00a04a;
-    color: #00a04a;
-    font-weight: 700;
+    order: -1;
+    flex: 1 1 100%;
+    font-size: 24px;
+    font-weight: 800;
+    padding: 18px 20px;
+    border-color: #00793a;
+    background: #00a04a;
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 160, 74, 0.45);
+    animation: lineBtnPulse 1.1s ease-in-out infinite;
+  }
+
+  @keyframes lineBtnPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.04); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #lineBtn:not(:disabled) { animation: none; }
   }
 
   #boostBtn:not(:disabled) {
