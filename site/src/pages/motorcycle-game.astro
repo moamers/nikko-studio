@@ -154,6 +154,19 @@
     background: #e63946;
   }
 
+  #trickBtn {
+    font-weight: 800;
+    font-size: 17px;
+    border: 3px solid #0b6b3a;
+    background: #1fbf6a;
+    color: #fff;
+    touch-action: none;
+  }
+
+  #trickBtn:active {
+    background: #0f9a4f;
+  }
+
   #turboBtn {
     font-weight: 800;
     font-size: 17px;
@@ -186,7 +199,7 @@
 
 <div class="wrap">
   <h1>&#127949;&#65039; Motorcycle Off-Road</h1>
-  <p class="sub">Drag your finger (or mouse) left and right to steer. Dodge the rocks and logs, hit the ramps to jump, grab coins and the blue shield, and hold Boost for speed!</p>
+  <p class="sub">Drag your finger (or mouse) left and right to steer. Dodge the rocks and logs, hit the ramps to jump, do tricks in the air for bonus points, grab coins and the blue shield, and hold Boost for speed!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -194,6 +207,7 @@
     <canvas id="game" width="400" height="600" aria-label="Motorcycle off-road game"></canvas>
   </div>
   <div class="controls">
+    <button id="trickBtn">&#129336; TRICK</button>
     <button id="turboBtn">&#9889; VERY FAST</button>
     <button id="boostBtn">&#128640; BOOST</button>
     <div class="boost-bar"><div id="boostFill" class="boost-fill"></div></div>
@@ -212,6 +226,7 @@
     const boostBtn = document.getElementById('boostBtn');
     const boostFill = document.getElementById('boostFill');
     const turboBtn = document.getElementById('turboBtn');
+    const trickBtn = document.getElementById('trickBtn');
     const easyBtn = document.getElementById('easyBtn');
     const soundBtn = document.getElementById('soundBtn');
     const pointsPerLevel = 5;
@@ -321,7 +336,14 @@
     let lean = 0; // how far the bike leans into a turn
     let easy = false; // easy mode: slower, with more room between things to dodge
     let air = 0; // frames left in the air after a jump
-    const airTotal = 55;
+    const airTotal = 66; // long enough for two tricks
+    // Tricks in the air: press TRICK while flying. Finish them before you land.
+    const trickDur = 24;
+    const trickNames = ['Backflip', '360 spin', 'Double flip', 'Super spin'];
+    let trickT = 0; // frames left in the trick being done
+    let trickKind = 0;
+    let tricksDone = 0; // finished tricks in this jump
+    let trickPoints = 0;
     let airBonus = 0; // things cleared while flying
     let ramps = [];
     let rampSpawnIn = 200;
@@ -474,6 +496,9 @@
       rampSpawnIn = 200;
       air = 0;
       airBonus = 0;
+      trickT = 0;
+      tricksDone = 0;
+      trickPoints = 0;
       turbo = false;
       popups = [];
       dust = [];
@@ -539,6 +564,21 @@
     function stopBoost() {
       boosting = false;
     }
+    function doTrick() {
+      if (!started || gameOver || crashing || air <= 0 || trickT > 0) return;
+      if (air < trickDur * 0.6) return; // too late: not enough sky left
+      trickT = trickDur;
+      trickKind = tricksDone % trickNames.length;
+      blip(300, 700, 0.25, 0.15);
+    }
+    function pressTrick(e) {
+      e.preventDefault();
+      ensureAudio();
+      doTrick();
+    }
+    trickBtn.addEventListener('mousedown', pressTrick);
+    trickBtn.addEventListener('touchstart', pressTrick, { passive: false });
+
     function startTurbo(e) {
       e.preventDefault();
       ensureAudio();
@@ -565,9 +605,11 @@
       if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = true;
       if (e.code === 'KeyF') turbo = true;
+      if (e.code === 'KeyT' || e.code === 'ArrowUp') doTrick();
       if (e.code === 'Space') {
         e.preventDefault();
-        startOrRestart();
+        if (started && !gameOver && air > 0) doTrick();
+        else startOrRestart();
       }
     });
     window.addEventListener('keyup', (e) => {
@@ -595,6 +637,9 @@
         dust.forEach((d) => (d.age += step));
         dust = dust.filter((d) => d.age < 30);
         air = 0;
+        trickT = 0;
+        tricksDone = 0;
+        trickPoints = 0;
         if (crashTimer <= 0) {
           crashing = false;
           endGame();
@@ -642,13 +687,35 @@
       }
       if (air > 0) {
         air -= step;
+        if (trickT > 0) {
+          trickT -= step;
+          if (trickT <= 0) {
+            // the trick is complete: points, and bigger for each one in a row
+            trickT = 0;
+            const tp = 5 + tricksDone * 3;
+            const name = trickNames[tricksDone % trickNames.length];
+            tricksDone++;
+            trickPoints += tp;
+            popups.push({ x: bike.x, y: bike.y - 70 - tricksDone * 14, text: '\u{1F938} ' + name + '! +' + tp, age: 0 });
+            blip(660, 1320, 0.2, 0.18);
+          }
+        }
         if (air <= 0) {
           air = 0;
           // landing: a puff of dust and the points for the jump
-          const pts = 3 + airBonus;
+          let tricky = trickPoints;
+          if (tricksDone >= 2) {
+            tricky += 5;
+            popups.push({ x: bike.x, y: bike.y - 130, text: 'Combo! +5', age: 0 });
+          }
+          if (trickT > 0) popups.push({ x: bike.x, y: bike.y - 56, text: 'Oops, too late!', age: 0 });
+          const pts = 3 + airBonus + tricky;
           score += pts;
           scoreEl.textContent = 'Score: ' + score;
-          popups.push({ x: bike.x, y: bike.y - 40, text: airBonus > 0 ? 'Great jump! +' + pts : 'Jump! +' + pts, age: 0 });
+          trickT = 0;
+          tricksDone = 0;
+          trickPoints = 0;
+          popups.push({ x: bike.x, y: bike.y - 40, text: airBonus > 0 || tricky > 0 ? 'Great jump! +' + pts : 'Jump! +' + pts, age: 0 });
           for (let i = 0; i < 4; i++) dust.push({ x: bike.x + (i - 1.5) * 8, y: bike.y + 14, age: 0 });
           airBonus = 0;
           invuln = Math.max(invuln, 30); // a moment to steer clear after landing
@@ -717,6 +784,9 @@
           r.used = true;
           air = airTotal;
           airBonus = 0;
+          trickT = 0;
+          tricksDone = 0;
+          trickPoints = 0;
           blip(360, 880, 0.35, 0.2);
         }
       });
@@ -890,7 +960,7 @@
       }
     }
 
-    function drawBike(x, y, angle, flame, lift) {
+    function drawBike(x, y, angle, flame, lift, flip) {
       // the shadow stays on the ground while the bike flies
       ctx.fillStyle = 'rgba(0, 0, 0, ' + (0.25 - lift * 0.12) + ')';
       ctx.fillRect(x - 7 + lift * 12, y - 22 + lift * 14, 18, 52);
@@ -898,6 +968,12 @@
       ctx.translate(x, y - lift * 34);
       ctx.scale(1 + lift * 0.45, 1 + lift * 0.45);
       ctx.rotate(angle);
+      if (flip > 0) {
+        // a backflip turns the bike end over end, seen from above as a squash and stretch
+        const p = 1 - flip;
+        if (flip < 1 && trickKind % 2 === 0) ctx.scale(1, Math.cos(p * Math.PI * 2 * (1 + (trickKind >= 2 ? 1 : 0))));
+        else ctx.rotate(p * Math.PI * 2 * (trickKind >= 2 ? 2 : 1));
+      }
       if (flame) {
         const f = (turbo ? 20 : 10) + Math.random() * 12;
         ctx.fillStyle = '#ffd400';
@@ -1084,10 +1160,16 @@
       });
 
       // the bike is always visible, even on the start screen
-      if (crashing) drawBike(bike.x, bike.y, crashAngle, false, 0);
+      if (crashing) drawBike(bike.x, bike.y, crashAngle, false, 0, 0);
       else {
         const lift = air > 0 ? Math.sin(Math.PI * (1 - air / airTotal)) : 0;
-        drawBike(bike.x, bike.y, lean + (air > 0 ? Math.sin(frameCount / 5) * 0.12 : 0), started && !gameOver && fastNow(), lift);
+        drawBike(bike.x, bike.y, lean + (air > 0 && trickT <= 0 ? Math.sin(frameCount / 5) * 0.12 : 0), started && !gameOver && fastNow(), lift, trickT > 0 ? trickT / trickDur : 0);
+        if (started && !gameOver && air > 0 && trickT <= 0 && tricksDone === 0 && air > trickDur) {
+          ctx.fillStyle = 'rgba(31, 191, 106, 0.95)';
+          ctx.font = 'bold 20px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('Press TRICK!', W / 2, 100);
+        }
       }
 
       if (shieldOn && !crashing && !gameOver) {
