@@ -1564,25 +1564,34 @@
       }
     }
 
-    // ---------- inside the mall: some real shopping, against the clock ----------
-    // You walk in from the plaza, buy things from the shops with your coins
-    // (there is a shopping list for bonus points), then press the button to
-    // go back outside and pick your line. Stay too long and a buzzer sounds;
-    // if you still have not left a few seconds later you lose the game and
-    // one Green Line medal.
-    const mallShops = [
-      { id: 'icecream', emoji: '\u{1F366}', name: 'Ice cream', price: 1, colour: '#ff8fab' },
-      { id: 'books', emoji: '\u{1F4DA}', name: 'Books', price: 2, colour: '#8ecae6' },
-      { id: 'pizza', emoji: '\u{1F355}', name: 'Pizza', price: 2, colour: '#ffb703' },
-      { id: 'toys', emoji: '\u{1F9F8}', name: 'Toys', price: 3, colour: '#b388eb' },
-      { id: 'clothes', emoji: '\u{1F457}', name: 'Clothes', price: 3, colour: '#f28482' },
-      { id: 'shoes', emoji: '\u{1F45F}', name: 'Shoes', price: 4, colour: '#52b788' },
+    // ---------- inside the mall: a long shopping street with real shops ----------
+    // The mall is a long street of shop fronts that you walk along, with other
+    // shoppers about. Walk up to a shop's door and tap it to go in and see what
+    // the shop is like, then tap the things you want to buy. You have one
+    // minute in all. Press the button to go back outside and pick your line.
+    // Stay too long and a buzzer sounds; if you still have not left a few
+    // seconds later you lose the game and one Green Line medal.
+    const mallShopsData = [
+      { name: 'Ice Cream', emoji: '\u{1F366}', colour: '#f7a8c4', wall: '#ffe3ee', floor: '#f6efe6', items: [['\u{1F366}', 'Ice cream', 1], ['\u{1F36B}', 'Chocolate', 1], ['\u{1F9C1}', 'Cupcake', 2]] },
+      { name: 'Book Shop', emoji: '\u{1F4DA}', colour: '#7fb2d9', wall: '#dcebf7', floor: '#b08a63', items: [['\u{1F4DA}', 'Books', 2], ['\u{1F4D6}', 'Story book', 1], ['✏️', 'Pencil', 1]] },
+      { name: 'Pizza', emoji: '\u{1F355}', colour: '#e8a33d', wall: '#fff0cf', floor: '#c9553d', items: [['\u{1F355}', 'Pizza', 2], ['\u{1F964}', 'Drink', 1], ['\u{1F35F}', 'Chips', 1]] },
+      { name: 'Toy Store', emoji: '\u{1F9F8}', colour: '#a98be0', wall: '#ece4fb', floor: '#e8d36a', items: [['\u{1F9F8}', 'Teddy bear', 3], ['\u{1F697}', 'Toy car', 2], ['\u{1FA81}', 'Kite', 2]] },
+      { name: 'Clothes', emoji: '\u{1F457}', colour: '#ee8f8c', wall: '#fde6e4', floor: '#d9d2c8', items: [['\u{1F457}', 'Dress', 3], ['\u{1F455}', 'T-shirt', 2], ['\u{1F9E2}', 'Cap', 1]] },
+      { name: 'Shoes', emoji: '\u{1F45F}', colour: '#5fb98a', wall: '#dff3e8', floor: '#9a8f82', items: [['\u{1F45F}', 'Trainers', 4], ['\u{1FA74}', 'Sandals', 2], ['\u{1F97E}', 'Boots', 3]] },
+      { name: 'Phones', emoji: '\u{1F4F1}', colour: '#4f6d8f', wall: '#e1e8f0', floor: '#cfd5dc', items: [['\u{1F4F1}', 'Phone', 5], ['\u{1F3A7}', 'Headphones', 3], ['\u{1F50C}', 'Charger', 1]] },
+      { name: 'Sports', emoji: '⚽', colour: '#52a8e0', wall: '#e0f0fa', floor: '#7fa86a', items: [['⚽', 'Football', 2], ['\u{1F3C0}', 'Basketball', 2], ['\u{1F3BE}', 'Tennis ball', 1]] },
+      { name: 'Bakery', emoji: '\u{1F950}', colour: '#d9a066', wall: '#faeedd', floor: '#ead9bf', items: [['\u{1F950}', 'Croissant', 1], ['\u{1F35E}', 'Bread', 1], ['\u{1F382}', 'Birthday cake', 4]] },
+      { name: 'Jewellery', emoji: '\u{1F48D}', colour: '#b49a4d', wall: '#f5efdc', floor: '#2f2a3a', items: [['\u{1F48D}', 'Ring', 5], ['⌚', 'Watch', 4], ['\u{1F4FF}', 'Necklace', 2]] },
     ];
-    const mallRowY = [112, 217, 322];
-    const mallRowH = 92;
-    const mallLimit = 2700; // 45 seconds inside
+    const mallProducts = [];
+    mallShopsData.forEach((sh, si) => sh.items.forEach(([emoji, name, price]) => mallProducts.push({ shop: si, emoji, name, price })));
+    const mallShopW = 220;
+    const mallShopX0 = 120;
+    const mallWorldW = mallShopX0 + mallShopsData.length * mallShopW + 120;
+    const mallFloorY = 400;
+    const mallLimit = 3600; // one minute inside
     const mallGraceLength = 600; // 10 more seconds after the buzzer
-    const mallPerson = { x: 200, y: 500, moving: false, stepT: 0 };
+    const mallPerson = { x: 150, y: 505, moving: false, stepT: 0, dir: 1 };
     let mallMode = false;
     let mallName = '';
     let mallTime = 0;
@@ -1590,20 +1599,58 @@
     let mallBuzzT = 0;
     let mallWallet = 0;
     let mallBag = [];
-    let mallList = [];
+    let mallList = []; // indexes into mallProducts
     let mallDone = [];
     let mallListBonus = false;
-    let mallInShop = -1;
     let mallMsg = '';
     let mallMsgT = 0;
     let mallLost = false;
     let mallLostMedal = false;
     let mallFlash = 0;
+    let mallCamX = 0;
+    let mallShop = -1; // the shop you are inside, or -1 on the shopping street
+    let mallShoppers = [];
+    let mallShopFolk = [];
+    let mallPlants = [];
+    let mallTime2 = 0;
+    let mallGoto = null; // a place (across the mall) you tapped to walk to
     const mallBtn = document.getElementById('mallBtn');
+    const shopperLook = [
+      ['#f2c9a0', '#e63946', '#2a4d8f'], ['#c68c5c', '#2a9d8f', '#3a3a4a'], ['#8d5a3b', '#f4a261', '#264653'],
+      ['#f2c9a0', '#6a4c93', '#4a4a4a'], ['#e0ac84', '#ffd166', '#1d3557'], ['#6f4426', '#ffffff', '#7a5a3a'],
+      ['#f2c9a0', '#48bfe3', '#5a189a'], ['#c68c5c', '#ef476f', '#2b2d42'],
+    ];
 
-    function mallShopRect(i) {
-      const left = i % 2 === 0;
-      return { x: left ? 0 : W - 96, y: mallRowY[Math.floor(i / 2)], w: 96, h: mallRowH, left };
+    function mallShopLeft(i) {
+      return mallShopX0 + i * mallShopW;
+    }
+    const mallDoorX = (i) => mallShopLeft(i) + mallShopW / 2;
+
+    function makeShoppers() {
+      mallShoppers = [];
+      for (let k = 0; k < 14; k++) {
+        const look = shopperLook[k % shopperLook.length];
+        mallShoppers.push({
+          x: 160 + ((k * 197) % (mallWorldW - 320)),
+          y: 452 + ((k * 37) % 86),
+          dir: k % 2 ? 1 : -1,
+          v: k % 5 === 0 ? 0 : 0.35 + ((k * 13) % 7) * 0.1,
+          look,
+          bag: k % 3 !== 1,
+          kid: k % 6 === 4,
+          t: k * 9,
+          pause: 0,
+        });
+      }
+      // decorations on the floor: pots, benches and the fountain
+      mallPlants = [];
+      for (let i = 0; i <= mallShopsData.length; i++) {
+        const x = mallShopX0 + i * mallShopW;
+        if (i === 5) mallPlants.push({ kind: 'fountain', x, y: 468 });
+        else if (i % 2 === 0) mallPlants.push({ kind: 'palm', x, y: 440 });
+        else mallPlants.push({ kind: 'bench', x, y: 446 });
+      }
+      mallPlants.push({ kind: 'kiosk', x: 760, y: 452 });
     }
 
     function startMall() {
@@ -1612,41 +1659,47 @@
       walkMode = false;
       walkPointer = null;
       walkKeys.left = walkKeys.right = walkKeys.up = walkKeys.down = false;
-      mallPerson.x = 200;
-      mallPerson.y = 500;
+      mallPerson.x = 150;
+      mallPerson.y = 505;
+      mallPerson.dir = 1;
+      mallCamX = 0;
+      mallShop = -1;
       mallTime = mallLimit;
       mallGrace = 0;
       mallBuzzT = 0;
-      mallWallet = 10;
+      mallWallet = 20;
       mallBag = [];
-      mallDone = mallShops.map(() => false);
+      mallDone = mallProducts.map(() => false);
       mallListBonus = false;
-      mallInShop = -1;
       mallFlash = 0;
-      // a shopping list of three things you can afford
+      mallTime2 = 0;
+      makeShoppers();
+      // a shopping list of four things from different shops that you can afford
       let pick = [];
       do {
-        pick = mallShops
-          .map((sh, i) => i)
-          .sort(() => Math.random() - 0.5)
-          .slice(0, 3);
-      } while (pick.reduce((t, i) => t + mallShops[i].price, 0) > mallWallet - 1);
+        const order = mallProducts.map((p, i) => i).sort(() => Math.random() - 0.5);
+        pick = [];
+        order.forEach((i) => {
+          if (pick.length < 4 && !pick.some((j) => mallProducts[j].shop === mallProducts[i].shop)) pick.push(i);
+        });
+      } while (pick.reduce((t, i) => t + mallProducts[i].price, 0) > mallWallet - 3);
       mallList = pick;
-      mallMsg = 'Buy the things on your list! Walk into a shop.';
-      mallMsgT = 240;
+      mallMsg = 'Walk along the shops. Tap a door to go in!';
+      mallMsgT = 260;
       updateHum(false, 0);
       mallBtn.disabled = false;
       mallBtn.classList.remove('late');
       mallBtn.textContent = '\u{1F6AA} Leave the mall';
       updateLineBtn();
       updateQuietBtn();
-      announce('أهلاً بكم في ' + stationNameAr(lastStoppedK), 'Welcome to ' + stationName(lastStoppedK) + '. You have forty five seconds to shop!', true);
+      announce('أهلاً بكم في ' + stationNameAr(lastStoppedK), 'Welcome to ' + stationName(lastStoppedK) + '. You have one minute to shop!', true);
     }
 
     // Back outside: pick a line in the tunnels and carry on.
     function leaveMall() {
       if (!mallMode) return;
       mallMode = false;
+      mallShop = -1;
       mallBtn.disabled = true;
       mallBtn.classList.remove('late');
       mallBtn.textContent = '\u{1F6AA} Leave the mall';
@@ -1669,6 +1722,7 @@
     // Too slow: you lose the game and a Green Line medal.
     function mallLose() {
       mallMode = false;
+      mallShop = -1;
       mallBtn.disabled = true;
       mallBtn.classList.remove('late');
       mallBtn.textContent = '\u{1F6AA} Leave the mall';
@@ -1681,28 +1735,59 @@
       endGame();
     }
 
-    function mallBuy(i) {
-      const sh = mallShops[i];
-      if (mallDone[i]) {
-        mallMsg = 'You already bought ' + sh.name.toLowerCase() + '!';
+    function mallEnterShop(i) {
+      mallShop = i;
+      mallGoto = null;
+      mallPerson.x = 70;
+      mallPerson.y = 500;
+      mallPerson.dir = 1;
+      walkPointer = null;
+      mallShopFolk = [
+        { x: 190, y: 470, dir: 1, v: 0.35, look: shopperLook[(i + 2) % 8], bag: false, kid: false, t: 0, pause: 0 },
+        { x: 330, y: 520, dir: -1, v: 0.3, look: shopperLook[(i + 5) % 8], bag: true, kid: i % 2 === 0, t: 7, pause: 0 },
+      ];
+      mallMsg = 'Welcome to ' + mallShopsData[i].name + '! Tap what you want to buy.';
+      mallMsgT = 200;
+      tone('sine', 988, 988, 0.15, 0.08);
+      tone('sine', 1318, 1318, 0.2, 0.08, 0.14);
+    }
+
+    function mallLeaveShop() {
+      const i = mallShop;
+      mallGoto = null;
+      mallShop = -1;
+      mallPerson.x = mallDoorX(i);
+      mallPerson.y = 505;
+      walkPointer = null;
+      mallMsg = 'Back on the shopping street.';
+      mallMsgT = 90;
+      tone('sine', 1318, 1318, 0.15, 0.08);
+      tone('sine', 988, 988, 0.2, 0.08, 0.14);
+    }
+
+    function mallBuy(pi) {
+      const p = mallProducts[pi];
+      if (mallDone[pi]) {
+        mallMsg = 'You already bought the ' + p.name.toLowerCase() + '!';
         mallMsgT = 90;
         return;
       }
-      if (mallWallet < sh.price) {
-        mallMsg = 'Not enough coins for ' + sh.name.toLowerCase() + '!';
+      if (mallWallet < p.price) {
+        mallMsg = 'Not enough coins for the ' + p.name.toLowerCase() + '!';
         mallMsgT = 110;
         tone('square', 220, 160, 0.2, 0.06);
         return;
       }
-      mallWallet -= sh.price;
-      mallDone[i] = true;
-      mallBag.push(sh.emoji);
-      const onList = mallList.includes(i);
+      mallWallet -= p.price;
+      mallDone[pi] = true;
+      mallBag.push(p.emoji);
+      const onList = mallList.includes(pi);
       const pts = onList ? 7 : 2;
       score += pts;
       scoreEl.textContent = 'Score: ' + score;
-      mallMsg = (onList ? 'From your list! ' : 'Bought ') + sh.emoji + ' +' + pts;
+      mallMsg = (onList ? 'From your list! ' : 'Bought ') + p.emoji + ' +' + pts;
       mallMsgT = 110;
+      // the till goes ding
       [880, 1175, 1568].forEach((f, k) => tone('triangle', f, f, 0.12, 0.08, k * 0.06));
       if (!mallListBonus && mallList.every((j) => mallDone[j])) {
         mallListBonus = true;
@@ -1714,16 +1799,96 @@
       }
     }
 
+    // where things to tap are (on the screen)
+    const mallShelfX = [96, 200, 304]; // the three things for sale in a shop
+    function mallNearDoor() {
+      for (let i = 0; i < mallShopsData.length; i++) if (Math.abs(mallPerson.x - mallDoorX(i)) < 46) return i;
+      return -1;
+    }
+    function mallNearShelf() {
+      for (let k = 0; k < 3; k++) if (Math.abs(mallPerson.x - mallShelfX[k]) < 40) return k;
+      return -1;
+    }
+
+    // press the action: go into the shop at this door, or buy what is in front of you
+    function mallAction() {
+      if (!mallMode) return;
+      if (mallShop < 0) {
+        const d = mallNearDoor();
+        if (d >= 0) mallEnterShop(d);
+      } else {
+        const k = mallNearShelf();
+        if (k >= 0) mallBuy(mallProducts.findIndex((p) => p.shop === mallShop) + k);
+        else if (mallPerson.x < 70) mallLeaveShop();
+      }
+    }
+
+    // a tap or click on the picture
+    function mallPress(p) {
+      mallGoto = null;
+      if (mallShop < 0) {
+        for (let i = 0; i < mallShopsData.length; i++) {
+          const sx = mallDoorX(i) - mallCamX;
+          if (p.x > sx - 34 && p.x < sx + 34 && p.y > 250 && p.y < 420) {
+            if (Math.abs(mallPerson.x - mallDoorX(i)) < 46) mallEnterShop(i);
+            else mallGoto = mallDoorX(i);
+            return;
+          }
+        }
+      } else {
+        if (p.x < 70 && p.y > 170 && p.y < 420) {
+          if (mallPerson.x < 110) mallLeaveShop();
+          else mallGoto = 20;
+          return;
+        }
+        for (let k = 0; k < 3; k++) {
+          if (Math.abs(p.x - mallShelfX[k]) < 44 && p.y > 300 && p.y < 440) {
+            if (Math.abs(mallPerson.x - mallShelfX[k]) < 40) mallBuy(mallProducts.findIndex((q) => q.shop === mallShop) + k);
+            else mallGoto = mallShelfX[k];
+            return;
+          }
+        }
+      }
+      walkPointer = p;
+    }
+
+    function walkShopper(sh, step, minX, maxX) {
+      sh.t += step;
+      if (sh.v === 0) return;
+      if (sh.pause > 0) {
+        sh.pause -= step;
+        return;
+      }
+      sh.x += sh.dir * sh.v * step;
+      if (sh.x < minX || sh.x > maxX) {
+        sh.dir = -sh.dir;
+        sh.x = Math.max(minX, Math.min(maxX, sh.x));
+      }
+      if (Math.random() < 0.002 * step) sh.pause = 60 + Math.random() * 120; // stops to look in a window
+    }
+
     function updateMall(step) {
       mallMsgT = Math.max(0, mallMsgT - step);
       mallFlash = Math.max(0, mallFlash - step);
+      mallTime2 += step;
       // walking about: press and hold towards your finger, or the arrow keys
       let dx = 0;
       let dy = 0;
+      if (mallGoto !== null) {
+        if (Math.abs(mallGoto - mallPerson.x) < 6) {
+          // arrived where you tapped: go in, or buy
+          mallGoto = null;
+          mallAction();
+        } else {
+          dx = mallGoto > mallPerson.x ? 1 : -1;
+        }
+      }
       if (walkPointer) {
-        const d = Math.hypot(walkPointer.x - mallPerson.x, walkPointer.y - mallPerson.y);
+        mallGoto = null;
+        const px = walkPointer.x + (mallShop < 0 ? mallCamX : 0);
+        const d = Math.hypot(px - mallPerson.x, walkPointer.y - mallPerson.y);
         if (d > 5) {
-          dx = (walkPointer.x - mallPerson.x) / d;
+          dx = (px - mallPerson.x) / d;
           dy = (walkPointer.y - mallPerson.y) / d;
         }
       }
@@ -1736,24 +1901,24 @@
       if (mallPerson.moving) {
         dx /= Math.max(1, len);
         dy /= Math.max(1, len);
-        mallPerson.x = Math.max(104, Math.min(W - 104, mallPerson.x + dx * 2.8 * step));
-        mallPerson.y = Math.max(104, Math.min(515, mallPerson.y + dy * 2.8 * step));
+        if (Math.abs(dx) > 0.2) mallPerson.dir = dx > 0 ? 1 : -1;
+        const maxX = mallShop < 0 ? mallWorldW - 40 : 380;
+        mallPerson.x = Math.max(mallShop < 0 ? 40 : 24, Math.min(maxX, mallPerson.x + dx * 3.1 * step));
+        mallPerson.y = Math.max(452, Math.min(548, mallPerson.y + dy * 2 * step));
         mallPerson.stepT += step;
       }
-      // stepping into a shop's doorway to buy
-      let inShop = -1;
-      mallShops.forEach((sh, i) => {
-        const r = mallShopRect(i);
-        const near = r.left ? mallPerson.x < 140 : mallPerson.x > W - 140;
-        if (near && mallPerson.y > r.y - 4 && mallPerson.y < r.y + r.h + 4) inShop = i;
-      });
-      if (inShop >= 0 && inShop !== mallInShop) mallBuy(inShop);
-      mallInShop = inShop;
+      if (mallShop < 0) {
+        mallShoppers.forEach((sh) => walkShopper(sh, step, 90, mallWorldW - 90));
+        const want = Math.max(0, Math.min(mallWorldW - W, mallPerson.x - 200));
+        mallCamX += (want - mallCamX) * (1 - Math.pow(1 - 0.12, step));
+      } else {
+        mallShopFolk.forEach((sh) => walkShopper(sh, step, 60, 360));
+        if (mallPerson.x <= 26) mallLeaveShop(); // walked out of the door
+      }
 
       // the clock
       if (mallTime > 0) {
         mallTime -= step;
-        const secs = Math.ceil(mallTime / 60);
         if (mallTime > 0 && mallTime < 600 && Math.floor(mallTime / 60) !== Math.floor((mallTime + step) / 60)) {
           tone('sine', 880, 880, 0.12, 0.07); // a tick each second at the end
         }
@@ -1765,7 +1930,6 @@
           mallBtn.textContent = '\u{1F514} TIME’S UP! LEAVE NOW!';
           announce('انتهى الوقت! غادر المول الآن', 'Time is up! Leave the mall now!', true);
         }
-        void secs;
       } else {
         // the buzzer, until you press the button
         mallBuzzT -= step;
@@ -1780,118 +1944,122 @@
       }
     }
 
-    function drawMall() {
-      // the floor
-      ctx.fillStyle = '#efe6f5';
-      ctx.fillRect(0, 0, W, H);
-      ctx.fillStyle = '#e2d6ec';
-      for (let y = 0; y < H; y += 40) for (let x = (y / 40) % 2 ? 0 : 40; x < W; x += 80) ctx.fillRect(x, y, 40, 40);
-      // the middle of the mall: a long red carpet and a fountain
-      ctx.fillStyle = 'rgba(214, 40, 70, 0.18)';
-      ctx.fillRect(150, 100, 100, 420);
-      ctx.beginPath();
-      ctx.arc(200, 300, 30, 0, Math.PI * 2);
-      ctx.fillStyle = '#8ecae6';
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 4;
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(200, 300, 12 + Math.sin(frame / 10) * 2, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      // the shops
-      mallShops.forEach((sh, i) => {
-        const r = mallShopRect(i);
-        ctx.fillStyle = sh.colour;
-        ctx.fillRect(r.x, r.y, r.w, r.h);
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
-        ctx.fillRect(r.left ? r.x + r.w - 6 : r.x, r.y, 6, r.h);
-        // the shop window
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-        ctx.fillRect(r.left ? r.x + 8 : r.x + 20, r.y + 8, 68, r.h - 16);
-        ctx.font = '30px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = '#000000';
-        ctx.globalAlpha = mallDone[i] ? 0.3 : 1;
-        ctx.fillText(sh.emoji, r.x + 48, r.y + 44);
-        ctx.globalAlpha = 1;
-        ctx.fillStyle = '#2a2a3a';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText(sh.name, r.x + 48, r.y + 64);
-        ctx.fillText(mallDone[i] ? '✅ bought' : '\u{1F4B0} ' + sh.price, r.x + 48, r.y + 82);
-        // on your list?
-        if (mallList.includes(i) && !mallDone[i]) {
-          ctx.fillStyle = '#d62828';
-          ctx.font = 'bold 12px sans-serif';
-          ctx.fillText('★ on your list', r.x + 48, r.y + 14);
-        }
-        // the doorway
-        ctx.fillStyle = mallInShop === i ? 'rgba(255, 255, 160, 0.9)' : 'rgba(255, 220, 120, 0.45)';
-        ctx.fillRect(r.left ? r.w : r.x - 36, r.y + 20, 36, r.h - 40);
-      });
-      // you
+    // a person seen from the side, walking
+    function drawShopperFigure(x, y, sh, scale, dir, moving, t, apron) {
+      const s = scale * (sh && sh.kid ? 0.72 : 1);
+      const [skin, shirt, pants] = sh.look;
+      const swing = moving ? Math.sin(t * 0.22) : 0;
       ctx.save();
-      ctx.translate(mallPerson.x, mallPerson.y);
-      ctx.scale(1.5, 1.5);
-      drawPerson(0, 0, '#d71920', mallPerson.moving ? mallPerson.stepT * 0.45 : 0);
+      ctx.translate(x, y);
+      ctx.scale(s * dir, s);
+      // shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 15, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // legs
+      ctx.strokeStyle = pants;
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-3, -34);
+      ctx.lineTo(-3 + swing * 9, -2);
+      ctx.moveTo(4, -34);
+      ctx.lineTo(4 - swing * 9, -2);
+      ctx.stroke();
+      // body
+      roundedRect(-10, -66, 20, 34, 8);
+      ctx.fillStyle = shirt;
+      ctx.fill();
+      if (apron) {
+        roundedRect(-8, -54, 16, 22, 4);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+      }
+      // arm, and a shopping bag in the hand
+      ctx.strokeStyle = skin;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(0, -62);
+      ctx.lineTo(8 + swing * 3, -42);
+      ctx.stroke();
+      if (sh.bag) {
+        roundedRect(5 + swing * 3, -44, 13, 15, 2);
+        ctx.fillStyle = '#c77dff';
+        ctx.fill();
+        ctx.strokeStyle = '#7b2cbf';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(8 + swing * 3, -44);
+        ctx.lineTo(11 + swing * 3, -50);
+        ctx.lineTo(15 + swing * 3, -44);
+        ctx.stroke();
+      }
+      // head
+      ctx.beginPath();
+      ctx.arc(0, -75, 9, 0, Math.PI * 2);
+      ctx.fillStyle = skin;
+      ctx.fill();
+      ctx.fillStyle = pants === '#2a4d8f' ? '#3b2a1a' : '#2b2118';
+      ctx.beginPath();
+      ctx.arc(0, -78, 9, Math.PI, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
+    }
 
-      // the words on top
+    function drawMallHud() {
       ctx.textAlign = 'center';
       ctx.fillStyle = '#7d4a92';
       roundedRect(W / 2 - 150, 8, 300, 32, 16);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 16px sans-serif';
-      ctx.fillText('\u{1F6CD}️ ' + mallName, W / 2, 30);
+      ctx.fillText('\u{1F6CD}️ ' + (mallShop >= 0 ? mallShopsData[mallShop].name + ' • ' : '') + mallName, W / 2, 30);
       // the clock
       const frac = mallTime / mallLimit;
       ctx.fillStyle = 'rgba(10, 18, 28, 0.55)';
-      roundedRect(20, 50, W - 40, 18, 9);
+      roundedRect(20, 48, W - 40, 18, 9);
       ctx.fill();
       ctx.fillStyle = mallTime > 0 ? (frac > 0.25 ? '#3ddc84' : '#ffb703') : '#d62828';
       if (frac > 0) {
-        roundedRect(22, 52, Math.max(10, (W - 44) * frac), 14, 7);
+        roundedRect(22, 50, Math.max(10, (W - 44) * frac), 14, 7);
         ctx.fill();
       }
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText(mallTime > 0 ? '⏱️ ' + Math.ceil(mallTime / 60) + 's left' : '⏱️ TIME’S UP!', W / 2, 63);
-      // the message
+      const secs = Math.ceil(mallTime / 60);
+      ctx.fillText(mallTime > 0 ? '⏱️ ' + Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0') + ' left' : '⏱️ TIME’S UP!', W / 2, 61);
       if (mallMsgT > 0) {
         const a = Math.min(1, mallMsgT / 30);
-        ctx.fillStyle = 'rgba(10, 18, 28, ' + 0.75 * a + ')';
-        roundedRect(W / 2 - 160, 76, 320, 28, 14);
+        ctx.fillStyle = 'rgba(10, 18, 28, ' + 0.78 * a + ')';
+        roundedRect(W / 2 - 170, 74, 340, 28, 14);
         ctx.fill();
         ctx.fillStyle = 'rgba(255, 255, 255, ' + a + ')';
         ctx.font = 'bold 13px sans-serif';
-        ctx.fillText(mallMsg, W / 2, 95);
+        ctx.fillText(mallMsg, W / 2, 93);
       }
       // the bottom panel: your list, your coins and your bag
-      ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
-      roundedRect(8, 536, W - 16, 56, 12);
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.84)';
+      roundedRect(8, 540, W - 16, 52, 12);
       ctx.fill();
+      ctx.textAlign = 'left';
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 12px sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('List:', 20, 556);
+      ctx.fillText('List:', 18, 561);
       ctx.font = '18px sans-serif';
-      mallList.forEach((j, k) => {
-        ctx.fillText((mallDone[j] ? '✅' : mallShops[j].emoji), 58 + k * 40, 558);
-      });
+      mallList.forEach((j, k) => ctx.fillText(mallDone[j] ? '✅' : mallProducts[j].emoji, 52 + k * 30, 563));
       ctx.font = 'bold 14px sans-serif';
       ctx.fillStyle = '#ffd400';
-      ctx.fillText('\u{1F4B0} ' + mallWallet, 175, 556);
+      ctx.fillText('\u{1F4B0} ' + mallWallet, 182, 561);
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText('Bag:', 20, 580);
-      ctx.font = '16px sans-serif';
-      ctx.fillText(mallBag.length ? mallBag.join(' ') : 'empty', 56, 582);
+      ctx.fillText('Bag:', 18, 582);
+      ctx.font = '15px sans-serif';
+      ctx.fillText(mallBag.length ? mallBag.join(' ') : 'empty', 50, 584);
       ctx.textAlign = 'right';
       ctx.fillStyle = '#c9b6e4';
       ctx.font = '11px sans-serif';
-      ctx.fillText('Done? Press Leave below', W - 18, 556);
+      ctx.fillText(mallShop < 0 ? 'Tap a shop door' : 'Tap items to buy', W - 18, 561);
       // the buzzer: the whole screen flashes red
       if (mallTime <= 0) {
         const a = mallFlash > 0 ? 0.35 * (mallFlash / 24) : 0.08;
@@ -1900,11 +2068,421 @@
         ctx.textAlign = 'center';
         ctx.fillStyle = '#d62828';
         ctx.font = 'bold 28px sans-serif';
-        ctx.fillText('\u{1F514} BZZZT! Leave now!', W / 2, 462);
+        ctx.fillText('\u{1F514} BZZZT! Leave now!', W / 2, 200);
         ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)';
+        ctx.lineWidth = 3;
         ctx.font = 'bold 15px sans-serif';
-        ctx.fillText(Math.ceil(mallGrace / 60) + 's or you lose a Green Line medal!', W / 2, 490);
+        const txt = Math.ceil(mallGrace / 60) + 's or you lose a Green Line medal!';
+        ctx.strokeText(txt, W / 2, 228);
+        ctx.fillText(txt, W / 2, 228);
       }
+    }
+
+    function drawMallStreet() {
+      const cx = mallCamX;
+      ctx.fillStyle = '#efe9df';
+      ctx.fillRect(0, 0, W, H);
+      ctx.save();
+      ctx.translate(-cx, 0);
+      // the high ceiling with skylights and spot lights
+      const ceil = ctx.createLinearGradient(0, 0, 0, 128);
+      ceil.addColorStop(0, '#d9d2c6');
+      ceil.addColorStop(1, '#efe9df');
+      ctx.fillStyle = ceil;
+      ctx.fillRect(cx, 0, W, 128);
+      const first = Math.floor(cx / 260) * 260;
+      for (let x = first - 260; x < cx + W + 260; x += 260) {
+        ctx.fillStyle = '#fffbe9';
+        ctx.fillRect(x + 40, 12, 180, 38);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.fillRect(x + 40, 12, 180, 6);
+        ctx.fillStyle = '#b9b2a6';
+        for (let i = 1; i < 4; i++) ctx.fillRect(x + 40 + i * 45, 12, 2, 38);
+        // a hanging banner
+        ctx.fillStyle = (x / 260) % 2 ? '#e63946' : '#2a9d8f';
+        ctx.beginPath();
+        ctx.moveTo(x + 120, 50);
+        ctx.lineTo(x + 180, 50);
+        ctx.lineTo(x + 150, 92);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText((x / 260) % 2 ? 'SALE' : 'WELCOME', x + 150, 66);
+      }
+      // the upper floor: a glass balcony with people looking down
+      ctx.fillStyle = '#cfc7ba';
+      ctx.fillRect(cx, 96, W, 34);
+      ctx.fillStyle = 'rgba(190, 225, 245, 0.55)';
+      ctx.fillRect(cx, 100, W, 22);
+      ctx.fillStyle = '#8f877b';
+      ctx.fillRect(cx, 96, W, 4);
+      ctx.fillRect(cx, 122, W, 4);
+      for (let x = Math.floor(cx / 70) * 70; x < cx + W + 70; x += 70) {
+        ctx.fillRect(x, 100, 3, 22);
+        if ((x / 70) % 4 === 1) {
+          ctx.fillStyle = shopperLook[(x / 70 + 8) % 8 | 0][1];
+          ctx.fillRect(x + 20, 104, 12, 18);
+          ctx.beginPath();
+          ctx.arc(x + 26, 100, 6, 0, Math.PI * 2);
+          ctx.fillStyle = '#e0ac84';
+          ctx.fill();
+          ctx.fillStyle = '#8f877b';
+        }
+      }
+      // the shop fronts
+      mallShopsData.forEach((sh, i) => {
+        const x0 = mallShopLeft(i);
+        if (x0 > cx + W || x0 + mallShopW < cx) return;
+        // the wall of the shop front
+        ctx.fillStyle = sh.wall;
+        ctx.fillRect(x0, 128, mallShopW, mallFloorY - 128);
+        // the lit sign
+        ctx.fillStyle = '#2b2230';
+        ctx.fillRect(x0 + 6, 134, mallShopW - 12, 40);
+        ctx.fillStyle = sh.colour;
+        ctx.fillRect(x0 + 6, 134, mallShopW - 12, 5);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(sh.emoji + ' ' + sh.name, x0 + mallShopW / 2, 163);
+        // a stripy awning
+        for (let k = 0; k < 8; k++) {
+          ctx.fillStyle = k % 2 ? sh.colour : '#ffffff';
+          ctx.fillRect(x0 + 6 + k * ((mallShopW - 12) / 8), 176, (mallShopW - 12) / 8, 16);
+        }
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillRect(x0 + 6, 192, mallShopW - 12, 6);
+        // the windows with a display
+        [[x0 + 12, 78], [x0 + mallShopW - 90, 78]].forEach(([wx, ww]) => {
+          const glass = ctx.createLinearGradient(wx, 200, wx + ww, 390);
+          glass.addColorStop(0, '#e8f6ff');
+          glass.addColorStop(1, '#bfd9e8');
+          ctx.fillStyle = glass;
+          ctx.fillRect(wx, 202, ww, 190);
+          ctx.strokeStyle = '#8f877b';
+          ctx.lineWidth = 3;
+          ctx.strokeRect(wx, 202, ww, 190);
+          // the display: shelves of the things they sell
+          ctx.fillStyle = '#a58b6a';
+          ctx.fillRect(wx + 3, 270, ww - 6, 4);
+          ctx.fillRect(wx + 3, 340, ww - 6, 4);
+          ctx.font = '24px sans-serif';
+          ctx.fillStyle = '#000000';
+          sh.items.forEach(([emoji], k) => {
+            ctx.fillText(emoji, wx + 20 + k * 26, 266);
+            ctx.fillText(emoji, wx + 24 + k * 24, 336);
+          });
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.beginPath();
+          ctx.moveTo(wx + 8, 204);
+          ctx.lineTo(wx + 38, 204);
+          ctx.lineTo(wx + 8, 270);
+          ctx.fill();
+        });
+        // the open door with the bright shop inside
+        const dx = x0 + mallShopW / 2 - 28;
+        ctx.fillStyle = '#6b5a48';
+        ctx.fillRect(dx - 4, 198, 64, 202);
+        const inside = ctx.createLinearGradient(0, 202, 0, 400);
+        inside.addColorStop(0, sh.wall);
+        inside.addColorStop(1, '#fff6e0');
+        ctx.fillStyle = inside;
+        ctx.fillRect(dx, 202, 56, 198);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(dx, 202, 56, 14);
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(sh.items[0][0], dx + 28, 360);
+        ctx.fillStyle = '#e63946';
+        roundedRect(dx + 8, 218, 40, 14, 4);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText('OPEN', dx + 28, 229);
+        // the pillar between the shops
+        ctx.fillStyle = '#bdb5a8';
+        ctx.fillRect(x0 - 5, 128, 10, mallFloorY - 128);
+      });
+      // the entrance at the start of the mall
+      ctx.fillStyle = '#2b2230';
+      ctx.fillRect(10, 134, 100, 34);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('ENTRANCE', 60, 157);
+      ctx.fillStyle = 'rgba(190, 225, 245, 0.7)';
+      ctx.fillRect(14, 172, 92, 228);
+      ctx.fillStyle = '#8f877b';
+      ctx.fillRect(58, 172, 4, 228);
+      // the floor: polished tiles that shine
+      const floor = ctx.createLinearGradient(0, mallFloorY, 0, H);
+      floor.addColorStop(0, '#e6dfd3');
+      floor.addColorStop(0.5, '#f2ece2');
+      floor.addColorStop(1, '#d8d0c3');
+      ctx.fillStyle = floor;
+      ctx.fillRect(cx, mallFloorY, W, H - mallFloorY);
+      // reflections of the shop fronts in the floor
+      mallShopsData.forEach((sh, i) => {
+        const x0 = mallShopLeft(i);
+        ctx.fillStyle = sh.colour + '2e';
+        ctx.fillRect(x0 + 10, mallFloorY, mallShopW - 20, 46);
+      });
+      ctx.strokeStyle = 'rgba(120, 110, 95, 0.16)';
+      ctx.lineWidth = 1.5;
+      [mallFloorY + 8, mallFloorY + 26, mallFloorY + 52, mallFloorY + 86, mallFloorY + 130, mallFloorY + 186].forEach((y) => {
+        ctx.beginPath();
+        ctx.moveTo(cx, y);
+        ctx.lineTo(cx + W, y);
+        ctx.stroke();
+      });
+      const xc = cx + 200;
+      for (let k = Math.floor((cx - 400) / 60); k < (cx + W + 400) / 60; k++) {
+        const x4 = k * 60;
+        ctx.beginPath();
+        ctx.moveTo(x4, mallFloorY);
+        ctx.lineTo(xc + (x4 - xc) * 2.1, H);
+        ctx.stroke();
+      }
+      // a bright shine in the middle of the floor
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      ctx.fillRect(cx, mallFloorY + 150, W, 8);
+
+      // everything standing on the floor, drawn from back to front
+      const things = [];
+      mallPlants.forEach((p) => things.push({ y: p.y, draw: () => drawMallPlant(p) }));
+      mallShoppers.forEach((sh) => things.push({ y: sh.y, draw: () => drawShopperFigure(sh.x, sh.y, sh, 0.8 + (sh.y - 440) / 330, sh.dir, sh.v > 0 && sh.pause <= 0, sh.t, false) }));
+      things.push({
+        y: mallPerson.y,
+        draw: () => drawShopperFigure(mallPerson.x, mallPerson.y, { look: ['#f2c9a0', '#d71920', '#26344a'], bag: mallBag.length > 0, kid: false }, 0.95 + (mallPerson.y - 440) / 330, mallPerson.dir, mallPerson.moving, mallPerson.stepT, false),
+      });
+      things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
+
+      // "tap the door" hint
+      const nd = mallNearDoor();
+      if (nd >= 0) {
+        const hx = mallDoorX(nd);
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+        roundedRect(hx - 70, 236, 140, 26, 13);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F6AA} Tap the door to go in', hx, 254);
+      }
+      ctx.restore();
+    }
+
+    function drawMallPlant(p) {
+      if (p.kind === 'palm') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, 22, 6, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#b86f3a';
+        ctx.fillRect(p.x - 14, p.y - 26, 28, 26);
+        ctx.fillStyle = '#8f5428';
+        ctx.fillRect(p.x - 14, p.y - 26, 28, 5);
+        ctx.strokeStyle = '#7a5a3a';
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - 26);
+        ctx.lineTo(p.x, p.y - 96);
+        ctx.stroke();
+        ctx.strokeStyle = '#2f8a46';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+        [-2.6, -2.1, -1.6, -1.1, -0.6].forEach((a) => {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y - 96);
+          ctx.quadraticCurveTo(p.x + Math.cos(a) * 24, p.y - 96 + Math.sin(a) * 20 - 6, p.x + Math.cos(a) * 40, p.y - 96 + Math.sin(a) * 6 + 24);
+          ctx.stroke();
+        });
+      } else if (p.kind === 'bench') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.fillRect(p.x - 34, p.y - 2, 68, 7);
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(p.x - 34, p.y - 22, 68, 6);
+        ctx.fillRect(p.x - 34, p.y - 38, 68, 6);
+        ctx.fillRect(p.x - 32, p.y - 16, 5, 16);
+        ctx.fillRect(p.x + 27, p.y - 16, 5, 16);
+      } else if (p.kind === 'kiosk') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, 40, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#4f6d8f';
+        ctx.fillRect(p.x - 34, p.y - 52, 68, 52);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(p.x - 28, p.y - 46, 56, 18);
+        ctx.fillStyle = '#4f6d8f';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('ℹ️ Info', p.x, p.y - 32);
+      } else if (p.kind === 'fountain') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y + 4, 82, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d9d2c6';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y, 76, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8ecae6';
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y - 3, 68, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d9d2c6';
+        ctx.fillRect(p.x - 7, p.y - 46, 14, 44);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 3;
+        for (let k = -2; k <= 2; k++) {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y - 46);
+          ctx.quadraticCurveTo(p.x + k * 14, p.y - 70 + Math.sin(mallTime2 / 8 + k) * 3, p.x + k * 26, p.y - 4);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawMallShop() {
+      const sh = mallShopsData[mallShop];
+      // the back wall and the floor
+      ctx.fillStyle = sh.wall;
+      ctx.fillRect(0, 0, W, 360);
+      ctx.fillStyle = sh.floor;
+      ctx.fillRect(0, 360, W, H - 360);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.lineWidth = 1.5;
+      for (let y = 370; y < H; y += 28) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
+      ctx.fillRect(0, 352, W, 10);
+      // ceiling lights
+      ctx.fillStyle = '#fffbe9';
+      for (let x = 50; x < W; x += 110) ctx.fillRect(x, 0, 60, 8);
+      ctx.fillStyle = 'rgba(255, 250, 220, 0.18)';
+      for (let x = 50; x < W; x += 110) {
+        ctx.beginPath();
+        ctx.moveTo(x, 8);
+        ctx.lineTo(x + 60, 8);
+        ctx.lineTo(x + 90, 330);
+        ctx.lineTo(x - 30, 330);
+        ctx.fill();
+      }
+      // the shop's sign
+      ctx.fillStyle = sh.colour;
+      roundedRect(110, 78, 180, 34, 8);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(sh.emoji + ' ' + sh.name, 200, 102);
+      // shelves along the wall, full of things
+      [150, 210, 270].forEach((sy, r) => {
+        ctx.fillStyle = '#8a6c4a';
+        ctx.fillRect(70, sy + 22, 330, 6);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillRect(70, sy + 28, 330, 4);
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#000000';
+        for (let k = 0; k < 9; k++) ctx.fillText(sh.items[(k + r) % 3][0], 82 + k * 36, sy + 20);
+      });
+      // the exit door on the left
+      ctx.fillStyle = '#5a5046';
+      ctx.fillRect(0, 170, 62, 240);
+      const exit = ctx.createLinearGradient(0, 180, 62, 180);
+      exit.addColorStop(0, '#fff6e0');
+      exit.addColorStop(1, '#d9f0ff');
+      ctx.fillStyle = exit;
+      ctx.fillRect(0, 178, 54, 232);
+      ctx.fillStyle = '#2a9d5f';
+      roundedRect(4, 146, 48, 22, 5);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('EXIT', 28, 162);
+      // the counter, the till and the shopkeeper
+      ctx.fillStyle = '#6b4a2e';
+      ctx.fillRect(296, 318, 104, 70);
+      ctx.fillStyle = '#8f6a45';
+      ctx.fillRect(296, 318, 104, 8);
+      ctx.fillStyle = '#3a3f46';
+      ctx.fillRect(330, 296, 30, 22);
+      ctx.fillStyle = '#9be7a0';
+      ctx.fillRect(334, 300, 22, 8);
+      const keeper = { look: ['#e0ac84', '#2a9d8f', '#3a3a4a'], bag: false, kid: false };
+      drawShopperFigure(372, 322, keeper, 0.95, -1, false, mallTime2, true);
+      // the things for sale on stands
+      const base = mallProducts.findIndex((p) => p.shop === mallShop);
+      for (let k = 0; k < 3; k++) {
+        const pr = mallProducts[base + k];
+        const x = mallShelfX[k];
+        const bought = mallDone[base + k];
+        const listed = mallList.includes(base + k);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+        ctx.beginPath();
+        ctx.ellipse(x, 442, 36, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d9d2c6';
+        ctx.fillRect(x - 30, 380, 60, 60);
+        ctx.fillStyle = '#b9b2a6';
+        ctx.fillRect(x - 30, 380, 60, 8);
+        ctx.globalAlpha = bought ? 0.25 : 1;
+        ctx.font = '38px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.fillText(pr.emoji, x, 376);
+        ctx.globalAlpha = 1;
+        // the price tag
+        ctx.fillStyle = bought ? '#52b788' : listed ? '#d62828' : '#ffffff';
+        roundedRect(x - 32, 400, 64, 28, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#2a2a3a';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = bought || listed ? '#ffffff' : '#2a2a3a';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(bought ? '\u2705 sold' : pr.name.length > 11 ? pr.name.slice(0, 11) : pr.name, x, 413);
+        ctx.fillText(bought ? '' : '\u{1F4B0} ' + pr.price, x, 425);
+        if (listed && !bought) {
+          ctx.fillStyle = '#d62828';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.fillText('★ on your list', x, 364);
+        }
+      }
+      // the people in the shop, and you
+      const things = [];
+      mallShopFolk.forEach((p) => things.push({ y: p.y, draw: () => drawShopperFigure(p.x, p.y, p, 0.9 + (p.y - 440) / 330, p.dir, p.v > 0 && p.pause <= 0, p.t, false) }));
+      things.push({
+        y: mallPerson.y,
+        draw: () => drawShopperFigure(mallPerson.x, mallPerson.y, { look: ['#f2c9a0', '#d71920', '#26344a'], bag: mallBag.length > 0, kid: false }, 0.95 + (mallPerson.y - 440) / 330, mallPerson.dir, mallPerson.moving, mallPerson.stepT, false),
+      });
+      things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
+      // "tap to buy" hint
+      const nk = mallNearShelf();
+      if (nk >= 0 && !mallDone[base + nk]) {
+        const pr = mallProducts[base + nk];
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.85)';
+        roundedRect(mallShelfX[nk] - 62, 330, 124, 24, 12);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Tap to buy ' + pr.emoji + ' \u{1F4B0}' + pr.price, mallShelfX[nk], 346);
+      }
+    }
+
+    function drawMall() {
+      ctx.clearRect(0, 0, W, H);
+      if (mallShop >= 0) drawMallShop();
+      else drawMallStreet();
+      drawMallHud();
     }
     mallBtn.addEventListener('click', () => {
       unlockAudio();
@@ -2125,7 +2703,7 @@
     const walkPress = (clientX, clientY) => {
       const p = canvasPos(clientX, clientY);
       if (mallMode) {
-        walkPointer = p;
+        mallPress(p);
         return;
       }
       if (p.x > W - 90 && p.y > H - 40 && p.y < H - 6) return finishWalk(true); // Skip
@@ -2180,7 +2758,8 @@
 
     window.addEventListener('keydown', (e) => {
       if (walkMode || mallMode) {
-        if (mallMode && (e.code === 'Enter' || e.code === 'Escape')) leaveMall();
+        if (mallMode && (e.code === 'Enter' || e.code === 'Space' || e.code === 'KeyE')) mallAction();
+        if (mallMode && e.code === 'Escape' && mallShop >= 0) mallLeaveShop();
         // walking to the tram: the arrow keys steer
         if (e.code === 'ArrowLeft' || e.code === 'KeyA') walkKeys.left = true;
         if (e.code === 'ArrowRight' || e.code === 'KeyD') walkKeys.right = true;
