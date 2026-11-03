@@ -3,20 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Train Dodge</title>
+    <title>Dubai Train Dodge</title>
   </head>
   <body>
 <style is:global>
   :root {
-    --bg: #f6fdff;
+    --bg: #fff8ec;
     --card: #ffffff;
     --ink: #1a2a33;
     --ink-soft: #4a6572;
-    --land: #a9b0b7;
+    --land: #e6d5ab;
     --city-dim: 0;
     --bed: #b8a88a;
     --water: #4aa3d8;
-    --accent: #e4572e;
+    --accent: #c8741a;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -24,7 +24,7 @@
       --card: #16262f;
       --ink: #eaf4f8;
       --ink-soft: #9fb6c0;
-      --land: #3b434b;
+      --land: #4a4332;
       --city-dim: 0.38;
       --bed: #7d7360;
       --water: #2a6a99;
@@ -37,7 +37,7 @@
     --card: #16262f;
     --ink: #eaf4f8;
     --ink-soft: #9fb6c0;
-    --land: #3b434b;
+    --land: #4a4332;
     --city-dim: 0.38;
     --bed: #7d7360;
     --water: #2a6a99;
@@ -68,6 +68,14 @@
     font-size: clamp(22px, 6vw, 30px);
     margin: 0;
     text-align: center;
+  }
+
+  .skyline {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    color: var(--ink-soft);
+    margin-block: -4px;
   }
 
   .sub {
@@ -219,7 +227,25 @@
 </style>
 
 <div class="wrap">
-  <h1>&#128644; Train Dodge</h1>
+  <h1>&#128644; Dubai Train Dodge</h1>
+  <svg class="skyline" viewBox="0 0 400 76" role="img" aria-label="The Dubai skyline: Burj Khalifa, Burj Al Arab and the Dubai Frame">
+    <g fill="currentColor" opacity="0.55">
+      <rect x="8" y="46" width="14" height="30"/><rect x="24" y="36" width="12" height="40"/>
+      <polygon points="54,76 56,48 60,40 63,26 65,10 66,2 67,10 69,26 72,40 76,48 78,76"/>
+      <rect x="86" y="40" width="16" height="36"/><rect x="104" y="52" width="12" height="24"/>
+      <rect x="168" y="44" width="12" height="32"/><rect x="182" y="30" width="10" height="46"/>
+      <rect x="296" y="42" width="14" height="34"/><rect x="312" y="30" width="10" height="46"/>
+      <rect x="324" y="50" width="14" height="26"/><rect x="342" y="38" width="12" height="38"/><rect x="358" y="46" width="14" height="30"/>
+    </g>
+    <g fill="currentColor" opacity="0.8">
+      <polygon points="196,76 198,50 201,42 203,28 205,14 206,4 207,0 208,4 209,14 211,28 213,42 216,50 218,76"/>
+      <path d="M236 76 Q236 36 252 12 L255 8 Q276 36 276 76 Z"/><rect x="254" y="0" width="2" height="12"/>
+    </g>
+    <g fill="#d4a72c">
+      <rect x="122" y="22" width="9" height="54"/><rect x="144" y="22" width="9" height="54"/><rect x="122" y="22" width="31" height="10"/>
+    </g>
+    <path d="M0 74 H400" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+  </svg>
   <p class="sub">Tap the left, middle or right side to switch tracks. You have two chances ❤️❤️ before the train derails. Dodge the rocks, barriers, oncoming trains and wandering cows, grab the gold and shields, and press Boost to zoom! Stop at the stations: passengers get off at their stop and new ones hop on. At Union, BurJuman, Business Bay or Creek get off the train and walk through the city to the tunnels at the end: there is one to every line (Red, Green, Blue, Tram and Monorail), so you pick where to go. At any station you can press "Get off & walk" if you like. At Dubai Marina the walk goes down the road to the Dubai Tram, and at the end of the tram, Palm Jumeirah, hop on the Palm Monorail to Atlantis. Reach level 20 to finish the journey. From level 9 to level 20 there are no obstacles at all!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
@@ -314,7 +340,7 @@
     const mphMax = 400;
 
     // Storm: from level 5 it rains, and now and then lightning strikes.
-    const stormLevel = 5;
+    const stormLevel = Infinity; // no rain or lightning in Dubai!
     let rainAmt = 0; // 0 = dry, 1 = full storm (fades in and out)
     let lightningIn = 200;
     let flash = 0;
@@ -3229,7 +3255,8 @@
 
     // The city rolling past: rooftops and parks beside the tracks, and a street
     // every now and then that the railway crosses over.
-    const roofColours = ['#c1ad95', '#9db4c9', '#cdbfa8', '#a4aeb8', '#d1a58b', '#93ab9f', '#bdbdbd', '#d8c9aa', '#b49bbf'];
+    // sandy stone, white and glass: the colours of Dubai's rooftops
+    const roofColours = ['#e4cfa3', '#d9b98a', '#f1e6cf', '#a9c7da', '#cfa86b', '#f5f0e6', '#b9cbd6', '#e8dcc0', '#c9a37a'];
     const cityColumns = [[0, 50], [110, 170], [230, 290], [350, 400]];
     const cityHash = (a, b) => (Math.imul(a + 7919, 73856093) ^ Math.imul(b + 104729, 19349663)) >>> 0;
 
@@ -3298,6 +3325,128 @@
       ctx.arc(px, py, 3, 0, Math.PI * 2);
       ctx.fillStyle = '#8d6e50';
       ctx.fill();
+    }
+
+    // Famous Dubai buildings seen from above, each with a long shadow.
+    function drawTower(x, y, w, h) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(x + 4, y + 4);
+      ctx.lineTo(x + w + 4, y + 4);
+      ctx.lineTo(x + w + 22, y + h + 24);
+      ctx.lineTo(x + 18, y + h + 24);
+      ctx.fill();
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, '#d6ecf8');
+      g.addColorStop(1, '#7fa9c4');
+      ctx.fillStyle = g;
+      ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+      ctx.strokeStyle = '#4f7b96';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillRect(x + 8, y + 8, w - 16, 5);
+      ctx.fillStyle = '#4f7b96';
+      ctx.fillRect(x + w / 2 - 6, y + h / 2 - 6, 12, 12);
+      ctx.beginPath();
+      ctx.arc(x + w / 2, y + h / 2, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+
+    // Burj Khalifa: three petals round a tall spire
+    function drawBurj(x, y, w, h) {
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const r = Math.min(w, h) * 0.24;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, cy);
+      ctx.lineTo(cx + 6, cy);
+      ctx.lineTo(cx + 40, cy + 72);
+      ctx.lineTo(cx + 26, cy + 76);
+      ctx.fill();
+      ctx.fillStyle = '#e9eef2';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      [90, 210, 330].forEach((deg) => {
+        const a = (deg * Math.PI) / 180;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * r * 1.05, cy - Math.sin(a) * r * 1.05, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#b7c3cd';
+        ctx.fill();
+        ctx.strokeStyle = '#7d8c99';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
+      ctx.fillStyle = '#8a99a6';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#5a6874';
+      ctx.fillText('BURJ', cx, y + h - 4);
+    }
+
+    // A mosque: a gold dome, a green courtyard and four minarets
+    function drawMosque(x, y, w, h) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.fillRect(x + 4, y + 4, w, h);
+      ctx.fillStyle = '#f1e6cf';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#a8895a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      ctx.fillStyle = '#4f9d6f';
+      ctx.fillRect(x + 6, y + 6, w - 12, h - 12);
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.min(w, h) * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = '#e8c75a';
+      ctx.fill();
+      ctx.strokeStyle = '#a8861c';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.min(w, h) * 0.12, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff3b0';
+      ctx.fill();
+      [[x + 5, y + 5], [x + w - 5, y + 5], [x + 5, y + h - 5], [x + w - 5, y + h - 5]].forEach(([mx, my]) => {
+        ctx.beginPath();
+        ctx.arc(mx, my, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#a8895a';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+    }
+
+    // The Dubai Frame: two towers joined by a golden bridge at the top
+    function drawFrame(x, y, w, h) {
+      ctx.fillStyle = '#e9dfc4';
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.fillRect(x + 10, y + 8, 10, h - 14);
+      ctx.fillRect(x + w - 18, y + 8, 10, h - 14);
+      ctx.fillRect(x + 10, y + 8, w - 18, 10);
+      ctx.fillStyle = '#d4a72c';
+      ctx.fillRect(x + 6, y + 4, 10, h - 12);
+      ctx.fillRect(x + w - 16, y + 4, 10, h - 12);
+      ctx.fillRect(x + 6, y + 4, w - 12, 10);
+      ctx.fillStyle = '#fff0b0';
+      ctx.fillRect(x + 8, y + 5, 3, h - 14);
+      ctx.fillRect(x + w - 14, y + 5, 3, h - 14);
+      ctx.fillStyle = '#7d9b6a';
+      ctx.fillRect(x + 20, y + 20, w - 40, h - 30);
     }
 
     function drawPark(x, y, w, h, hv) {
@@ -3412,7 +3561,12 @@
           const inset = (hv >>> 12) % 4;
           const x = x0 + 2 + inset;
           const w = x1 - x0 - 4 - inset - ((hv >>> 14) % 3);
+          const lm = (hv >>> 9) % 40; // now and then a famous Dubai building
           if ((hv >>> 3) % 7 === 0) drawPark(x - 1, y, w + 2, h, hv);
+          else if (lm < 3 && w >= 40) drawTower(x, y, w, h);
+          else if (lm === 3 && w >= 44) drawBurj(x, y, w, h);
+          else if (lm === 4 && w >= 40) drawMosque(x, y, w, h);
+          else if (lm === 5 && w >= 40) drawFrame(x, y, w, h);
           else drawRoof(x, y, w, h, hv >>> 2);
         }
       });
