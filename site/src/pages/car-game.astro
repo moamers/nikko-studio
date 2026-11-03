@@ -3,767 +3,2127 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Car Game</title>
+    <title>Car Dodge Dubai</title>
   </head>
   <body>
-    <h1>🏎️ Car Game</h1>
-    <p>Drag your finger (or mouse) left and right to steer! Grab the gold coins and the blue shield.</p>
-    <canvas id="game" width="400" height="600"></canvas>
-    <p id="score">Score: 0</p>
-    <p id="level">Level: 1</p>
+<style is:global>
+  :root {
+    --bg: #fff8ec;
+    --card: #ffffff;
+    --ink: #2a2118;
+    --ink-soft: #6b5a48;
+    --road: #555a60;
+    --sand: #e6d5ab;
+    --accent: #c8741a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1c1612;
+      --card: #2a2019;
+      --ink: #f6ece4;
+      --ink-soft: #c2ad9e;
+      --road: #3a3d42;
+      --sand: #6d6144;
+      --accent: #ffb84d;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1c1612;
+    --card: #2a2019;
+    --ink: #f6ece4;
+    --ink-soft: #c2ad9e;
+    --road: #3a3d42;
+    --sand: #6d6144;
+    --accent: #ffb84d;
+    color-scheme: dark;
+  }
 
-    <div class="boost-row">
-      <button id="boostBtn">🚀 BOOST</button>
-      <div class="boost-bar">
-        <div id="boostFill" class="boost-fill"></div>
-      </div>
-    </div>
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    justify-content: center;
+    padding-inline: 16px;
+  }
 
-    <style>
-      body {
-        font-family: sans-serif;
-        text-align: center;
-        background: #f6fdff;
-      }
-      canvas {
-        background: #555555;
-        border: 4px solid #333;
-        border-radius: 8px;
-        touch-action: none;
-      }
-      #score {
-        font-size: 24px;
-        font-weight: bold;
-      }
-      #level {
-        font-size: 16px;
-        color: #4a6572;
-        margin-top: -8px;
-      }
-      .boost-row {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 10px;
-        margin-top: 12px;
-      }
-      #boostBtn {
-        font-size: 16px;
-        font-weight: bold;
-        padding: 10px 18px;
-        border: 3px solid #8c1a1a;
-        border-radius: 999px;
-        background: #ff6b4a;
-        color: white;
-        cursor: pointer;
-        touch-action: none;
-        user-select: none;
-      }
-      #boostBtn:active {
-        background: #e63946;
-      }
-      .boost-bar {
-        width: 110px;
-        height: 14px;
-        background: #ddd;
-        border: 2px solid #333;
-        border-radius: 999px;
-        overflow: hidden;
-      }
-      .boost-fill {
-        height: 100%;
-        width: 100%;
-        background: #ffd400;
-        transition: width 80ms linear;
-      }
-    </style>
+  .wrap {
+    width: 100%;
+    max-width: 440px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding-block: 24px;
+  }
 
-    <script>
-      const canvas = document.getElementById('game');
-      const ctx = canvas.getContext('2d');
-      const scoreEl = document.getElementById('score');
-      const levelEl = document.getElementById('level');
-      const boostBtn = document.getElementById('boostBtn');
-      const boostFill = document.getElementById('boostFill');
-      const pointsPerLevel = 5;
+  h1 {
+    font-size: clamp(22px, 6vw, 30px);
+    margin: 0;
+    text-align: center;
+  }
 
-      const roadLeft = 60;
-      const roadRight = canvas.width - 60;
+  .skyline {
+    width: 100%;
+    max-width: 400px;
+    height: auto;
+    color: var(--ink-soft);
+    margin-block: -4px;
+  }
 
-      const carStartY = canvas.height - 130;
-      const car = { x: canvas.width / 2, y: carStartY, w: 36, h: 60 };
-      const carColor = '#d62828'; // red
-      const carOutline = '#8c1a1a';
+  .sub {
+    color: var(--ink-soft);
+    margin: 0;
+    text-align: center;
+    font-size: 14px;
+  }
 
-      // A synthesized police siren — no audio file needed. Created lazily on
-      // the first tap/click/key so the browser's autoplay rules allow it.
-      let audioCtx = null;
-      let sirenOsc = null;
-      let sirenGain = null;
+  .stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2 / 3;
+    max-height: 70vh;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.15);
+  }
 
-      function ensureAudio() {
-        // Never let anything here throw — a sound failure must not be able
-        // to block the game from starting.
-        try {
-          if (audioCtx) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            return;
-          }
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-          sirenOsc = audioCtx.createOscillator();
-          sirenGain = audioCtx.createGain();
-          sirenOsc.type = 'sine';
-          sirenGain.gain.value = 0;
-          sirenOsc.connect(sirenGain).connect(audioCtx.destination);
-          sirenOsc.start();
-        } catch (e) {}
-      }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 14px;
+    background: var(--sand);
+    touch-action: none;
+  }
 
-      function policeWarning() {
-        return !police && !gameOver && !crashing && slowTimer > slowThreshold - policeWarnFrames;
-      }
+  .score {
+    font-size: 20px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    margin: 0;
+  }
 
-      function updateSiren() {
-        if (!audioCtx) return;
-        const wailing = !gameOver && (!!police || policeWarning());
-        const targetVol = wailing ? 0.05 : 0;
-        sirenGain.gain.linearRampToValueAtTime(targetVol, audioCtx.currentTime + 0.15);
-        if (wailing) {
-          sirenOsc.frequency.setValueAtTime(650 + Math.sin(frameCount / 15) * 150, audioCtx.currentTime);
-        }
-      }
+  .best {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0;
+  }
 
-      let targetX = car.x;
-      let keys = { left: false, right: false };
-      const moveSpeed = 15; // how fast arrow keys move the car
-      const followSpeed = 0.5; // how smoothly the car chases the pointer
+  .level {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 0;
+  }
 
-      let traffic = []; // the other cars coming down the road
-      let coins = []; // gold coins you can collect for bonus points
-      let laneLines = [];
-      let score = 0;
-      let level = 1;
-      let levelFlash = 0; // frames left to show the "Level up!" banner
-      let gameOver = false;
+  .boost-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
 
-      // Boost: hold the button (or Shift) to speed everything up for a
-      // moment. Draining/refilling an energy bar keeps it a choice, not a
-      // free always-on speed.
-      let boosting = false;
-      let boostEnergy = 100;
-      const boostDrain = 1.3;
-      const boostRegen = 0.5;
-      const boostMultiplier = 2.8;
+  #boostBtn {
+    font-size: 15px;
+    font-weight: bold;
+    padding: 9px 16px;
+    border: 3px solid #8c1a1a;
+    border-radius: 999px;
+    background: #ff6b4a;
+    color: white;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+  }
 
-      let coinSpawnIn = 90;
+  #boostBtn:active {
+    background: #e63946;
+  }
 
-      // Shield power-up: grab the blue shield to survive one crash or arrest.
-      let shields = [];
-      let shieldOn = false;
-      let shieldSpawnIn = 450;
-      let shieldFlash = 0; // frames left of the "Shield saved you!" pop
-      let invuln = 0; // brief protection right after the shield pops
+  .boost-bar {
+    width: 100px;
+    height: 13px;
+    background: #ddd;
+    border: 2px solid #333;
+    border-radius: 999px;
+    overflow: hidden;
+  }
 
-      // A police car waits behind you. Coast too long without boosting and
-      // it starts closing in; boost to pull away and lose it.
-      let police = null;
-      let slowTimer = 0;
-      let busted = false;
-      const slowThreshold = 300; // ~5s of not boosting before it appears
-      const policeApproach = 0.75; // how fast it creeps up while you coast (slow, so you see it coming)
-      const policeWarnFrames = 150; // ~2.5s of flashing warning before it appears
-      const policeRetreat = 6.5; // how fast it falls back while you boost
+  .boost-fill {
+    height: 100%;
+    width: 100%;
+    background: #ffd400;
+    transition: width 80ms linear;
+  }
 
-      // Crash: the car spins out and swings off the nearest edge of the
-      // bridge into the sea, with a splash where it goes in.
-      let crashing = false;
-      let crashTimer = 0;
-      const crashDuration = 50;
-      let crashAngle = 0;
-      let crashSpin = 1;
-      let crashStartX = 0;
-      let crashStartY = 0;
-      let crashTargetX = 0;
-      let crashTargetY = 0;
-      let splashed = false;
-      let splashes = []; // expanding ripple rings where the car hit the water
-      let frameCount = 0;
-      let lastTime = null; // so game speed does not depend on the screen refresh rate
+  /* the big button for getting out of the car, back in, or out of the mall */
+  #actBtn {
+    width: 100%;
+    font-size: 24px;
+    font-weight: 800;
+    padding: 18px 20px;
+    border: 3px solid #0b6b3a;
+    border-radius: 999px;
+    background: #1fbf6a;
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(31, 191, 106, 0.45);
+    animation: actPulse 1.1s ease-in-out infinite;
+  }
 
-      function startCrash() {
-        if (crashing || gameOver) return;
-        crashing = true;
-        crashTimer = crashDuration;
-        crashAngle = 0;
-        splashed = false;
+  #actBtn[hidden] {
+    display: none;
+  }
 
-        const roadMid = (roadLeft + roadRight) / 2;
-        const direction = car.x < roadMid ? -1 : 1;
-        crashSpin = direction;
-        crashStartX = car.x;
-        crashStartY = car.y;
-        crashTargetX = direction < 0 ? roadLeft - 34 : roadRight + 34; // whole car fits in the water strip
-        crashTargetY = car.y + 50;
-      }
+  @keyframes actPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.03); }
+  }
 
-      function easeOut(t) {
-        return t * t * (3 - 2 * t); // smoothstep
-      }
+  @media (prefers-reduced-motion: reduce) {
+    #actBtn { animation: none; }
+  }
+</style>
 
-      function levelFor(s) {
-        return Math.floor(s / pointsPerLevel) + 1;
-      }
+<div class="wrap">
+  <h1>&#127950;&#65039; Car Dodge Dubai</h1>
+  <svg class="skyline" viewBox="0 0 400 76" role="img" aria-label="The Dubai skyline: Burj Khalifa, Burj Al Arab and the Dubai Frame">
+    <g fill="currentColor" opacity="0.55">
+      <rect x="8" y="46" width="14" height="30"/><rect x="24" y="36" width="12" height="40"/>
+      <polygon points="54,76 56,48 60,40 63,26 65,10 66,2 67,10 69,26 72,40 76,48 78,76"/>
+      <rect x="86" y="40" width="16" height="36"/><rect x="104" y="52" width="12" height="24"/>
+      <rect x="168" y="44" width="12" height="32"/><rect x="182" y="30" width="10" height="46"/>
+      <rect x="296" y="42" width="14" height="34"/><rect x="312" y="30" width="10" height="46"/>
+      <rect x="324" y="50" width="14" height="26"/><rect x="342" y="38" width="12" height="38"/><rect x="358" y="46" width="14" height="30"/>
+    </g>
+    <g fill="currentColor" opacity="0.8">
+      <polygon points="196,76 198,50 201,42 203,28 205,14 206,4 207,0 208,4 209,14 211,28 213,42 216,50 218,76"/>
+      <path d="M236 76 Q236 36 252 12 L255 8 Q276 36 276 76 Z"/><rect x="254" y="0" width="2" height="12"/>
+    </g>
+    <g fill="#d4a72c">
+      <rect x="122" y="22" width="9" height="54"/><rect x="144" y="22" width="9" height="54"/><rect x="122" y="22" width="31" height="10"/>
+    </g>
+    <path d="M0 74 H400" stroke="currentColor" stroke-width="2" opacity="0.5"/>
+  </svg>
+  <p class="sub">Drive from your home in Dubai to the malls. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost to lose the police! When you arrive, park the car, get out and walk to the mall.</p>
+  <p class="score" id="score">Score: 0</p>
+  <p class="level" id="level">Level 1</p>
+  <p class="best" id="best">Best: 0</p>
+  <div class="stage">
+    <canvas id="game" width="400" height="600" aria-label="Car dodge game in Dubai"></canvas>
+  </div>
+  <button id="actBtn" type="button" hidden>&#128682; Get out of the car</button>
+  <div class="boost-row">
+    <button id="boostBtn">&#128640; BOOST</button>
+    <div class="boost-bar"><div id="boostFill" class="boost-fill"></div></div>
+  </div>
+</div>
 
-      function spawnTraffic() {
-        const w = 36;
-        const h = 56;
-        const x = roadLeft + 20 + Math.random() * (roadRight - roadLeft - 40 - w) + w / 2;
-        const colors = ['#6a4c93', '#ffb703', '#2a9d8f', '#f4a261'];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        traffic.push({ x, y: -60, w, h, color, passed: false });
-      }
+<script is:inline>
+  (function () {
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+    const levelEl = document.getElementById('level');
+    const boostBtn = document.getElementById('boostBtn');
+    const boostFill = document.getElementById('boostFill');
+    const actBtn = document.getElementById('actBtn');
+    const pointsPerLevel = 5;
 
-      function spawnShield() {
-        const x = roadLeft + 24 + Math.random() * (roadRight - roadLeft - 48);
-        shields.push({ x, y: -30, r: 15 });
-      }
+    const W = canvas.width;
+    const H = canvas.height;
 
-      function spawnCoin() {
-        const x = roadLeft + 24 + Math.random() * (roadRight - roadLeft - 48);
-        coins.push({ x, y: -30, r: 12 });
-      }
+    const roadLeft = 60;
+    const roadRight = W - 60;
 
-      function baseSpeed() {
-        // Starts slow at level 1, a clear step up with each level.
-        return Math.min(15, 4.6 + (level - 1) * 1.5);
-      }
+    const carStartY = H - 130;
+    const car = { x: W / 2, y: carStartY, w: 36, h: 60 };
+    const carColor = '#d62828'; // red
+    const carOutline = '#8c1a1a';
 
-      function worldSpeed() {
-        return boosting && boostEnergy > 0 ? baseSpeed() * boostMultiplier : baseSpeed();
-      }
+    function roundedRect(x, y, w, h, r) {
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.arcTo(x + w, y, x + w, y + h, r);
+      ctx.arcTo(x + w, y + h, x, y + h, r);
+      ctx.arcTo(x, y + h, x, y, r);
+      ctx.arcTo(x, y, x + w, y, r);
+      ctx.closePath();
+    }
 
-      function spawnGap() {
-        // The road gets busier each level — new cars arrive sooner.
-        return Math.max(105, 225 - (level - 1) * 15);
-      }
-
-      function spawnLaneLines() {
-        laneLines = [];
-        for (let i = 0; i < 8; i++) {
-          laneLines.push({ y: i * 80 });
-        }
-      }
-
-      function resetGame() {
-        car.x = canvas.width / 2;
-        car.y = carStartY; // the crash swing moves the car, so put it back
-        targetX = car.x;
-        traffic = [];
-        coins = [];
-        score = 0;
-        level = 1;
-        levelFlash = 0;
-        gameOver = false;
-        boosting = false;
-        boostEnergy = 100;
-        coinSpawnIn = 90;
-        police = null;
-        slowTimer = 0;
-        busted = false;
-        crashing = false;
-        crashTimer = 0;
-        crashAngle = 0;
-        splashed = false;
-        splashes = [];
-        shields = [];
-        shieldOn = false;
-        shieldSpawnIn = 450 + Math.random() * 300;
-        shieldFlash = 0;
-        invuln = 0;
-        if (audioCtx) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
-        spawnTraffic();
-        spawnLaneLines();
-        levelEl.textContent = 'Level: 1';
-      }
-
-      function pointerToX(clientX) {
-        const rect = canvas.getBoundingClientRect();
-        return ((clientX - rect.left) / rect.width) * canvas.width;
-      }
-
-      canvas.addEventListener('mousedown', (e) => {
-        ensureAudio();
-        if (gameOver) resetGame();
-        targetX = pointerToX(e.clientX);
-      });
-      canvas.addEventListener('mousemove', (e) => {
-        targetX = pointerToX(e.clientX);
-      });
-      canvas.addEventListener(
-        'touchstart',
-        (e) => {
-          ensureAudio();
-          if (gameOver) resetGame();
-          targetX = pointerToX(e.touches[0].clientX);
-        },
-        { passive: true }
-      );
-      canvas.addEventListener(
-        'touchmove',
-        (e) => {
-          targetX = pointerToX(e.touches[0].clientX);
-        },
-        { passive: true }
-      );
-
-      function startBoost(e) {
-        e.preventDefault();
-        ensureAudio();
-        boosting = true;
-      }
-      function stopBoost() {
-        boosting = false;
-      }
-      boostBtn.addEventListener('mousedown', startBoost);
-      boostBtn.addEventListener('touchstart', startBoost, { passive: false });
-      boostBtn.addEventListener('mouseup', stopBoost);
-      boostBtn.addEventListener('mouseleave', stopBoost);
-      boostBtn.addEventListener('touchend', stopBoost);
-      boostBtn.addEventListener('touchcancel', stopBoost);
-
-      window.addEventListener('keydown', (e) => {
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
-        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
-        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = true;
-        if (e.code === 'Space' && gameOver) resetGame();
-      });
-      window.addEventListener('keyup', (e) => {
-        if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
-        if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
-        if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = false;
-      });
-
-      function update() {
-        const now = performance.now();
-        let step = lastTime === null ? 1 : (now - lastTime) / (1000 / 60);
-        lastTime = now;
-        step = Math.min(Math.max(step, 0.2), 3); // same game speed on 60Hz and 120Hz screens
-        frameCount += step;
-
-        if (crashing) {
-          crashTimer -= step;
-          const t = easeOut(Math.min(1, Math.max(0, 1 - crashTimer / crashDuration)));
-          car.x = crashStartX + (crashTargetX - crashStartX) * t;
-          car.y = crashStartY + (crashTargetY - crashStartY) * t;
-          crashAngle = crashSpin * Math.PI * 4 * t; // two full spins, finishing upright
-
-          if (!splashed && (car.x < roadLeft || car.x > roadRight)) {
-            splashed = true;
-            splashes.push({ x: car.x, y: car.y, age: 0 });
-          }
-
-          splashes.forEach((s) => (s.age += step));
-          splashes = splashes.filter((s) => s.age < 26);
-
-          if (crashTimer <= 0) {
-            crashing = false;
-            gameOver = true;
-            if (audioCtx) sirenGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
-          }
-          return; // freeze traffic, coins and the police car while spinning out
-        }
-
-        if (gameOver) {
-          boosting = false;
-          return;
-        }
-
-        if (keys.left) targetX -= moveSpeed * step;
-        if (keys.right) targetX += moveSpeed * step;
-        targetX = Math.max(roadLeft + car.w / 2, Math.min(roadRight - car.w / 2, targetX));
-
-        car.x += (targetX - car.x) * (1 - Math.pow(1 - followSpeed, step));
-
-        if (boosting && boostEnergy > 0) {
-          boostEnergy = Math.max(0, boostEnergy - boostDrain * step);
-        } else {
-          boosting = false;
-          boostEnergy = Math.min(100, boostEnergy + boostRegen * step);
-        }
-        boostFill.style.width = boostEnergy + '%';
-
-        const speed = worldSpeed();
-        const dist = speed * step;
-
-        laneLines.forEach((line) => {
-          line.y += dist;
-          if (line.y > ctx.canvas.height) line.y -= 8 * 80;
-        });
-
-        traffic.forEach((other) => {
-          other.y += dist;
-
-          if (
-            Math.abs(car.x - other.x) < (car.w + other.w) / 2 - 6 &&
-            Math.abs(car.y - other.y) < (car.h + other.h) / 2 - 6
-          ) {
-            if (invuln > 0) {
-              // still protected for a moment after the shield popped
-            } else if (shieldOn) {
-              shieldOn = false;
-              invuln = 45;
-              shieldFlash = 60;
-              other.passed = true;
-              other.y = ctx.canvas.height + 200; // the car you bumped is swept aside
-            } else {
-              startCrash();
-            }
-          }
-
-          if (!other.passed && other.y > car.y + car.h) {
-            other.passed = true;
-            score++;
-
-            const newLevel = levelFor(score);
-            if (newLevel > level) {
-              level = newLevel;
-              levelEl.textContent = 'Level: ' + level;
-              levelFlash = 90; // ~1.5s
-            }
-          }
-        });
-
-        traffic = traffic.filter((other) => other.y < ctx.canvas.height + 80);
-
-        if (traffic.length === 0 || traffic[traffic.length - 1].y > spawnGap()) {
-          spawnTraffic();
-        }
-
-        coins.forEach((coin) => {
-          coin.y += dist;
-
-          const dx = car.x - coin.x;
-          const dy = car.y - coin.y;
-          if (Math.sqrt(dx * dx + dy * dy) < coin.r + Math.min(car.w, car.h) / 2) {
-            coin.collected = true;
-            score += 3;
-          }
-        });
-        coins = coins.filter((coin) => !coin.collected && coin.y < ctx.canvas.height + 40);
-
-        coinSpawnIn -= step;
-        if (coinSpawnIn <= 0) {
-          spawnCoin();
-          coinSpawnIn = 110 + Math.random() * 90;
-        }
-
-        shields.forEach((sh) => {
-          sh.y += dist;
-          const dx = car.x - sh.x;
-          const dy = car.y - sh.y;
-          if (Math.sqrt(dx * dx + dy * dy) < sh.r + Math.min(car.w, car.h) / 2) {
-            sh.collected = true;
-            shieldOn = true;
-          }
-        });
-        shields = shields.filter((sh) => !sh.collected && sh.y < ctx.canvas.height + 40);
-
-        if (!shieldOn && shields.length === 0) {
-          shieldSpawnIn -= step;
-          if (shieldSpawnIn <= 0) {
-            spawnShield();
-            shieldSpawnIn = 500 + Math.random() * 400;
-          }
-        }
-
-        // The police car. Coasting too long (not boosting) first triggers a
-        // flashing warning, then the police appears in the OTHER lane, well back
-        // and off-screen, and creeps up. It has to line up with you to bust you.
-        if (boosting) {
-          slowTimer = 0;
-        } else {
-          slowTimer += step;
-        }
-
-        if (!police && slowTimer >= slowThreshold) {
-          const laneX = car.x < (roadLeft + roadRight) / 2 ? roadRight - 55 : roadLeft + 55;
-          police = { x: laneX, y: ctx.canvas.height + 60 };
-        }
-
-        if (police) {
-          police.y += (boosting ? policeRetreat : -policeApproach) * step;
-          // stays in its own lane until it is on screen, then drifts toward yours
-    if (police.y < ctx.canvas.height) police.x += (car.x - police.x) * (1 - Math.pow(1 - 0.015, step));
-
-          const caught = police.y - car.y < 14;
-          if (caught && Math.abs(police.x - car.x) < 34) {
-            if (shieldOn) {
-              shieldOn = false;
-              invuln = 45;
-              shieldFlash = 60;
-              police = null;
-              slowTimer = 0;
-            } else {
-              busted = true;
-              startCrash();
-            }
-          } else if (caught) {
-            police.y = car.y + 14; // right beside you, sliding into your lane
-          } else if (police.y > ctx.canvas.height + 140) {
-            police = null;
-            slowTimer = 0;
-          }
-        }
-
-        levelFlash = Math.max(0, levelFlash - step);
-        shieldFlash = Math.max(0, shieldFlash - step);
-        invuln = Math.max(0, invuln - step);
-
-        updateSiren();
-
-        scoreEl.textContent = 'Score: ' + score;
-      }
-
-      function drawCar(x, y, w, h, color, outline) {
-        const r = 8;
-        ctx.fillStyle = color;
+    // ---------- Dubai buildings seen from above ----------
+    const cityHash = (a, b) => (Math.imul(a + 7919, 73856093) ^ Math.imul(b + 104729, 19349663)) >>> 0;
+    const roofColours = ['#e4cfa3', '#d9b98a', '#f1e6cf', '#a9c7da', '#cfa86b', '#f5f0e6', '#b9cbd6', '#e8dcc0', '#c9a37a'];
+    function drawRoof(x, y, w, h, hv) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.fillRect(x + 4, y + 4, w, h); // shadow
+      ctx.fillStyle = roofColours[hv % roofColours.length];
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+      ctx.fillRect(x + 2, y + 2, w - 4, 3); // sunny edge
+      const kind = (hv >>> 4) % 6;
+      if (kind === 0) {
+        // air-con boxes
+        ctx.fillStyle = '#7e868e';
+        ctx.fillRect(x + 6, y + 8, 12, 9);
+        ctx.fillRect(x + w - 18, y + h - 17, 12, 9);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        ctx.fillRect(x + 8, y + 10, 8, 5);
+      } else if (kind === 1 && w >= 50) {
+        // helipad
         ctx.beginPath();
-        ctx.moveTo(x - w / 2 + r, y - h / 2);
-        ctx.arcTo(x + w / 2, y - h / 2, x + w / 2, y - h / 2 + r, r);
-        ctx.lineTo(x + w / 2, y + h / 2 - r);
-        ctx.arcTo(x + w / 2, y + h / 2, x + w / 2 - r, y + h / 2, r);
-        ctx.lineTo(x - w / 2 + r, y + h / 2);
-        ctx.arcTo(x - w / 2, y + h / 2, x - w / 2, y + h / 2 - r, r);
-        ctx.lineTo(x - w / 2, y - h / 2 + r);
-        ctx.arcTo(x - w / 2, y - h / 2, x - w / 2 + r, y - h / 2, r);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = outline;
-        ctx.lineWidth = 2;
+        ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) * 0.32, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 2.5;
         ctx.stroke();
-
-        // A little windshield so cars read as cars, not just boxes.
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        ctx.fillRect(x - w / 2 + 6, y - h / 2 + 10, w - 12, h / 3);
-      }
-
-      function drawPoliceCar(x, y, w, h) {
-        drawCar(x, y, w, h, '#f2ecdf', '#222');
-
-        // Black door stripe.
-        ctx.fillStyle = '#222';
-        ctx.fillRect(x - w / 2, y - 6, w, 10);
-
-        // Flashing red/blue light bar on the roof.
-        const litRed = Math.floor(frameCount / 8) % 2 === 0;
-        ctx.fillStyle = litRed ? '#ff3b30' : '#2b45f0';
-        ctx.fillRect(x - 10, y - h / 2 - 8, 20, 7);
-      }
-
-      function drawPoliceGlow() {
-        const cw = ctx.canvas.width;
-        const ch = ctx.canvas.height;
-        const red = Math.floor(frameCount / 8) % 2 === 0;
-        const g = ctx.createLinearGradient(0, ch, 0, ch - 90);
-        g.addColorStop(0, red ? 'rgba(255, 59, 48, 0.75)' : 'rgba(43, 69, 240, 0.75)');
-        g.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = g;
-        ctx.fillRect(0, ch - 90, cw, 90);
-      }
-
-      function drawShieldPickup(x, y, r) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('H', x + w / 2, y + h / 2 + 5);
+      } else if (kind === 2) {
+        // skylight
+        ctx.fillStyle = 'rgba(190, 230, 255, 0.7)';
+        ctx.fillRect(x + w / 2 - 9, y + h / 2 - 7, 18, 14);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x + w / 2 - 9, y + h / 2 - 7, 18, 14);
+      } else if (kind === 3) {
+        // water tank
         ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = '#29c5f6';
+        ctx.arc(x + w / 2, y + h / 2, 9, 0, Math.PI * 2);
+        ctx.fillStyle = '#8d6e50';
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 2;
-        ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(x, y - 8);
-        ctx.lineTo(x + 7, y - 5);
-        ctx.lineTo(x + 6, y + 2);
-        ctx.quadraticCurveTo(x + 5, y + 8, x, y + 10);
-        ctx.quadraticCurveTo(x - 5, y + 8, x - 6, y + 2);
-        ctx.lineTo(x - 7, y - 5);
-        ctx.closePath();
+        ctx.arc(x + w / 2 - 2, y + h / 2 - 2, 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fill();
+      }
+    }
+
+    function drawPalm(px, py) {
+      ctx.strokeStyle = '#2f8a46';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < 7; i++) {
+        const a = (i / 7) * Math.PI * 2 + 0.3;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.quadraticCurveTo(px + Math.cos(a) * 7, py + Math.sin(a) * 7 - 1, px + Math.cos(a) * 12, py + Math.sin(a) * 12 + 2);
+        ctx.stroke();
+      }
+      ctx.lineCap = 'butt';
+      ctx.beginPath();
+      ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#8d6e50';
+      ctx.fill();
+    }
+
+    function drawPark(x, y, w, h, hv) {
+      ctx.fillStyle = '#6fbf73';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      for (let i = 0; i < 2; i++) {
+        const tx = x + 14 + ((hv >>> (i * 3)) % Math.max(10, w - 28));
+        const ty = y + 14 + ((hv >>> (i * 3 + 1)) % Math.max(10, h - 28));
+        drawPalm(tx, ty);
+      }
+    }
+
+    function drawTower(x, y, w, h) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(x + 4, y + 4);
+      ctx.lineTo(x + w + 4, y + 4);
+      ctx.lineTo(x + w + 22, y + h + 24);
+      ctx.lineTo(x + 18, y + h + 24);
+      ctx.fill();
+      const g = ctx.createLinearGradient(x, y, x + w, y + h);
+      g.addColorStop(0, '#d6ecf8');
+      g.addColorStop(1, '#7fa9c4');
+      ctx.fillStyle = g;
+      ctx.fillRect(x + 3, y + 3, w - 6, h - 6);
+      ctx.strokeStyle = '#4f7b96';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x + 3, y + 3, w - 6, h - 6);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillRect(x + 8, y + 8, w - 16, 5);
+      ctx.fillStyle = '#4f7b96';
+      ctx.fillRect(x + w / 2 - 6, y + h / 2 - 6, 12, 12);
+      ctx.beginPath();
+      ctx.arc(x + w / 2, y + h / 2, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+
+    function drawBurj(x, y, w, h) {
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      const r = Math.min(w, h) * 0.24;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.beginPath();
+      ctx.moveTo(cx - 6, cy);
+      ctx.lineTo(cx + 6, cy);
+      ctx.lineTo(cx + 40, cy + 72);
+      ctx.lineTo(cx + 26, cy + 76);
+      ctx.fill();
+      ctx.fillStyle = '#e9eef2';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      [90, 210, 330].forEach((deg) => {
+        const a = (deg * Math.PI) / 180;
+        ctx.beginPath();
+        ctx.arc(cx + Math.cos(a) * r * 1.05, cy - Math.sin(a) * r * 1.05, r, 0, Math.PI * 2);
+        ctx.fillStyle = '#b7c3cd';
+        ctx.fill();
+        ctx.strokeStyle = '#7d8c99';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
+      ctx.fillStyle = '#8a99a6';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#5a6874';
+      ctx.fillText('BURJ', cx, y + h - 4);
+    }
+
+    function drawMosque(x, y, w, h) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.fillRect(x + 4, y + 4, w, h);
+      ctx.fillStyle = '#f1e6cf';
+      ctx.fillRect(x, y, w, h);
+      ctx.strokeStyle = '#a8895a';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+      ctx.fillStyle = '#4f9d6f';
+      ctx.fillRect(x + 6, y + 6, w - 12, h - 12);
+      const cx = x + w / 2;
+      const cy = y + h / 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.min(w, h) * 0.28, 0, Math.PI * 2);
+      ctx.fillStyle = '#e8c75a';
+      ctx.fill();
+      ctx.strokeStyle = '#a8861c';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(cx, cy, Math.min(w, h) * 0.12, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff3b0';
+      ctx.fill();
+      [[x + 5, y + 5], [x + w - 5, y + 5], [x + 5, y + h - 5], [x + w - 5, y + h - 5]].forEach(([mx, my]) => {
+        ctx.beginPath();
+        ctx.arc(mx, my, 4, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
+        ctx.strokeStyle = '#a8895a';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+    }
+
+    function drawFrame(x, y, w, h) {
+      ctx.fillStyle = '#e9dfc4';
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      ctx.fillRect(x + 10, y + 8, 10, h - 14);
+      ctx.fillRect(x + w - 18, y + 8, 10, h - 14);
+      ctx.fillRect(x + 10, y + 8, w - 18, 10);
+      ctx.fillStyle = '#d4a72c';
+      ctx.fillRect(x + 6, y + 4, 10, h - 12);
+      ctx.fillRect(x + w - 16, y + 4, 10, h - 12);
+      ctx.fillRect(x + 6, y + 4, w - 12, 10);
+      ctx.fillStyle = '#fff0b0';
+      ctx.fillRect(x + 8, y + 5, 3, h - 14);
+      ctx.fillRect(x + w - 14, y + 5, 3, h - 14);
+      ctx.fillStyle = '#7d9b6a';
+      ctx.fillRect(x + 20, y + 20, w - 40, h - 30);
+    }
+
+
+    // ---------- sounds: a police siren and little chimes, made on the first tap ----------
+    let audioCtx = null;
+    let sirenOsc = null;
+    let sirenGain = null;
+
+    function ensureAudio() {
+      // Never let anything here throw: a sound failure must not block the game.
+      try {
+        if (audioCtx) {
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+          return;
+        }
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        sirenOsc = audioCtx.createOscillator();
+        sirenGain = audioCtx.createGain();
+        sirenOsc.type = 'sine';
+        sirenGain.gain.value = 0;
+        sirenOsc.connect(sirenGain).connect(audioCtx.destination);
+        sirenOsc.start();
+      } catch (e) {
+        audioCtx = null;
+      }
+    }
+
+    function blip(freq, freq2, dur, vol, delay) {
+      if (!audioCtx) return;
+      try {
+        const o = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o.type = 'triangle';
+        const t = audioCtx.currentTime + (delay || 0);
+        o.frequency.setValueAtTime(freq, t);
+        o.frequency.linearRampToValueAtTime(freq2, t + dur);
+        g.gain.setValueAtTime(vol, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        o.connect(g).connect(audioCtx.destination);
+        o.start(t);
+        o.stop(t + dur);
+      } catch (e) {}
+    }
+
+    function policeWarning() {
+      return phase === 'drive' && !police && !gameOver && !crashing && !arriving && slowTimer > slowThreshold - policeWarnFrames;
+    }
+
+    function updateSiren() {
+      if (!audioCtx || !sirenGain) return;
+      try {
+        const wailing = phase === 'drive' && !gameOver && (!!police || policeWarning());
+        sirenGain.gain.linearRampToValueAtTime(wailing ? 0.05 : 0, audioCtx.currentTime + 0.15);
+        if (wailing) sirenOsc.frequency.setValueAtTime(650 + Math.sin(frameCount / 15) * 150, audioCtx.currentTime);
+      } catch (e) {}
+    }
+
+    // ---------- the trip: home, a mall, and back home ----------
+    const malls = [
+      { name: 'Dubai Mall', ar: 'دبي مول', colour: '#7d4a92', kind: 'mall' },
+      { name: 'Mall of the Emirates', ar: 'مول الإمارات', colour: '#c0392b', kind: 'mall' },
+      { name: 'Ibn Battuta Mall', ar: 'ابن بطوطة مول', colour: '#2a9d8f', kind: 'mall' },
+      { name: 'City Centre Mirdif', ar: 'سيتي سنتر مردف', colour: '#e08a1e', kind: 'mall' },
+      { name: 'Dubai Marina Mall', ar: 'دبي مارينا مول', colour: '#1f78c1', kind: 'mall' },
+    ];
+    const homeDest = { name: 'Home', ar: 'المنزل', colour: '#2d6a4f', kind: 'home' };
+    const tourist = ['Burj Khalifa', 'Dubai Frame', 'Palm Jumeirah', 'Burj Al Arab', 'Dubai Creek'];
+
+    // phase: start (at home) -> drive -> park -> walk -> mall -> walk -> drive home -> park -> walk -> home
+    let phase = 'start';
+    let tripNo = 0;
+    let dest = malls[0];
+    let leg = 'out'; // out to the mall, or back home
+    let tripLen = 6000;
+    let travel = 0; // how far you have driven on this road
+    let arriving = false;
+    let arriveT = 0;
+    let shopped = false; // you have been in the mall on this trip
+    let msg = '';
+    let msgT = 0;
+
+    let targetX = car.x;
+    let hold = null; // where a finger or the mouse is pressing (for parking and walking)
+    const keys = { left: false, right: false, up: false, down: false };
+    const moveSpeed = 15;
+    const followSpeed = 0.5;
+
+    let traffic = [];
+    let coins = [];
+    let laneLines = [];
+    let signs = [];
+    let nextSignAt = 120;
+    let signIdx = 0;
+    let nextGantryAt = 900;
+    let score = 0;
+    let level = 1;
+    let levelFlash = 0;
+    let best = 0;
+    let gameOver = false;
+    let started = false;
+
+    // Boost: hold the button (or Shift) to speed everything up for a moment.
+    let boosting = false;
+    let boostEnergy = 100;
+    const boostDrain = 1.3;
+    const boostRegen = 0.5;
+    const boostMultiplier = 2.8;
+
+    let coinSpawnIn = 90;
+
+    // Shield power-up: grab the blue shield to survive one crash or arrest.
+    let shields = [];
+    let shieldOn = false;
+    let shieldSpawnIn = 450;
+    let shieldFlash = 0;
+    let invuln = 0;
+
+    // A police car waits behind you. Coast too long without boosting and it
+    // starts closing in; boost to pull away and lose it.
+    let police = null;
+    let slowTimer = 0;
+    let busted = false;
+    const slowThreshold = 300;
+    const policeApproach = 0.75;
+    const policeWarnFrames = 150;
+    const policeRetreat = 6.5;
+
+    // Crash: the car spins out and swings off the road into the roadside.
+    let crashing = false;
+    let crashTimer = 0;
+    const crashDuration = 50;
+    let crashAngle = 0;
+    let crashSpin = 1;
+    let crashStartX = 0;
+    let crashStartY = 0;
+    let crashTargetX = 0;
+    let crashTargetY = 0;
+    let splashed = false;
+    let splashes = [];
+    let frameCount = 0;
+    let lastTime = null; // so game speed does not depend on the screen refresh rate
+
+    function easeOut(t) {
+      return t * t * (3 - 2 * t);
+    }
+
+    function levelFor(s) {
+      return Math.floor(s / pointsPerLevel) + 1;
+    }
+
+    try {
+      best = Number(localStorage.getItem('carDodgeBest') || 0);
+    } catch (e) {}
+    bestEl.textContent = 'Best: ' + best;
+
+    function say(text, frames) {
+      msg = text;
+      msgT = frames || 150;
+    }
+
+    function addScore(n) {
+      score += n;
+      scoreEl.textContent = 'Score: ' + score;
+      const newLevel = levelFor(score);
+      if (newLevel > level) {
+        level = newLevel;
+        levelEl.textContent = 'Level ' + level;
+        levelFlash = 90;
+        blip(520, 1040, 0.3, 0.12);
+      }
+    }
+
+    function startCrash() {
+      if (crashing || gameOver) return;
+      crashing = true;
+      crashTimer = crashDuration;
+      crashAngle = 0;
+      splashed = false;
+      const roadMid = (roadLeft + roadRight) / 2;
+      const direction = car.x < roadMid ? -1 : 1;
+      crashSpin = direction;
+      crashStartX = car.x;
+      crashStartY = car.y;
+      crashTargetX = direction < 0 ? roadLeft - 26 : roadRight + 26;
+      crashTargetY = car.y + 50;
+    }
+
+    // ---------- the road ----------
+    function spawnTraffic() {
+      const w = 36;
+      const h = 56;
+      const x = roadLeft + 20 + Math.random() * (roadRight - roadLeft - 40 - w) + w / 2;
+      const colors = ['#6a4c93', '#ffb703', '#2a9d8f', '#f4a261', '#e9ecef', '#457b9d'];
+      traffic.push({ x, y: -60, w, h, color: colors[Math.floor(Math.random() * colors.length)], passed: false });
+    }
+
+    function spawnShield() {
+      shields.push({ x: roadLeft + 24 + Math.random() * (roadRight - roadLeft - 48), y: -30, r: 15 });
+    }
+
+    function spawnCoin() {
+      coins.push({ x: roadLeft + 24 + Math.random() * (roadRight - roadLeft - 48), y: -30, r: 12 });
+    }
+
+    function baseSpeed() {
+      // Starts slow at level 1, a clear step up with each level.
+      return Math.min(15, 4.6 + (level - 1) * 1.5);
+    }
+
+    function worldSpeed() {
+      return boosting && boostEnergy > 0 ? baseSpeed() * boostMultiplier : baseSpeed();
+    }
+
+    function spawnGap() {
+      return Math.max(105, 225 - (level - 1) * 15);
+    }
+
+    function spawnLaneLines() {
+      laneLines = [];
+      for (let i = 0; i < 8; i++) laneLines.push({ y: i * 80 });
+    }
+    spawnLaneLines();
+
+    // Road signs. They stand at the side of the road and come towards you.
+    function spawnSign() {
+      const remaining = tripLen - travel;
+      const side = signIdx % 2 ? 1 : -1;
+      let kind;
+      if (remaining < 650) kind = 'exit';
+      else {
+        const cycle = ['speed', 'dest', 'camel', 'dest', 'tourist', 'speed', 'dest', 'warn'];
+        kind = cycle[signIdx % cycle.length];
+      }
+      if (leg === 'home' && (kind === 'dest' || kind === 'exit') && Math.random() < 0.4) kind = kind === 'exit' ? 'exit' : 'home';
+      signs.push({ kind, side, y: -40, text: tourist[signIdx % tourist.length], km: Math.max(1, Math.round(remaining / 700)) });
+      signIdx++;
+    }
+
+    function spawnGantry() {
+      signs.push({ kind: 'gantry', side: 0, y: -40, km: Math.max(1, Math.round((tripLen - travel) / 700)) });
+    }
+
+    function startLeg(newLeg) {
+      leg = newLeg;
+      dest = newLeg === 'out' ? malls[tripNo % malls.length] : homeDest;
+      tripLen = 5200 + Math.random() * 1600;
+      travel = 0;
+      arriving = false;
+      arriveT = 0;
+      signs = [];
+      signIdx = 0;
+      nextSignAt = 160;
+      nextGantryAt = 700;
+      traffic = [];
+      coins = [];
+      shields = [];
+      police = null;
+      slowTimer = 0;
+      busted = false;
+      car.x = W / 2;
+      car.y = carStartY;
+      targetX = car.x;
+      crashing = false;
+      crashAngle = 0;
+      splashes = [];
+      phase = 'drive';
+      spawnTraffic();
+      say((newLeg === 'out' ? 'Drive to ' : 'Drive back ') + dest.name + '!', 170);
+    }
+
+    function resetGame() {
+      score = 0;
+      level = 1;
+      levelFlash = 0;
+      scoreEl.textContent = 'Score: 0';
+      levelEl.textContent = 'Level 1';
+      gameOver = false;
+      started = true;
+      boosting = false;
+      boostEnergy = 100;
+      coinSpawnIn = 90;
+      shieldOn = false;
+      shieldSpawnIn = 450 + Math.random() * 300;
+      shieldFlash = 0;
+      invuln = 0;
+      tripNo = 0;
+      shopped = false;
+      if (audioCtx && sirenGain) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      startLeg('out');
+    }
+
+    function nextTrip() {
+      tripNo++;
+      shopped = false;
+      startLeg('out');
+    }
+
+    function startOrRestart() {
+      ensureAudio();
+      if (phase === 'start' || gameOver) resetGame();
+      else if (phase === 'homedone') nextTrip();
+    }
+
+    // ---------- the car park, in front of a mall or your home ----------
+    const bayW = 44;
+    const bayH = 70;
+    const bayRows = [206, 338];
+    function bayRect(i) {
+      const row = i < 8 ? 0 : 1;
+      const col = i % 8;
+      return { x: col < 4 ? 12 + col * bayW : 212 + (col - 4) * bayW, y: bayRows[row], w: bayW, h: bayH, row };
+    }
+    let bays = [];
+    let targetBay = 0;
+    let lotKind = 'home';
+    let parked = false;
+    let parkedT = 0;
+    let lotCars = [];
+    const me = { x: 200, y: 450, hurt: 0, stepT: 0, moving: false };
+    let leftCar = false;
+    let nearCar = false;
+
+    function makeLot(kind) {
+      lotKind = kind;
+      const cols = ['#6a4c93', '#ffb703', '#2a9d8f', '#f4a261', '#e9ecef', '#457b9d', '#8d99ae', '#e76f51'];
+      bays = [];
+      for (let i = 0; i < 16; i++) bays.push({ occupied: Math.random() < 0.62, colour: cols[Math.floor(Math.random() * cols.length)] });
+      const empties = bays.map((b, i) => i).filter((i) => !bays[i].occupied);
+      targetBay = empties.length ? empties[Math.floor(Math.random() * empties.length)] : 3;
+      bays[targetBay].occupied = false;
+      // a few more empty bays, so there are choices
+      for (let k = 0; k < 2; k++) {
+        const j = Math.floor(Math.random() * 16);
+        if (j !== targetBay) bays[j].occupied = false;
+      }
+    }
+    function bayCentre(i) {
+      const r = bayRect(i);
+      return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+    }
+
+    function enterLot() {
+      phase = 'park';
+      makeLot(dest.kind);
+      parked = false;
+      parkedT = 0;
+      hold = null;
+      car.x = 200;
+      car.y = 566;
+      boosting = false;
+      police = null;
+      if (audioCtx && sirenGain) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      say('Arrived at ' + dest.name + '! Park in the glowing bay.', 220);
+    }
+
+    // does a rectangle hit a parked car?
+    function hitsParked(cx, cy, hw, hh) {
+      for (let i = 0; i < bays.length; i++) {
+        if (!bays[i].occupied) continue;
+        const r = bayRect(i);
+        if (Math.abs(cx - (r.x + r.w / 2)) < hw + 17 && Math.abs(cy - (r.y + r.h / 2)) < hh + 29) return true;
+      }
+      return false;
+    }
+
+    function inputDir(fromX, fromY) {
+      let dx = 0;
+      let dy = 0;
+      if (hold) {
+        const d = Math.hypot(hold.x - fromX, hold.y - fromY);
+        if (d > 5) {
+          dx = (hold.x - fromX) / d;
+          dy = (hold.y - fromY) / d;
+        }
+      }
+      if (keys.left) dx -= 1;
+      if (keys.right) dx += 1;
+      if (keys.up) dy -= 1;
+      if (keys.down) dy += 1;
+      const len = Math.hypot(dx, dy);
+      return { dx: dx / Math.max(1, len), dy: dy / Math.max(1, len), moving: len > 0.01 };
+    }
+
+    function updatePark(step) {
+      const d = inputDir(car.x, car.y);
+      if (d.moving) {
+        const nx = Math.max(24, Math.min(W - 24, car.x + d.dx * 2.5 * step));
+        const ny = Math.max(236, Math.min(H - 34, car.y + d.dy * 2.5 * step));
+        if (!hitsParked(nx, car.y, 16, 28)) car.x = nx;
+        if (!hitsParked(car.x, ny, 16, 28)) car.y = ny;
+      }
+      const c = bayCentre(targetBay);
+      if (Math.abs(car.x - c.x) < 9 && Math.abs(car.y - c.y) < 12 && !d.moving) parkedT += step;
+      else if (Math.abs(car.x - c.x) < 9 && Math.abs(car.y - c.y) < 12) parkedT += 0;
+      else parkedT = 0;
+      if (!parked && parkedT > 35) {
+        parked = true;
+        addScore(5);
+        say('Parked! \u{1F17F}️ +5  Now get out of the car.', 200);
+        blip(660, 990, 0.2, 0.12);
+        blip(990, 1320, 0.25, 0.12, 0.15);
+      }
+      if (parked && !(Math.abs(car.x - c.x) < 12 && Math.abs(car.y - c.y) < 15)) parked = false;
+    }
+
+    function getOutOfCar() {
+      if (phase !== 'park' || !parked) return;
+      phase = 'walk';
+      const r = bayRect(targetBay);
+      me.x = car.x;
+      me.y = r.y + r.h + 16;
+      me.hurt = 0;
+      leftCar = false;
+      hold = null;
+      lotCars = [
+        { x: 60, y: 307, dir: 1, v: 1.5, colour: '#2a9d8f' },
+        { x: 300, y: 307, dir: -1, v: 1.3, colour: '#ffb703' },
+        { x: 120, y: 470, dir: 1, v: 1.7, colour: '#6a4c93' },
+        { x: 330, y: 535, dir: -1, v: 1.4, colour: '#e76f51' },
+      ];
+      say('Walk to ' + (dest.kind === 'mall' ? dest.name : 'your home') + '!', 190);
+      blip(520, 520, 0.12, 0.1);
+    }
+
+    function getInCar() {
+      if (phase !== 'walk' || !shopped || !nearCar) return;
+      blip(420, 420, 0.12, 0.1);
+      startLeg('home');
+    }
+
+    function updateWalk(step) {
+      me.hurt = Math.max(0, me.hurt - step);
+      const d = inputDir(me.x, me.y);
+      me.moving = d.moving;
+      if (d.moving) {
+        const nx = Math.max(14, Math.min(W - 14, me.x + d.dx * 2.2 * step));
+        const ny = Math.max(150, Math.min(H - 12, me.y + d.dy * 2.2 * step));
+        const hitCar = (px, py) => hitsParked(px, py, 5, 5) || (Math.abs(px - car.x) < 22 && Math.abs(py - car.y) < 34 && phase === 'walk');
+        if (!hitCar(nx, me.y)) me.x = nx;
+        if (!hitCar(me.x, ny)) me.y = ny;
+        // the building: only the door lets you in
+        if (me.y < 188 && Math.abs(me.x - 200) >= 28) me.y = 188;
+        me.stepT += step;
+      }
+      lotCars.forEach((c) => {
+        c.x += c.dir * c.v * step;
+        if (c.x > W + 60) c.x = -60;
+        if (c.x < -60) c.x = W + 60;
+        if (me.hurt <= 0 && Math.abs(me.x - c.x) < 34 && Math.abs(me.y - c.y) < 20) {
+          me.hurt = 70;
+          score = Math.max(0, score - 3);
+          scoreEl.textContent = 'Score: ' + score;
+          const r = bayRect(targetBay);
+          me.x = car.x;
+          me.y = r.y + r.h + 16;
+          say('Ouch! Watch out for the cars', 120);
+          blip(220, 140, 0.25, 0.14);
+        }
+      });
+      const far = Math.hypot(me.x - car.x, me.y - car.y);
+      if (far > 70) leftCar = true;
+      nearCar = leftCar && far < 44;
+      // through the front door
+      if (me.y < 186 && Math.abs(me.x - 200) < 28) {
+        if (dest.kind === 'mall' && leg === 'out' && !shopped) enterMall();
+        else if (leg === 'home') finishHome();
+        else if (dest.kind === 'mall') leaveBackToCar();
+      }
+    }
+
+    function leaveBackToCar() {
+      me.y = 200;
+    }
+
+    function finishHome() {
+      phase = 'homedone';
+      addScore(20);
+      say('Home sweet home! \u{1F3E0}', 300);
+      blip(523, 523, 0.15, 0.12);
+      blip(659, 659, 0.15, 0.12, 0.15);
+      blip(784, 784, 0.3, 0.12, 0.3);
+      if (score > best) saveBest();
+    }
+
+    function saveBest() {
+      best = score;
+      bestEl.textContent = 'Best: ' + best;
+      try {
+        localStorage.setItem('carDodgeBest', String(best));
+      } catch (e) {}
+    }
+
+    // ---------- inside the mall: a short walk past four shops ----------
+    const mallShops = [
+      { name: 'Ice Cream', emoji: '\u{1F366}', colour: '#f7a8c4', wall: '#ffe3ee' },
+      { name: 'Toys', emoji: '\u{1F9F8}', colour: '#a98be0', wall: '#ece4fb' },
+      { name: 'Clothes', emoji: '\u{1F457}', colour: '#ee8f8c', wall: '#fde6e4' },
+      { name: 'Books', emoji: '\u{1F4DA}', colour: '#7fb2d9', wall: '#dcebf7' },
+    ];
+    const mm = { x: 200, y: 505, dir: 1, stepT: 0, moving: false, goto: null };
+    let mallBought = [false, false, false, false];
+    let mallShoppers = [];
+    const mallDoorX = (i) => 50 + i * 100;
+    const shopperLook = [
+      ['#f2c9a0', '#e63946', '#2a4d8f'], ['#c68c5c', '#2a9d8f', '#3a3a4a'], ['#8d5a3b', '#f4a261', '#264653'],
+      ['#f2c9a0', '#6a4c93', '#4a4a4a'], ['#e0ac84', '#ffd166', '#1d3557'],
+    ];
+
+    function enterMall() {
+      phase = 'mall';
+      mm.x = 200;
+      mm.y = 505;
+      mm.goto = null;
+      mallBought = [false, false, false, false];
+      mallShoppers = [];
+      for (let k = 0; k < 6; k++) {
+        mallShoppers.push({ x: 40 + ((k * 137) % 330), y: 458 + ((k * 31) % 80), dir: k % 2 ? 1 : -1, v: 0.35 + (k % 4) * 0.12, look: shopperLook[k % 5], bag: k % 2 === 0, t: k * 7 });
+      }
+      hold = null;
+      say('Welcome to ' + dest.name + '! Tap a shop to buy a treat.', 240);
+      blip(988, 988, 0.15, 0.1);
+      blip(1318, 1318, 0.2, 0.1, 0.14);
+    }
+
+    function leaveMall() {
+      if (phase !== 'mall') return;
+      shopped = true;
+      phase = 'walk';
+      me.x = 200;
+      me.y = 200;
+      me.hurt = 0;
+      leftCar = true;
+      hold = null;
+      say('Walk back to your car and get in!', 200);
+    }
+
+    function mallBuy(i) {
+      if (mallBought[i]) {
+        say('You already bought that!', 80);
+        return;
+      }
+      mallBought[i] = true;
+      addScore(3);
+      say('Bought ' + mallShops[i].emoji + '  +3', 110);
+      [880, 1175, 1568].forEach((f, k) => blip(f, f, 0.12, 0.1, k * 0.06));
+      if (mallBought.every(Boolean)) {
+        addScore(10);
+        say('\u{1F389} Bought something in every shop! +10', 200);
+        [523, 659, 784, 1047].forEach((f, k) => blip(f, f, 0.18, 0.1, 0.25 + k * 0.08));
+      }
+    }
+
+    function nearMallDoor() {
+      for (let i = 0; i < 4; i++) if (Math.abs(mm.x - mallDoorX(i)) < 36) return i;
+      return -1;
+    }
+
+    function mallPress(p) {
+      mm.goto = null;
+      for (let i = 0; i < 4; i++) {
+        if (Math.abs(p.x - mallDoorX(i)) < 50 && p.y > 130 && p.y < 420) {
+          mm.goto = mallDoorX(i);
+          return;
+        }
+      }
+      hold = p;
+    }
+
+    function updateMall(step) {
+      let dx = 0;
+      if (mm.goto !== null) {
+        if (Math.abs(mm.goto - mm.x) < 6) {
+          mm.goto = null;
+          const i = nearMallDoor();
+          if (i >= 0) mallBuy(i);
+        } else dx = mm.goto > mm.x ? 1 : -1;
+      }
+      if (hold) {
+        mm.goto = null;
+        if (Math.abs(hold.x - mm.x) > 5) dx = hold.x > mm.x ? 1 : -1;
+      }
+      if (keys.left) dx -= 1;
+      if (keys.right) dx += 1;
+      mm.moving = dx !== 0;
+      if (mm.moving) {
+        mm.dir = dx > 0 ? 1 : -1;
+        mm.x = Math.max(30, Math.min(W - 30, mm.x + dx * 2.8 * step));
+        mm.stepT += step;
+      }
+      mallShoppers.forEach((s) => {
+        s.t += step;
+        s.x += s.dir * s.v * step;
+        if (s.x < 30 || s.x > W - 30) s.dir = -s.dir;
+      });
+    }
+
+    // ---------- the big button: out of the car, into the car, out of the mall ----------
+    let actLabel = null;
+    function updateAct() {
+      let label = null;
+      if (!gameOver) {
+        if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
+        else if (phase === 'walk' && leg === 'out' && shopped && nearCar) label = '\u{1F697} Get in the car';
+        else if (phase === 'mall') label = '\u{1F6AA} Leave the mall';
+      }
+      if (label !== actLabel) {
+        actLabel = label;
+        actBtn.hidden = !label;
+        if (label) actBtn.textContent = label;
+      }
+    }
+    actBtn.addEventListener('click', () => {
+      ensureAudio();
+      if (phase === 'park') getOutOfCar();
+      else if (phase === 'walk') getInCar();
+      else if (phase === 'mall') leaveMall();
+    });
+
+    // ---------- input ----------
+    function pointerPt(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: ((clientX - rect.left) / rect.width) * W, y: ((clientY - rect.top) / rect.height) * H };
+    }
+
+    function pressAt(clientX, clientY) {
+      startOrRestart();
+      const p = pointerPt(clientX, clientY);
+      if (phase === 'drive') targetX = p.x;
+      else if (phase === 'mall') mallPress(p);
+      else if (phase === 'park' || phase === 'walk') hold = p;
+    }
+    function moveTo(clientX, clientY) {
+      const p = pointerPt(clientX, clientY);
+      if (phase === 'drive') targetX = p.x;
+      else if (hold) hold = p;
+    }
+
+    canvas.addEventListener('mousedown', (e) => pressAt(e.clientX, e.clientY));
+    canvas.addEventListener('mousemove', (e) => moveTo(e.clientX, e.clientY));
+    canvas.addEventListener('touchstart', (e) => pressAt(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+    canvas.addEventListener('touchmove', (e) => moveTo(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+    window.addEventListener('mouseup', () => (hold = null));
+    window.addEventListener('touchend', () => (hold = null));
+    window.addEventListener('touchcancel', () => (hold = null));
+
+    function startBoost(e) {
+      e.preventDefault();
+      ensureAudio();
+      boosting = true;
+    }
+    function stopBoost() {
+      boosting = false;
+    }
+    boostBtn.addEventListener('mousedown', startBoost);
+    boostBtn.addEventListener('touchstart', startBoost, { passive: false });
+    boostBtn.addEventListener('mouseup', stopBoost);
+    boostBtn.addEventListener('mouseleave', stopBoost);
+    boostBtn.addEventListener('touchend', stopBoost);
+    boostBtn.addEventListener('touchcancel', stopBoost);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = true;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = true;
+      if (e.code.startsWith('Arrow')) e.preventDefault();
+      if (e.code === 'Enter' || e.code === 'KeyE') actBtn.click();
+      if (e.code === 'Space') {
+        e.preventDefault();
+        startOrRestart();
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+      if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+      if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.up = false;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = false;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = false;
+    });
+
+    // ---------- driving ----------
+    function updateDrive(step) {
+      if (crashing) {
+        crashTimer -= step;
+        const t = easeOut(Math.min(1, Math.max(0, 1 - crashTimer / crashDuration)));
+        car.x = crashStartX + (crashTargetX - crashStartX) * t;
+        car.y = crashStartY + (crashTargetY - crashStartY) * t;
+        crashAngle = crashSpin * Math.PI * 4 * t;
+        if (!splashed && (car.x < roadLeft || car.x > roadRight)) {
+          splashed = true;
+          splashes.push({ x: car.x, y: car.y, age: 0 });
+        }
+        splashes.forEach((s) => (s.age += step));
+        splashes = splashes.filter((s) => s.age < 26);
+        if (crashTimer <= 0) {
+          crashing = false;
+          endGame();
+          if (audioCtx && sirenGain) sirenGain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.2);
+        }
+        return; // freeze everything while spinning out
+      }
+      if (gameOver) {
+        laneLines.forEach((line) => {
+          line.y += 3 * step;
+          if (line.y > H) line.y -= 8 * 80;
+        });
+        return;
       }
 
-      function drawShieldEffects() {
-        const cw = ctx.canvas.width;
-        if (shieldOn && !crashing && !gameOver) {
-          const pulse = 40 + Math.sin(frameCount / 8) * 2;
-          ctx.beginPath();
-          ctx.arc(car.x, car.y, pulse, 0, Math.PI * 2);
-          ctx.strokeStyle = 'rgba(41, 197, 246, 0.95)';
-          ctx.lineWidth = 3;
-          ctx.stroke();
-          ctx.fillStyle = 'rgba(41, 197, 246, 0.95)';
-          ctx.font = 'bold 14px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('SHIELD READY', cw / 2, 52);
+      let speed = worldSpeed();
+      if (arriving) {
+        arriveT -= step;
+        speed *= Math.max(0, arriveT / 90);
+        if (arriveT <= 0) {
+          enterLot();
+          return;
         }
-        if (shieldFlash > 0 && !gameOver) {
-          const p = 1 - shieldFlash / 60;
-          ctx.beginPath();
-          ctx.arc(car.x, car.y, 40 + p * 50, 0, Math.PI * 2);
-          ctx.strokeStyle = `rgba(41, 197, 246, ${shieldFlash / 60})`;
-          ctx.lineWidth = 4;
-          ctx.stroke();
-          ctx.fillStyle = `rgba(41, 197, 246, ${Math.min(1, shieldFlash / 20)})`;
-          ctx.font = 'bold 22px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('Shield saved you!', cw / 2, 112);
+      }
+      const dist = speed * step;
+      travel += dist;
+      laneLines.forEach((line) => {
+        line.y += dist;
+        if (line.y > H) line.y -= 8 * 80;
+      });
+      signs.forEach((s) => (s.y += dist));
+      signs = signs.filter((s) => s.y < H + 60);
+      const remaining = tripLen - travel;
+      if (!arriving) {
+        if (travel >= nextSignAt) {
+          spawnSign();
+          nextSignAt += 230;
+        }
+        if (travel >= nextGantryAt && remaining > 500) {
+          spawnGantry();
+          nextGantryAt += 1500;
         }
       }
 
-      function drawCoin(x, y, r) {
+      if (keys.left) targetX -= moveSpeed * step;
+      if (keys.right) targetX += moveSpeed * step;
+      targetX = Math.max(roadLeft + car.w / 2, Math.min(roadRight - car.w / 2, targetX));
+      car.x += (targetX - car.x) * (1 - Math.pow(1 - followSpeed, step));
+
+      if (boosting && boostEnergy > 0) boostEnergy = Math.max(0, boostEnergy - boostDrain * step);
+      else {
+        boosting = false;
+        boostEnergy = Math.min(100, boostEnergy + boostRegen * step);
+      }
+      boostFill.style.width = boostEnergy + '%';
+
+      traffic.forEach((other) => {
+        other.y += dist;
+        if (Math.abs(car.x - other.x) < (car.w + other.w) / 2 - 6 && Math.abs(car.y - other.y) < (car.h + other.h) / 2 - 6) {
+          if (invuln > 0) {
+            // still protected for a moment after the shield popped
+          } else if (shieldOn) {
+            shieldOn = false;
+            invuln = 45;
+            shieldFlash = 60;
+            other.passed = true;
+            other.y = H + 200;
+          } else {
+            startCrash();
+          }
+        }
+        if (!other.passed && other.y > car.y + car.h) {
+          other.passed = true;
+          addScore(1);
+        }
+      });
+      traffic = traffic.filter((other) => other.y < H + 80);
+      if (!arriving && remaining > 250 && (traffic.length === 0 || traffic[traffic.length - 1].y > spawnGap())) spawnTraffic();
+
+      coins.forEach((coin) => {
+        coin.y += dist;
+        if (Math.hypot(car.x - coin.x, car.y - coin.y) < coin.r + Math.min(car.w, car.h) / 2) {
+          coin.collected = true;
+          addScore(3);
+          blip(880, 1320, 0.12, 0.1);
+        }
+      });
+      coins = coins.filter((coin) => !coin.collected && coin.y < H + 40);
+      coinSpawnIn -= step;
+      if (coinSpawnIn <= 0) {
+        if (!arriving && remaining > 250) spawnCoin();
+        coinSpawnIn = 110 + Math.random() * 90;
+      }
+
+      shields.forEach((sh) => {
+        sh.y += dist;
+        if (Math.hypot(car.x - sh.x, car.y - sh.y) < sh.r + Math.min(car.w, car.h) / 2) {
+          sh.collected = true;
+          shieldOn = true;
+        }
+      });
+      shields = shields.filter((sh) => !sh.collected && sh.y < H + 40);
+      if (!shieldOn && shields.length === 0 && !arriving) {
+        shieldSpawnIn -= step;
+        if (shieldSpawnIn <= 0) {
+          if (remaining > 250) spawnShield();
+          shieldSpawnIn = 500 + Math.random() * 400;
+        }
+      }
+
+      // The police car. Coasting too long (not boosting) first triggers a
+      // flashing warning, then the police appears and creeps up.
+      if (boosting || arriving) slowTimer = 0;
+      else slowTimer += step;
+      if (!police && slowTimer >= slowThreshold) {
+        const laneX = car.x < (roadLeft + roadRight) / 2 ? roadRight - 55 : roadLeft + 55;
+        police = { x: laneX, y: H + 60 };
+      }
+      if (police) {
+        police.y += (boosting ? policeRetreat : -policeApproach) * step;
+        if (police.y < H) police.x += (car.x - police.x) * (1 - Math.pow(1 - 0.015, step));
+        const caught = police.y - car.y < 14;
+        if (caught && Math.abs(police.x - car.x) < 34) {
+          if (shieldOn) {
+            shieldOn = false;
+            invuln = 45;
+            shieldFlash = 60;
+            police = null;
+            slowTimer = 0;
+          } else {
+            busted = true;
+            startCrash();
+          }
+        } else if (caught) police.y = car.y + 14;
+        else if (police.y > H + 140) {
+          police = null;
+          slowTimer = 0;
+        }
+      }
+
+      // you have arrived: slow down and turn off into the car park
+      if (!arriving && travel >= tripLen) {
+        arriving = true;
+        arriveT = 90;
+        traffic = [];
+        coins = [];
+        shields = [];
+        police = null;
+        addScore(10);
+        say('You have arrived at ' + dest.name + '!', 120);
+        blip(660, 990, 0.2, 0.1);
+      }
+      levelFlash = Math.max(0, levelFlash - step);
+      shieldFlash = Math.max(0, shieldFlash - step);
+      invuln = Math.max(0, invuln - step);
+    }
+
+    function endGame() {
+      if (gameOver) return;
+      gameOver = true;
+      if (score > best) saveBest();
+    }
+
+    function update() {
+      const now = performance.now();
+      let step = lastTime === null ? 1 : (now - lastTime) / (1000 / 60);
+      lastTime = now;
+      step = Math.min(Math.max(step, 0.2), 3); // same game speed on 60Hz and 120Hz screens
+      frameCount += step;
+      msgT = Math.max(0, msgT - step);
+      if (phase === 'drive') updateDrive(step);
+      else if (phase === 'park') updatePark(step);
+      else if (phase === 'walk') updateWalk(step);
+      else if (phase === 'mall') updateMall(step);
+      else {
+        // at home before you set off: the road lines keep still
+      }
+      if (phase !== 'drive') {
+        boosting = false;
+        levelFlash = Math.max(0, levelFlash - step);
+      }
+      updateSiren();
+      updateAct();
+    }
+
+    // ---------- drawing: the cars ----------
+    function drawCar(x, y, w, h, color, outline) {
+      const r = 8;
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(x - w / 2 + r, y - h / 2);
+      ctx.arcTo(x + w / 2, y - h / 2, x + w / 2, y - h / 2 + r, r);
+      ctx.lineTo(x + w / 2, y + h / 2 - r);
+      ctx.arcTo(x + w / 2, y + h / 2, x + w / 2 - r, y + h / 2, r);
+      ctx.lineTo(x - w / 2 + r, y + h / 2);
+      ctx.arcTo(x - w / 2, y + h / 2, x - w / 2, y + h / 2 - r, r);
+      ctx.lineTo(x - w / 2, y - h / 2 + r);
+      ctx.arcTo(x - w / 2, y - h / 2, x - w / 2 + r, y - h / 2, r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = outline;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.fillRect(x - w / 2 + 6, y - h / 2 + 10, w - 12, h / 3);
+    }
+
+    function drawPoliceCar(x, y, w, h) {
+      drawCar(x, y, w, h, '#f2ecdf', '#222');
+      ctx.fillStyle = '#222';
+      ctx.fillRect(x - w / 2, y - 6, w, 10);
+      ctx.fillStyle = Math.floor(frameCount / 8) % 2 === 0 ? '#ff3b30' : '#2b45f0';
+      ctx.fillRect(x - 10, y - h / 2 - 8, 20, 7);
+    }
+
+    function drawPoliceGlow() {
+      const red = Math.floor(frameCount / 8) % 2 === 0;
+      const g = ctx.createLinearGradient(0, H, 0, H - 90);
+      g.addColorStop(0, red ? 'rgba(255, 59, 48, 0.75)' : 'rgba(43, 69, 240, 0.75)');
+      g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, H - 90, W, 90);
+    }
+
+    function drawShieldPickup(x, y, r) {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#29c5f6';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, y - 8);
+      ctx.lineTo(x + 7, y - 5);
+      ctx.lineTo(x + 6, y + 2);
+      ctx.quadraticCurveTo(x + 5, y + 8, x, y + 10);
+      ctx.quadraticCurveTo(x - 5, y + 8, x - 6, y + 2);
+      ctx.lineTo(x - 7, y - 5);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+
+    function drawCoin(x, y, r) {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffd400';
+      ctx.fill();
+      ctx.strokeStyle = '#b8860b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.arc(x, y, r - 4, 0, Math.PI * 2);
+      ctx.strokeStyle = '#fff3b0';
+      ctx.stroke();
+    }
+
+    // ---------- drawing: the road through Dubai ----------
+    function drawSideCity(sand) {
+      const period = 96;
+      const idx = Math.floor(travel / period);
+      const base = travel % period;
+      [[0, 50, 0], [350, 400, 1]].forEach(([x0, x1, c]) => {
+        ctx.fillStyle = sand;
+        ctx.fillRect(x0, 0, x1 - x0, H);
+        for (let r = -1; r < H / period + 1; r++) {
+          const g = idx - r;
+          const hv = cityHash(g, c);
+          const gap = 6 + (hv % 9);
+          const h = 56 + ((hv >>> 8) % 26);
+          const y = r * period + base + (period - h) / 2 - gap / 2;
+          const inset = (hv >>> 12) % 4;
+          const x = x0 + 2 + inset;
+          const w = x1 - x0 - 4 - inset - ((hv >>> 14) % 3);
+          const lm = (hv >>> 9) % 40;
+          if ((hv >>> 3) % 7 === 0) drawPark(x - 1, y, w + 2, h, hv);
+          else if (lm < 3 && w >= 40) drawTower(x, y, w, h);
+          else if (lm === 3 && w >= 44) drawBurj(x, y, w, h);
+          else if (lm === 4 && w >= 40) drawMosque(x, y, w, h);
+          else if (lm === 5 && w >= 40) drawFrame(x, y, w, h);
+          else drawRoof(x, y, w, h, hv >>> 2);
+        }
+      });
+    }
+
+    function fitText(text, maxW, size, weight) {
+      let s = size;
+      ctx.font = (weight || 'bold') + ' ' + s + 'px sans-serif';
+      while (s > 6 && ctx.measureText(text).width > maxW) {
+        s--;
+        ctx.font = (weight || 'bold') + ' ' + s + 'px sans-serif';
+      }
+    }
+
+    function panel(x, y, w, h, fill, stroke) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+      roundedRect(x - w / 2 + 3, y - h / 2 + 5, w, h, 4);
+      ctx.fill();
+      roundedRect(x - w / 2, y - h / 2, w, h, 4);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // A road sign at the side of the road, with its post.
+    function drawRoadSign(s) {
+      const x = s.side < 0 ? 25 : 375;
+      const y = s.y;
+      ctx.fillStyle = '#6b6b6b';
+      ctx.fillRect(x - 1.5, y + 10, 3, 24);
+      ctx.textAlign = 'center';
+      if (s.kind === 'speed') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
         ctx.beginPath();
-        ctx.arc(x, y, r, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffd400';
+        ctx.arc(x + 3, y + 5, 18, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#b8860b';
-        ctx.lineWidth = 2;
-        ctx.stroke();
         ctx.beginPath();
-        ctx.arc(x, y, r - 4, 0, Math.PI * 2);
-        ctx.strokeStyle = '#fff3b0';
-        ctx.lineWidth = 2;
+        ctx.arc(x, y, 18, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#d62828';
+        ctx.lineWidth = 5;
         ctx.stroke();
-      }
-
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // The sea either side of the bridge.
-        ctx.fillStyle = '#1f6f9c';
-        ctx.fillRect(0, 0, roadLeft, canvas.height);
-        ctx.fillRect(roadRight, 0, canvas.width - roadRight, canvas.height);
-
-        // Wave caps drifting with the road, with their own gentle side-to-
-        // side shimmer so the sea keeps moving even when the road doesn't.
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 2;
-        laneLines.forEach((line, i) => {
-          [0, 40].forEach((yStep, j) => {
-            const y = line.y + yStep;
-            const bob = Math.sin(frameCount / 18 + i * 1.7 + j) * 5;
-            [20, 46, 72].forEach((xOffset, k) => {
-              const r = 8 + ((i + k) % 2) * 3;
-              ctx.beginPath();
-              ctx.arc(xOffset + bob, y + 14, r, Math.PI * 0.15, Math.PI * 0.85);
-              ctx.stroke();
-              ctx.beginPath();
-              ctx.arc(canvas.width - xOffset - bob, y + 44, r, Math.PI * 0.15, Math.PI * 0.85);
-              ctx.stroke();
-            });
-          });
-        });
-
-        // The bridge deck.
-        ctx.fillStyle = '#555555';
-        ctx.fillRect(roadLeft, 0, roadRight - roadLeft, canvas.height);
-
-        // Scrolling centre line.
-        ctx.strokeStyle = '#f2ecdf';
+        ctx.fillStyle = '#111111';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('120', x, y + 5);
+      } else if (s.kind === 'camel' || s.kind === 'warn') {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+        ctx.beginPath();
+        ctx.moveTo(x + 3, y - 17);
+        ctx.lineTo(x + 24, y + 19);
+        ctx.lineTo(x - 18, y + 19);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(x, y - 20);
+        ctx.lineTo(x + 21, y + 15);
+        ctx.lineTo(x - 21, y + 15);
+        ctx.closePath();
+        ctx.fillStyle = '#ffd23f';
+        ctx.fill();
+        ctx.strokeStyle = '#d62828';
         ctx.lineWidth = 4;
-        ctx.setLineDash([24, 24]);
-        laneLines.forEach((line) => {
-          ctx.beginPath();
-          ctx.moveTo(canvas.width / 2, line.y);
-          ctx.lineTo(canvas.width / 2, line.y + 24);
-          ctx.stroke();
-        });
-        ctx.setLineDash([]);
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+        ctx.fillStyle = '#111111';
+        if (s.kind === 'camel') {
+          ctx.font = '15px sans-serif';
+          ctx.fillText('\u{1F42A}', x, y + 10);
+        } else {
+          ctx.font = 'bold 18px sans-serif';
+          ctx.fillText('!', x, y + 11);
+        }
+      } else if (s.kind === 'dest') {
+        panel(x, y, 46, 38, '#1b7f4b', '#ffffff');
+        ctx.fillStyle = '#ffffff';
+        fitText(dest.name, 42, 9);
+        ctx.fillText(dest.name, x, y - 8);
+        fitText(dest.ar, 42, 8, '');
+        ctx.fillText(dest.ar, x, y + 2);
+        ctx.fillStyle = '#ffd23f';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(s.km + ' km', x, y + 15);
+      } else if (s.kind === 'tourist') {
+        panel(x, y, 46, 34, '#7a4a21', '#ffffff');
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('\u{1F3D9}️', x, y - 3);
+        fitText(s.text, 42, 8);
+        ctx.fillText(s.text, x, y + 11);
+      } else if (s.kind === 'exit') {
+        const flash = Math.floor(frameCount / 14) % 2 === 0;
+        panel(x, y, 48, 40, '#1b7f4b', flash ? '#ffd23f' : '#ffffff');
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText('EXIT ➡', x, y - 6);
+        fitText(dest.name, 44, 8);
+        ctx.fillText(dest.name, x, y + 5);
+        ctx.fillStyle = '#ffd23f';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.fillText(dest.kind === 'home' ? '\u{1F3E0}' : '\u{1F17F}️', x, y + 16);
+      } else if (s.kind === 'home') {
+        panel(x, y, 46, 34, '#1f5fa8', '#ffffff');
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('\u{1F3E0}', x, y - 2);
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText('Home • المنزل', x, y + 12);
+      }
+    }
 
-        // Bridge guardrails: a concrete curb with posts along each edge.
-        ctx.fillStyle = '#c9c2b2';
-        ctx.fillRect(roadLeft - 10, 0, 10, canvas.height);
-        ctx.fillRect(roadRight, 0, 10, canvas.height);
-        ctx.fillStyle = '#8c8577';
-        laneLines.forEach((line) => {
-          ctx.fillRect(roadLeft - 10, line.y, 10, 14);
-          ctx.fillRect(roadRight, line.y, 10, 14);
-        });
+    // A big green sign over the whole road
+    function drawGantry(s) {
+      const y = s.y;
+      ctx.fillStyle = '#6b6b6b';
+      ctx.fillRect(roadLeft - 12, y - 6, 6, 40);
+      ctx.fillRect(roadRight + 6, y - 6, 6, 40);
+      ctx.globalAlpha = 0.82;
+      ctx.fillStyle = '#1b7f4b';
+      ctx.fillRect(roadLeft - 12, y - 8, roadRight - roadLeft + 24, 26);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(roadLeft - 10, y - 6, roadRight - roadLeft + 20, 22);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('⬆ Dubai • دبي', W / 2 - 62, y + 9);
+      fitText('⬆ ' + dest.name + ' ' + s.km + ' km', 130, 11);
+      ctx.fillText('⬆ ' + dest.name + ' ' + s.km + ' km', W / 2 + 62, y + 9);
+    }
 
-        coins.forEach((coin) => drawCoin(coin.x, coin.y, coin.r));
+    function drawDrive() {
+      const css = getComputedStyle(document.documentElement);
+      const sand = css.getPropertyValue('--sand').trim() || '#e6d5ab';
+      const road = css.getPropertyValue('--road').trim() || '#555a60';
+      drawSideCity(sand);
+      // the road
+      ctx.fillStyle = road;
+      ctx.fillRect(roadLeft, 0, roadRight - roadLeft, H);
+      ctx.strokeStyle = '#f2ecdf';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([24, 24]);
+      laneLines.forEach((line) => {
+        ctx.beginPath();
+        ctx.moveTo(W / 2, line.y);
+        ctx.lineTo(W / 2, line.y + 24);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      // kerbs
+      ctx.fillStyle = '#c9c2b2';
+      ctx.fillRect(roadLeft - 10, 0, 10, H);
+      ctx.fillRect(roadRight, 0, 10, H);
+      ctx.fillStyle = '#e8b923';
+      laneLines.forEach((line) => {
+        ctx.fillRect(roadLeft - 10, line.y, 10, 14);
+        ctx.fillRect(roadRight, line.y, 10, 14);
+      });
+      signs.filter((s) => s.kind !== 'gantry').forEach(drawRoadSign);
 
+      coins.forEach((coin) => drawCoin(coin.x, coin.y, coin.r));
       shields.forEach((sh) => drawShieldPickup(sh.x, sh.y, sh.r));
       if ((police || policeWarning()) && !gameOver) drawPoliceGlow();
+      traffic.forEach((other) => drawCar(other.x, other.y, other.w, other.h, other.color, '#333'));
+      if (police) drawPoliceCar(police.x, police.y, car.w, car.h);
 
-        traffic.forEach((other) => drawCar(other.x, other.y, other.w, other.h, other.color, '#333'));
+      if (crashing) {
+        ctx.save();
+        ctx.translate(car.x, car.y);
+        ctx.rotate(crashAngle);
+        drawCar(0, 0, car.w, car.h, carColor, carOutline);
+        ctx.restore();
+        splashes.forEach((s) => {
+          const p = s.age / 26;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, 6 + p * 34, 0, Math.PI * 2);
+          ctx.strokeStyle = 'rgba(200, 165, 100, ' + 0.7 * (1 - p) + ')';
+          ctx.lineWidth = 4;
+          ctx.stroke();
+        });
+      } else {
+        drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
+      }
+      signs.filter((s) => s.kind === 'gantry').forEach(drawGantry);
 
-        if (police) {
-          drawPoliceCar(police.x, police.y, car.w, car.h);
+      // the shield bubble
+      if (shieldOn && !crashing && !gameOver) {
+        ctx.beginPath();
+        ctx.arc(car.x, car.y, 40 + Math.sin(frameCount / 8) * 2, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(41, 197, 246, 0.95)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
+      if (shieldFlash > 0 && !gameOver) {
+        const p = 1 - shieldFlash / 60;
+        ctx.beginPath();
+        ctx.arc(car.x, car.y, 40 + p * 50, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(41, 197, 246, ' + shieldFlash / 60 + ')';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(41, 197, 246, ' + Math.min(1, shieldFlash / 20) + ')';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Shield saved you!', W / 2, 140);
+      }
+
+      // the trip bar at the top
+      if (!gameOver) {
+        const frac = Math.max(0, Math.min(1, travel / tripLen));
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+        roundedRect(50, 8, W - 100, 38, 14);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : '\u{1F6CD}️ ') + dest.name + ' • ' + Math.max(0, Math.ceil((tripLen - travel) / 700)) + ' km', W / 2, 26);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        roundedRect(64, 33, W - 128, 7, 3.5);
+        ctx.fill();
+        ctx.fillStyle = dest.colour;
+        if (frac > 0.02) {
+          roundedRect(64, 33, (W - 128) * frac, 7, 3.5);
+          ctx.fill();
         }
-
-        if (crashing) {
-          ctx.save();
-          ctx.translate(car.x, car.y);
-          ctx.rotate(crashAngle);
-          drawCar(0, 0, car.w, car.h, carColor, carOutline);
-          ctx.restore();
-
-          splashes.forEach((s) => {
-            const p = s.age / 26;
-            ctx.beginPath();
-            ctx.arc(s.x, s.y, 6 + p * 34, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.6 * (1 - p)})`;
-            ctx.lineWidth = 3;
-            ctx.stroke();
-          });
-        } else {
-          drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
-        }
-
+      }
+      if (started && !gameOver && !arriving) {
         if (boosting && boostEnergy > 0) {
-          ctx.fillStyle = 'rgba(255, 180, 0, 0.9)';
+          ctx.fillStyle = 'rgba(255, 180, 0, 0.95)';
           ctx.font = 'bold 20px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('BOOST!', canvas.width / 2, 30);
-        } else if (police && !crashing && !gameOver) {
-          ctx.fillStyle = 'rgba(255, 59, 48, 0.9)';
-          ctx.font = 'bold 18px sans-serif';
+          ctx.fillText('BOOST!', W / 2, 74);
+        } else if (police) {
+          ctx.fillStyle = 'rgba(255, 59, 48, 0.95)';
+          ctx.font = 'bold 16px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('🚨 Boost to lose the police!', canvas.width / 2, 30);
+          ctx.fillText('\u{1F6A8} Boost to lose the police!', W / 2, 74);
         } else if (policeWarning()) {
           ctx.fillStyle = 'rgba(255, 59, 48, 0.95)';
           ctx.font = 'bold 18px sans-serif';
           ctx.textAlign = 'center';
-          ctx.fillText('🚨 Police coming! Hold BOOST!', ctx.canvas.width / 2, 30);
-        }
-
-        drawShieldEffects();
-        if (levelFlash > 0) {
-          const alpha = Math.min(1, levelFlash / 20);
-          ctx.fillStyle = `rgba(255, 196, 0, ${alpha})`;
-          ctx.font = 'bold 40px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText('Level ' + level + '!', canvas.width / 2, 80);
-        }
-
-        if (gameOver) {
-          ctx.fillStyle = 'rgba(0,0,0,0.5)';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = 'white';
-          ctx.font = '28px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(busted ? 'Busted!' : 'Game Over!', canvas.width / 2, canvas.height / 2 - 20);
-          ctx.font = '18px sans-serif';
-          ctx.fillText('Click or tap to try again', canvas.width / 2, canvas.height / 2 + 20);
+          ctx.fillText('\u{1F6A8} Police coming! Hold BOOST!', W / 2, 74);
         }
       }
-
-      function loop() {
-        update();
-        draw();
-        requestAnimationFrame(loop);
+      if (arriving) {
+        ctx.fillStyle = 'rgba(0, 0, 0, ' + 0.5 * Math.max(0, 1 - arriveT / 90) + ')';
+        ctx.fillRect(0, 0, W, H);
       }
+    }
 
-      resetGame();
+    // ---------- drawing: car parks and the buildings ----------
+    function drawBuildingFront() {
+      const sky = ctx.createLinearGradient(0, 0, 0, 172);
+      sky.addColorStop(0, '#9fd3ee');
+      sky.addColorStop(1, '#e8f4fa');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 172);
+      // far away towers
+      ctx.fillStyle = 'rgba(120, 150, 175, 0.4)';
+      [[8, 80, 24], [34, 62, 20], [340, 70, 26], [368, 90, 22]].forEach(([x, y, w]) => ctx.fillRect(x, y, w, 172 - y));
+      if (lotKind === 'home') {
+        // the apartment building where you live
+        ctx.fillStyle = '#f3e7cf';
+        ctx.fillRect(86, 14, 228, 158);
+        ctx.fillStyle = '#d8c39a';
+        ctx.fillRect(86, 14, 228, 10);
+        for (let r = 0; r < 6; r++) {
+          for (let c = 0; c < 6; c++) {
+            const wx = 100 + c * 36;
+            const wy = 32 + r * 21;
+            ctx.fillStyle = (r + c) % 4 === 0 ? '#ffe9a8' : '#9fc6de';
+            ctx.fillRect(wx, wy, 22, 13);
+            ctx.fillStyle = '#b9a272';
+            ctx.fillRect(wx - 3, wy + 13, 28, 3); // a little balcony
+          }
+        }
+        ctx.fillStyle = '#6b4a2e';
+        roundedRect(176, 134, 48, 38, 4);
+        ctx.fill();
+        ctx.fillStyle = '#c28a52';
+        ctx.fillRect(180, 138, 18, 34);
+        ctx.fillRect(202, 138, 18, 34);
+        ctx.fillStyle = '#ffd23f';
+        ctx.beginPath();
+        ctx.arc(198, 156, 2, 0, Math.PI * 2);
+        ctx.arc(202, 156, 2, 0, Math.PI * 2);
+        ctx.fill();
+        roundedRect(140, 106, 120, 22, 8);
+        ctx.fillStyle = '#2d6a4f';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F3E0} MY HOME • بيتي', 200, 122);
+      } else {
+        // the mall
+        ctx.fillStyle = '#efe7da';
+        ctx.fillRect(14, 50, 372, 122);
+        const glass = ctx.createLinearGradient(0, 56, 0, 120);
+        glass.addColorStop(0, '#cfe9f7');
+        glass.addColorStop(1, '#8fbfd9');
+        ctx.fillStyle = glass;
+        ctx.fillRect(24, 100, 352, 36);
+        ctx.fillStyle = '#c4baa6';
+        for (let x = 24; x <= 376; x += 44) ctx.fillRect(x, 100, 3, 36);
+        // the dome
+        ctx.beginPath();
+        ctx.arc(200, 52, 46, Math.PI, Math.PI * 2);
+        ctx.fillStyle = dest.colour;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 3;
+        for (let k = 1; k < 4; k++) {
+          ctx.beginPath();
+          ctx.arc(200, 52, 46, Math.PI + (k * Math.PI) / 4, Math.PI + (k * Math.PI) / 4);
+          ctx.moveTo(200, 52);
+          ctx.lineTo(200 + Math.cos(Math.PI + (k * Math.PI) / 4) * 46, 52 + Math.sin(Math.PI + (k * Math.PI) / 4) * 46);
+          ctx.stroke();
+        }
+        // the name
+        roundedRect(60, 62, 280, 36, 10);
+        ctx.fillStyle = dest.colour;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        fitText(dest.name, 250, 18);
+        ctx.fillText(dest.name, 200, 80);
+        fitText(dest.ar, 250, 12, '');
+        ctx.fillText(dest.ar, 200, 93);
+        // the glass doors with a striped awning
+        ctx.fillStyle = '#2b3b4a';
+        ctx.fillRect(170, 126, 60, 46);
+        ctx.fillStyle = 'rgba(160, 215, 240, 0.8)';
+        ctx.fillRect(173, 130, 25, 42);
+        ctx.fillRect(202, 130, 25, 42);
+        for (let k = 0; k < 6; k++) {
+          ctx.fillStyle = k % 2 ? '#ffffff' : dest.colour;
+          ctx.fillRect(166 + k * 11, 116, 11, 12);
+        }
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('\u{1F6CD}️', 90, 125);
+        ctx.fillText('\u{1F6CD}️', 310, 125);
+      }
+      // palms on each side
+      [[28, 160], [372, 160], [74, 164], [326, 164]].forEach(([px, py]) => {
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(px - 2, py - 24, 4, 24);
+        drawPalm(px, py - 26);
+      });
+    }
+
+    function drawLot() {
+      const css = getComputedStyle(document.documentElement);
+      const road = css.getPropertyValue('--road').trim() || '#555a60';
+      drawBuildingFront();
+      // pavement and car park
+      ctx.fillStyle = '#d9d2c6';
+      ctx.fillRect(0, 172, W, 30);
+      ctx.fillStyle = '#b9b2a6';
+      ctx.fillRect(0, 198, W, 4);
+      ctx.fillStyle = road;
+      ctx.fillRect(0, 202, W, H - 202);
+      // bay lines and the cars parked in them
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 16; i++) {
+        const r = bayRect(i);
+        ctx.beginPath();
+        ctx.moveTo(r.x, r.y);
+        ctx.lineTo(r.x, r.y + r.h);
+        ctx.moveTo(r.x + r.w, r.y);
+        ctx.lineTo(r.x + r.w, r.y + r.h);
+        ctx.moveTo(r.x, r.row === 0 ? r.y : r.y + r.h);
+        ctx.lineTo(r.x + r.w, r.row === 0 ? r.y : r.y + r.h);
+        ctx.stroke();
+      }
+      // a walkway to the door
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      for (let y = 206; y < H - 10; y += 26) ctx.fillRect(194, y, 12, 14);
+      bays.forEach((b, i) => {
+        if (!b.occupied) return;
+        const c = bayCentre(i);
+        drawCar(c.x, c.y, 34, 58, b.colour, '#333');
+      });
+      // the bay you should park in
+      if (phase === 'park' || phase === 'walk') {
+        const r = bayRect(targetBay);
+        const glow = 0.35 + 0.25 * Math.sin(frameCount / 8);
+        if (phase === 'park') {
+          ctx.fillStyle = 'rgba(61, 220, 132, ' + glow + ')';
+          ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.font = 'bold 22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('P', r.x + r.w / 2, r.y + r.h / 2 + 8);
+        }
+      }
+      // cars driving about in the car park
+      if (phase === 'walk') {
+        lotCars.forEach((c) => {
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+          ctx.fillRect(c.x - 26, c.y - 12, 54, 28);
+          roundedRect(c.x - 28, c.y - 14, 56, 28, 7);
+          ctx.fillStyle = c.colour;
+          ctx.fill();
+          ctx.fillStyle = 'rgba(30, 40, 55, 0.75)';
+          ctx.fillRect(c.x + c.dir * 10 - 6, c.y - 10, 12, 20);
+          ctx.fillStyle = '#ffe9a0';
+          ctx.fillRect(c.x + c.dir * 27, c.y - 10, 2, 5);
+          ctx.fillRect(c.x + c.dir * 27, c.y + 5, 2, 5);
+        });
+      }
+      // your car
+      if (phase === 'start' || phase === 'park' || phase === 'walk' || phase === 'homedone') drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
+      if (phase === 'park' && parked) {
+        ctx.fillStyle = 'rgba(31, 191, 106, 0.95)';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Parked! ✅', car.x, car.y - 40);
+      }
+      // you, walking
+      if (phase === 'walk') {
+        if (me.hurt <= 0 || Math.floor(me.hurt / 6) % 2 === 0) {
+          ctx.save();
+          ctx.translate(me.x, me.y);
+          ctx.scale(1.7, 1.7);
+          const lift = me.moving ? Math.abs(Math.sin(me.stepT * 0.45)) * 3 : 0;
+          ctx.beginPath();
+          ctx.arc(0, -lift, 5, 0, Math.PI * 2);
+          ctx.fillStyle = '#d71920';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(0, -7 - lift, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = '#f2c9a0';
+          ctx.fill();
+          ctx.restore();
+        }
+        // an arrow to the door
+        const bob = Math.sin(frameCount / 8) * 4;
+        ctx.fillStyle = '#fff3a0';
+        ctx.beginPath();
+        ctx.moveTo(192, 176 + bob);
+        ctx.lineTo(208, 176 + bob);
+        ctx.lineTo(200, 190 + bob);
+        ctx.fill();
+        if (nearCar && leg === 'out' && shopped) {
+          ctx.fillStyle = 'rgba(31, 191, 106, 0.9)';
+          ctx.font = 'bold 14px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('\u{1F697} Your car', Math.min(W - 46, Math.max(46, car.x)), car.y - 38);
+        }
+      }
+    }
+
+    // a person seen from the side, walking
+    function drawShopper(x, y, look, scale, dir, moving, t, bag) {
+      const [skin, shirt, pants] = look;
+      const swing = moving ? Math.sin(t * 0.22) : 0;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale * dir, scale);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 15, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = pants;
+      ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-3, -34);
+      ctx.lineTo(-3 + swing * 9, -2);
+      ctx.moveTo(4, -34);
+      ctx.lineTo(4 - swing * 9, -2);
+      ctx.stroke();
+      roundedRect(-10, -66, 20, 34, 8);
+      ctx.fillStyle = shirt;
+      ctx.fill();
+      ctx.strokeStyle = skin;
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(0, -62);
+      ctx.lineTo(8 + swing * 3, -42);
+      ctx.stroke();
+      if (bag) {
+        roundedRect(5 + swing * 3, -44, 13, 15, 2);
+        ctx.fillStyle = '#c77dff';
+        ctx.fill();
+        ctx.strokeStyle = '#7b2cbf';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(8 + swing * 3, -44);
+        ctx.lineTo(11 + swing * 3, -50);
+        ctx.lineTo(15 + swing * 3, -44);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.arc(0, -75, 9, 0, Math.PI * 2);
+      ctx.fillStyle = skin;
+      ctx.fill();
+      ctx.fillStyle = '#2b2118';
+      ctx.beginPath();
+      ctx.arc(0, -78, 9, Math.PI, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawMall() {
+      // the high ceiling
+      const ceil = ctx.createLinearGradient(0, 0, 0, 120);
+      ceil.addColorStop(0, '#d9d2c6');
+      ceil.addColorStop(1, '#efe9df');
+      ctx.fillStyle = ceil;
+      ctx.fillRect(0, 0, W, 130);
+      for (let x = 20; x < W; x += 130) {
+        ctx.fillStyle = '#fffbe9';
+        ctx.fillRect(x, 10, 90, 28);
+        ctx.fillStyle = '#b9b2a6';
+        ctx.fillRect(x + 30, 10, 2, 28);
+        ctx.fillRect(x + 60, 10, 2, 28);
+      }
+      // the four shops
+      mallShops.forEach((sh, i) => {
+        const x0 = i * 100;
+        ctx.fillStyle = sh.wall;
+        ctx.fillRect(x0, 130, 100, 270);
+        ctx.fillStyle = '#2b2230';
+        ctx.fillRect(x0 + 4, 134, 92, 32);
+        ctx.fillStyle = sh.colour;
+        ctx.fillRect(x0 + 4, 134, 92, 4);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(sh.emoji + ' ' + sh.name, x0 + 50, 157);
+        for (let k = 0; k < 6; k++) {
+          ctx.fillStyle = k % 2 ? sh.colour : '#ffffff';
+          ctx.fillRect(x0 + 4 + k * 15.3, 168, 15.3, 12);
+        }
+        // the window
+        ctx.fillStyle = '#d6edf9';
+        ctx.fillRect(x0 + 8, 190, 84, 90);
+        ctx.strokeStyle = '#8f877b';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x0 + 8, 190, 84, 90);
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(sh.emoji, x0 + 28, 240);
+        ctx.fillText(sh.emoji, x0 + 70, 240);
+        ctx.fillText(sh.emoji, x0 + 50, 270);
+        // the door
+        const dx = x0 + 50;
+        ctx.fillStyle = '#6b5a48';
+        ctx.fillRect(dx - 22, 290, 44, 110);
+        ctx.fillStyle = mallBought[i] ? '#c8e6c9' : '#fff6e0';
+        ctx.fillRect(dx - 19, 293, 38, 107);
+        ctx.fillStyle = mallBought[i] ? '#2a9d5f' : '#e63946';
+        roundedRect(dx - 17, 298, 34, 14, 4);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(mallBought[i] ? '✅ BOUGHT' : 'OPEN', dx, 309);
+        ctx.fillStyle = '#bdb5a8';
+        ctx.fillRect(x0 - 2, 130, 4, 270);
+      });
+      // the shiny floor
+      const floor = ctx.createLinearGradient(0, 400, 0, H);
+      floor.addColorStop(0, '#e6dfd3');
+      floor.addColorStop(0.5, '#f2ece2');
+      floor.addColorStop(1, '#d8d0c3');
+      ctx.fillStyle = floor;
+      ctx.fillRect(0, 400, W, H - 400);
+      ctx.strokeStyle = 'rgba(120, 110, 95, 0.16)';
+      ctx.lineWidth = 1.5;
+      [408, 426, 452, 486, 530, 586].forEach((y) => {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      });
+      for (let k = -4; k <= 12; k++) {
+        ctx.beginPath();
+        ctx.moveTo(k * 50, 400);
+        ctx.lineTo(200 + (k * 50 - 200) * 2, H);
+        ctx.stroke();
+      }
+      const things = [];
+      mallShoppers.forEach((s) => things.push({ y: s.y, draw: () => drawShopper(s.x, s.y, s.look, 0.8 + (s.y - 440) / 330, s.dir, true, s.t, s.bag) }));
+      things.push({ y: mm.y, draw: () => drawShopper(mm.x, mm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.95 + (mm.y - 440) / 330, mm.dir, mm.moving, mm.stepT, shopped || mallBought.some(Boolean)) });
+      things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
+      const nd = nearMallDoor();
+      if (nd >= 0 && !mallBought[nd]) {
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.85)';
+        roundedRect(mallDoorX(nd) - 52, 262, 104, 24, 12);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Buying ' + mallShops[nd].emoji + '...', mallDoorX(nd), 278);
+      }
+    }
+
+    function drawMessage() {
+      if (msgT <= 0) return;
+      const a = Math.min(1, msgT / 30);
+      ctx.fillStyle = 'rgba(10, 18, 28, ' + 0.8 * a + ')';
+      roundedRect(W / 2 - 170, 84, 340, 30, 15);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, ' + a + ')';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(msg, W / 2, 104);
+    }
+
+    function drawOverlay(title, subtitle, sub2) {
+      ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'white';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 30px sans-serif';
+      ctx.fillText(title, W / 2, H / 2 - 16);
+      ctx.font = '18px sans-serif';
+      ctx.fillText(subtitle, W / 2, H / 2 + 20);
+      if (sub2) {
+        ctx.font = '14px sans-serif';
+        ctx.fillText(sub2, W / 2, H / 2 + 48);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      if (phase === 'drive') drawDrive();
+      else if (phase === 'mall') drawMall();
+      else drawLot();
+
+      if (phase === 'park' || phase === 'walk' || phase === 'mall') {
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+        roundedRect(70, 8, W - 140, 30, 15);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : '\u{1F6CD}️ ') + dest.name, W / 2, 28);
+      }
+      if (levelFlash > 0 && started && !gameOver) {
+        ctx.fillStyle = 'rgba(255, 196, 0, ' + Math.min(1, levelFlash / 20) + ')';
+        ctx.font = 'bold 36px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Level ' + level + '!', W / 2, 150);
+      }
+      if (!gameOver) drawMessage();
+      if (phase === 'start') {
+        drawOverlay('Tap to start', 'Drive from your home to ' + dest.name, 'Follow the road signs!');
+      } else if (gameOver) {
+        drawOverlay(busted ? 'Busted!' : 'Crashed!', 'Tap to try again • Score: ' + score, 'Trips finished: ' + tripNo);
+      } else if (phase === 'homedone') {
+        drawOverlay('Home sweet home! \u{1F3E0}', 'Trip ' + (tripNo + 1) + ' done • Score: ' + score, 'Tap for your next trip');
+      }
+    }
+
+    function loop() {
+      update();
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function boot(data) {
+      if (data && typeof data.best === 'number' && data.best > best) {
+        best = data.best;
+        bestEl.textContent = 'Best: ' + best;
+      }
+      // the title screen: your car in its bay at home
+      dest = malls[0];
+      makeLot('home');
+      const c = bayCentre(targetBay);
+      car.x = c.x;
+      car.y = c.y;
+      draw();
       loop();
-    </script>
+    }
+
+    if (window.claude && window.claude.hot && window.claude.hot.snapshot) {
+      window.claude.hot.snapshot(() => ({ best }));
+    }
+
+    if (window.claude && window.claude.hot && window.claude.hot.ready) {
+      window.claude.hot.ready(boot);
+    } else {
+      boot(window.claude && window.claude.hot ? window.claude.hot.data : null);
+    }
+  })();
+</script>
   </body>
 </html>
