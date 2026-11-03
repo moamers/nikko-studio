@@ -4125,7 +4125,15 @@ const isInterchange = (k) => (k !== terminusK || currentLine === 'tram') && targ
     const whiteBody = ['#dfe6ec', '#ffffff', '#cfd8e0'];
     const blueBody = ['#1a56b0', '#3d8bf0', '#164a96'];
     const tramBody = ['#d97a12', '#ffa83d', '#c26a0c'];
-    const monoBody = ['#8e44ad', '#b576d3', '#6c3483'];
+    const monoBody = ['#14296b', '#2c4fb0', '#0b1a45']; // dark blue
+    // your train takes the colour of the line you are on
+    const trainLook = {
+      red: { body: ['#c91f2e', '#ff5d62', '#9a1420'], dark: '#5e0b14', stripe: '#ff8a8e' },
+      green: { body: ['#17934f', '#4fdc8c', '#0f6a38'], dark: '#08411f', stripe: '#8af0b4' },
+      blue: { body: blueBody, dark: '#0d2f66', stripe: '#8fbcff' },
+      tram: { body: ['#8d96a1', '#ffffff', '#6f7882'], dark: '#4a525b', stripe: '#d7dee6' }, // shiny silver
+      monorail: { body: monoBody, dark: '#050d26', stripe: '#9db8ff' },
+    };
     function drawEngine(stripe, outline, headlight, body) {
       body = body || whiteBody;
       ctx.beginPath();
@@ -4694,10 +4702,16 @@ const isInterchange = (k) => (k !== terminusK || currentLine === 'tram') && targ
         ctx.rotate(angle);
         const onTram = currentLine === 'tram';
         const onMonoLine = currentLine === 'monorail';
-        const bodyCols = onMonoLine ? monoBody : onTram ? tramBody : blueBody;
-        const darkCol = onMonoLine ? '#4a235a' : onTram ? '#7a4208' : '#0d2f66';
-        if (i === 0) drawEngine('#ffffff', darkCol, true, bodyCols);
-        else drawCarriage('#ffffff', darkCol, bodyCols);
+        const look = trainLook[currentLine] || trainLook.red;
+        if (i === 0) drawEngine(look.stripe, look.dark, true, look.body);
+        else drawCarriage(look.stripe, look.dark, look.body);
+        if (onTram) {
+          // a bright shiny streak down the silver tram
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+          ctx.fillRect(-10, i === 0 ? -20 : -24, 3, i === 0 ? 44 : 48);
+          ctx.fillStyle = 'rgba(40, 50, 60, 0.18)';
+          ctx.fillRect(7, i === 0 ? -14 : -24, 3, i === 0 ? 38 : 48);
+        }
         if (dwell > 0 && !crashing) {
           // open doors: bright green door panels on the platform side
           const sx = doorSide === 'left' ? -1 : 1;
