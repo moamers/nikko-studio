@@ -208,7 +208,7 @@
     </g>
     <path d="M0 74 H400" stroke="currentColor" stroke-width="2" opacity="0.5"/>
   </svg>
-  <p class="sub">Drive from your home in Dubai to the malls. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost for speed! When you arrive, park in the indoor car park, get out, shop in the mall (ride the escalator, go inside the shops), put your bags in the boot and drive home.</p>
+  <p class="sub">Drive from your home in Dubai to the malls. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost for speed! When you arrive, park in the car park (it has 11 levels and an outdoor level on top: look for a free space), get out, shop in the mall (ride the escalator, go inside the shops), put your bags in the boot and drive home.</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -789,8 +789,18 @@
       return { x: col < 4 ? 12 + col * bayW : 212 + (col - 4) * bayW, y: bayRows[row], w: bayW, h: bayH, row };
     }
     let bays = [];
-    let targetBay = 0;
+    let carBay = 0; // the bay your car is in
+    let carLevel = 1; // and the level it is on
+    let lotLevel = 1; // the level of the car park you are on now
+    let levelBays = {}; // the bays of each level you have visited
+    let startFree = 1; // the first level that has free spaces (below it everything is full)
+    let levelFade = 0;
+    let levelFadeTo = 0;
     let lotKind = 'home';
+    // the car park has levels 1 to 11 and an outdoor level on the top (homes have 3 and outdoor)
+    const topLevel = () => (lotKind === 'home' ? 4 : 12);
+    const levelName = (l) => (l === topLevel() ? 'Outdoor' : 'Level ' + l);
+    const lotOutdoor = () => lotLevel === topLevel();
     let parked = false;
     let parkedT = 0;
     let lotCars = [];
@@ -798,19 +808,33 @@
     let leftCar = false;
     let nearCar = false;
 
-    function makeLot(kind) {
-      lotKind = kind;
+    function makeLevel(l) {
       const cols = ['#6a4c93', '#ffb703', '#2a9d8f', '#f4a261', '#e9ecef', '#457b9d', '#8d99ae', '#e76f51'];
-      bays = [];
-      for (let i = 0; i < 16; i++) bays.push({ occupied: Math.random() < 0.62, colour: cols[Math.floor(Math.random() * cols.length)] });
-      const empties = bays.map((b, i) => i).filter((i) => !bays[i].occupied);
-      targetBay = empties.length ? empties[Math.floor(Math.random() * empties.length)] : 3;
-      bays[targetBay].occupied = false;
-      // a few more empty bays, so there are choices
-      for (let k = 0; k < 2; k++) {
-        const j = Math.floor(Math.random() * 16);
-        if (j !== targetBay) bays[j].occupied = false;
+      const arr = [];
+      for (let i = 0; i < 16; i++) arr.push({ occupied: l < startFree ? true : Math.random() < 0.6, colour: cols[Math.floor(Math.random() * cols.length)] });
+      if (l >= startFree) {
+        // always a few free spaces on the levels that have room
+        let free = arr.filter((b) => !b.occupied).length;
+        while (free < 3) {
+          const j = Math.floor(Math.random() * 16);
+          if (arr[j].occupied) {
+            arr[j].occupied = false;
+            free++;
+          }
+        }
       }
+      return arr;
+    }
+
+    function makeLot(kind, free) {
+      lotKind = kind;
+      startFree = free || 1 + Math.floor(Math.random() * topLevel());
+      levelBays = {};
+      lotLevel = 1;
+      carLevel = 1;
+      bays = levelBays[1] = makeLevel(1);
+      levelFade = 0;
+      levelFadeTo = 0;
     }
     function bayCentre(i) {
       const r = bayRect(i);
@@ -828,7 +852,7 @@
       boosting = false;
       police = null;
       if (audioCtx && sirenGain) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
-      say('Arrived at ' + dest.name + '! Park in the glowing bay.', 220);
+      say('Arrived at ' + dest.name + '! ' + (startFree > 1 ? 'Level 1 is full: drive up the ramp \u2B06' : 'Park in a glowing bay.'), 260);
     }
 
     // does a rectangle hit a parked car?
@@ -859,7 +883,31 @@
       return { dx: dx / Math.max(1, len), dy: dy / Math.max(1, len), moving: len > 0.01 };
     }
 
+    function changeLevel(to) {
+      if (levelFade > 0) return;
+      levelFadeTo = to;
+      levelFade = 1;
+      blip(300, 600, 0.35, 0.1);
+    }
+
     function updatePark(step) {
+      if (levelFade > 0) {
+        levelFade += step;
+        if (levelFadeTo && levelFade >= 22) {
+          const up = levelFadeTo > lotLevel;
+          lotLevel = levelFadeTo;
+          levelFadeTo = 0;
+          bays = levelBays[lotLevel] || (levelBays[lotLevel] = makeLevel(lotLevel));
+          car.x = up ? 100 : 300;
+          car.y = 548;
+          parkedT = 0;
+          parked = false;
+          const free = bays.some((b) => !b.occupied);
+          say(levelName(lotLevel) + (free ? ': free spaces! \u{1F17F}\uFE0F' : ' is full: drive up the ramp \u2B06'), 200);
+        }
+        if (levelFade >= 44) levelFade = 0;
+        return;
+      }
       const d = inputDir(car.x, car.y);
       if (d.moving) {
         const nx = Math.max(24, Math.min(W - 24, car.x + d.dx * 2.5 * step));
@@ -867,24 +915,40 @@
         if (!hitsParked(nx, car.y, 16, 28)) car.x = nx;
         if (!hitsParked(car.x, ny, 16, 28)) car.y = ny;
       }
-      const c = bayCentre(targetBay);
-      if (Math.abs(car.x - c.x) < 9 && Math.abs(car.y - c.y) < 12 && !d.moving) parkedT += step;
-      else if (Math.abs(car.x - c.x) < 9 && Math.abs(car.y - c.y) < 12) parkedT += 0;
-      else parkedT = 0;
-      if (!parked && parkedT > 35) {
+      // the ramps to the level above and below
+      if (lotLevel < topLevel() && car.x > 322 && car.y > 462) {
+        changeLevel(lotLevel + 1);
+        return;
+      }
+      if (lotLevel > 1 && car.x < 78 && car.y > 462) {
+        changeLevel(lotLevel - 1);
+        return;
+      }
+      // is the car in one of the free bays?
+      let inBay = -1;
+      for (let i = 0; i < bays.length; i++) {
+        if (bays[i].occupied) continue;
+        const c = bayCentre(i);
+        if (Math.abs(car.x - c.x) < 10 && Math.abs(car.y - c.y) < 13) inBay = i;
+      }
+      if (inBay >= 0 && !d.moving) parkedT += step;
+      else if (inBay < 0) parkedT = 0;
+      if (!parked && inBay >= 0 && parkedT > 35) {
         parked = true;
+        carBay = inBay;
+        carLevel = lotLevel;
         addScore(5);
-        say('Parked! \u{1F17F}️ +5  Now get out of the car.', 200);
+        say('Parked on ' + levelName(lotLevel) + '! \u{1F17F}\uFE0F +5  Now get out of the car.', 220);
         blip(660, 990, 0.2, 0.12);
         blip(990, 1320, 0.25, 0.12, 0.15);
       }
-      if (parked && !(Math.abs(car.x - c.x) < 12 && Math.abs(car.y - c.y) < 15)) parked = false;
+      if (parked && (inBay < 0 || inBay !== carBay)) parked = false;
     }
 
     function getOutOfCar() {
       if (phase !== 'park' || !parked) return;
       phase = 'walk';
-      const r = bayRect(targetBay);
+      const r = bayRect(carBay);
       me.x = car.x;
       me.y = r.y + r.h + 16;
       me.hurt = 0;
@@ -946,7 +1010,7 @@
           me.hurt = 70;
           score = Math.max(0, score - 3);
           scoreEl.textContent = 'Score: ' + score;
-          const r = bayRect(targetBay);
+          const r = bayRect(carBay);
           me.x = car.x;
           me.y = r.y + r.h + 16;
           say('Ouch! Watch out for the cars', 120);
@@ -1877,13 +1941,14 @@
     function drawLot() {
       const css = getComputedStyle(document.documentElement);
       const road = css.getPropertyValue('--road').trim() || '#555a60';
-      drawGarageWall();
+      if (lotOutdoor()) drawOutdoorFront();
+      else drawGarageWall();
       // the concrete floor of the car park
       ctx.fillStyle = '#8f9298';
       ctx.fillRect(0, 172, W, 30);
       ctx.fillStyle = '#e8b923';
       ctx.fillRect(0, 198, W, 4);
-      ctx.fillStyle = '#5d6066';
+      ctx.fillStyle = lotOutdoor() ? '#6d7177' : '#5d6066';
       ctx.fillRect(0, 202, W, H - 202);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.08)';
       [[60, 480, 30], [310, 330, 22], [150, 560, 26], [340, 520, 18]].forEach(([ox, oy, r]) => {
@@ -1913,19 +1978,21 @@
         const c = bayCentre(i);
         drawCar(c.x, c.y, 34, 58, b.colour, '#333');
       });
-      // the bay you should park in
-      if (phase === 'park' || phase === 'walk') {
-        const r = bayRect(targetBay);
-        const glow = 0.35 + 0.25 * Math.sin(frameCount / 8);
-        if (phase === 'park') {
+      // the free bays glow green, and the ramps lead to the other levels
+      if (phase === 'park') {
+        const glow = 0.3 + 0.2 * Math.sin(frameCount / 8);
+        bays.forEach((b, i) => {
+          if (b.occupied) return;
+          const r = bayRect(i);
           ctx.fillStyle = 'rgba(61, 220, 132, ' + glow + ')';
           ctx.fillRect(r.x + 2, r.y + 2, r.w - 4, r.h - 4);
           ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
           ctx.font = 'bold 22px sans-serif';
           ctx.textAlign = 'center';
           ctx.fillText('P', r.x + r.w / 2, r.y + r.h / 2 + 8);
-        }
+        });
       }
+      if (phase === 'park' || phase === 'start') drawRamps();
       // cars driving about in the car park
       if (phase === 'walk') {
         lotCars.forEach((c) => {
@@ -1953,7 +2020,7 @@
         ctx.fillStyle = 'rgba(31, 191, 106, 0.95)';
         ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('Parked! ✅', car.x, car.y - 40);
+        ctx.fillText('Parked! ✅', Math.min(W - 50, Math.max(50, car.x)), car.y - 40);
       }
       // you, walking
       if (phase === 'walk') {
@@ -1989,7 +2056,156 @@
       }
     }
 
+    // the ramps up and down between the levels of the car park
+    function drawRamps() {
+      const full = !bays.some((b) => !b.occupied);
+      const ramp = (x0, up) => {
+        const g = ctx.createLinearGradient(0, 462, 0, 596);
+        g.addColorStop(0, up ? '#4a4d52' : '#7b7f86');
+        g.addColorStop(1, up ? '#7b7f86' : '#4a4d52');
+        ctx.fillStyle = g;
+        ctx.fillRect(x0, 462, 76, 134);
+        ctx.fillStyle = '#e8b923';
+        ctx.fillRect(x0, 462, 4, 134);
+        ctx.fillRect(x0 + 72, 462, 4, 134);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        for (let k = 0; k < 3; k++) {
+          const ay = up ? 560 - k * 34 : 490 + k * 34;
+          ctx.beginPath();
+          ctx.moveTo(x0 + 38, ay + (up ? -10 : 10));
+          ctx.lineTo(x0 + 18, ay + (up ? 10 : -10));
+          ctx.lineTo(x0 + 58, ay + (up ? 10 : -10));
+          ctx.fill();
+        }
+        ctx.fillStyle = '#1f5fa8';
+        roundedRect(x0 + 6, 468, 64, 22, 5);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        const target = up ? lotLevel + 1 : lotLevel - 1;
+        ctx.fillText((up ? '\u2B06 ' : '\u2B07 ') + (target === topLevel() ? 'Outdoor' : 'Level ' + target), x0 + 38, 483);
+      };
+      if (lotLevel < topLevel()) ramp(322, true);
+      if (lotLevel > 1) ramp(2, false);
+      if (full && phase === 'park' && lotLevel < topLevel()) {
+        const bob = Math.sin(frameCount / 7) * 6;
+        ctx.fillStyle = '#fff3a0';
+        ctx.beginPath();
+        ctx.moveTo(360, 440 + bob);
+        ctx.lineTo(344, 420 + bob);
+        ctx.lineTo(376, 420 + bob);
+        ctx.fill();
+      }
+    }
+
+function drawOutdoorFront() {
+      const sky = ctx.createLinearGradient(0, 0, 0, 172);
+      sky.addColorStop(0, '#9fd3ee');
+      sky.addColorStop(1, '#e8f4fa');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 172);
+      // far away towers
+      ctx.fillStyle = 'rgba(120, 150, 175, 0.4)';
+      [[8, 80, 24], [34, 62, 20], [340, 70, 26], [368, 90, 22]].forEach(([x, y, w]) => ctx.fillRect(x, y, w, 172 - y));
+      if (lotKind === 'home') {
+        // the apartment building where you live
+        ctx.fillStyle = '#f3e7cf';
+        ctx.fillRect(86, 14, 228, 158);
+        ctx.fillStyle = '#d8c39a';
+        ctx.fillRect(86, 14, 228, 10);
+        for (let r = 0; r < 6; r++) {
+          for (let c = 0; c < 6; c++) {
+            const wx = 100 + c * 36;
+            const wy = 32 + r * 21;
+            ctx.fillStyle = (r + c) % 4 === 0 ? '#ffe9a8' : '#9fc6de';
+            ctx.fillRect(wx, wy, 22, 13);
+            ctx.fillStyle = '#b9a272';
+            ctx.fillRect(wx - 3, wy + 13, 28, 3); // a little balcony
+          }
+        }
+        ctx.fillStyle = '#6b4a2e';
+        roundedRect(176, 134, 48, 38, 4);
+        ctx.fill();
+        ctx.fillStyle = '#c28a52';
+        ctx.fillRect(180, 138, 18, 34);
+        ctx.fillRect(202, 138, 18, 34);
+        ctx.fillStyle = '#ffd23f';
+        ctx.beginPath();
+        ctx.arc(198, 156, 2, 0, Math.PI * 2);
+        ctx.arc(202, 156, 2, 0, Math.PI * 2);
+        ctx.fill();
+        roundedRect(140, 106, 120, 22, 8);
+        ctx.fillStyle = '#2d6a4f';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F3E0} MY HOME • بيتي', 200, 122);
+      } else {
+        // the mall
+        ctx.fillStyle = '#efe7da';
+        ctx.fillRect(14, 50, 372, 122);
+        const glass = ctx.createLinearGradient(0, 56, 0, 120);
+        glass.addColorStop(0, '#cfe9f7');
+        glass.addColorStop(1, '#8fbfd9');
+        ctx.fillStyle = glass;
+        ctx.fillRect(24, 100, 352, 36);
+        ctx.fillStyle = '#c4baa6';
+        for (let x = 24; x <= 376; x += 44) ctx.fillRect(x, 100, 3, 36);
+        // the dome
+        ctx.beginPath();
+        ctx.arc(200, 52, 46, Math.PI, Math.PI * 2);
+        ctx.fillStyle = dest.colour;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 3;
+        for (let k = 1; k < 4; k++) {
+          ctx.beginPath();
+          ctx.arc(200, 52, 46, Math.PI + (k * Math.PI) / 4, Math.PI + (k * Math.PI) / 4);
+          ctx.moveTo(200, 52);
+          ctx.lineTo(200 + Math.cos(Math.PI + (k * Math.PI) / 4) * 46, 52 + Math.sin(Math.PI + (k * Math.PI) / 4) * 46);
+          ctx.stroke();
+        }
+        // the name
+        roundedRect(60, 62, 280, 36, 10);
+        ctx.fillStyle = dest.colour;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        fitText(dest.name, 250, 18);
+        ctx.fillText(dest.name, 200, 80);
+        fitText(dest.ar, 250, 12, '');
+        ctx.fillText(dest.ar, 200, 93);
+        // the glass doors with a striped awning
+        ctx.fillStyle = '#2b3b4a';
+        ctx.fillRect(170, 126, 60, 46);
+        ctx.fillStyle = 'rgba(160, 215, 240, 0.8)';
+        ctx.fillRect(173, 130, 25, 42);
+        ctx.fillRect(202, 130, 25, 42);
+        for (let k = 0; k < 6; k++) {
+          ctx.fillStyle = k % 2 ? '#ffffff' : dest.colour;
+          ctx.fillRect(166 + k * 11, 116, 11, 12);
+        }
+        ctx.font = '13px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('\u{1F6CD}️', 90, 125);
+        ctx.fillText('\u{1F6CD}️', 310, 125);
+      }
+      // palms on each side
+      [[28, 160], [372, 160], [74, 164], [326, 164]].forEach(([px, py]) => {
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(px - 2, py - 24, 4, 24);
+        drawPalm(px, py - 26);
+      });
+    }
+
+
     function drawGarageLight() {
+      if (lotOutdoor()) return; // the roof has no ceiling lights: it is sunny
       // pools of light under the lamps, and darker corners: it is indoors
       [[70, 300], [200, 300], [330, 300], [70, 470], [200, 470], [330, 470]].forEach(([lx, ly]) => {
         const g = ctx.createRadialGradient(lx, ly, 4, lx, ly, 110);
@@ -2513,7 +2729,7 @@
       roundedRect(330, 66, 56, 22, 4);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      ctx.fillText('\u{1F17F}️ Level 2', 358, 81);
+      ctx.fillText('\u{1F17F} ' + levelName(lotLevel), 358, 81);
     }
 
     // the boot of the car: the shopping bags go inside
@@ -2620,6 +2836,24 @@
         ctx.textAlign = 'center';
         ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : '\u{1F6CD}️ ') + dest.name, W / 2, 28);
       }
+      if ((phase === 'park' || phase === 'walk') && levelFade <= 0) {
+        ctx.fillStyle = 'rgba(31, 95, 168, 0.85)';
+        roundedRect(8, 44, 118, 28, 14);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F17F}\uFE0F ' + levelName(lotLevel), 67, 63);
+      }
+      if (levelFade > 0) {
+        const a = Math.min(1, levelFade / 22) * (levelFade > 22 ? Math.max(0, 1 - (levelFade - 22) / 22) : 1);
+        ctx.fillStyle = 'rgba(0, 0, 0, ' + a + ')';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + a + ')';
+        ctx.font = 'bold 34px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(levelName(levelFadeTo || lotLevel), W / 2, H / 2);
+      }
       if (levelFlash > 0 && started && !gameOver) {
         ctx.fillStyle = 'rgba(255, 196, 0, ' + Math.min(1, levelFlash / 20) + ')';
         ctx.font = 'bold 36px sans-serif';
@@ -2649,8 +2883,9 @@
       }
       // the title screen: your car in its bay at home
       dest = malls[0];
-      makeLot('home');
-      const c = bayCentre(targetBay);
+      makeLot('home', 1);
+      carBay = bays.findIndex((b) => !b.occupied);
+      const c = bayCentre(carBay);
       car.x = c.x;
       car.y = c.y;
       draw();
