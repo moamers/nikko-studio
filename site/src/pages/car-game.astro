@@ -178,6 +178,24 @@
     display: none;
   }
 
+  #kiteBtn {
+    width: 100%;
+    font-size: 22px;
+    font-weight: 800;
+    padding: 16px 20px;
+    border: 3px solid #5a189a;
+    border-radius: 999px;
+    background: #9d4edd;
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 4px 14px rgba(157, 78, 221, 0.45);
+    touch-action: none;
+  }
+
+  #kiteBtn[hidden] {
+    display: none;
+  }
+
   @keyframes actPulse {
     0%, 100% { transform: scale(1); }
     50% { transform: scale(1.03); }
@@ -215,6 +233,7 @@
   <div class="stage">
     <canvas id="game" width="400" height="600" aria-label="Car dodge game in Dubai"></canvas>
   </div>
+  <button id="kiteBtn" type="button" hidden>&#129665; Tug the kite!</button>
   <button id="actBtn" type="button" hidden>&#128682; Get out of the car</button>
   <div class="boost-row">
     <button id="boostBtn">&#128640; BOOST</button>
@@ -830,16 +849,15 @@
     function makeLevel(l) {
       const cols = ['#6a4c93', '#ffb703', '#2a9d8f', '#f4a261', '#e9ecef', '#457b9d', '#8d99ae', '#e76f51'];
       const arr = [];
-      for (let i = 0; i < 16; i++) arr.push({ occupied: l < startFree ? true : Math.random() < 0.6, colour: cols[Math.floor(Math.random() * cols.length)] });
-      if (l >= startFree) {
-        // always a few free spaces on the levels that have room
-        let free = arr.filter((b) => !b.occupied).length;
-        while (free < 3) {
-          const j = Math.floor(Math.random() * 16);
-          if (arr[j].occupied) {
-            arr[j].occupied = false;
-            free++;
-          }
+      // not many cars: a little busier on the lowest levels
+      for (let i = 0; i < 16; i++) arr.push({ occupied: Math.random() < (l < startFree ? 0.5 : 0.2), colour: cols[Math.floor(Math.random() * cols.length)] });
+      // always plenty of free spaces
+      let free = arr.filter((b) => !b.occupied).length;
+      while (free < 6) {
+        const j = Math.floor(Math.random() * 16);
+        if (arr[j].occupied) {
+          arr[j].occupied = false;
+          free++;
         }
       }
       return arr;
@@ -847,7 +865,7 @@
 
     function makeLot(kind, free) {
       lotKind = kind;
-      startFree = free || 1 + Math.floor(Math.random() * topLevel());
+      startFree = free || (Math.random() < 0.6 ? 1 : 1 + Math.floor(Math.random() * 3));
       levelBays = {};
       lotLevel = 1;
       carLevel = 1;
@@ -871,7 +889,7 @@
       boosting = false;
       police = null;
       if (audioCtx && sirenGain) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
-      say('Arrived at ' + dest.name + '! ' + (startFree > 1 ? 'Level 1 is full: drive up the ramp \u2B06' : 'Park in a glowing bay.'), 260);
+      say('Arrived at ' + dest.name + '! ' + (startFree > 1 ? 'Level 1 is a bit busy: try the ramp up \u2B06' : 'Park in a glowing bay.'), 260);
     }
 
     // does a rectangle hit a parked car?
@@ -974,10 +992,8 @@
       leftCar = false;
       hold = null;
       lotCars = [
-        { x: 60, y: 307, dir: 1, v: 1.5, colour: '#2a9d8f' },
-        { x: 300, y: 307, dir: -1, v: 1.3, colour: '#ffb703' },
-        { x: 120, y: 470, dir: 1, v: 1.7, colour: '#6a4c93' },
-        { x: 330, y: 535, dir: -1, v: 1.4, colour: '#e76f51' },
+        { x: 40, y: 307, dir: 1, v: 1.1, colour: '#2a9d8f' },
+        { x: 330, y: 500, dir: -1, v: 1.0, colour: '#e76f51' },
       ];
       say('Walk to ' + (dest.kind === 'home' ? 'your home' : dest.name) + '!', 190);
       blip(520, 520, 0.12, 0.1);
@@ -1094,7 +1110,8 @@
       { name: 'Food Court', emoji: '\u{1F37D}\uFE0F', colour: '#e76f51', wall: '#fff0e0', floor: '#d9c3a0', food: true, items: [['\u{1F354}', 'Burger', 3], ['\u{1F355}', 'Pizza', 2], ['\u{1F363}', 'Sushi', 4]] },
     ];
     const mallSlotX = [0, 100, 200, 400, 500, 600]; // the six shops on each floor; the escalator is in the middle
-    const mallWorldW = 700;
+    const mallWorldW = 800;
+    const liftX = 750;
     const mallEscX = 350;
     const mm = { x: 200, y: 505, dir: 1, stepT: 0, moving: false, goto: null };
     let mallFloor = 0;
@@ -1147,7 +1164,7 @@
         mallShoppers.push({ x: 60 + ((k * 167) % 580), y: 455 + ((k * 31) % 85), floor: k % 2, dir: k % 2 ? 1 : -1, v: k % 5 === 0 ? 0 : 0.35 + (k % 4) * 0.12, look: shopperLook[k % 6], bag: k % 2 === 0, t: k * 7, pause: 0 });
       }
       hold = null;
-      say('Welcome to ' + dest.name + '! Tap a shop door, or ride the escalator.', 260);
+      say('Welcome to ' + dest.name + '! Shops, an escalator, and lifts at the end.', 260);
       blip(988, 988, 0.15, 0.1);
       blip(1318, 1318, 0.2, 0.1, 0.14);
     }
@@ -1170,6 +1187,15 @@
       return -1;
     }
     const nearMallEsc = () => Math.abs(mm.x - mallEscX) < 42;
+    const nearLift = () => Math.abs(mm.x - liftX) < 40;
+    function rideLift() {
+      if (mallRide) return;
+      mm.x = liftX;
+      mm.goto = null;
+      mallRide = { t: 0, dir: mallFloor === 0 ? 1 : -1, kind: 'lift', moved: false };
+      say(mallFloor === 0 ? 'Going up in the lift!' : 'Going down in the lift!', 110);
+      blip(900, 900, 0.2, 0.08);
+    }
     function nearShelf() {
       for (let k = 0; k < 3; k++) if (Math.abs(mm.x - mallShelfX[k]) < 40) return k;
       return -1;
@@ -1324,6 +1350,7 @@
         if (d >= 0) enterShop(d);
         else if (nearTrolleyBay()) trolleyAction();
         else if (nearMallEsc()) rideEscalator();
+        else if (nearLift()) rideLift();
       } else if (inFoodCourt()) {
         const k = nearStall();
         const t = nearTable();
@@ -1352,6 +1379,11 @@
         const ex = mallEscX - mallCamX;
         if (p.x > ex - 56 && p.x < ex + 56 && p.y > 200 && p.y < 440) {
           mm.goto = mallEscX;
+          return;
+        }
+        const lx = liftX - mallCamX;
+        if (p.x > lx - 48 && p.x < lx + 48 && p.y > 200 && p.y < 440) {
+          mm.goto = liftX;
           return;
         }
         const bx = trolleyBayX - mallCamX;
@@ -1430,10 +1462,16 @@
       }
       if (mallRide) {
         mallRide.t += step;
-        if (mallRide.t >= 90) {
+        const inLift = mallRide.kind === 'lift';
+        if (inLift && !mallRide.moved && mallRide.t >= 45) {
+          mallRide.moved = true;
           mallFloor = mallRide.dir > 0 ? 1 : 0;
+          blip(1200, 1200, 0.25, 0.1); // ding!
+        }
+        if (mallRide.t >= (inLift ? 76 : 90)) {
+          if (!inLift) mallFloor = mallRide.dir > 0 ? 1 : 0;
           mallRide = null;
-          mm.x = mallEscX;
+          mm.x = inLift ? liftX : mallEscX;
           mm.y = 505;
           say(mallFloor === 1 ? 'Upper floor: more shops and the food court!' : 'Ground floor', 120);
         }
@@ -1557,6 +1595,7 @@
       if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.down = true;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = true;
       if (e.code.startsWith('Arrow')) e.preventDefault();
+      if (e.code === 'KeyK' || (e.code === 'Space' && phase === 'beach')) tugKite();
       if (e.code === 'Enter' || e.code === 'KeyE') {
         if (phase === 'mall') mallAction();
         else actBtn.click();
@@ -1789,6 +1828,7 @@
       }
       updateSiren();
       updateAct();
+      updateKiteBtn();
     }
 
     // ---------- drawing: the cars ----------
@@ -2611,6 +2651,83 @@ function drawOutdoorFront() {
       ctx.fillRect(300, y1 - 2, 14, 8);
     }
 
+    // the lift lobby at the end of the mall
+    function drawLift() {
+      const x0 = 700;
+      const upper = mallFloor === 1;
+      const ride = mallRide && mallRide.kind === 'lift' ? mallRide : null;
+      // the wall of the lobby
+      ctx.fillStyle = '#e6e0d4';
+      ctx.fillRect(x0, 130, 100, 270);
+      ctx.fillStyle = '#bdb5a8';
+      ctx.fillRect(x0 - 2, 130, 4, 270);
+      ctx.fillStyle = '#2b2230';
+      roundedRect(x0 + 12, 142, 76, 24, 8);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F6D7} LIFT', x0 + 50, 159);
+      // the floor number above the doors
+      ctx.fillStyle = '#111111';
+      roundedRect(x0 + 34, 178, 32, 24, 4);
+      ctx.fill();
+      ctx.fillStyle = '#ff6b4a';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText((upper ? '1' : 'G') + (ride ? (ride.dir > 0 ? ' ⬆' : ' ⬇') : ''), x0 + 50, 196);
+      // the shaft with glass sides and the lift doors
+      ctx.fillStyle = '#5b5f66';
+      ctx.fillRect(x0 + 18, 208, 64, 192);
+      const inside = ctx.createLinearGradient(0, 212, 0, 400);
+      inside.addColorStop(0, '#fff8dc');
+      inside.addColorStop(1, '#ffeeb8');
+      ctx.fillStyle = inside;
+      ctx.fillRect(x0 + 22, 212, 56, 188);
+      ctx.strokeStyle = '#b8a67a';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(x0 + 22, 330);
+      ctx.lineTo(x0 + 78, 330);
+      ctx.stroke();
+      // you, inside the lift
+      if (ride && ride.t < 45) {
+        const o = ride.t < 22 ? Math.min(1, ride.t / 14) : 1;
+        if (o > 0.1) drawShopper(x0 + 50, 392, ['#f2c9a0', '#d71920', '#26344a'], 0.8, 1, false, 0, mallBag.length > 0 && !mallTrolley);
+      }
+      // the doors slide open and shut
+      let open = 0;
+      if (ride) {
+        const t = ride.t;
+        if (t < 16) open = t / 16;
+        else if (t < 24) open = 1;
+        else if (t < 38) open = 1 - (t - 24) / 14;
+        else if (t < 52) open = 0;
+        else if (t < 66) open = (t - 52) / 14;
+        else open = 1;
+      } else if (nearLift()) {
+        open = 0.15;
+      }
+      const dw = 28 * (1 - open);
+      const metal = ctx.createLinearGradient(x0 + 22, 0, x0 + 78, 0);
+      metal.addColorStop(0, '#aeb4bb');
+      metal.addColorStop(0.5, '#eef1f4');
+      metal.addColorStop(1, '#aeb4bb');
+      ctx.fillStyle = metal;
+      ctx.fillRect(x0 + 22, 212, dw, 188);
+      ctx.fillRect(x0 + 78 - dw, 212, dw, 188);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.fillRect(x0 + 49, 212, 2, 188);
+      // the call button
+      ctx.fillStyle = '#3a3f46';
+      roundedRect(x0 + 86, 300, 10, 22, 3);
+      ctx.fill();
+      ctx.fillStyle = ride ? '#ffd23f' : '#ff6b4a';
+      ctx.beginPath();
+      ctx.arc(x0 + 91, 307, 3, 0, Math.PI * 2);
+      ctx.arc(x0 + 91, 316, 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
     function drawMallStreet() {
       const cx = mallCamX;
       const upper = mallFloor === 1;
@@ -2696,6 +2813,7 @@ function drawOutdoorFront() {
         ctx.fillRect(x0 - 2, 130, 4, 270);
       }
       drawEscalator(!upper);
+      drawLift();
       // the shiny floor
       const floor = ctx.createLinearGradient(0, 400, 0, H);
       floor.addColorStop(0, upper ? '#eadfce' : '#e6dfd3');
@@ -2726,9 +2844,9 @@ function drawOutdoorFront() {
       [190, 460, 540, 650].forEach((bx, i) => things.push({ y: 446, draw: () => drawBench(bx, 446, i % 2 ? shopperLook[(i + 1) % 6] : null) }));
       [20, 300, 400, 680].forEach((px) => things.push({ y: 440, draw: () => drawPlant(px, 440) }));
       mallShoppers.filter((s) => s.floor === mallFloor).forEach((s) => things.push({ y: s.y, draw: () => drawShopper(s.x, s.y, s.look, 0.8 + (s.y - 440) / 330, s.dir, s.v > 0 && s.pause <= 0, s.t, s.bag) }));
-      if (!mallRide) things.push({ y: mm.y, draw: () => drawMe() });
+      if (!mallRide || (mallRide.kind === 'lift' && mallRide.t >= 45)) things.push({ y: mm.y, draw: () => drawMe() });
       things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
-      if (mallRide) {
+      if (mallRide && mallRide.kind !== 'lift') {
         // riding the escalator
         const u = Math.min(1, mallRide.t / 90);
         const f = mallRide.dir > 0 ? u : 1 - u;
@@ -2755,6 +2873,14 @@ function drawOutdoorFront() {
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(mallTrolley ? '\u{1F6D2} Tap to put the trolley back' : '\u{1F6D2} Tap to take a trolley', trolleyBayX, 318);
+      } else if (nearLift() && !mallRide) {
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+        roundedRect(liftX - 70, 262, 140, 26, 13);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(upper ? '\u{1F6D7} Tap the lift to go down' : '\u{1F6D7} Tap the lift to go up', liftX, 280);
       } else if (nearMallEsc() && !mallRide) {
         ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
         roundedRect(mallEscX - 70, 262, 140, 26, 13);
@@ -2765,7 +2891,7 @@ function drawOutdoorFront() {
         ctx.fillText(upper ? '⬇ Tap to ride down' : '⬆ Tap to ride up', mallEscX, 280);
       }
       ctx.restore();
-      if (mallRide && mallRide.t > 72) {
+      if (mallRide && mallRide.kind !== 'lift' && mallRide.t > 72) {
         ctx.fillStyle = 'rgba(255, 255, 255, ' + (mallRide.t - 72) / 18 + ')';
         ctx.fillRect(0, 0, W, H);
       }
@@ -3265,13 +3391,16 @@ function drawOutdoorFront() {
         { x: 80, y: 470, c: '#4361ee' }, { x: 330, y: 450, c: '#f72585' }, { x: 230, y: 520, c: '#ff9f1c' },
       ];
       sunbathers = [{ x: 70, y: 322, c: '#f4a261' }, { x: 322, y: 292, c: '#8d5a3b' }, { x: 192, y: 382, c: '#f2c9a0' }, { x: 332, y: 472, c: '#c68c5c' }];
-      say('Welcome to ' + dest.name + '! Collect shells and paddle in the sea.', 260);
+      kite = { x: 60 + Math.random() * 280, y: 470 + Math.random() * 90, on: false, t: 0, loop: 0, cool: 0, air: 0, kx: 200, ky: 120, col: kiteColours[Math.floor(Math.random() * kiteColours.length)] };
+      kiteTime = 0;
+      say('Welcome to ' + dest.name + '! Find the kite \u{1FA81}, collect shells and paddle.', 280);
       blip(988, 988, 0.15, 0.1);
       blip(1318, 1318, 0.2, 0.1, 0.14);
     }
 
     function leaveBeach() {
       if (phase !== 'beach') return;
+      kite.on = false;
       phase = 'walk';
       shopped = true;
       me.x = 200;
@@ -3280,6 +3409,140 @@ function drawOutdoorFront() {
       leftCar = true;
       hold = null;
       say('Walk back to your car and get in!', 200);
+    }
+
+    // ---------- flying a kite on the beach ----------
+    // Pick up the kite from the sand. It flies above you in the wind: run to
+    // make it climb, and press TUG to make it loop the loop for points.
+    let kite = { x: 300, y: 500, on: false, t: 0, loop: 0, cool: 0, air: 0, kx: 200, ky: 120, col: ['#ff3b30', '#ffd23f'] };
+    const kiteBtn = document.getElementById('kiteBtn');
+    const kiteColours = [['#ff3b30', '#ffd23f'], ['#4361ee', '#4cc9f0'], ['#f72585', '#ffbe0b'], ['#2ec4b6', '#ff9f1c']];
+
+    function updateKiteBtn() {
+      const show = phase === 'beach' && kite.on;
+      if (kiteBtn.hidden === show) kiteBtn.hidden = !show;
+    }
+
+    function tugKite() {
+      if (phase !== 'beach' || !kite.on || kite.loop > 0 || kite.cool > 0) return;
+      kite.loop = 48;
+      kite.cool = 80;
+      addScore(3);
+      say('Whoosh! A loop-the-loop! \u{1FA81} +3', 100);
+      blip(300, 900, 0.3, 0.1);
+    }
+    kiteBtn.addEventListener('click', () => {
+      ensureAudio();
+      tugKite();
+    });
+
+    function updateKite(step) {
+      kite.t += step;
+      kite.cool = Math.max(0, kite.cool - step);
+      if (!kite.on) {
+        if (Math.hypot(bch.x - kite.x, bch.y - kite.y) < 24) {
+          kite.on = true;
+          kite.air = 0;
+          kite.kx = bch.x;
+          kite.ky = bch.y - 120;
+          say('You have a kite! \u{1FA81} Run to make it climb, and press TUG for loops.', 240);
+          blip(500, 900, 0.2, 0.1);
+        }
+        return;
+      }
+      // the wind carries it from side to side; running makes it climb higher
+      const lift = bch.moving ? 50 : 0;
+      const tx = bch.x + Math.sin(kite.t / 38) * 60;
+      const ty = Math.max(36, bch.y - 170 - lift) + Math.sin(kite.t / 52) * 18;
+      kite.kx += (tx - kite.kx) * (1 - Math.pow(0.94, step));
+      kite.ky += (ty - kite.ky) * (1 - Math.pow(0.94, step));
+      if (kite.loop > 0) kite.loop = Math.max(0, kite.loop - step);
+      // points for every few seconds in the air
+      kite.air += step;
+      if (kite.air > 240) {
+        kite.air = 0;
+        if (kiteTime < 12) {
+          kiteTime++;
+          addScore(1);
+          say('The kite is flying high! +1', 70);
+        }
+      }
+    }
+    let kiteTime = 0;
+
+    function drawKite() {
+      if (!kite.on) {
+        // the kite lying on the sand, waiting for you
+        ctx.save();
+        ctx.translate(kite.x, kite.y);
+        ctx.rotate(0.5);
+        const glow = 0.4 + 0.3 * Math.sin(frameCount / 8);
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + glow + ')';
+        ctx.beginPath();
+        ctx.arc(0, 0, 26, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        drawKiteShape(kite.x, kite.y, 0.5, 0.8, 0);
+        return;
+      }
+      // the string
+      const sx = bch.x;
+      const sy = bch.y - 12;
+      ctx.strokeStyle = 'rgba(40, 40, 40, 0.75)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo((sx + kite.kx) / 2 + Math.sin(kite.t / 20) * 12, (sy + kite.ky) / 2 + 30, kite.kx, kite.ky + 20);
+      ctx.stroke();
+      const spin = kite.loop > 0 ? (1 - kite.loop / 48) * Math.PI * 4 : 0;
+      const sway = Math.sin(kite.t / 30) * 0.25;
+      drawKiteShape(kite.kx, kite.ky - (kite.loop > 0 ? Math.sin((1 - kite.loop / 48) * Math.PI) * 40 : 0), sway + spin, 1, kite.t);
+    }
+
+    function drawKiteShape(x, y, angle, scale, t) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(angle);
+      ctx.scale(scale, scale);
+      // the long wiggly tail
+      ctx.strokeStyle = kite.col[0];
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, 26);
+      for (let k = 1; k <= 6; k++) ctx.lineTo(Math.sin(t / 8 + k) * 8, 26 + k * 12);
+      ctx.stroke();
+      ctx.fillStyle = kite.col[1];
+      for (let k = 1; k <= 5; k++) {
+        ctx.beginPath();
+        ctx.arc(Math.sin(t / 8 + k) * 8, 26 + k * 12, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // the diamond
+      ctx.beginPath();
+      ctx.moveTo(0, -24);
+      ctx.lineTo(16, 0);
+      ctx.lineTo(0, 26);
+      ctx.lineTo(-16, 0);
+      ctx.closePath();
+      ctx.fillStyle = kite.col[0];
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(0, -24);
+      ctx.lineTo(16, 0);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(-16, 0);
+      ctx.closePath();
+      ctx.fillStyle = kite.col[1];
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -24);
+      ctx.lineTo(0, 26);
+      ctx.moveTo(-16, 0);
+      ctx.lineTo(16, 0);
+      ctx.stroke();
+      ctx.restore();
     }
 
     function updateBeach(step) {
@@ -3312,6 +3575,7 @@ function drawOutdoorFront() {
           }
         }
       });
+      updateKite(step);
       if (bch.y < 190) {
         if (d.moving && Math.floor(beachTime / 14) !== Math.floor((beachTime - step) / 14)) splashT = 30;
         if (!paddled) {
@@ -3474,6 +3738,7 @@ function drawOutdoorFront() {
       ctx.fillStyle = '#f2c9a0';
       ctx.fill();
       ctx.restore();
+      drawKite();
       // the counter
       ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
       roundedRect(W - 116, 44, 108, 28, 14);
