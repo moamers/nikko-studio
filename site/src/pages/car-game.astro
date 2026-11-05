@@ -208,7 +208,7 @@
     </g>
     <path d="M0 74 H400" stroke="currentColor" stroke-width="2" opacity="0.5"/>
   </svg>
-  <p class="sub">Drive from your home in Dubai to the malls. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost for speed! When you arrive, park in the car park (it has 11 levels and an outdoor level on top: look for a free space), get out, shop in the mall (ride the escalator, go inside the shops), put your bags in the boot and drive home.</p>
+  <p class="sub">Drive from your home in Dubai to the malls. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost for speed! When you arrive, park in the car park (it has levels 1 to 9 and an outdoor level 10 on top: look for a free space), get out, shop in the mall (ride the escalator, take a trolley, go inside the shops and eat in the food court), put your bags in the boot and drive home.</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -798,8 +798,8 @@
     let levelFadeTo = 0;
     let lotKind = 'home';
     // the car park has levels 1 to 11 and an outdoor level on the top (homes have 3 and outdoor)
-    const topLevel = () => (lotKind === 'home' ? 4 : 12);
-    const levelName = (l) => (l === topLevel() ? 'Outdoor' : 'Level ' + l);
+    const topLevel = () => (lotKind === 'home' ? 4 : 10);
+    const levelName = (l) => (l === topLevel() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
     const lotOutdoor = () => lotLevel === topLevel();
     let parked = false;
     let parkedT = 0;
@@ -984,7 +984,13 @@
           bootT = 0;
           bootDone = true;
           addScore(5 + mallBag.length);
-          say('Bags in the boot! +' + (5 + mallBag.length), 150);
+          if (mallTrolley) {
+            mallTrolley = false;
+            addScore(3);
+            say('Bags in the boot, and the trolley goes back! +' + (8 + mallBag.length), 170);
+          } else {
+            say('Bags in the boot! +' + (5 + mallBag.length), 150);
+          }
           blip(660, 990, 0.2, 0.1);
         }
         return;
@@ -1065,7 +1071,7 @@
       { name: 'Bakery', emoji: '\u{1F950}', colour: '#d9a066', wall: '#faeedd', floor: '#ead9bf', items: [['\u{1F950}', 'Croissant', 1], ['\u{1F35E}', 'Bread', 1], ['\u{1F382}', 'Birthday cake', 4]] },
       { name: 'Jewellery', emoji: '\u{1F48D}', colour: '#b49a4d', wall: '#f5efdc', floor: '#2f2a3a', items: [['\u{1F48D}', 'Ring', 5], ['⌚', 'Watch', 4], ['\u{1F4FF}', 'Necklace', 2]] },
       { name: 'Perfume', emoji: '\u{1F9F4}', colour: '#c77dba', wall: '#f8e6f3', floor: '#e7dce6', items: [['\u{1F9F4}', 'Perfume', 3], ['\u{1F339}', 'Rose', 1], ['\u{1FA9E}', 'Mirror', 2]] },
-      { name: 'Games', emoji: '\u{1F3AE}', colour: '#4a5fc1', wall: '#e3e6f7', floor: '#2f3350', items: [['\u{1F3AE}', 'Video game', 4], ['\u{1F579}️', 'Joystick', 2], ['\u{1F3B2}', 'Dice game', 1]] },
+      { name: 'Food Court', emoji: '\u{1F37D}\uFE0F', colour: '#e76f51', wall: '#fff0e0', floor: '#d9c3a0', food: true, items: [['\u{1F354}', 'Burger', 3], ['\u{1F355}', 'Pizza', 2], ['\u{1F363}', 'Sushi', 4]] },
     ];
     const mallSlotX = [0, 100, 200, 400, 500, 600]; // the six shops on each floor; the escalator is in the middle
     const mallWorldW = 700;
@@ -1083,6 +1089,10 @@
     let mallTime = 0;
     let mallDifferent = new Set();
     let bootT = 0; // the boot panel is open
+    let mallTrolley = false; // you have a shopping trolley
+    const trolleyBayX = 100;
+    let mallTray = null; // the food you have ordered
+    let mallEat = null; // sitting at a table, eating
     let bootDone = false;
     const shopperLook = [
       ['#f2c9a0', '#e63946', '#2a4d8f'], ['#c68c5c', '#2a9d8f', '#3a3a4a'], ['#8d5a3b', '#f4a261', '#264653'],
@@ -1106,6 +1116,10 @@
       mallBag = [];
       mallDone = mallShopsData.map(() => [false, false, false]);
       mallDifferent = new Set();
+      mallTrolley = false;
+      mallTray = null;
+      mallEat = null;
+      mm.act = null;
       bootDone = false;
       bootT = 0;
       mallShoppers = [];
@@ -1158,10 +1172,16 @@
 
     function leaveShop() {
       const slot = mallShop % 6;
+      if (mallTray) {
+        mallTray = null;
+        say('You left your food behind!', 100);
+      }
       mallShop = -1;
       mm.x = mallDoorX(slot);
       mm.y = 505;
       mm.goto = null;
+      mm.act = null;
+      mallEat = null;
       hold = null;
     }
 
@@ -1179,6 +1199,11 @@
       const [emoji, name, price] = sh.items[k];
       if (mallDone[mallShop][k]) {
         say('You already bought the ' + name.toLowerCase() + '!', 80);
+        return;
+      }
+      if (mallBag.length >= 3 && !mallTrolley) {
+        say('Your hands are full! Take a trolley \u{1F6D2} by the entrance.', 160);
+        blip(220, 160, 0.2, 0.08);
         return;
       }
       if (mallWallet < price) {
@@ -1200,13 +1225,91 @@
       }
     }
 
-    // press the action: go in a shop, ride the escalator, buy, or go out
+    // ---------- the trolley ----------
+    const nearTrolleyBay = () => mallFloor === 0 && mallShop < 0 && Math.abs(mm.x - trolleyBayX) < 30;
+    function trolleyAction() {
+      if (!mallTrolley) {
+        mallTrolley = true;
+        say('You have a trolley! \u{1F6D2} It carries all your bags.', 160);
+        blip(500, 700, 0.15, 0.1);
+      } else if (mallBag.length > 3) {
+        say('Keep the trolley: you have too many bags to carry!', 140);
+      } else {
+        mallTrolley = false;
+        say('Trolley put back.', 90);
+        blip(400, 300, 0.12, 0.08);
+      }
+    }
+
+    // ---------- the food court ----------
+    const stallX = [110, 190, 270, 350];
+    const tableX = [110, 200, 290];
+    const tableBusy = [true, false, false];
+    const foodStalls = [
+      ['\u{1F354}', 'Burger', 3, '#d9822b'],
+      ['\u{1F355}', 'Pizza slice', 2, '#c0392b'],
+      ['\u{1F363}', 'Sushi', 4, '#2a9d8f'],
+      ['\u{1F964}', 'Juice', 1, '#8e44ad'],
+    ];
+    const inFoodCourt = () => mallShop >= 0 && !!mallShopsData[mallShop].food;
+    const nearStall = () => {
+      for (let k = 0; k < 4; k++) if (Math.abs(mm.x - stallX[k]) < 36) return k;
+      return -1;
+    };
+    const nearTable = () => {
+      for (let t = 0; t < 3; t++) if (Math.abs(mm.x - tableX[t]) < 40) return t;
+      return -1;
+    };
+
+    function orderFood(k) {
+      const [emoji, name, price] = foodStalls[k];
+      if (mallTray) {
+        say('Eat your food first! Find a free table.', 110);
+        return;
+      }
+      if (mallWallet < price) {
+        say('Not enough coins for the ' + name.toLowerCase() + '!', 100);
+        blip(220, 160, 0.2, 0.08);
+        return;
+      }
+      mallWallet -= price;
+      mallTray = { emoji, name, price };
+      say('Here is your ' + name.toLowerCase() + ' ' + emoji + '! Tap a free table to sit down.', 180);
+      blip(660, 880, 0.15, 0.1);
+    }
+
+    function sitDown(t) {
+      if (mallEat) return;
+      if (!mallTray) {
+        say('Order some food first!', 90);
+        return;
+      }
+      if (tableBusy[t]) {
+        say('That table is taken. Try another one.', 100);
+        return;
+      }
+      mallEat = { t: 0, table: t, tray: mallTray };
+      mm.x = tableX[t] - 30;
+      mm.y = 476;
+      mm.dir = 1;
+      mm.goto = null;
+      say('Yum! Eating your ' + mallTray.name.toLowerCase() + '...', 130);
+    }
+
+    // press the action: go in a shop, ride the escalator, take a trolley, buy, eat, or go out
     function mallAction() {
-      if (phase !== 'mall' || mallRide) return;
+      if (phase !== 'mall' || mallRide || mallEat) return;
       if (mallShop < 0) {
         const d = nearMallDoor();
         if (d >= 0) enterShop(d);
+        else if (nearTrolleyBay()) trolleyAction();
         else if (nearMallEsc()) rideEscalator();
+      } else if (inFoodCourt()) {
+        const k = nearStall();
+        const t = nearTable();
+        if (k >= 0) orderFood(k);
+        else if (t >= 0) sitDown(t);
+        else if (mm.x < 70) leaveShop();
       } else {
         const k = nearShelf();
         if (k >= 0) mallBuy(k);
@@ -1216,11 +1319,12 @@
 
     function mallPress(p) {
       mm.goto = null;
-      if (mallRide) return;
+      mm.act = null;
+      if (mallRide || mallEat) return;
       if (mallShop < 0) {
         for (let s = 0; s < 6; s++) {
           const sx = mallDoorX(s) - mallCamX;
-          if (p.x > sx - 40 && p.x < sx + 40 && p.y > 240 && p.y < 420) {
+          if (p.x > sx - 40 && p.x < sx + 40 && p.y > 240 && p.y < 416) {
             mm.goto = mallDoorX(s);
             return;
           }
@@ -1229,6 +1333,31 @@
         if (p.x > ex - 56 && p.x < ex + 56 && p.y > 200 && p.y < 440) {
           mm.goto = mallEscX;
           return;
+        }
+        const bx = trolleyBayX - mallCamX;
+        if (mallFloor === 0 && p.x > bx - 44 && p.x < bx + 44 && p.y >= 416 && p.y < 475) {
+          mm.goto = trolleyBayX;
+          mm.act = { kind: 'trolley' };
+          return;
+        }
+      } else if (inFoodCourt()) {
+        if (p.x < 70 && p.y > 170 && p.y < 420) {
+          mm.goto = 20;
+          return;
+        }
+        for (let k = 0; k < 4; k++) {
+          if (Math.abs(p.x - stallX[k]) < 40 && p.y > 190 && p.y < 340) {
+            mm.goto = stallX[k];
+            mm.act = { kind: 'stall', i: k };
+            return;
+          }
+        }
+        for (let t = 0; t < 3; t++) {
+          if (Math.abs(p.x - tableX[t]) < 48 && p.y > 395 && p.y < 500) {
+            mm.goto = tableX[t];
+            mm.act = { kind: 'table', i: t };
+            return;
+          }
         }
       } else {
         if (p.x < 70 && p.y > 170 && p.y < 420) {
@@ -1262,6 +1391,23 @@
 
     function updateMall(step) {
       mallTime += step;
+      if (mallEat) {
+        // sitting at the table, eating
+        mallEat.t += step;
+        if (Math.floor(mallEat.t / 26) !== Math.floor((mallEat.t - step) / 26) && mallEat.t < 130) blip(280 + Math.random() * 120, 200, 0.07, 0.07);
+        if (mallEat.t >= 140) {
+          const price = mallEat.tray.price;
+          mallEat = null;
+          mallTray = null;
+          mm.x = tableX[nearTable() >= 0 ? nearTable() : 1] - 60;
+          mm.y = 500;
+          addScore(5 + price);
+          say('Yummy! \u{1F60B} +' + (5 + price), 150);
+          [523, 659, 784].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.1));
+        }
+        mallShopFolk.forEach((s) => wander(s, step, 60, 360));
+        return;
+      }
       if (mallRide) {
         mallRide.t += step;
         if (mallRide.t >= 90) {
@@ -1269,7 +1415,7 @@
           mallRide = null;
           mm.x = mallEscX;
           mm.y = 505;
-          say(mallFloor === 1 ? 'Upper floor: more shops!' : 'Ground floor', 100);
+          say(mallFloor === 1 ? 'Upper floor: more shops and the food court!' : 'Ground floor', 120);
         }
         return;
       }
@@ -1278,11 +1424,17 @@
       if (mm.goto !== null) {
         if (Math.abs(mm.goto - mm.x) < 6) {
           mm.goto = null;
-          mallAction();
+          const a = mm.act;
+          mm.act = null;
+          if (a && a.kind === 'trolley') trolleyAction();
+          else if (a && a.kind === 'stall') orderFood(a.i);
+          else if (a && a.kind === 'table') sitDown(a.i);
+          else mallAction();
         } else dx = mm.goto > mm.x ? 1 : -1;
       }
       if (hold) {
         mm.goto = null;
+        mm.act = null;
         const px = hold.x + (mallShop < 0 ? mallCamX : 0);
         if (Math.abs(px - mm.x) > 5) dx = px > mm.x ? 1 : -1;
         if (Math.abs(hold.y - mm.y) > 6) dy = hold.y > mm.y ? 1 : -1;
@@ -2039,6 +2191,12 @@
           ctx.fill();
           ctx.restore();
         }
+        if (mallTrolley) {
+          ctx.font = '22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#000000';
+          ctx.fillText('\u{1F6D2}', me.x + 20, me.y + 8);
+        }
         // an arrow to the door
         const bob = Math.sin(frameCount / 8) * 4;
         ctx.fillStyle = '#fff3a0';
@@ -2084,7 +2242,7 @@
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         const target = up ? lotLevel + 1 : lotLevel - 1;
-        ctx.fillText((up ? '\u2B06 ' : '\u2B07 ') + (target === topLevel() ? 'Outdoor' : 'Level ' + target), x0 + 38, 483);
+        ctx.fillText((up ? '\u2B06 ' : '\u2B07 ') + (target === topLevel() ? 'L' + target + ' Outdoor' : 'Level ' + target), x0 + 38, 483);
       };
       if (lotLevel < topLevel()) ramp(322, true);
       if (lotLevel > 1) ramp(2, false);
@@ -2494,10 +2652,11 @@ function drawOutdoorFront() {
       ctx.fillRect(cx, 550, W, 8);
       // the things on the floor: benches, plants, people and you
       const things = [];
-      [100, 250, 450, 650].forEach((bx, i) => things.push({ y: 446, draw: () => drawBench(bx, 446, i % 2 ? shopperLook[(i + 1) % 6] : null) }));
+      if (mallFloor === 0) things.push({ y: 446, draw: drawTrolleyBay });
+      [190, 460, 540, 650].forEach((bx, i) => things.push({ y: 446, draw: () => drawBench(bx, 446, i % 2 ? shopperLook[(i + 1) % 6] : null) }));
       [20, 300, 400, 680].forEach((px) => things.push({ y: 440, draw: () => drawPlant(px, 440) }));
       mallShoppers.filter((s) => s.floor === mallFloor).forEach((s) => things.push({ y: s.y, draw: () => drawShopper(s.x, s.y, s.look, 0.8 + (s.y - 440) / 330, s.dir, s.v > 0 && s.pause <= 0, s.t, s.bag) }));
-      if (!mallRide) things.push({ y: mm.y, draw: () => drawShopper(mm.x, mm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.95 + (mm.y - 440) / 330, mm.dir, mm.moving, mm.stepT, mallBag.length > 0) });
+      if (!mallRide) things.push({ y: mm.y, draw: () => drawMe() });
       things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
       if (mallRide) {
         // riding the escalator
@@ -2505,7 +2664,8 @@ function drawOutdoorFront() {
         const f = mallRide.dir > 0 ? u : 1 - u;
         const px = 316 + f * 70;
         const py = 392 - f * 168;
-        drawShopper(px, py, ['#f2c9a0', '#d71920', '#26344a'], 0.7, 1, false, 0, mallBag.length > 0);
+        if (mallTrolley) drawTrolley(px + 16, py, 0.6, 1, mallBag.length);
+        drawShopper(px, py, ['#f2c9a0', '#d71920', '#26344a'], 0.7, 1, false, 0, mallBag.length > 0 && !mallTrolley);
       }
       // hints
       const nd = nearMallDoor();
@@ -2517,6 +2677,14 @@ function drawOutdoorFront() {
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('\u{1F6AA} Tap the door to go in', mallDoorX(nd), 280);
+      } else if (mallFloor === 0 && nearTrolleyBay() && !mallRide) {
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+        roundedRect(trolleyBayX - 80, 300, 160, 26, 13);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(mallTrolley ? '\u{1F6D2} Tap to put the trolley back' : '\u{1F6D2} Tap to take a trolley', trolleyBayX, 318);
       } else if (nearMallEsc() && !mallRide) {
         ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
         roundedRect(mallEscX - 70, 262, 140, 26, 13);
@@ -2617,7 +2785,7 @@ function drawOutdoorFront() {
       }
       const things = [];
       mallShopFolk.forEach((p) => things.push({ y: p.y, draw: () => drawShopper(p.x, p.y, p.look, 0.9 + (p.y - 440) / 330, p.dir, p.v > 0 && p.pause <= 0, p.t, p.bag) }));
-      things.push({ y: mm.y, draw: () => drawShopper(mm.x, mm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.95 + (mm.y - 440) / 330, mm.dir, mm.moving, mm.stepT, mallBag.length > 0) });
+      things.push({ y: mm.y, draw: () => drawMe() });
       things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
       const nk = nearShelf();
       if (nk >= 0 && !mallDone[mallShop][nk]) {
@@ -2631,19 +2799,283 @@ function drawOutdoorFront() {
       }
     }
 
+    // a shopping trolley seen from the side: a wire basket on wheels with your bags in it
+    function drawTrolley(x, y, scale, dir, bags) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(scale * dir, scale);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+      ctx.beginPath();
+      ctx.ellipse(8, 0, 22, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // the bags
+      const cols = ['#c77dff', '#ff9f1c', '#2ec4b6', '#ef476f'];
+      for (let i = 0; i < Math.min(8, bags); i++) {
+        ctx.fillStyle = cols[i % 4];
+        roundedRect(-8 + (i % 4) * 9, -40 - Math.floor(i / 4) * 9, 11, 12, 2);
+        ctx.fill();
+      }
+      // the basket
+      ctx.fillStyle = 'rgba(210, 215, 222, 0.5)';
+      ctx.beginPath();
+      ctx.moveTo(-12, -32);
+      ctx.lineTo(32, -32);
+      ctx.lineTo(26, -12);
+      ctx.lineTo(-6, -12);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#8c939b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      for (let k = 0; k < 5; k++) {
+        ctx.moveTo(-8 + k * 9, -32);
+        ctx.lineTo(-4 + k * 8, -12);
+      }
+      ctx.moveTo(-9, -22);
+      ctx.lineTo(29, -22);
+      ctx.stroke();
+      // the handle and the wheels
+      ctx.strokeStyle = '#4a4f57';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-12, -32);
+      ctx.lineTo(-18, -44);
+      ctx.moveTo(-6, -12);
+      ctx.lineTo(-4, -4);
+      ctx.moveTo(26, -12);
+      ctx.lineTo(24, -4);
+      ctx.stroke();
+      ctx.fillStyle = '#2b2f35';
+      ctx.beginPath();
+      ctx.arc(-4, -2, 3.5, 0, Math.PI * 2);
+      ctx.arc(24, -2, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // you (and your trolley, if you have one)
+    function drawMe() {
+      const sc = 0.95 + (mm.y - 440) / 330;
+      if (mallTrolley) drawTrolley(mm.x + mm.dir * 24, mm.y, sc * 0.9, mm.dir, mallBag.length);
+      drawShopper(mm.x, mm.y, ['#f2c9a0', '#d71920', '#26344a'], sc, mm.dir, mm.moving, mm.stepT, mallBag.length > 0 && !mallTrolley);
+    }
+
+    function drawTrolleyBay() {
+      const x = trolleyBayX;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+      ctx.fillRect(x - 40, 444, 80, 6);
+      for (let i = 0; i < 3; i++) drawTrolley(x - 24 + i * 16, 446, 0.75, 1, 0);
+      ctx.fillStyle = '#1f5fa8';
+      roundedRect(x - 36, 372, 72, 22, 5);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F6D2} TROLLEYS', x, 387);
+    }
+
+    // the food court: stalls along the back, tables and chairs in front
+    function drawFoodCourt() {
+      const sh = mallShopsData[mallShop];
+      ctx.fillStyle = sh.wall;
+      ctx.fillRect(0, 0, W, 360);
+      ctx.fillStyle = sh.floor;
+      ctx.fillRect(0, 360, W, H - 360);
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+      ctx.lineWidth = 1.5;
+      for (let y = 370; y < H; y += 28) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      for (let x = 20; x < W; x += 56) {
+        ctx.beginPath();
+        ctx.moveTo(x, 360);
+        ctx.lineTo(200 + (x - 200) * 1.8, H);
+        ctx.stroke();
+      }
+      // lamps hanging down
+      for (let x = 60; x < W; x += 90) {
+        ctx.strokeStyle = '#6b5a48';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 44);
+        ctx.stroke();
+        ctx.fillStyle = '#ffd166';
+        ctx.beginPath();
+        ctx.arc(x, 50, 10, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 240, 180, 0.15)';
+        ctx.beginPath();
+        ctx.moveTo(x - 10, 50);
+        ctx.lineTo(x + 10, 50);
+        ctx.lineTo(x + 34, 330);
+        ctx.lineTo(x - 34, 330);
+        ctx.fill();
+      }
+      ctx.fillStyle = sh.colour;
+      roundedRect(100, 66, 200, 34, 8);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F37D}\uFE0F FOOD COURT \u2022 مطاعم', 200, 89);
+      // the food stalls
+      foodStalls.forEach(([emoji, name, price, colour], k) => {
+        const x = stallX[k];
+        ctx.fillStyle = '#efe3d0';
+        ctx.fillRect(x - 38, 150, 76, 150);
+        ctx.fillStyle = colour;
+        ctx.fillRect(x - 40, 138, 80, 16);
+        for (let s = 0; s < 4; s++) {
+          ctx.fillStyle = s % 2 ? '#ffffff' : colour;
+          ctx.fillRect(x - 40 + s * 20, 154, 20, 10);
+        }
+        ctx.font = '30px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.fillText(emoji, x, 204);
+        ctx.fillStyle = '#2a2a3a';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(name, x, 224);
+        ctx.fillText('\u{1F4B0} ' + price, x, 238);
+        drawShopper(x + 20, 292, ['#e0ac84', '#ffffff', '#3a3a4a'], 0.62, -1, false, mallTime + k * 9, false);
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(x - 38, 276, 76, 26);
+        ctx.fillStyle = '#9a7a52';
+        ctx.fillRect(x - 38, 276, 76, 6);
+      });
+      // the exit door
+      ctx.fillStyle = '#5a5046';
+      ctx.fillRect(0, 170, 62, 240);
+      ctx.fillStyle = '#fff6e0';
+      ctx.fillRect(0, 178, 54, 232);
+      ctx.fillStyle = '#2a9d5f';
+      roundedRect(4, 146, 48, 22, 5);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('EXIT', 28, 162);
+      // the tables and chairs
+      const free = !!mallTray && !mallEat;
+      const things = [];
+      tableX.forEach((tx, t) => {
+        things.push({
+          y: 470,
+          draw: () => {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+            ctx.beginPath();
+            ctx.ellipse(tx, 478, 44, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // chairs
+            ctx.fillStyle = '#c0553a';
+            roundedRect(tx - 52, 436, 16, 38, 5);
+            ctx.fill();
+            roundedRect(tx + 36, 436, 16, 38, 5);
+            ctx.fill();
+            // the table
+            ctx.fillStyle = '#8a6c4a';
+            ctx.fillRect(tx - 4, 440, 8, 36);
+            ctx.fillStyle = free && !tableBusy[t] ? '#ffe9a8' : '#e8dcc0';
+            ctx.beginPath();
+            ctx.ellipse(tx, 438, 40, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = free && !tableBusy[t] ? '#3ddc84' : '#b59f78';
+            ctx.lineWidth = free && !tableBusy[t] ? 3 : 2;
+            ctx.stroke();
+            // the people sitting there, and their food
+            if (tableBusy[t]) {
+              drawSitter(tx - 30, 476, shopperLook[(t + 1) % 6]);
+              drawSitter(tx + 30, 476, shopperLook[(t + 4) % 6]);
+              ctx.font = '16px sans-serif';
+              ctx.fillStyle = '#000000';
+              ctx.textAlign = 'center';
+              ctx.fillText('\u{1F35D}', tx - 14, 436);
+              ctx.fillText('\u{1F964}', tx + 14, 436);
+            }
+          },
+        });
+      });
+      // a lone person at the last table
+      things.push({ y: 471, draw: () => drawSitter(tableX[2] + 30, 476, shopperLook[2]) });
+      if (mallEat) {
+        const ex = tableX[mallEat.table];
+        things.push({
+          y: 480,
+          draw: () => {
+            drawSitter(ex - 30, 476, ['#f2c9a0', '#d71920', '#26344a']);
+            // the food on the table, with steam, and a chomping mouth
+            ctx.font = '22px sans-serif';
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            ctx.fillText(mallEat.tray.emoji, ex, 436 - Math.abs(Math.sin(mallEat.t / 9)) * 5);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 2;
+            for (let s = -1; s <= 1; s++) {
+              ctx.beginPath();
+              ctx.moveTo(ex + s * 8, 424);
+              ctx.quadraticCurveTo(ex + s * 8 + 4 * Math.sin(mallEat.t / 6 + s), 412, ex + s * 8, 402);
+              ctx.stroke();
+            }
+          },
+        });
+      } else {
+        things.push({ y: mm.y, draw: drawMe });
+      }
+      mallShopFolk.forEach((p) => things.push({ y: p.y + 10, draw: () => drawShopper(p.x, p.y + 30, p.look, 0.9, p.dir, p.v > 0 && p.pause <= 0, p.t, p.bag) }));
+      things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
+      // hints
+      const ns = nearStall();
+      const nt = nearTable();
+      if (!mallEat) {
+        let text = null;
+        let hx = 200;
+        if (ns >= 0) {
+          text = mallTray ? 'Eat your food first!' : 'Tap to order ' + foodStalls[ns][0] + ' \u{1F4B0}' + foodStalls[ns][2];
+          hx = stallX[ns];
+        } else if (nt >= 0) {
+          text = mallTray ? (tableBusy[nt] ? 'This table is taken' : 'Tap to sit and eat!') : 'Order some food first';
+          hx = tableX[nt];
+        }
+        if (text) {
+          ctx.fillStyle = 'rgba(10, 18, 28, 0.85)';
+          roundedRect(hx - 72, 346, 144, 24, 12);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(text, hx, 362);
+        }
+      }
+      if (mallTray) {
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
+        roundedRect(W - 118, 44, 110, 28, 14);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Tray: ' + mallTray.emoji + ' ' + mallTray.name.slice(0, 8), W - 63, 62);
+      }
+    }
+
     function drawMall() {
-      if (mallShop >= 0) drawShopInside();
-      else drawMallStreet();
-      // your coins and bags
+      if (mallShop >= 0) {
+        if (mallShopsData[mallShop].food) drawFoodCourt();
+        else drawShopInside();
+      } else drawMallStreet();
+      // your coins, bags and trolley
       ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
-      roundedRect(8, 44, 112, 28, 14);
+      roundedRect(8, 44, mallTrolley ? 138 : 112, 28, 14);
       ctx.fill();
       ctx.fillStyle = '#ffd400';
       ctx.font = 'bold 13px sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText('\u{1F4B0} ' + mallWallet, 18, 63);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText('\u{1F6CD}️ ' + mallBag.length, 72, 63);
+      ctx.fillText('\u{1F6CD}\uFE0F ' + mallBag.length + (mallTrolley ? ' \u{1F6D2}' : '/3'), 72, 63);
     }
 
     // ---------- the indoor car park ----------
@@ -2838,19 +3270,19 @@ function drawOutdoorFront() {
       }
       if ((phase === 'park' || phase === 'walk') && levelFade <= 0) {
         ctx.fillStyle = 'rgba(31, 95, 168, 0.85)';
-        roundedRect(8, 44, 118, 28, 14);
+        roundedRect(8, 44, 156, 28, 14);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('\u{1F17F}\uFE0F ' + levelName(lotLevel), 67, 63);
+        ctx.fillText('\u{1F17F} ' + levelName(lotLevel), 86, 63);
       }
       if (levelFade > 0) {
         const a = Math.min(1, levelFade / 22) * (levelFade > 22 ? Math.max(0, 1 - (levelFade - 22) / 22) : 1);
         ctx.fillStyle = 'rgba(0, 0, 0, ' + a + ')';
         ctx.fillRect(0, 0, W, H);
         ctx.fillStyle = 'rgba(255, 255, 255, ' + a + ')';
-        ctx.font = 'bold 34px sans-serif';
+        ctx.font = 'bold 28px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(levelName(levelFadeTo || lotLevel), W / 2, H / 2);
       }
