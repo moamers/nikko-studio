@@ -208,7 +208,7 @@
     </g>
     <path d="M0 74 H400" stroke="currentColor" stroke-width="2" opacity="0.5"/>
   </svg>
-  <p class="sub">Drive from your home in Dubai to the malls. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost for speed! When you arrive, park in the car park (it has levels 1 to 9 and an outdoor level 10 on top: look for a free space), get out, shop in the mall (ride the escalator, take a trolley, go inside the shops and eat in the food court), put your bags in the boot and drive home.</p>
+  <p class="sub">Drive from your home in Dubai. At 0 km the road splits into lanes, one for each mall and one for the beach: steer into the lane you want. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost for speed! When you arrive, park in the car park (it has levels 1 to 9 and an outdoor level 10 on top: look for a free space), get out, shop in the mall (ride the escalator, take a trolley, go inside the shops and eat in the food court), put your bags in the boot and drive home.</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -526,7 +526,25 @@
       { name: 'Deira City Centre', ar: 'ديرة سيتي سنتر', colour: '#e07a5f', kind: 'mall' },
       { name: 'Dubai Outlet Mall', ar: 'دبي أوتلت مول', colour: '#5e548e', kind: 'mall' },
       { name: 'The Beach Mall', ar: 'ذا بيتش مول', colour: '#2a9fd6', kind: 'mall' },
+      { name: 'Marina Mall', ar: 'مارينا مول', colour: '#1d8a99', kind: 'mall' },
+      { name: "City Centre Me'aisem", ar: 'سيتي سنتر ميسم', colour: '#c9184a', kind: 'mall' },
+      { name: 'City Centre Shindagha', ar: 'سيتي سنتر الشندغة', colour: '#7b2cbf', kind: 'mall' },
+      { name: 'Mercato Mall', ar: 'ميركاتو مول', colour: '#bc6c25', kind: 'mall' },
+      { name: 'Wafi Mall', ar: 'وافي مول', colour: '#b08968', kind: 'mall' },
+      { name: 'Dragon Mart', ar: 'دراغون مارت', colour: '#d00000', kind: 'mall' },
+      { name: 'Times Square Center', ar: 'تايمز سكوير سنتر', colour: '#3a86ff', kind: 'mall' },
+      { name: 'City Walk', ar: 'سيتي ووك', colour: '#2b9348', kind: 'mall' },
+      { name: 'Circle Mall', ar: 'سيركل مول', colour: '#8338ec', kind: 'mall' },
     ];
+    // the beaches you can drive to
+    const beaches = [
+      { name: 'Jumeirah Beach', ar: 'شاطئ جميرا', colour: '#1ea7c9', kind: 'beach' },
+      { name: 'Kite Beach', ar: 'شاطئ الطائرات الورقية', colour: '#0096c7', kind: 'beach' },
+      { name: 'JBR Beach', ar: 'شاطئ جي بي آر', colour: '#00b4d8', kind: 'beach' },
+      { name: 'Marina Beach', ar: 'شاطئ المارينا', colour: '#0077b6', kind: 'beach' },
+    ];
+    const pendingDest = { name: 'Choose a lane', ar: 'اختر المسار', colour: '#1b7f4b', kind: 'lanes' };
+    let laneDests = [];
     let lastMall = -1;
     function pickMall() {
       let i;
@@ -705,7 +723,7 @@
         kind = cycle[signIdx % cycle.length];
       }
       if (leg === 'home' && (kind === 'dest' || kind === 'exit') && Math.random() < 0.4) kind = kind === 'exit' ? 'exit' : 'home';
-      signs.push({ kind, side, y: -40, text: tourist[signIdx % tourist.length], km: Math.max(1, Math.round(remaining / 700)) });
+      signs.push({ kind, side, y: -40, d: leg === 'out' ? laneDests[signIdx % laneDests.length] : dest, text: tourist[signIdx % tourist.length], km: Math.max(1, Math.round(remaining / 700)) });
       signIdx++;
     }
 
@@ -715,8 +733,9 @@
 
     function startLeg(newLeg) {
       leg = newLeg;
-      dest = newLeg === 'out' ? (tripNo === 0 ? malls[0] : pickMall()) : homeDest;
-      if (newLeg === 'out' && tripNo === 0) lastMall = 0;
+      dest = newLeg === 'out' ? pendingDest : homeDest;
+      if (newLeg === 'out') laneDests = pickLanes();
+      gateRow = null;
       tripLen = 4200 + Math.random() * 1200;
       travel = 0;
       arriving = false;
@@ -739,7 +758,7 @@
       splashes = [];
       phase = 'drive';
       spawnTraffic();
-      say((newLeg === 'out' ? 'Drive to ' : 'Drive back ') + dest.name + '!', 170);
+      say(newLeg === 'out' ? 'Drive on! At 0 km choose a lane: malls or the beach.' : 'Drive back home!', 200);
     }
 
     function resetGame() {
@@ -798,8 +817,8 @@
     let levelFadeTo = 0;
     let lotKind = 'home';
     // the car park has levels 1 to 11 and an outdoor level on the top (homes have 3 and outdoor)
-    const topLevel = () => (lotKind === 'home' ? 4 : 10);
-    const levelName = (l) => (l === topLevel() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
+    const topLevel = () => (lotKind === 'home' ? 12 : lotKind === 'beach' ? 1 : 10);
+    const levelName = (l) => (lotKind === 'beach' ? 'Beach car park' : l === topLevel() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
     const lotOutdoor = () => lotLevel === topLevel();
     let parked = false;
     let parkedT = 0;
@@ -960,7 +979,7 @@
         { x: 120, y: 470, dir: 1, v: 1.7, colour: '#6a4c93' },
         { x: 330, y: 535, dir: -1, v: 1.4, colour: '#e76f51' },
       ];
-      say('Walk to ' + (dest.kind === 'mall' ? dest.name : 'your home') + '!', 190);
+      say('Walk to ' + (dest.kind === 'home' ? 'your home' : dest.name) + '!', 190);
       blip(520, 520, 0.12, 0.1);
     }
 
@@ -1028,9 +1047,10 @@
       nearCar = leftCar && far < 44;
       // through the front door
       if (me.y < 186 && Math.abs(me.x - 200) < 28) {
-        if (dest.kind === 'mall' && leg === 'out' && !shopped) enterMall();
+        if (leg === 'out' && !shopped && dest.kind === 'mall') enterMall();
+        else if (leg === 'out' && !shopped && dest.kind === 'beach') enterBeach();
         else if (leg === 'home') finishHome();
-        else if (dest.kind === 'mall') leaveBackToCar();
+        else leaveBackToCar();
       }
     }
 
@@ -1469,6 +1489,7 @@
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && leg === 'out' && shopped && nearCar && bootT <= 0) label = mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
         else if (phase === 'mall') label = '\u{1F6AA} Leave the mall';
+        else if (phase === 'beach') label = '\u{1F6AA} Leave the beach';
       }
       if (label !== actLabel) {
         actLabel = label;
@@ -1484,6 +1505,7 @@
         else getInCar();
       }
       else if (phase === 'mall') leaveMall();
+      else if (phase === 'beach') leaveBeach();
     });
 
     // ---------- input ----------
@@ -1497,7 +1519,7 @@
       const p = pointerPt(clientX, clientY);
       if (phase === 'drive') targetX = p.x;
       else if (phase === 'mall') mallPress(p);
-      else if (phase === 'park' || phase === 'walk') hold = p;
+      else if (phase === 'park' || phase === 'walk' || phase === 'beach') hold = p;
     }
     function moveTo(clientX, clientY) {
       const p = pointerPt(clientX, clientY);
@@ -1554,6 +1576,18 @@
     });
 
     // ---------- driving ----------
+    function startArrival() {
+      arriving = true;
+      arriveT = 90;
+      traffic = [];
+      coins = [];
+      shields = [];
+      police = null;
+      addScore(10);
+      say(leg === 'out' ? 'Off to ' + dest.name + '! ' + (dest.kind === 'beach' ? '\u{1F3D6}\uFE0F' : '\u{1F6CD}\uFE0F') : 'You are home!', 140);
+      blip(660, 990, 0.2, 0.1);
+    }
+
     function updateDrive(step) {
       if (crashing) {
         crashTimer -= step;
@@ -1707,18 +1741,22 @@
         }
       }
 
-      // you have arrived: slow down and turn off into the car park
-      if (!arriving && travel >= tripLen) {
-        arriving = true;
-        arriveT = 90;
-        traffic = [];
-        coins = [];
-        shields = [];
-        police = null;
-        addScore(10);
-        say('You have arrived at ' + dest.name + '!', 120);
-        blip(660, 990, 0.2, 0.1);
+      // at 0 km the road splits into lanes: you drive through the one you choose
+      if (leg === 'out' && !gateRow && !arriving && remaining < 520) {
+        gateRow = { y: car.y - remaining, passed: false };
+        say('Choose a lane! Steer into the one you want.', 230);
       }
+      if (gateRow && !gateRow.passed) {
+        gateRow.y += dist;
+        if (gateRow.y >= car.y) {
+          gateRow.passed = true;
+          dest = laneDests[laneAt(car.x)];
+          startArrival();
+        }
+      } else if (gateRow) {
+        gateRow.y += dist;
+      }
+      if (leg === 'home' && !arriving && travel >= tripLen) startArrival();
       levelFlash = Math.max(0, levelFlash - step);
       shieldFlash = Math.max(0, shieldFlash - step);
       invuln = Math.max(0, invuln - step);
@@ -1741,6 +1779,7 @@
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
       else if (phase === 'mall') updateMall(step);
+      else if (phase === 'beach') updateBeach(step);
       else {
         // at home before you set off: the road lines keep still
       }
@@ -1925,10 +1964,10 @@
       } else if (s.kind === 'dest') {
         panel(x, y, 46, 38, '#1b7f4b', '#ffffff');
         ctx.fillStyle = '#ffffff';
-        fitText(dest.name, 42, 9);
-        ctx.fillText(dest.name, x, y - 8);
-        fitText(dest.ar, 42, 8, '');
-        ctx.fillText(dest.ar, x, y + 2);
+        fitText(s.d.name, 42, 9);
+        ctx.fillText(s.d.name, x, y - 8);
+        fitText(s.d.ar, 42, 8, '');
+        ctx.fillText(s.d.ar, x, y + 2);
         ctx.fillStyle = '#ffd23f';
         ctx.font = 'bold 12px sans-serif';
         ctx.fillText(s.km + ' km', x, y + 15);
@@ -1944,9 +1983,9 @@
         panel(x, y, 48, 40, '#1b7f4b', flash ? '#ffd23f' : '#ffffff');
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 13px sans-serif';
-        ctx.fillText('EXIT ➡', x, y - 6);
-        fitText(dest.name, 44, 8);
-        ctx.fillText(dest.name, x, y + 5);
+        ctx.fillText(leg === 'out' ? 'LANES \u2B06' : 'EXIT \u27A1', x, y - 6);
+        fitText(leg === 'out' ? 'Choose one' : dest.name, 44, 8);
+        ctx.fillText(leg === 'out' ? 'Choose one' : dest.name, x, y + 5);
         ctx.fillStyle = '#ffd23f';
         ctx.font = 'bold 9px sans-serif';
         ctx.fillText(dest.kind === 'home' ? '\u{1F3E0}' : '\u{1F17F}️', x, y + 16);
@@ -1963,22 +2002,47 @@
     // A big green sign over the whole road
     function drawGantry(s) {
       const y = s.y;
+      const lanes = leg === 'out';
+      const h = lanes ? 40 : 26;
       ctx.fillStyle = '#6b6b6b';
-      ctx.fillRect(roadLeft - 12, y - 6, 6, 40);
-      ctx.fillRect(roadRight + 6, y - 6, 6, 40);
-      ctx.globalAlpha = 0.82;
+      ctx.fillRect(roadLeft - 12, y - 6, 6, h + 14);
+      ctx.fillRect(roadRight + 6, y - 6, 6, h + 14);
+      ctx.globalAlpha = 0.84;
       ctx.fillStyle = '#1b7f4b';
-      ctx.fillRect(roadLeft - 12, y - 8, roadRight - roadLeft + 24, 26);
+      ctx.fillRect(roadLeft - 12, y - 8, roadRight - roadLeft + 24, h);
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 2;
-      ctx.strokeRect(roadLeft - 10, y - 6, roadRight - roadLeft + 20, 22);
+      ctx.strokeRect(roadLeft - 10, y - 6, roadRight - roadLeft + 20, h - 4);
       ctx.globalAlpha = 1;
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
-      ctx.font = 'bold 11px sans-serif';
-      ctx.fillText('⬆ Dubai • دبي', W / 2 - 62, y + 9);
-      fitText('⬆ ' + dest.name + ' ' + s.km + ' km', 130, 11);
-      ctx.fillText('⬆ ' + dest.name + ' ' + s.km + ' km', W / 2 + 62, y + 9);
+      if (lanes) {
+        // one column for each lane
+        for (let i = 0; i < laneCount; i++) {
+          const cx = roadLeft + i * laneW + laneW / 2;
+          const d = laneDests[i];
+          const words = d.name.split(' ');
+          const half = Math.ceil(words.length / 2);
+          const l1 = words.slice(0, half).join(' ');
+          const l2 = words.slice(half).join(' ');
+          fitText(l1, laneW - 4, 9);
+          ctx.fillText(l1, cx, y + 8);
+          if (l2) {
+            fitText(l2, laneW - 4, 9);
+            ctx.fillText(l2, cx, y + 19);
+          }
+          ctx.font = 'bold 9px sans-serif';
+          ctx.fillStyle = '#ffd23f';
+          ctx.fillText('\u2B06 ' + s.km + ' km', cx, y + 31);
+          ctx.fillStyle = '#ffffff';
+          if (i > 0) ctx.fillRect(roadLeft + i * laneW - 1, y - 6, 2, h - 4);
+        }
+      } else {
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText('\u2B06 Dubai \u2022 دبي', W / 2 - 62, y + 9);
+        fitText('\u2B06 Home ' + s.km + ' km', 130, 11);
+        ctx.fillText('\u2B06 Home ' + s.km + ' km', W / 2 + 62, y + 9);
+      }
     }
 
     function drawDrive() {
@@ -2009,6 +2073,7 @@
         ctx.fillRect(roadRight, line.y, 10, 14);
       });
       signs.filter((s) => s.kind !== 'gantry').forEach(drawRoadSign);
+      drawGateLanes();
 
       coins.forEach((coin) => drawCoin(coin.x, coin.y, coin.r));
       shields.forEach((sh) => drawShieldPickup(sh.x, sh.y, sh.r));
@@ -2034,6 +2099,7 @@
         drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
       }
       signs.filter((s) => s.kind === 'gantry').forEach(drawGantry);
+      drawGateSigns();
 
       // the shield bubble
       if (shieldOn && !crashing && !gameOver) {
@@ -2065,11 +2131,11 @@
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : '\u{1F6CD}️ ') + dest.name + ' • ' + Math.max(0, Math.ceil((tripLen - travel) / 700)) + ' km', W / 2, 26);
+        ctx.fillText((leg === 'out' ? '\u{1F6E3}\uFE0F Choose a lane at 0 km' : '\u{1F3E0} Home') + ' \u2022 ' + Math.max(0, Math.ceil((tripLen - travel) / 700)) + ' km', W / 2, 26);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
         roundedRect(64, 33, W - 128, 7, 3.5);
         ctx.fill();
-        ctx.fillStyle = dest.colour;
+        ctx.fillStyle = leg === 'out' ? '#3ddc84' : dest.colour;
         if (frac > 0.02) {
           roundedRect(64, 33, (W - 128) * frac, 7, 3.5);
           ctx.fill();
@@ -2258,6 +2324,10 @@
     }
 
 function drawOutdoorFront() {
+      if (lotKind === 'beach') {
+        drawBeachFront();
+        return;
+      }
       const sky = ctx.createLinearGradient(0, 0, 0, 172);
       sky.addColorStop(0, '#9fd3ee');
       sky.addColorStop(1, '#e8f4fa');
@@ -3078,6 +3148,391 @@ function drawOutdoorFront() {
       ctx.fillText('\u{1F6CD}\uFE0F ' + mallBag.length + (mallTrolley ? ' \u{1F6D2}' : '/3'), 72, 63);
     }
 
+    // ---------- at 0 km the road splits into lanes: one for each place you can go ----------
+    const laneCount = 5;
+    const laneW = (roadRight - roadLeft) / laneCount;
+    function pickLanes() {
+      const pool = malls.slice().sort(() => Math.random() - 0.5).slice(0, laneCount - 1);
+      const beach = beaches[Math.floor(Math.random() * beaches.length)];
+      pool.splice(Math.floor(Math.random() * laneCount), 0, beach); // the beach is one of the lanes
+      return pool;
+    }
+    let gateRow = null;
+    const laneAt = (x) => Math.max(0, Math.min(laneCount - 1, Math.floor((x - roadLeft) / laneW)));
+
+    // the lanes on the road: coloured, with barriers between them
+    function drawGateLanes() {
+      if (!gateRow) return;
+      const y = gateRow.y;
+      const here = laneAt(car.x);
+      for (let i = 0; i < laneCount; i++) {
+        const d = laneDests[i];
+        const x0 = roadLeft + i * laneW;
+        ctx.fillStyle = d.colour + (i === here ? '55' : '2a');
+        ctx.fillRect(x0, y - 150, laneW, 150);
+        if (i === here) {
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.fillRect(x0 + 4, y - 150, laneW - 8, 150);
+        }
+        // arrows painted on the road
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        for (let k = 0; k < 2; k++) {
+          const ay = y - 30 - k * 60;
+          ctx.beginPath();
+          ctx.moveTo(x0 + laneW / 2, ay - 12);
+          ctx.lineTo(x0 + laneW / 2 - 9, ay + 6);
+          ctx.lineTo(x0 + laneW / 2 + 9, ay + 6);
+          ctx.fill();
+        }
+      }
+      // the barriers between the lanes
+      for (let i = 0; i <= laneCount; i++) {
+        const bx = roadLeft + i * laneW;
+        ctx.fillStyle = '#c9c2b2';
+        ctx.fillRect(bx - 3, y - 18, 6, 26);
+        ctx.fillStyle = '#e63946';
+        ctx.fillRect(bx - 3, y - 14, 6, 6);
+      }
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillRect(roadLeft, y, roadRight - roadLeft, 3);
+    }
+
+    // the signs high over each lane
+    function drawGateSigns() {
+      if (!gateRow) return;
+      const y = gateRow.y - 34;
+      const here = laneAt(car.x);
+      for (let i = 0; i < laneCount; i++) {
+        const d = laneDests[i];
+        const cx = roadLeft + i * laneW + laneW / 2;
+        ctx.globalAlpha = 0.93;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
+        roundedRect(cx - laneW / 2 + 5, y - 22 + 5, laneW - 4, 44, 6);
+        ctx.fill();
+        roundedRect(cx - laneW / 2 + 2, y - 22, laneW - 4, 44, 6);
+        ctx.fillStyle = d.colour;
+        ctx.fill();
+        ctx.strokeStyle = i === here ? '#fff3a0' : '#ffffff';
+        ctx.lineWidth = i === here ? 3 : 2;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.font = '13px sans-serif';
+        ctx.fillText(d.kind === 'beach' ? '\u{1F3D6}️' : '\u{1F6CD}️', cx, y - 6);
+        const words = d.name.split(' ');
+        const half = Math.ceil(words.length / 2);
+        const l1 = words.slice(0, half).join(' ');
+        const l2 = words.slice(half).join(' ');
+        fitText(l1, laneW - 8, 9);
+        ctx.fillText(l1, cx, y + 6);
+        if (l2) {
+          fitText(l2, laneW - 8, 9);
+          ctx.fillText(l2, cx, y + 17);
+        }
+      }
+    }
+
+    // ---------- the beach: walk on the sand, collect shells and paddle in the sea ----------
+    const bch = { x: 200, y: 555, stepT: 0, moving: false };
+    let shells = [];
+    let shellCount = 0;
+    let paddled = false;
+    let splashT = 0;
+    let swimmers = [];
+    let umbrellas = [];
+    let sunbathers = [];
+    let beachTime = 0;
+
+    function enterBeach() {
+      phase = 'beach';
+      bch.x = 200;
+      bch.y = 555;
+      hold = null;
+      mallBag = [];
+      mallTrolley = false;
+      shellCount = 0;
+      paddled = false;
+      splashT = 0;
+      shells = [];
+      for (let i = 0; i < 8; i++) {
+        shells.push({ x: 30 + Math.random() * 340, y: 225 + Math.random() * 300, kind: i < 6 ? 'shell' : 'star', got: false });
+      }
+      swimmers = [];
+      for (let i = 0; i < 6; i++) swimmers.push({ x: 40 + i * 60, y: 50 + (i % 3) * 30, dir: i % 2 ? 1 : -1, v: 0.3 + (i % 3) * 0.15, t: i * 11 });
+      umbrellas = [
+        { x: 70, y: 300, c: '#e63946' }, { x: 320, y: 270, c: '#ffb703' }, { x: 190, y: 360, c: '#2a9d8f' },
+        { x: 80, y: 470, c: '#4361ee' }, { x: 330, y: 450, c: '#f72585' }, { x: 230, y: 520, c: '#ff9f1c' },
+      ];
+      sunbathers = [{ x: 70, y: 322, c: '#f4a261' }, { x: 322, y: 292, c: '#8d5a3b' }, { x: 192, y: 382, c: '#f2c9a0' }, { x: 332, y: 472, c: '#c68c5c' }];
+      say('Welcome to ' + dest.name + '! Collect shells and paddle in the sea.', 260);
+      blip(988, 988, 0.15, 0.1);
+      blip(1318, 1318, 0.2, 0.1, 0.14);
+    }
+
+    function leaveBeach() {
+      if (phase !== 'beach') return;
+      phase = 'walk';
+      shopped = true;
+      me.x = 200;
+      me.y = 200;
+      me.hurt = 0;
+      leftCar = true;
+      hold = null;
+      say('Walk back to your car and get in!', 200);
+    }
+
+    function updateBeach(step) {
+      beachTime += step;
+      splashT = Math.max(0, splashT - step);
+      const d = inputDir(bch.x, bch.y);
+      bch.moving = d.moving;
+      if (d.moving) {
+        bch.x = Math.max(16, Math.min(W - 16, bch.x + d.dx * 2.4 * step));
+        bch.y = Math.max(100, Math.min(H - 12, bch.y + d.dy * 2.4 * step));
+        bch.stepT += step;
+      }
+      swimmers.forEach((s) => {
+        s.t += step;
+        s.x += s.dir * s.v * step;
+        if (s.x < 24 || s.x > W - 24) s.dir = -s.dir;
+      });
+      shells.forEach((sh) => {
+        if (!sh.got && Math.hypot(bch.x - sh.x, bch.y - sh.y) < 20) {
+          sh.got = true;
+          shellCount++;
+          const pts = sh.kind === 'star' ? 3 : 2;
+          addScore(pts);
+          say((sh.kind === 'star' ? 'A starfish! ⭐ +' : 'A shell! \u{1F41A} +') + pts, 90);
+          blip(900, 1500, 0.12, 0.1);
+          if (shells.every((q) => q.got)) {
+            addScore(10);
+            say('\u{1F389} You found everything on the beach! +10', 200);
+            [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.18, 0.1, 0.2 + j * 0.08));
+          }
+        }
+      });
+      if (bch.y < 190) {
+        if (d.moving && Math.floor(beachTime / 14) !== Math.floor((beachTime - step) / 14)) splashT = 30;
+        if (!paddled) {
+          paddled = true;
+          addScore(3);
+          say('Splash! You are paddling in the sea! \u{1F30A} +3', 140);
+          noiseBlip();
+        }
+      }
+    }
+    function noiseBlip() {
+      blip(300, 500, 0.15, 0.08);
+      blip(450, 250, 0.2, 0.06, 0.1);
+    }
+
+    // the beach seen from above: sea at the top, sand with umbrellas below
+    function drawBeach() {
+      // the sky and the far away sea
+      const sky = ctx.createLinearGradient(0, 0, 0, 40);
+      sky.addColorStop(0, '#8fd0f2');
+      sky.addColorStop(1, '#d7f0fb');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 40);
+      const sea = ctx.createLinearGradient(0, 40, 0, 190);
+      sea.addColorStop(0, '#2ba3c7');
+      sea.addColorStop(1, '#6fd6e6');
+      ctx.fillStyle = sea;
+      ctx.fillRect(0, 40, W, 150);
+      // Burj Al Arab on the horizon
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.beginPath();
+      ctx.moveTo(300, 40);
+      ctx.quadraticCurveTo(298, 14, 312, 2);
+      ctx.quadraticCurveTo(326, 16, 322, 40);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(311, 0, 2, 8);
+      // a boat
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(60 + Math.sin(beachTime / 90) * 20, 62);
+      ctx.lineTo(90 + Math.sin(beachTime / 90) * 20, 62);
+      ctx.lineTo(82 + Math.sin(beachTime / 90) * 20, 72);
+      ctx.lineTo(66 + Math.sin(beachTime / 90) * 20, 72);
+      ctx.fill();
+      ctx.fillStyle = '#e63946';
+      ctx.fillRect(74 + Math.sin(beachTime / 90) * 20, 50, 2, 12);
+      // waves
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 14; i++) {
+        const wx = ((i * 71 + beachTime * 0.35) % (W + 40)) - 20;
+        const wy = 84 + ((i * 37) % 90);
+        ctx.beginPath();
+        ctx.moveTo(wx, wy);
+        ctx.quadraticCurveTo(wx + 8, wy - 4, wx + 16, wy);
+        ctx.quadraticCurveTo(wx + 24, wy + 4, wx + 32, wy);
+        ctx.stroke();
+      }
+      // swimmers
+      swimmers.forEach((s) => {
+        const bob = Math.sin(s.t / 12) * 2;
+        ctx.fillStyle = '#f2c9a0';
+        ctx.beginPath();
+        ctx.arc(s.x, 112 + s.y * 0.5 + bob, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#e63946';
+        ctx.fillRect(s.x - 5, 108 + s.y * 0.5 + bob, 10, 3);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.beginPath();
+        ctx.arc(s.x, 119 + s.y * 0.5 + bob, 9, 0, Math.PI);
+        ctx.stroke();
+      });
+      // the sand, with foam along the edge
+      ctx.fillStyle = '#e9d6a0';
+      ctx.fillRect(0, 190, W, H - 190);
+      ctx.fillStyle = '#d8c58c';
+      ctx.fillRect(0, 190, W, 22);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      for (let x = 0; x < W; x += 26) {
+        ctx.beginPath();
+        ctx.arc(x + 13 + Math.sin(beachTime / 20 + x) * 3, 190, 13, 0, Math.PI);
+        ctx.fill();
+      }
+      // little dunes and footprints
+      ctx.fillStyle = 'rgba(160, 130, 70, 0.12)';
+      [[60, 420], [260, 330], [150, 560], [350, 540], [120, 250]].forEach(([dx, dy]) => {
+        ctx.beginPath();
+        ctx.ellipse(dx, dy, 30, 8, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      // palm trees at the sides
+      [[20, 250], [380, 330], [18, 420], [382, 500]].forEach(([px, py]) => {
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(px - 3, py - 4, 6, 14);
+        drawPalm(px, py - 8);
+        drawPalm(px + 6, py - 14);
+      });
+      // towels, sunbathers and umbrellas
+      sunbathers.forEach((b) => {
+        ctx.fillStyle = b.c === '#f4a261' ? '#ff6b6b' : '#4dabf7';
+        ctx.fillRect(b.x - 14, b.y - 8, 28, 50);
+        ctx.fillStyle = b.c;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#f2f2f2';
+        ctx.fillRect(b.x - 6, b.y + 6, 12, 22);
+      });
+      umbrellas.forEach((u) => {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+        ctx.beginPath();
+        ctx.ellipse(u.x + 10, u.y + 12, 34, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+        for (let k = 0; k < 8; k++) {
+          ctx.beginPath();
+          ctx.moveTo(u.x, u.y);
+          ctx.arc(u.x, u.y, 30, (k * Math.PI) / 4, ((k + 1) * Math.PI) / 4);
+          ctx.closePath();
+          ctx.fillStyle = k % 2 ? '#ffffff' : u.c;
+          ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(u.x, u.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#5b4026';
+        ctx.fill();
+      });
+      // things to find
+      shells.forEach((sh) => {
+        if (sh.got) return;
+        const glow = 0.5 + 0.5 * Math.sin(beachTime / 10 + sh.x);
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + 0.25 * glow + ')';
+        ctx.beginPath();
+        ctx.arc(sh.x, sh.y, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(sh.kind === 'star' ? '⭐' : '\u{1F41A}', sh.x, sh.y + 6);
+      });
+      // you
+      if (splashT > 0 && bch.y < 190) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + splashT / 30 + ')';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(bch.x, bch.y + 4, 8 + (30 - splashT) * 0.9, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.save();
+      ctx.translate(bch.x, bch.y);
+      ctx.scale(1.7, 1.7);
+      const lift = bch.moving ? Math.abs(Math.sin(bch.stepT * 0.45)) * 3 : 0;
+      ctx.beginPath();
+      ctx.arc(0, -lift, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#ff9f1c';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, -7 - lift, 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#f2c9a0';
+      ctx.fill();
+      ctx.restore();
+      // the counter
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
+      roundedRect(W - 116, 44, 108, 28, 14);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F41A} ' + shellCount + ' / ' + shells.length, W - 62, 63);
+    }
+
+    // the car park by the beach: you can see the sea and the way down to the sand
+    function drawBeachFront() {
+      const sky = ctx.createLinearGradient(0, 0, 0, 80);
+      sky.addColorStop(0, '#8fd0f2');
+      sky.addColorStop(1, '#dff3fb');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 172);
+      const sea = ctx.createLinearGradient(0, 70, 0, 172);
+      sea.addColorStop(0, '#2ba3c7');
+      sea.addColorStop(1, '#79dbe8');
+      ctx.fillStyle = sea;
+      ctx.fillRect(0, 70, W, 102);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      for (let i = 0; i < 12; i++) ctx.fillRect(((i * 53 + frameCount * 0.3) % (W + 30)) - 15, 86 + ((i * 29) % 70), 22, 2);
+      // Burj Al Arab
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(300, 72);
+      ctx.quadraticCurveTo(296, 38, 312, 22);
+      ctx.quadraticCurveTo(328, 40, 324, 72);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillRect(311, 14, 2, 10);
+      // the wooden way down to the sand
+      ctx.fillStyle = '#8a6c4a';
+      ctx.fillRect(150, 112, 100, 60);
+      ctx.fillStyle = '#b08d5f';
+      for (let k = 0; k < 4; k++) ctx.fillRect(150, 118 + k * 14, 100, 8);
+      ctx.fillStyle = '#6b4a2e';
+      ctx.fillRect(144, 90, 8, 82);
+      ctx.fillRect(248, 90, 8, 82);
+      roundedRect(140, 66, 120, 28, 8);
+      ctx.fillStyle = '#1ea7c9';
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      fitText('\u{1F3D6}\uFE0F ' + dest.name, 112, 14);
+      ctx.fillText('\u{1F3D6}\uFE0F ' + dest.name, 200, 85);
+      [[40, 168], [100, 170], [300, 170], [362, 168]].forEach(([px, py]) => {
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(px - 2, py - 24, 4, 24);
+        drawPalm(px, py - 26);
+      });
+    }
+
     // ---------- the indoor car park ----------
     function drawGarageWall() {
       // the ceiling, with lights and pipes
@@ -3253,20 +3708,21 @@ function drawOutdoorFront() {
       ctx.clearRect(0, 0, W, H);
       if (phase === 'drive') drawDrive();
       else if (phase === 'mall') drawMall();
+      else if (phase === 'beach') drawBeach();
       else {
         drawLot();
         drawGarageLight();
         drawBootPanel();
       }
 
-      if (phase === 'park' || phase === 'walk' || phase === 'mall') {
+      if (phase === 'park' || phase === 'walk' || phase === 'mall' || phase === 'beach') {
         ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
         roundedRect(70, 8, W - 140, 30, 15);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : '\u{1F6CD}️ ') + dest.name, W / 2, 28);
+        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : dest.kind === 'beach' ? '\u{1F3D6}\uFE0F ' : '\u{1F6CD}\uFE0F ') + dest.name, W / 2, 28);
       }
       if ((phase === 'park' || phase === 'walk') && levelFade <= 0) {
         ctx.fillStyle = 'rgba(31, 95, 168, 0.85)';
@@ -3294,7 +3750,7 @@ function drawOutdoorFront() {
       }
       if (!gameOver) drawMessage();
       if (phase === 'start') {
-        drawOverlay('Tap to start', 'Drive from your home to ' + dest.name, 'Follow the road signs!');
+        drawOverlay('Tap to start', 'Drive to a mall or the beach', 'At 0 km choose a lane!');
       } else if (gameOver) {
         drawOverlay('Crashed!', 'Tap to try again • Score: ' + score, 'Trips finished: ' + tripNo);
       } else if (phase === 'homedone') {
