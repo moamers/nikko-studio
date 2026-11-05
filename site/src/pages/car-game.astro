@@ -226,7 +226,7 @@
     </g>
     <path d="M0 74 H400" stroke="currentColor" stroke-width="2" opacity="0.5"/>
   </svg>
-  <p class="sub">Drive from your home in Dubai. At 0 km the road splits into lanes, one for each mall and one for the beach: steer into the lane you want. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost for speed! When you arrive, park in the car park (it has levels 1 to 9 and an outdoor level 10 on top: look for a free space), get out, shop in the mall (ride the escalator, take a trolley, go inside the shops and eat in the food court), put your bags in the boot and drive home.</p>
+  <p class="sub">Start in your flat: make breakfast, get your car keys and take the lift down to your car (it is where you parked it last time). Then drive. At 0 km the road splits into lanes, one for each mall and one for the beach: steer into the lane you want. Drag your finger (or mouse) left and right to steer past the traffic, follow the road signs, grab coins and the blue shield, and boost for speed! When you arrive, park in the car park (look for a free space), take the lift to the 4 floors of the mall, get out, shop in the mall (ride the escalator, take a trolley, go inside the shops and eat in the food court), put your bags in the boot and drive home.</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -752,6 +752,7 @@
 
     function startLeg(newLeg) {
       leg = newLeg;
+      departing = false;
       dest = newLeg === 'out' ? pendingDest : homeDest;
       if (newLeg === 'out') laneDests = pickLanes();
       gateRow = null;
@@ -800,7 +801,9 @@
       mallBag = [];
       bootDone = false;
       if (audioCtx && sirenGain) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
-      startLeg('out');
+      mallActive = false;
+      if (phase === 'start') enterApartment(true);
+      else startLeg('out');
     }
 
     function nextTrip() {
@@ -808,7 +811,8 @@
       shopped = false;
       mallBag = [];
       bootDone = false;
-      startLeg('out');
+      mallActive = false;
+      enterApartment(false);
     }
 
     function startOrRestart() {
@@ -974,6 +978,7 @@
         parked = true;
         carBay = inBay;
         carLevel = lotLevel;
+        carKindNow = lotKind;
         addScore(5);
         say('Parked on ' + levelName(lotLevel) + '! \u{1F17F}\uFE0F +5  Now get out of the car.', 220);
         blip(660, 990, 0.2, 0.12);
@@ -1007,9 +1012,15 @@
     }
 
     function getInCar() {
-      if (phase !== 'walk' || !shopped || !nearCar) return;
-      blip(420, 420, 0.12, 0.1);
-      startLeg('home');
+      if (phase !== 'walk' || !nearCar) return;
+      if (departing) {
+        departing = false;
+        blip(420, 420, 0.12, 0.1);
+        startLeg('out');
+      } else if (shopped) {
+        blip(420, 420, 0.12, 0.1);
+        startLeg('home');
+      }
     }
 
     function updateWalk(step) {
@@ -1036,7 +1047,7 @@
       if (d.moving) {
         const nx = Math.max(14, Math.min(W - 14, me.x + d.dx * 2.2 * step));
         const ny = Math.max(150, Math.min(H - 12, me.y + d.dy * 2.2 * step));
-        const hitCar = (px, py) => hitsParked(px, py, 5, 5) || (Math.abs(px - car.x) < 22 && Math.abs(py - car.y) < 34 && phase === 'walk');
+        const hitCar = (px, py) => hitsParked(px, py, 5, 5) || (lotLevel === carLevel && carKindNow === lotKind && Math.abs(px - car.x) < 22 && Math.abs(py - car.y) < 34 && phase === 'walk');
         if (!hitCar(nx, me.y)) me.x = nx;
         if (!hitCar(me.x, ny)) me.y = ny;
         // the building: only the door lets you in
@@ -1051,22 +1062,33 @@
           me.hurt = 70;
           score = Math.max(0, score - 3);
           scoreEl.textContent = 'Score: ' + score;
-          const r = bayRect(carBay);
-          me.x = car.x;
-          me.y = r.y + r.h + 16;
+          if (lotLevel === carLevel && carKindNow === lotKind) {
+            const r = bayRect(carBay);
+            me.x = car.x;
+            me.y = r.y + r.h + 16;
+          } else {
+            me.x = 200;
+            me.y = 205;
+          }
           say('Ouch! Watch out for the cars', 120);
           blip(220, 140, 0.25, 0.14);
         }
       });
-      const far = Math.hypot(me.x - car.x, me.y - car.y);
+      const carHere = lotLevel === carLevel && carKindNow === lotKind;
+      const far = carHere ? Math.hypot(me.x - car.x, me.y - car.y) : 999;
       if (far > 70) leftCar = true;
-      nearCar = leftCar && far < 44;
+      nearCar = carHere && leftCar && far < 44;
       // through the front door
       if (me.y < 186 && Math.abs(me.x - 200) < 28) {
-        if (leg === 'out' && !shopped && dest.kind === 'mall') enterMall();
-        else if (leg === 'out' && !shopped && dest.kind === 'beach') enterBeach();
-        else if (leg === 'home') finishHome();
-        else leaveBackToCar();
+        if (lotKind === 'beach') {
+          if (leg === 'out' && !shopped) enterBeach();
+          else leaveBackToCar();
+        } else {
+          // the lift doors: choose where to go
+          me.y = 192;
+          hold = null;
+          openLift(lotKind === 'home' ? 'home' : 'mall', { type: 'level', val: lotLevel });
+        }
       }
     }
 
@@ -1076,6 +1098,9 @@
 
     function finishHome() {
       phase = 'homedone';
+      homeCarLevel = carLevel;
+      homeCarBay = carBay;
+      saveHomeCar();
       addScore(20);
       say('Home sweet home! \u{1F3E0}', 300);
       blip(523, 523, 0.15, 0.12);
@@ -1108,6 +1133,18 @@
       { name: 'Jewellery', emoji: '\u{1F48D}', colour: '#b49a4d', wall: '#f5efdc', floor: '#2f2a3a', items: [['\u{1F48D}', 'Ring', 5], ['⌚', 'Watch', 4], ['\u{1F4FF}', 'Necklace', 2]] },
       { name: 'Perfume', emoji: '\u{1F9F4}', colour: '#c77dba', wall: '#f8e6f3', floor: '#e7dce6', items: [['\u{1F9F4}', 'Perfume', 3], ['\u{1F339}', 'Rose', 1], ['\u{1FA9E}', 'Mirror', 2]] },
       { name: 'Food Court', emoji: '\u{1F37D}\uFE0F', colour: '#e76f51', wall: '#fff0e0', floor: '#d9c3a0', food: true, items: [['\u{1F354}', 'Burger', 3], ['\u{1F355}', 'Pizza', 2], ['\u{1F363}', 'Sushi', 4]] },
+      { name: 'Electronics', emoji: '\u{1F4BB}', colour: '#3d5a80', wall: '#e3eaf3', floor: '#c9d1da', items: [['\u{1F4BB}', 'Laptop', 5], ['\u{1F4F7}', 'Camera', 4], ['\u{1F50B}', 'Battery', 1]] },
+      { name: 'Garden', emoji: '\u{1F331}', colour: '#4f9d69', wall: '#e4f4e8', floor: '#9fbf8a', items: [['\u{1F331}', 'Plant', 1], ['\u{1F33B}', 'Sunflower', 2], ['\u{1FAB4}', 'Pot plant', 2]] },
+      { name: 'Furniture', emoji: '\u{1F6CB}️', colour: '#a47148', wall: '#f4e8da', floor: '#b8946a', items: [['\u{1F6CB}️', 'Sofa', 5], ['\u{1FA91}', 'Chair', 2], ['\u{1F4A1}', 'Lamp', 2]] },
+      { name: 'Pet Shop', emoji: '\u{1F436}', colour: '#e09f3e', wall: '#fdf0d8', floor: '#e3d3b0', items: [['\u{1F9B4}', 'Bone', 1], ['\u{1F41F}', 'Fish food', 1], ['\u{1F9F6}', 'Cat toy', 2]] },
+      { name: 'Music', emoji: '\u{1F3B8}', colour: '#7b2cbf', wall: '#eee2f8', floor: '#6b4a3a', items: [['\u{1F3B8}', 'Guitar', 5], ['\u{1F941}', 'Drum', 4], ['\u{1F3B5}', 'Songbook', 1]] },
+      { name: 'Optician', emoji: '\u{1F453}', colour: '#2a9d8f', wall: '#dff3f0', floor: '#d6e2e0', items: [['\u{1F453}', 'Glasses', 3], ['\u{1F576}️', 'Sunglasses', 2], ['\u{1F9F4}', 'Cleaner', 1]] },
+      { name: 'Cinema', emoji: '\u{1F3AC}', colour: '#c1121f', wall: '#f6dcdc', floor: '#4a2a34', items: [['\u{1F37F}', 'Popcorn', 2], ['\u{1F39F}️', 'Ticket', 3], ['\u{1F964}', 'Soda', 1]] },
+      { name: 'Arcade', emoji: '\u{1F3AE}', colour: '#4a5fc1', wall: '#e3e6f7', floor: '#2f3350', items: [['\u{1F3AE}', 'Video game', 4], ['\u{1F579}️', 'Joystick', 2], ['\u{1F3B2}', 'Dice game', 1]] },
+      { name: 'Art Shop', emoji: '\u{1F3A8}', colour: '#e76f51', wall: '#fde8e0', floor: '#e9dccb', items: [['\u{1F3A8}', 'Paints', 2], ['\u{1F58C}️', 'Brush', 1], ['\u{1F5BC}️', 'Canvas', 3]] },
+      { name: 'Sweets', emoji: '\u{1F36C}', colour: '#f15bb5', wall: '#ffe4f3', floor: '#f6e3ef', items: [['\u{1F36C}', 'Candy', 1], ['\u{1F36D}', 'Lollipop', 1], ['\u{1F9C1}', 'Cupcake', 2]] },
+      { name: 'Watches', emoji: '⌚', colour: '#6c757d', wall: '#eceff1', floor: '#b0b7bd', items: [['⌚', 'Watch', 4], ['⏰', 'Clock', 2], ['\u{1F4FF}', 'Strap', 1]] },
+      { name: 'Bikes', emoji: '\u{1F6B2}', colour: '#06a77d', wall: '#dcf5ee', floor: '#9db7ae', items: [['⛑️', 'Helmet', 2], ['\u{1F514}', 'Bell', 1], ['\u{1F6B2}', 'Bike', 5]] },
     ];
     const mallSlotX = [0, 100, 200, 400, 500, 600]; // the six shops on each floor; the escalator is in the middle
     const mallWorldW = 800;
@@ -1139,16 +1176,9 @@
     const mallShopIdx = (slot) => mallFloor * 6 + slot;
     const mallDoorX = (slot) => mallSlotX[slot] + 50;
 
-    function enterMall() {
-      phase = 'mall';
-      mm.x = 200;
-      mm.y = 505;
-      mm.goto = null;
+    function initMallState() {
       mm.dir = 1;
-      mallFloor = 0;
-      mallShop = -1;
       mallRide = null;
-      mallCamX = 0;
       mallWallet = 20;
       mallBag = [];
       mallDone = mallShopsData.map(() => [false, false, false]);
@@ -1160,26 +1190,35 @@
       bootDone = false;
       bootT = 0;
       mallShoppers = [];
-      for (let k = 0; k < 14; k++) {
-        mallShoppers.push({ x: 60 + ((k * 167) % 580), y: 455 + ((k * 31) % 85), floor: k % 2, dir: k % 2 ? 1 : -1, v: k % 5 === 0 ? 0 : 0.35 + (k % 4) * 0.12, look: shopperLook[k % 6], bag: k % 2 === 0, t: k * 7, pause: 0 });
+      for (let k = 0; k < 20; k++) {
+        mallShoppers.push({ x: 60 + ((k * 167) % 680), y: 455 + ((k * 31) % 85), floor: k % 4, dir: k % 2 ? 1 : -1, v: k % 5 === 0 ? 0 : 0.35 + (k % 4) * 0.12, look: shopperLook[k % 6], bag: k % 2 === 0, t: k * 7, pause: 0 });
       }
+      say('Welcome to ' + dest.name + '! 4 floors, escalators and lifts.', 260);
+    }
+
+    // you step out of the lift on one of the mall floors
+    function enterMallAt(f) {
+      phase = 'mall';
+      if (!mallActive) initMallState();
+      mallActive = true;
+      mallFloor = f;
+      mallShop = -1;
+      mallRide = null;
+      mm.x = liftX;
+      mm.y = 505;
+      mm.goto = null;
+      mm.dir = -1;
+      mallCamX = mallWorldW - W;
       hold = null;
-      say('Welcome to ' + dest.name + '! Shops, an escalator, and lifts at the end.', 260);
       blip(988, 988, 0.15, 0.1);
       blip(1318, 1318, 0.2, 0.1, 0.14);
     }
 
     function leaveMall() {
-      if (phase !== 'mall') return;
-      shopped = true;
+      if (phase !== 'mall' || mallRide) return;
       mallShop = -1;
-      phase = 'walk';
-      me.x = 200;
-      me.y = 200;
-      me.hurt = 0;
-      leftCar = true;
-      hold = null;
-      say(mallBag.length ? 'Walk back to your car. Put your bags in the boot!' : 'Walk back to your car and get in!', 220);
+      say('Take the lift to your car! The green ring shows its level.', 200);
+      openLift('mall', { type: 'floor', val: mallFloor });
     }
 
     function nearMallDoor() {
@@ -1188,14 +1227,6 @@
     }
     const nearMallEsc = () => Math.abs(mm.x - mallEscX) < 42;
     const nearLift = () => Math.abs(mm.x - liftX) < 40;
-    function rideLift() {
-      if (mallRide) return;
-      mm.x = liftX;
-      mm.goto = null;
-      mallRide = { t: 0, dir: mallFloor === 0 ? 1 : -1, kind: 'lift', moved: false };
-      say(mallFloor === 0 ? 'Going up in the lift!' : 'Going down in the lift!', 110);
-      blip(900, 900, 0.2, 0.08);
-    }
     function nearShelf() {
       for (let k = 0; k < 3; k++) if (Math.abs(mm.x - mallShelfX[k]) < 40) return k;
       return -1;
@@ -1235,8 +1266,8 @@
       if (mallRide) return;
       mm.x = mallEscX;
       mm.goto = null;
-      mallRide = { t: 0, dir: mallFloor === 0 ? 1 : -1 };
-      say(mallFloor === 0 ? 'Going up to the upper floor!' : 'Going down to the ground floor!', 110);
+      mallRide = { t: 0, dir: mallFloor < 3 ? 1 : -1 };
+      say(mallFloor < 3 ? 'Going up to floor ' + (mallFloor + 1) + '!' : 'Going down to floor 2!', 110);
       blip(400, 800, 0.4, 0.08);
     }
 
@@ -1350,7 +1381,7 @@
         if (d >= 0) enterShop(d);
         else if (nearTrolleyBay()) trolleyAction();
         else if (nearMallEsc()) rideEscalator();
-        else if (nearLift()) rideLift();
+        else if (nearLift()) openLift('mall', { type: 'floor', val: mallFloor });
       } else if (inFoodCourt()) {
         const k = nearStall();
         const t = nearTable();
@@ -1465,15 +1496,15 @@
         const inLift = mallRide.kind === 'lift';
         if (inLift && !mallRide.moved && mallRide.t >= 45) {
           mallRide.moved = true;
-          mallFloor = mallRide.dir > 0 ? 1 : 0;
+          mallFloor = mallRide.to;
           blip(1200, 1200, 0.25, 0.1); // ding!
         }
         if (mallRide.t >= (inLift ? 76 : 90)) {
-          if (!inLift) mallFloor = mallRide.dir > 0 ? 1 : 0;
+          if (!inLift) mallFloor += mallRide.dir;
           mallRide = null;
           mm.x = inLift ? liftX : mallEscX;
           mm.y = 505;
-          say(mallFloor === 1 ? 'Upper floor: more shops and the food court!' : 'Ground floor', 120);
+          say(mallFloor === 0 ? 'Ground floor' : mallFloor === 1 ? 'Floor 1: shops and the food court!' : 'Floor ' + mallFloor + ': more shops!', 120);
         }
         return;
       }
@@ -1519,13 +1550,669 @@
       }
     }
 
+    // ---------- your home: wake up, make breakfast, get your things and go down in the lift ----------
+    const apt = { food: false, cooking: 0, cooked: false, eating: null, eaten: false, items: [false, false, false, false] };
+    const hm = { x: 200, y: 505, dir: 1, stepT: 0, moving: false, goto: null, act: null };
+    const aptX = { fridge: 50, stove: 132, table: 222, shelf: 305, door: 368 };
+    const aptItems = [['\u{1F511}', 'car keys'], ['\u{1F45B}', 'wallet'], ['\u{1F4F1}', 'phone'], ['\u{1F392}', 'bag']];
+    const aptItemX = [276, 298, 320, 342];
+    let homeCarLevel = 3;
+    let homeCarBay = 5;
+    try {
+      const saved = JSON.parse(localStorage.getItem('carDodgeCar') || 'null');
+      if (saved && saved.level >= 1 && saved.level <= 12 && saved.bay >= 0 && saved.bay < 16) {
+        homeCarLevel = saved.level;
+        homeCarBay = saved.bay;
+      }
+    } catch (e) {}
+    function saveHomeCar() {
+      try {
+        localStorage.setItem('carDodgeCar', JSON.stringify({ level: homeCarLevel, bay: homeCarBay }));
+      } catch (e) {}
+    }
+
+    // the car park under your building: your car is where you left it last time
+    function setupHomeLot() {
+      lotKind = 'home';
+      startFree = 1;
+      levelBays = {};
+      carLevel = homeCarLevel;
+      carBay = homeCarBay;
+      lotLevel = carLevel;
+      bays = levelBays[carLevel] = makeLevel(carLevel);
+      bays[carBay].occupied = false;
+      const c = bayCentre(carBay);
+      car.x = c.x;
+      car.y = c.y;
+      levelFade = 0;
+      levelFadeTo = 0;
+    }
+
+    function enterApartment(first) {
+      phase = 'apartment';
+      leg = 'out';
+      dest = homeDest;
+      shopped = false;
+      mallActive = false;
+      mallBag = [];
+      mallTrolley = false;
+      bootDone = false;
+      apt.food = false;
+      apt.cooking = 0;
+      apt.cooked = false;
+      apt.eating = null;
+      apt.eaten = false;
+      apt.skipped = false;
+      apt.items = [false, false, false, false];
+      hm.x = 150;
+      hm.y = 505;
+      hm.goto = null;
+      hm.act = null;
+      hold = null;
+      departing = false;
+      setupHomeLot();
+      say(first ? 'Good morning! Make breakfast, get your car keys and go.' : 'A new day! Make breakfast and get your car keys.', 260);
+    }
+
+    function aptAction(a) {
+      if (phase !== 'apartment' || apt.eating || apt.cooking > 0) return;
+      if (a === 'fridge') {
+        if (apt.food) say('You already have the eggs and milk.', 90);
+        else {
+          apt.food = true;
+          addScore(1);
+          say('You took eggs \u{1F95A} and milk \u{1F95B} from the fridge! +1', 130);
+          blip(500, 800, 0.15, 0.1);
+        }
+      } else if (a === 'stove') {
+        if (!apt.food) say('Get the eggs and milk from the fridge first!', 110);
+        else if (apt.cooked) say('Breakfast is ready on the table!', 90);
+        else {
+          apt.cooking = 110;
+          say('Cooking breakfast... \u{1F373}', 100);
+        }
+      } else if (a === 'table') {
+        if (!apt.cooked) say(apt.food ? 'Cook the breakfast first!' : 'Start by taking food from the fridge.', 100);
+        else if (apt.eaten) say('You have had your breakfast.', 90);
+        else {
+          apt.eating = { t: 0 };
+          hm.x = aptX.table - 28;
+          hm.y = 500;
+          say('Yum yum! Eating breakfast...', 120);
+        }
+      } else if (a === 'door') {
+        if (!apt.items[0]) say('You need your car keys \u{1F511}! They are on the shelf by the door.', 150);
+        else if (!apt.eaten && !apt.skipped) {
+          apt.skipped = true;
+          say('Breakfast first? Tap the table. Or tap the door again to go without it.', 170);
+        } else leaveApartment();
+      } else if (typeof a === 'number') {
+        if (apt.items[a]) say('You already have your ' + aptItems[a][1] + '.', 80);
+        else {
+          apt.items[a] = true;
+          addScore(1);
+          say('Got your ' + aptItems[a][1] + ' ' + aptItems[a][0] + ' +1', 100);
+          blip(700, 1000, 0.12, 0.1);
+        }
+      }
+    }
+
+    function aptKey() {
+      const n = nearApt();
+      if (!n) return;
+      if (n === 'shelf') {
+        const k = apt.items.findIndex((x) => !x);
+        if (k >= 0) aptAction(k);
+        else say('You have everything.', 80);
+      } else aptAction(n);
+    }
+
+    function leaveApartment() {
+      hm.goto = null;
+      openLift('home', { type: 'flat', val: 0 });
+    }
+
+    function aptPress(p) {
+      hm.goto = null;
+      hm.act = null;
+      if (apt.eating || apt.cooking > 0) return;
+      for (let k = 0; k < 4; k++) {
+        if (Math.abs(p.x - aptItemX[k]) < 13 && Math.abs(p.y - 248) < 22) {
+          hm.goto = aptX.shelf;
+          hm.act = k;
+          return;
+        }
+      }
+      if (p.x < 90 && p.y > 150 && p.y < 440) {
+        hm.goto = aptX.fridge;
+        hm.act = 'fridge';
+      } else if (p.x >= 90 && p.x < 172 && p.y > 300 && p.y < 440) {
+        hm.goto = aptX.stove;
+        hm.act = 'stove';
+      } else if (p.x >= 172 && p.x < 262 && p.y > 360 && p.y < 500) {
+        hm.goto = aptX.table;
+        hm.act = 'table';
+      } else if (p.x > 346 && p.y > 160 && p.y < 440) {
+        hm.goto = aptX.door;
+        hm.act = 'door';
+      } else {
+        hold = p;
+      }
+    }
+
+    function nearApt() {
+      if (Math.abs(hm.x - aptX.fridge) < 36) return 'fridge';
+      if (Math.abs(hm.x - aptX.stove) < 36) return 'stove';
+      if (Math.abs(hm.x - aptX.table) < 40) return 'table';
+      if (Math.abs(hm.x - aptX.shelf) < 40) return 'shelf';
+      if (Math.abs(hm.x - aptX.door) < 30) return 'door';
+      return null;
+    }
+
+    function updateApartment(step) {
+      if (apt.cooking > 0) {
+        apt.cooking -= step;
+        if (Math.floor(apt.cooking / 20) !== Math.floor((apt.cooking + step) / 20)) blip(200 + Math.random() * 80, 120, 0.1, 0.05);
+        if (apt.cooking <= 0) {
+          apt.cooking = 0;
+          apt.cooked = true;
+          addScore(2);
+          say('Breakfast is ready! \u{1F373}\u{1F35E} Take it to the table. +2', 160);
+          [660, 880].forEach((f, j) => blip(f, f, 0.15, 0.1, j * 0.1));
+        }
+        return;
+      }
+      if (apt.eating) {
+        apt.eating.t += step;
+        if (Math.floor(apt.eating.t / 26) !== Math.floor((apt.eating.t - step) / 26) && apt.eating.t < 130) blip(280 + Math.random() * 120, 200, 0.07, 0.07);
+        if (apt.eating.t >= 140) {
+          apt.eating = null;
+          apt.eaten = true;
+          hm.x = aptX.table - 60;
+          addScore(10);
+          say('Yummy breakfast! \u{1F60B} +10', 150);
+          [523, 659, 784].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.1));
+        }
+        return;
+      }
+      let dx = 0;
+      if (hm.goto !== null) {
+        if (Math.abs(hm.goto - hm.x) < 6) {
+          hm.goto = null;
+          const a = hm.act;
+          hm.act = null;
+          if (a !== null) aptAction(a);
+        } else dx = hm.goto > hm.x ? 1 : -1;
+      }
+      if (hold) {
+        hm.goto = null;
+        hm.act = null;
+        if (Math.abs(hold.x - hm.x) > 5) dx = hold.x > hm.x ? 1 : -1;
+      }
+      if (keys.left) dx -= 1;
+      if (keys.right) dx += 1;
+      hm.moving = dx !== 0;
+      if (hm.moving) {
+        hm.dir = dx > 0 ? 1 : -1;
+        hm.x = Math.max(28, Math.min(W - 24, hm.x + Math.sign(dx) * 2.8 * step));
+        hm.stepT += step;
+      }
+    }
+
+    function drawApartment() {
+      // the wall and the floor
+      const wall = ctx.createLinearGradient(0, 0, 0, 400);
+      wall.addColorStop(0, '#fbeedd');
+      wall.addColorStop(1, '#f3dcc0');
+      ctx.fillStyle = wall;
+      ctx.fillRect(0, 0, W, 410);
+      ctx.fillStyle = '#c99a62';
+      ctx.fillRect(0, 410, W, H - 410);
+      ctx.strokeStyle = 'rgba(90, 55, 20, 0.18)';
+      ctx.lineWidth = 1.5;
+      for (let y = 422; y < H; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#e6d2b0';
+      ctx.fillRect(0, 398, W, 12);
+      // the window with the Dubai skyline in the morning sun
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(112, 92, 146, 118);
+      const sky = ctx.createLinearGradient(0, 98, 0, 204);
+      sky.addColorStop(0, '#8fd0f2');
+      sky.addColorStop(1, '#ffe3a8');
+      ctx.fillStyle = sky;
+      ctx.fillRect(118, 98, 134, 106);
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      ctx.arc(228, 150, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(110, 140, 170, 0.75)';
+      [[122, 168, 14], [138, 176, 12], [226, 170, 14], [240, 178, 10]].forEach(([x, y, w]) => ctx.fillRect(x, y, w, 204 - y));
+      ctx.beginPath();
+      ctx.moveTo(176, 204);
+      ctx.lineTo(180, 150);
+      ctx.lineTo(185, 120);
+      ctx.lineTo(187, 104);
+      ctx.lineTo(189, 120);
+      ctx.lineTo(194, 150);
+      ctx.lineTo(198, 204);
+      ctx.fill();
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(184, 98, 2, 106);
+      ctx.fillRect(118, 148, 134, 3);
+      // pictures and a clock
+      ctx.fillStyle = '#7b5a3a';
+      roundedRect(290, 100, 56, 44, 4);
+      ctx.fill();
+      ctx.fillStyle = '#9fd3c7';
+      ctx.fillRect(294, 104, 48, 36);
+      ctx.fillStyle = '#e8c07a';
+      ctx.beginPath();
+      ctx.arc(318, 128, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(60, 112, 20, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#5a4a3a';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(60, 112);
+      ctx.lineTo(60, 100);
+      ctx.moveTo(60, 112);
+      ctx.lineTo(69, 116);
+      ctx.stroke();
+
+      // the fridge
+      ctx.fillStyle = '#e8edf2';
+      roundedRect(10, 160, 76, 240, 8);
+      ctx.fill();
+      ctx.strokeStyle = '#aab3bd';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#aab3bd';
+      ctx.fillRect(10, 262, 76, 3);
+      ctx.fillStyle = '#8b95a0';
+      ctx.fillRect(72, 190, 5, 50);
+      ctx.fillRect(72, 280, 5, 50);
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1F95A}', 28, 210);
+      ctx.fillText('\u{1F95B}', 52, 230);
+      // the cooker and the counter
+      ctx.fillStyle = '#6b7380';
+      ctx.fillRect(92, 318, 80, 82);
+      ctx.fillStyle = '#434a54';
+      ctx.fillRect(92, 318, 80, 10);
+      ctx.fillStyle = '#212529';
+      ctx.beginPath();
+      ctx.arc(116, 323, 9, 0, Math.PI * 2);
+      ctx.arc(148, 323, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c0c6cd';
+      roundedRect(100, 346, 64, 40, 4);
+      ctx.fill();
+      ctx.fillStyle = '#343a40';
+      ctx.fillRect(106, 352, 52, 28);
+      // the pan, with steam when cooking
+      ctx.font = '22px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText(apt.cooking > 0 ? '\u{1F373}' : '\u{1F958}', 116, 316);
+      if (apt.cooking > 0) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 3;
+        for (let k = -1; k <= 1; k++) {
+          ctx.beginPath();
+          ctx.moveTo(116 + k * 9, 292);
+          ctx.quadraticCurveTo(116 + k * 9 + 6 * Math.sin(frameCount / 6 + k), 278, 116 + k * 9, 262);
+          ctx.stroke();
+        }
+      }
+      // the table and chairs
+      ctx.fillStyle = '#b4452f';
+      roundedRect(176, 384, 14, 36, 4);
+      ctx.fill();
+      roundedRect(256, 384, 14, 36, 4);
+      ctx.fill();
+      ctx.fillStyle = '#8a6c4a';
+      ctx.fillRect(218, 392, 8, 28);
+      ctx.fillStyle = '#e8dcc0';
+      ctx.beginPath();
+      ctx.ellipse(222, 390, 42, 11, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#b59f78';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      if (apt.cooked && !apt.eaten) {
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('\u{1F373}\u{1F35E}', 222, 386 - (apt.eating ? Math.abs(Math.sin(apt.eating.t / 9)) * 5 : 0));
+      }
+      // the shelf by the door with your things on it
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(262, 262, 98, 8);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.fillRect(262, 270, 98, 4);
+      ctx.font = '20px sans-serif';
+      ctx.textAlign = 'center';
+      aptItems.forEach(([emoji], k) => {
+        ctx.globalAlpha = apt.items[k] ? 0.2 : 1;
+        ctx.fillStyle = '#000000';
+        ctx.fillText(emoji, aptItemX[k], 254);
+        ctx.globalAlpha = 1;
+      });
+      ctx.fillStyle = '#7b5a3a';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('YOUR THINGS', 311, 285);
+      // the front door
+      ctx.fillStyle = '#5b4026';
+      ctx.fillRect(346, 170, 54, 240);
+      ctx.fillStyle = '#8a6a44';
+      ctx.fillRect(350, 176, 46, 234);
+      ctx.fillStyle = '#c9a26b';
+      ctx.fillRect(356, 190, 34, 80);
+      ctx.fillRect(356, 284, 34, 100);
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      ctx.arc(360, 300, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2d6a4f';
+      roundedRect(356, 150, 36, 18, 4);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('\u{1F3E0} 8B', 374, 163);
+
+      // you
+      const sit = apt.eating;
+      if (sit) {
+        drawSitter(hm.x, 480, ['#f2c9a0', '#d71920', '#26344a']);
+      } else {
+        drawShopper(hm.x, hm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.98, hm.dir, hm.moving, hm.stepT, false);
+      }
+      // hints
+      const n = nearApt();
+      if (n && !apt.eating && apt.cooking <= 0) {
+        const texts = {
+          fridge: apt.food ? 'Fridge: you have the food' : 'Tap the fridge for food',
+          stove: apt.cooked ? 'Breakfast is ready' : apt.food ? 'Tap to cook breakfast' : 'Get food from the fridge',
+          table: apt.cooked && !apt.eaten ? 'Tap to sit and eat' : 'The kitchen table',
+          shelf: 'Tap your things to take them',
+          door: 'Tap the door to go out',
+        };
+        const hx = Math.max(76, Math.min(W - 76, aptX[n]));
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+        roundedRect(hx - 76, 344, 152, 24, 12);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(texts[n], hx, 360);
+      }
+      // the little checklist
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
+      roundedRect(8, 44, 172, 28, 14);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText((apt.food ? '✅' : '\u{1F95A}') + (apt.cooked ? '✅' : '\u{1F373}') + (apt.eaten ? '✅' : '\u{1F35E}') + '  ' + aptItems.map(([e], k) => (apt.items[k] ? '✅' : e)).join(''), 16, 63);
+    }
+
+    // ---------- the lifts: take them to any floor of the mall or any level of the car park ----------
+    // Malls have 4 floors (G, 1, 2, 3) and a car park of 10 levels. Your building has your
+    // flat and a car park of 12 levels. Pick a floor on the lift buttons.
+    let liftOpen = false;
+    let liftKind = 'mall';
+    let liftHere = { type: 'floor', val: 0 };
+    let liftButtons = [];
+    let liftRide = null;
+    let departing = false;
+    let mallActive = false;
+    const carParkTop = (kind) => (kind === 'home' ? 12 : 10);
+    const lvlName = (kind, l) => (l === carParkTop(kind) ? 'Level ' + l + ' (outdoor)' : 'Level ' + l);
+    const floorLabel = ['G', '1', '2', '3'];
+
+    function openLift(kind, here) {
+      liftKind = kind;
+      liftHere = here;
+      liftOpen = true;
+      hold = null;
+      const b = [];
+      if (kind === 'mall') {
+        for (let i = 0; i < 4; i++) b.push({ label: floorLabel[3 - i], type: 'floor', val: 3 - i, x: 20 + (i + 0.5) * 90, y: 168, r: 26 });
+        const top = carParkTop(kind);
+        for (let l = 1; l <= top; l++) {
+          const i = l - 1;
+          b.push({ label: 'P' + l, type: 'level', val: l, x: 20 + ((i % 5) + 0.5) * 72, y: 278 + Math.floor(i / 5) * 66, r: 24, roof: l === top });
+        }
+      } else {
+        b.push({ label: '\u{1F3E0} My flat', type: 'flat', val: 0, x: 200, y: 166, r: 26, big: true });
+        const top = carParkTop(kind);
+        for (let l = 1; l <= top; l++) {
+          const i = l - 1;
+          b.push({ label: 'P' + l, type: 'level', val: l, x: 20 + ((i % 6) + 0.5) * 60, y: 292 + Math.floor(i / 6) * 62, r: 22, roof: l === top });
+        }
+      }
+      b.forEach((x) => {
+        x.here = x.type === liftHere.type && x.val === liftHere.val;
+        x.car = x.type === 'level' && x.val === carLevel && carKindNow === kind;
+      });
+      liftButtons = b;
+      blip(700, 700, 0.08, 0.08);
+    }
+    let carKindNow = 'home'; // which car park your car is in
+
+    function closeLift() {
+      liftOpen = false;
+    }
+
+    function liftPress(p) {
+      if (p.x > 110 && p.x < 290 && p.y > 478 && p.y < 522) {
+        closeLift();
+        return;
+      }
+      for (const b of liftButtons) {
+        const hw = b.big ? 150 : b.r;
+        const hh = b.big ? 30 : b.r;
+        if (Math.abs(p.x - b.x) < hw && Math.abs(p.y - b.y) < hh) {
+          if (b.here) return;
+          startLiftRide(b);
+          return;
+        }
+      }
+    }
+
+    function labelOfSel(s) {
+      return s.type === 'floor' ? floorLabel[s.val] : s.type === 'flat' ? 'Flat' : 'P' + s.val;
+    }
+
+    function startLiftRide(b) {
+      closeLift();
+      // moving between floors of the mall: the lift doors in the mall itself
+      if (b.type === 'floor' && phase === 'mall') {
+        mallRide = { t: 0, dir: b.val > mallFloor ? 1 : -1, kind: 'lift', moved: false, to: b.val };
+        mm.x = liftX;
+        mm.goto = null;
+        say('Going to ' + (b.val === 0 ? 'the ground floor' : 'floor ' + b.val) + ' in the lift!', 110);
+        blip(900, 900, 0.2, 0.08);
+        return;
+      }
+      liftRide = { t: 0, to: { type: b.type, val: b.val }, from: liftHere, kind: liftKind };
+      blip(600, 900, 0.5, 0.08);
+    }
+
+    function updateLiftRide(step) {
+      liftRide.t += step;
+      if (liftRide.t >= 80) {
+        const r = liftRide;
+        liftRide = null;
+        arriveVia(r.to, r.kind, r.from);
+      }
+    }
+
+    function arriveVia(to, kind, from) {
+      const fromMall = phase === 'mall';
+      blip(1200, 1200, 0.25, 0.1); // ding
+      if (to.type === 'floor') {
+        enterMallAt(to.val);
+      } else if (to.type === 'flat') {
+        finishHome();
+      } else {
+        // a level of the car park: you step out of the lift, next to the lift doors
+        if (fromMall) {
+          shopped = true;
+          mallShop = -1;
+        }
+        phase = 'walk';
+        lotKind = kind === 'home' ? 'home' : 'mall';
+        if (kind === 'home' && from && from.type === 'flat') departing = true;
+        lotLevel = to.val;
+        bays = levelBays[lotLevel] || (levelBays[lotLevel] = makeLevel(lotLevel));
+        me.x = 200;
+        me.y = 205;
+        me.hurt = 0;
+        leftCar = true;
+        hold = null;
+        lotCars = [
+          { x: 40, y: 307, dir: 1, v: 1.1, colour: '#2a9d8f' },
+          { x: 330, y: 500, dir: -1, v: 1.0, colour: '#e76f51' },
+        ];
+        if (lotLevel === carLevel && carKindNow === lotKind) {
+          const c = bayCentre(carBay);
+          car.x = c.x;
+          car.y = c.y;
+          say('Your car is here! Walk to it. \u{1F697}', 180);
+        } else {
+          say('Level ' + lotLevel + ': your car is not here. It is on level ' + carLevel + '.', 220);
+        }
+      }
+    }
+    // the lift buttons panel
+    function drawLiftPanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+      ctx.fillRect(0, 0, W, H);
+      const metal = ctx.createLinearGradient(20, 0, 380, 0);
+      metal.addColorStop(0, '#aeb4bb');
+      metal.addColorStop(0.5, '#eef1f4');
+      metal.addColorStop(1, '#aeb4bb');
+      ctx.fillStyle = metal;
+      roundedRect(20, 56, 360, 480, 18);
+      ctx.fill();
+      ctx.strokeStyle = '#6f757c';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      // the little display
+      ctx.fillStyle = '#101418';
+      roundedRect(44, 70, 312, 40, 8);
+      ctx.fill();
+      ctx.fillStyle = '#6dff9c';
+      ctx.font = 'bold 20px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F6D7} LIFT • you are on ' + labelOfSel(liftHere), 200, 98);
+      ctx.fillStyle = '#3a3f46';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'left';
+      if (liftKind === 'mall') {
+        ctx.fillText('MALL FLOORS', 40, 130);
+        ctx.fillText('CAR PARK', 40, 236);
+      } else {
+        ctx.fillText('YOUR FLAT', 40, 130);
+        ctx.fillText('CAR PARK UNDER YOUR BUILDING', 40, 246);
+      }
+      liftButtons.forEach((b) => {
+        if (b.big) {
+          roundedRect(b.x - 150, b.y - 28, 300, 56, 14);
+        } else {
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        }
+        ctx.fillStyle = b.here ? '#9aa0a8' : b.roof ? '#fff3c4' : '#fafbfc';
+        ctx.fill();
+        ctx.strokeStyle = b.car ? '#1fbf6a' : '#555b62';
+        ctx.lineWidth = b.car ? 5 : 3;
+        ctx.stroke();
+        ctx.fillStyle = b.here ? '#e8eaed' : '#22272d';
+        ctx.font = (b.big ? 'bold 20px' : 'bold 16px') + ' sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(b.label, b.x, b.y + 6);
+        if (b.roof) ctx.fillText('☀️', b.x + b.r - 4, b.y - b.r + 6);
+        if (b.car) {
+          ctx.font = '14px sans-serif';
+          ctx.fillText('\u{1F697}', b.x, b.y - b.r - 3);
+        }
+      });
+      // where is your car?
+      ctx.fillStyle = '#1b7f4b';
+      roundedRect(40, 420, 320, 44, 12);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F697} Your car is on ' + lvlName(carKindNow === 'home' ? 'home' : liftKind, carLevel) + (carKindNow === 'home' && liftKind !== 'home' ? ' at home' : ''), 200, 440);
+      ctx.font = '11px sans-serif';
+      ctx.fillText('The green ring shows the level of your car.', 200, 456);
+      ctx.fillStyle = '#e63946';
+      roundedRect(110, 478, 180, 44, 22);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('Close ✖', 200, 506);
+    }
+
+    // inside the lift while it moves
+    function drawLiftRide() {
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, '#2a2f36');
+      g.addColorStop(1, '#14171b');
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      const metal = ctx.createLinearGradient(0, 0, W, 0);
+      metal.addColorStop(0, '#9aa1a9');
+      metal.addColorStop(0.5, '#e9ecef');
+      metal.addColorStop(1, '#9aa1a9');
+      ctx.fillStyle = metal;
+      ctx.fillRect(40, 120, 320, 400);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillRect(60, 140, 14, 360);
+      ctx.fillStyle = '#101418';
+      roundedRect(120, 70, 160, 50, 10);
+      ctx.fill();
+      const t = liftRide.t;
+      const dir = liftRide.to.type === 'level' && liftRide.from.type !== 'level' ? -1 : liftRide.to.type !== 'level' && liftRide.from.type === 'level' ? 1 : liftRide.to.val > liftRide.from.val ? 1 : -1;
+      ctx.fillStyle = '#6dff9c';
+      ctx.font = 'bold 30px monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText((dir > 0 ? '⬆ ' : '⬇ ') + (t < 60 ? '...' : labelOfSel(liftRide.to)), 200, 106);
+      // the doors, sliding open at the end
+      const open = t < 62 ? 0 : Math.min(1, (t - 62) / 16);
+      ctx.fillStyle = '#c4cad1';
+      ctx.fillRect(100, 180, 100 - open * 90, 320);
+      ctx.fillRect(200 + open * 90, 180, 100 - open * 90, 320);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.fillRect(198, 180, 4, 320);
+      // you inside, and the feeling of moving
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+      for (let k = 0; k < 6; k++) ctx.fillRect(0, ((k * 110 + t * 7 * dir * -1) % 640 + 640) % 640 - 20, 40, 4);
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(t < 62 ? 'Going ' + (dir > 0 ? 'up' : 'down') + '...' : 'DING! \u{1F514}', 200, 560);
+    }
+
     // ---------- the big button: out of the car, into the car, out of the mall ----------
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver) {
+      if (!gameOver && !liftOpen && !liftRide) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
-        else if (phase === 'walk' && leg === 'out' && shopped && nearCar && bootT <= 0) label = mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
+        else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
         else if (phase === 'mall') label = '\u{1F6AA} Leave the mall';
         else if (phase === 'beach') label = '\u{1F6AA} Leave the beach';
       }
@@ -1539,7 +2226,7 @@
       ensureAudio();
       if (phase === 'park') getOutOfCar();
       else if (phase === 'walk') {
-        if (mallBag.length && !bootDone) startBoot();
+        if (!departing && mallBag.length && !bootDone) startBoot();
         else getInCar();
       }
       else if (phase === 'mall') leaveMall();
@@ -1555,9 +2242,16 @@
     function pressAt(clientX, clientY) {
       startOrRestart();
       const p = pointerPt(clientX, clientY);
+      if (liftRide) return;
+      if (liftOpen) {
+        liftPress(p);
+        return;
+      }
       if (phase === 'drive') targetX = p.x;
+      else if (phase === 'apartment') aptPress(p);
       else if (phase === 'mall') mallPress(p);
       else if (phase === 'park' || phase === 'walk' || phase === 'beach') hold = p;
+      else if (phase === 'apartment') aptPress(p);
     }
     function moveTo(clientX, clientY) {
       const p = pointerPt(clientX, clientY);
@@ -1596,13 +2290,16 @@
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') boosting = true;
       if (e.code.startsWith('Arrow')) e.preventDefault();
       if (e.code === 'KeyK' || (e.code === 'Space' && phase === 'beach')) tugKite();
+      if (e.code === 'Escape' && liftOpen) closeLift();
       if (e.code === 'Enter' || e.code === 'KeyE') {
         if (phase === 'mall') mallAction();
+        else if (phase === 'apartment') aptKey();
         else actBtn.click();
       }
       if (e.code === 'Space') {
         e.preventDefault();
         if (phase === 'mall') mallAction();
+        else if (phase === 'apartment') aptKey();
         else startOrRestart();
       }
     });
@@ -1814,11 +2511,18 @@
       step = Math.min(Math.max(step, 0.2), 3); // same game speed on 60Hz and 120Hz screens
       frameCount += step;
       msgT = Math.max(0, msgT - step);
+      if (liftRide) {
+        updateLiftRide(step);
+        updateAct();
+        return;
+      }
+      if (liftOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
       else if (phase === 'mall') updateMall(step);
       else if (phase === 'beach') updateBeach(step);
+      else if (phase === 'apartment') updateApartment(step);
       else {
         // at home before you set off: the road lines keep still
       }
@@ -2267,7 +2971,7 @@
         });
       }
       // your car (with its boot open while you pack)
-      if (phase === 'start' || phase === 'park' || phase === 'walk' || phase === 'homedone') {
+      if (phase === 'park' || (phase === 'walk' && lotLevel === carLevel && carKindNow === lotKind)) {
         drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
         if (phase === 'walk' && bootT > 0) {
           ctx.fillStyle = '#9b1c1c';
@@ -2311,7 +3015,7 @@
         ctx.lineTo(208, 176 + bob);
         ctx.lineTo(200, 190 + bob);
         ctx.fill();
-        if (nearCar && leg === 'out' && shopped && bootT <= 0) {
+        if (nearCar && (departing || (leg === 'out' && shopped)) && bootT <= 0) {
           ctx.fillStyle = 'rgba(31, 191, 106, 0.9)';
           ctx.font = 'bold 14px sans-serif';
           ctx.textAlign = 'center';
@@ -2621,7 +3325,7 @@ function drawOutdoorFront() {
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 11px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(up ? '⬆ UP • Level 1' : '⬇ DOWN • Ground', 350, 233);
+      ctx.fillText(up ? '\u2B06 UP \u2022 Level ' + (mallFloor + 1) : '\u2B07 DOWN \u2022 Level ' + (mallFloor - 1), 350, 233);
       // the moving staircase
       ctx.save();
       const ang = Math.atan2(y2 - y1, x2 - x1);
@@ -2654,7 +3358,7 @@ function drawOutdoorFront() {
     // the lift lobby at the end of the mall
     function drawLift() {
       const x0 = 700;
-      const upper = mallFloor === 1;
+      const upper = mallFloor > 0;
       const ride = mallRide && mallRide.kind === 'lift' ? mallRide : null;
       // the wall of the lobby
       ctx.fillStyle = '#e6e0d4';
@@ -2674,7 +3378,7 @@ function drawOutdoorFront() {
       ctx.fill();
       ctx.fillStyle = '#ff6b4a';
       ctx.font = 'bold 15px sans-serif';
-      ctx.fillText((upper ? '1' : 'G') + (ride ? (ride.dir > 0 ? ' ⬆' : ' ⬇') : ''), x0 + 50, 196);
+      ctx.fillText(floorLabel[mallFloor] + (ride ? (ride.dir > 0 ? ' ⬆' : ' ⬇') : ''), x0 + 50, 196);
       // the shaft with glass sides and the lift doors
       ctx.fillStyle = '#5b5f66';
       ctx.fillRect(x0 + 18, 208, 64, 192);
@@ -2730,7 +3434,7 @@ function drawOutdoorFront() {
 
     function drawMallStreet() {
       const cx = mallCamX;
-      const upper = mallFloor === 1;
+      const upper = mallFloor > 0;
       ctx.fillStyle = '#efe9df';
       ctx.fillRect(0, 0, W, H);
       ctx.save();
@@ -2766,7 +3470,7 @@ function drawOutdoorFront() {
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(upper ? 'UPPER FLOOR' : 'GROUND FLOOR', 20, 99);
+      ctx.fillText(['GROUND FLOOR', 'LEVEL 1', 'LEVEL 2', 'LEVEL 3'][mallFloor], 20, 99);
       // the six shops on this floor
       for (let s = 0; s < 6; s++) {
         const sh = mallShopsData[mallShopIdx(s)];
@@ -2812,7 +3516,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#bdb5a8';
         ctx.fillRect(x0 - 2, 130, 4, 270);
       }
-      drawEscalator(!upper);
+      drawEscalator(mallFloor < 3);
       drawLift();
       // the shiny floor
       const floor = ctx.createLinearGradient(0, 400, 0, H);
@@ -2880,7 +3584,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(upper ? '\u{1F6D7} Tap the lift to go down' : '\u{1F6D7} Tap the lift to go up', liftX, 280);
+        ctx.fillText('\u{1F6D7} Tap the lift to choose a floor', liftX, 280);
       } else if (nearMallEsc() && !mallRide) {
         ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
         roundedRect(mallEscX - 70, 262, 140, 26, 13);
@@ -2888,7 +3592,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 12px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(upper ? '⬇ Tap to ride down' : '⬆ Tap to ride up', mallEscX, 280);
+        ctx.fillText(mallFloor < 3 ? '\u2B06 Tap to ride up' : '\u2B07 Tap to ride down', mallEscX, 280);
       }
       ctx.restore();
       if (mallRide && mallRide.kind !== 'lift' && mallRide.t > 72) {
@@ -3974,6 +4678,7 @@ function drawOutdoorFront() {
       if (phase === 'drive') drawDrive();
       else if (phase === 'mall') drawMall();
       else if (phase === 'beach') drawBeach();
+      else if (phase === 'apartment' || phase === 'start' || phase === 'homedone') drawApartment();
       else {
         drawLot();
         drawGarageLight();
@@ -4014,8 +4719,10 @@ function drawOutdoorFront() {
         ctx.fillText('Level ' + level + '!', W / 2, 150);
       }
       if (!gameOver) drawMessage();
+      if (liftOpen) drawLiftPanel();
+      if (liftRide) drawLiftRide();
       if (phase === 'start') {
-        drawOverlay('Tap to start', 'Drive to a mall or the beach', 'At 0 km choose a lane!');
+        drawOverlay('Tap to start', 'Make breakfast, get your keys', 'then take the lift to your car!');
       } else if (gameOver) {
         drawOverlay('Crashed!', 'Tap to try again • Score: ' + score, 'Trips finished: ' + tripNo);
       } else if (phase === 'homedone') {
@@ -4035,12 +4742,8 @@ function drawOutdoorFront() {
         bestEl.textContent = 'Best: ' + best;
       }
       // the title screen: your car in its bay at home
-      dest = malls[0];
-      makeLot('home', 1);
-      carBay = bays.findIndex((b) => !b.occupied);
-      const c = bayCentre(carBay);
-      car.x = c.x;
-      car.y = c.y;
+      dest = homeDest;
+      setupHomeLot();
       draw();
       loop();
     }
