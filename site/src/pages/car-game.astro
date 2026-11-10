@@ -1169,13 +1169,14 @@
       { name: 'Sweets', emoji: '\u{1F36C}', colour: '#f15bb5', wall: '#ffe4f3', floor: '#f6e3ef', items: [['\u{1F36C}', 'Candy', 1], ['\u{1F36D}', 'Lollipop', 1], ['\u{1F9C1}', 'Cupcake', 2]] },
       { name: 'Watches', emoji: '⌚', colour: '#6c757d', wall: '#eceff1', floor: '#b0b7bd', items: [['⌚', 'Watch', 4], ['⏰', 'Clock', 2], ['\u{1F4FF}', 'Strap', 1]] },
       { name: 'Bikes', emoji: '\u{1F6B2}', colour: '#06a77d', wall: '#dcf5ee', floor: '#9db7ae', items: [['⛑️', 'Helmet', 2], ['\u{1F514}', 'Bell', 1], ['\u{1F6B2}', 'Bike', 5]] },
+      { name: 'Wudu Area', emoji: '\u{1F6BF}', colour: '#3a86b4', wall: '#e3f1f8', floor: '#c9d6dc', facility: 'wudu', items: [['\u{1F6BF}', 'Wudu', 0], ['\u{1F4A7}', 'Water', 0], ['\u{1F9FC}', 'Soap', 0]] },
       { name: 'Prayer Room', emoji: '\u{1F54C}', colour: '#2f8f7a', wall: '#e3f2ef', floor: '#cfe0da', facility: 'prayer', items: [['\u{1F54C}', 'Prayer', 0], ['\u{1F4D6}', 'Book', 0], ['\u{1F90D}', 'Calm', 0]] },
       { name: 'Restrooms', emoji: '\u{1F6BB}', colour: '#4a90d9', wall: '#e3eefb', floor: '#cfd8e0', facility: 'wc', items: [['\u{1F6BB}', 'WC', 0], ['\u{1F9FC}', 'Soap', 0], ['\u{1F6B0}', 'Water', 0]] },
       { name: 'Info Desk', emoji: 'ℹ️', colour: '#e08a1e', wall: '#fdf0d8', floor: '#d9c9a8', facility: 'info', items: [['ℹ️', 'Info', 0], ['\u{1F5FA}️', 'Map', 0], ['\u{1F64B}', 'Help', 0]] },
     ];
-    const mallSlotX = [0, 100, 200, 400, 500, 600, 800, 880, 960]; // the six shops on each floor; the escalator is in the middle; then the lift and the services wing
-    const mallSlots = 9;
-    const mallWorldW = 1080;
+    const mallSlotX = [0, 100, 200, 400, 500, 600, 800, 880, 960, 1040]; // the six shops on each floor; the escalator is in the middle; then the lift and the services wing
+    const mallSlots = 10;
+    const mallWorldW = 1160;
     const liftX = 750;
     const mallEscX = 350;
     const mm = { x: 200, y: 505, dir: 1, stepT: 0, moving: false, goto: null };
@@ -1216,6 +1217,7 @@
       mallDone = mallShopsData.map(() => [false, false, false]);
       mallDifferent = new Set();
       resetToilet();
+      wuduDone = false;
       salah = null;
       facState.book = false;
       mallTrolley = false;
@@ -1288,7 +1290,10 @@
         { x: 190, y: 470, dir: 1, v: 0.35, look: shopperLook[(slot + 2) % 6], bag: false, kid: false, t: 0, pause: 0 },
         { x: 330, y: 520, dir: -1, v: 0.3, look: shopperLook[(slot + 4) % 6], bag: true, kid: slot % 2 === 0, t: 7, pause: 0 },
       ];
-      say('Welcome to ' + mallShopsData[mallShop].name + '! Tap what you want to buy.', 200);
+      {
+        const fk = mallShopsData[mallShop].facility;
+        say(fk ? 'Welcome to the ' + mallShopsData[mallShop].name + '! ' + (fk === 'wudu' ? 'Tap your stool to wash for prayer.' : fk === 'prayer' ? 'Shoes off, then your mat.' : fk === 'wc' ? 'Tap things to use them.' : 'Ask the helper anything.') : 'Welcome to ' + mallShopsData[mallShop].name + '! Tap what you want to buy.', 200);
+      }
       blip(988, 988, 0.15, 0.08);
       blip(1318, 1318, 0.2, 0.08, 0.14);
     }
@@ -1355,6 +1360,8 @@
     // ---------- the services wing: prayer room, restrooms and the info desk (on every floor of every mall) ----------
     const inFacility = () => mallShop >= 0 && !!mallShopsData[mallShop].facility;
     const facState = { shoes: false, washed: false, book: false };
+    let wuduDone = false; // you have washed (wudu) and can pray; using the toilet undoes it
+    let fridayMode = new Date().getDay() === 5; // Friday prayer (Jumu'ah) with a big crowd
     let facFx = 0; // a little animation (water, hand dryer)
     let facFxKind = '';
     let salah = null; // the prayer (or reading) you are doing on your mat
@@ -1362,7 +1369,13 @@
     const toi = { stage: 0, timer: 1800, wait: 0, inside: 0, leave: -1 };
     const mallBusy = () => !!(mallRide || mallEat || salah || toi.stage === 4);
     const facSpots = {
-      prayer: [{ x: 85, key: 'shoes', hint: '\u{1F45F} Tap to take your shoes off' }, { x: 140, key: 'books', hint: '\u{1F4D6} Tap to take a book (or put it back)' }, { x: 210, key: 'mat', hint: '\u{1F932} Tap your mat to pray with the imam' }],
+      prayer: [
+        { x: 85, key: 'shoes', y0: 380, y1: 470, hint: '\u{1F45F} Tap to take your shoes off' },
+        { x: 140, key: 'books', y0: 150, y1: 300, hint: '\u{1F4D6} Tap to take a book (or put it back)' },
+        { x: 210, key: 'mat', y0: 370, y1: 540, hint: '\u{1F932} Tap your mat to pray with the imam' },
+        { x: 252, key: 'friday', y0: 130, y1: 215, hint: '\u{1F54C} Tap the board: normal or Friday prayer' },
+      ],
+      wudu: [{ x: 125, key: 'wudu', y0: 340, y1: 540, hint: '\u{1F6BF} Tap to do your wudu (washing for prayer)' }],
       wc: [{ x: 120, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 205, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 290, key: 'dryer', hint: '\u{1F4A8} Tap to dry your hands' }, { x: 350, key: 'stall', hint: '\u{1F6BD} Tap the toilet' }],
       info: [{ x: 120, key: 'map', hint: '\u{1F5FA}️ Tap to look at the mall map' }, { x: 305, key: 'desk', hint: 'ℹ️ Tap to talk to the helper' }],
     };
@@ -1373,7 +1386,7 @@
     };
     function resetToilet() {
       toi.stage = 0;
-      toi.timer = 1500 + Math.random() * 900; // 25 to 40 seconds until you need the toilet
+      toi.timer = 5400 + Math.random() * 2400; // 90 to 130 seconds until you need the toilet
       toi.wait = 0;
       toi.inside = 0;
       toi.leave = -1;
@@ -1398,10 +1411,12 @@
         toi.inside -= step;
         if (toi.inside <= 0) {
           toi.stage = 5;
+          const hadWudu = wuduDone;
+          wuduDone = false;
           mm.x = 320;
           mm.y = 500;
           mm.dir = -1;
-          say('Flush! \u{1F6BD} Now wash your hands \u{1F9FC}', 170);
+          say('Flush! \u{1F6BD} Now wash your hands \u{1F9FC}' + (hadWudu ? ' (and do your wudu again before praying)' : ''), 190);
           blip(400, 150, 0.8, 0.07);
         }
       }
@@ -1473,18 +1488,69 @@
       Object.keys(to).forEach((j) => (out[j] = [from[j][0] + (to[j][0] - from[j][0]) * k, from[j][1] + (to[j][1] - from[j][1]) * k]));
       return { pose: out, turn: sg.turn, i };
     }
-    function startSalah() {
-      mm.x = 210;
-      mm.y = 475;
+    const lerpPose = (from, to, k) => {
+      const out = {};
+      Object.keys(to).forEach((j) => (out[j] = [from[j][0] + (to[j][0] - from[j][0]) * k, from[j][1] + (to[j][1] - from[j][1]) * k]));
+      return out;
+    };
+    // Friday prayer: first the imam gives the khutbah (everyone sits and listens), then the prayer
+    const FRI_K = 420;
+    function prayStates(t, friday) {
+      if (!friday) return { lead: salahPose(t), fol: salahPose(Math.max(0, t - 14)) };
+      if (t < FRI_K) {
+        const lead = { pose: Object.assign({}, prayPoses.qiyam, { hand: [16 + Math.sin(t / 9) * 8, -58 + Math.cos(t / 9) * 6], elbow: [12 + Math.sin(t / 9) * 3, -46] }), turn: 0, i: 0 };
+        return { lead, fol: { pose: prayPoses.julus, turn: 0, i: 0 } };
+      }
+      const u = t - FRI_K;
+      const lead = salahPose(u);
+      let fol = salahPose(Math.max(0, u - 14));
+      if (u < 26) fol = { pose: lerpPose(prayPoses.julus, prayPoses.qiyam, ease(Math.min(1, u / 26))), turn: 0, i: 0 };
+      return { lead, fol };
+    }
+    // wudu: sitting on a low stool at the tap, washing in the right order
+    const sitBase = P([16, 0], [16, -26], [-4, -28], [-2, -56], [1, -69], [10, -42], [26, -38]);
+    const sitWith = (elbow, hand, extra) => Object.assign({}, sitBase, { elbow, hand }, extra || {});
+    const wuduPoses = [
+      sitWith([10, -42], [26, -38]),
+      sitWith([8, -44], [10, -60]),
+      sitWith([9, -46], [12, -63]),
+      sitWith([6, -50], [8, -68]),
+      sitWith([14, -44], [28, -34]),
+      sitWith([0, -66], [2, -82]),
+      sitWith([-6, -60], [-3, -72]),
+      sitWith([16, -34], [30, -12], { shoulder: [6, -48], head: [12, -60], knee: [20, -30], ankle: [32, -14] }),
+    ];
+    const wuduSteps = [
+      ['\u{1F932}', 'Hands', 'Bismillah! Wash your hands 3 times \u{1F932}'],
+      ['\u{1F444}', 'Mouth', 'Rinse your mouth 3 times'],
+      ['\u{1F443}', 'Nose', 'Rinse your nose 3 times'],
+      ['\u{1F642}', 'Face', 'Wash your whole face 3 times'],
+      ['\u{1F4AA}', 'Arms', 'Wash your arms up to the elbows'],
+      ['\u{1F9E0}', 'Head', 'Wipe your head with wet hands'],
+      ['\u{1F442}', 'Ears', 'Wipe your ears'],
+      ['\u{1F9B6}', 'Feet', 'Wash your feet, right then left'],
+    ];
+    const WUDU_STEP = 80;
+    function startWudu() {
+      mm.x = 125;
+      mm.y = 480;
       mm.goto = null;
       hold = null;
       mm.dir = 1;
-      salah = { kind: 'pray', t: 0, seg: -1 };
-      say('The imam begins... Follow him \u{1F932}', 140);
+      salah = { kind: 'wudu', t: 0, seg: -1 };
+    }
+    function startSalah() {
+      mm.x = 210;
+      mm.y = fridayMode ? 480 : 475;
+      mm.goto = null;
+      hold = null;
+      mm.dir = 1;
+      salah = { kind: 'pray', t: 0, seg: -1, friday: fridayMode };
+      say(fridayMode ? 'Friday prayer! The imam gives the khutbah. Sit and listen \u{1F92B}' : 'The imam begins... Follow him \u{1F932}', 200);
     }
     function startReading() {
       mm.x = 210;
-      mm.y = 475;
+      mm.y = fridayMode ? 480 : 475;
       mm.goto = null;
       hold = null;
       salah = { kind: 'read', t: 0 };
@@ -1499,16 +1565,34 @@
         }
         return;
       }
-      const cur = salahPose(salah.t).i;
+      if (salah.kind === 'wudu') {
+        const step = Math.min(7, Math.floor(salah.t / WUDU_STEP));
+        if (step !== salah.seg) {
+          salah.seg = step;
+          say(wuduSteps[step][2], 100);
+          blip(1500, 1800, 0.5, 0.04);
+        }
+        if (salah.t >= WUDU_STEP * 8) {
+          salah = null;
+          wuduDone = true;
+          facAward(0, 8, 'Wudu done! You are ready to pray \u2728');
+        }
+        return;
+      }
+      const total = salah.friday ? FRI_K + salahSeq.total : salahSeq.total;
+      const pt = salah.friday ? salah.t - FRI_K : salah.t;
+      const cur = pt < 0 ? -1 : salahPose(pt).i;
       if (cur !== salah.seg) {
         salah.seg = cur;
-        const sg = salahSeq[cur];
-        if (sg.text) say(sg.text, 110);
+        const sg = salahSeq[Math.max(0, cur)];
+        if (cur >= 0 && sg.text) say(sg.text, 110);
         if (cur > 0) blip(260, 240, 0.18, 0.05);
       }
-      if (salah.t >= salahSeq.total) {
+      if (salah.t >= total) {
+        const fri = salah.friday;
         salah = null;
-        facAward(0, 15, 'The prayer is finished \u{1F932}');
+        if (fri) facAward(2, 25, 'Jumu\'ah Mubarak! The Friday prayer is finished \u{1F932}');
+        else facAward(0, 15, 'The prayer is finished \u{1F932}');
       }
     }
     // a person praying, seen from the side, facing the niche on the right
@@ -1583,7 +1667,18 @@
         facState.book = !facState.book;
         say(facState.book ? 'You took a book \u{1F4D6} Sit on your mat to read it quietly' : 'Book back on the shelf \u{1F4DA}', 130);
         blip(600, 700, 0.1, 0.06);
+      } else if (spot.key === 'wudu') {
+        startWudu();
+      } else if (spot.key === 'friday') {
+        fridayMode = !fridayMode;
+        say(fridayMode ? 'Friday prayer (Jumu\'ah): a big crowd and the khutbah \u{1F54C}' : 'Normal prayer with the imam \u{1F932}', 150);
+        blip(660, 880, 0.12, 0.08);
       } else if (spot.key === 'mat') {
+        if (!wuduDone) {
+          say('Do your wudu first at the Wudu Area \u{1F6BF} (the door next to this one)', 170);
+          blip(220, 160, 0.2, 0.08);
+          return;
+        }
         if (!facState.shoes) {
           say('Please take your shoes off first \u{1F45F}', 130);
           blip(220, 160, 0.2, 0.08);
@@ -1618,7 +1713,7 @@
         blip(1500, 1800, 0.9, 0.05);
         if (toi.stage === 5) {
           toi.stage = 0;
-          toi.timer = 2400 + Math.random() * 1500;
+          toi.timer = 9000 + Math.random() * 5400; // then 2.5 to 4 minutes until the next time
           addScore(10);
           say('Clean hands! You feel much better \u{1F9FC} +10', 190);
           [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.16, 0.1, 0.3 + j * 0.08));
@@ -1729,13 +1824,28 @@
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'center';
         for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (!(facState.book && r === 1 && c === 1)) ctx.fillText('\u{1F4D6}', 116 + c * 26, 190 + r * 36);
-        roundedRect(214, 150, 74, 44, 8);
+        // the board: tap it to change between the normal prayer and the Friday prayer
+        roundedRect(204, 138, 96, 58, 8);
+        ctx.fillStyle = fridayMode ? '#ffe28a' : '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#2f8f7a';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = '#2f8f7a';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.fillText('tap to change', 252, 152);
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(fridayMode ? 'FRIDAY \u2728' : 'Normal', 252, 171);
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText(fridayMode ? "Jumu'ah prayer" : 'prayer', 252, 187);
+        roundedRect(306, 150, 56, 30, 8);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
         ctx.fillStyle = '#2f8f7a';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('QUIET', 251, 168);
-        ctx.fillText('PLEASE \u{1F90D}', 251, 184);
+        ctx.font = 'bold 10px sans-serif';
+        ctx.fillText('QUIET', 334, 163);
+        ctx.fillText('PLEASE \u{1F90D}', 334, 175);
         // the shoe rack by the door
         ctx.fillStyle = '#6b4a2e';
         ctx.fillRect(66, 392, 56, 7);
@@ -1750,38 +1860,60 @@
           ctx.fillText('\u{1F45F}', 84, 451);
           ctx.fillText('\u{1F45F}', 106, 451);
         }
-        // the mats: the imam and you in front, two more people behind
-        [[210, 475], [315, 475], [210, 420], [315, 420]].forEach(([mx, my]) => {
-          roundedRect(mx - 46, my - 22, 92, 36, 8);
-          ctx.fillStyle = '#d9c28f';
-          ctx.fill();
-          ctx.strokeStyle = '#8f7240';
-          ctx.lineWidth = 2;
-          ctx.stroke();
-          ctx.beginPath();
-          ctx.moveTo(mx + 30, my - 10);
-          ctx.lineTo(mx + 42, my - 4);
-          ctx.lineTo(mx + 30, my + 2);
-          ctx.stroke();
-        });
         const pr = salah && salah.kind === 'pray';
-        const lead = pr ? salahPose(salah.t) : null;
-        const fol = pr ? salahPose(Math.max(0, salah.t - 14)) : null;
+        const st = pr ? prayStates(salah.t, salah.friday) : null;
         const idleP = prayPoses.qiyam;
-        things.push({ y: 420, draw: () => drawWorshipper(210, 424, pr ? fol.pose : idleP, shopperLook[1], 0.88, false, pr ? fol.turn : 0) });
-        things.push({ y: 421, draw: () => drawWorshipper(315, 424, pr ? fol.pose : idleP, shopperLook[3], 0.88, false, pr ? fol.turn : 0) });
-        things.push({ y: 476, draw: () => drawWorshipper(315, 479, pr ? lead.pose : idleP, imamLook, 1, true, pr ? lead.turn : 0) });
-        if (salah) {
-          things.push({ y: 477, draw: () => {
-            if (salah.kind === 'pray') {
-              drawWorshipper(210, 479, fol.pose, myLook, 1, false, fol.turn);
-            } else {
-              drawWorshipper(210, 479, prayPoses.julus, myLook, 1, false, 0);
-              ctx.font = '22px sans-serif';
-              ctx.fillStyle = '#000000';
-              ctx.textAlign = 'center';
-              ctx.fillText('\u{1F4D6}', 214, 462 + Math.sin(t / 20) * 1.5);
-            }
+        if (!fridayMode) {
+          // the mats: the imam and you in front, two more people behind
+          [[210, 475], [315, 475], [210, 420], [315, 420]].forEach(([mx, my]) => {
+            roundedRect(mx - 46, my - 22, 92, 36, 8);
+            ctx.fillStyle = '#d9c28f';
+            ctx.fill();
+            ctx.strokeStyle = '#8f7240';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(mx + 30, my - 10);
+            ctx.lineTo(mx + 42, my - 4);
+            ctx.lineTo(mx + 30, my + 2);
+            ctx.stroke();
+          });
+          things.push({ y: 420, draw: () => drawWorshipper(210, 424, pr ? st.fol.pose : idleP, shopperLook[1], 0.88, false, pr ? st.fol.turn : 0) });
+          things.push({ y: 421, draw: () => drawWorshipper(315, 424, pr ? st.fol.pose : idleP, shopperLook[3], 0.88, false, pr ? st.fol.turn : 0) });
+          things.push({ y: 476, draw: () => drawWorshipper(315, 479, pr ? st.lead.pose : idleP, imamLook, 1, true, pr ? st.lead.turn : 0) });
+        } else {
+          // Friday: the imam on the minbar and a big crowd in rows behind him
+          ctx.fillStyle = '#7b5a3a';
+          ctx.fillRect(296, 468, 76, 26);
+          ctx.fillStyle = '#9a7448';
+          ctx.fillRect(296, 468, 76, 6);
+          ctx.fillRect(284, 484, 14, 10);
+          ctx.fillRect(272, 490, 14, 6);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+          [105, 158, 210, 262].forEach((rx) => ctx.fillRect(rx - 1, 380, 2, 170));
+          const sitP = prayPoses.julus;
+          let n = 0;
+          [105, 158, 210, 262, 315].forEach((cx, ci) => {
+            [396, 424, 452, 480, 508, 536].forEach((cy, ri) => {
+              if ((cx === 210 || cx === 315) && cy === 480) return; // your place and the imam's
+              n++;
+              const sc = 0.7 + ((cy - 396) / 140) * 0.3;
+              const kid = (ci * 3 + ri) % 7 === 3;
+              things.push({ y: cy, draw: () => drawWorshipper(cx, cy + 3, pr ? st.fol.pose : sitP, shopperLook[(ci + ri * 2) % 6], sc * (kid ? 0.78 : 1), false, pr ? st.fol.turn : 0) });
+            });
+          });
+          things.push({ y: 480, draw: () => drawWorshipper(335, 470, pr ? st.lead.pose : idleP, imamLook, 1, true, pr ? st.lead.turn : 0) });
+        }
+        const myY = fridayMode ? 483 : 479;
+        if (salah && salah.kind === 'pray') {
+          things.push({ y: myY - 2, draw: () => drawWorshipper(210, myY, st.fol.pose, myLook, 1, false, st.fol.turn) });
+        } else if (salah && salah.kind === 'read') {
+          things.push({ y: myY - 2, draw: () => {
+            drawWorshipper(210, myY, prayPoses.julus, myLook, 1, false, 0);
+            ctx.font = '22px sans-serif';
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            ctx.fillText('\u{1F4D6}', 214, myY - 17 + Math.sin(t / 20) * 1.5);
           } });
         } else {
           things.push({ y: mm.y, draw: () => {
@@ -1794,6 +1926,83 @@
             }
           } });
         }
+      } else if (sh.facility === 'wudu') {
+        // the washing area: stools and low taps, and a poster of the steps
+        ctx.strokeStyle = 'rgba(60, 130, 170, 0.16)';
+        ctx.lineWidth = 1.5;
+        for (let x = 0; x < W; x += 30) {
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, 360);
+          ctx.stroke();
+        }
+        for (let y = 0; y < 360; y += 30) {
+          ctx.beginPath();
+          ctx.moveTo(0, y);
+          ctx.lineTo(W, y);
+          ctx.stroke();
+        }
+        roundedRect(70, 122, 138, 214, 10);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#3a86b4';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = '#3a86b4';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('WUDU \u0627\u0644\u0648\u0636\u0648\u0621 \u2022 THE STEPS', 139, 140);
+        const wstep = salah && salah.kind === 'wudu' ? salah.seg : wuduDone ? 8 : -1;
+        wuduSteps.forEach((ws, i) => {
+          const y = 150 + i * 22;
+          if (i === wstep) {
+            ctx.fillStyle = '#ffe28a';
+            ctx.fillRect(76, y, 126, 20);
+          }
+          ctx.fillStyle = i < wstep ? '#2fbf71' : '#2b2230';
+          ctx.font = '12px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.fillText((i < wstep ? '\u2705 ' : ws[0] + ' ') + (i + 1) + '. ' + ws[1], 82, y + 15);
+        });
+        // three washing places (the taps are on the right of each stool)
+        [125, 215, 305].forEach((sx, k) => {
+          ctx.fillStyle = '#9aa5ae';
+          ctx.fillRect(sx + 28, 440, 30, 36);
+          ctx.fillStyle = '#e9eef2';
+          ctx.beginPath();
+          ctx.ellipse(sx + 43, 440, 24, 8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#aab4bd';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.fillStyle = '#9aa5ae';
+          ctx.fillRect(sx + 40, 408, 6, 30);
+          ctx.fillRect(sx + 30, 406, 16, 5);
+          ctx.fillStyle = '#6b4a2e';
+          roundedRect(sx - 18, 452, 30, 10, 4);
+          ctx.fill();
+          ctx.fillRect(sx - 14, 460, 5, 18);
+          ctx.fillRect(sx + 4, 460, 5, 18);
+          const mine = k === 0;
+          const busy = mine && salah && salah.kind === 'wudu';
+          if (busy || (!mine && Math.sin(t / 40 + k) > -0.2)) {
+            ctx.fillStyle = 'rgba(80, 170, 240, 0.85)';
+            for (let d = 0; d < 4; d++) {
+              const dy = (t * 3 + d * 8) % 30;
+              ctx.beginPath();
+              ctx.arc(sx + 31, 414 + dy, 2.6, 0, Math.PI * 2);
+              ctx.fill();
+            }
+          }
+        });
+        // two other people doing wudu
+        [[215, shopperLook[2], 3], [305, shopperLook[4], 5]].forEach(([px, lk, st]) => {
+          things.push({ y: 480, draw: () => drawWorshipper(px, 480, wuduPoses[(Math.floor(t / 70) + st) % 8], lk, 1, false, 0) });
+        });
+        if (salah && salah.kind === 'wudu') {
+          const wp = wuduPoses[Math.min(7, Math.floor(salah.t / WUDU_STEP))];
+          things.push({ y: 481, draw: () => drawWorshipper(125, 480, wp, myLook, 1, false, 0) });
+        } else things.push({ y: mm.y, draw: () => drawMe() });
       } else if (sh.facility === 'wc') {
         // tiles on the wall, mirrors, basins, a hand dryer and the toilet door
         ctx.strokeStyle = 'rgba(70, 110, 160, 0.16)';
@@ -2116,7 +2325,7 @@
         }
         const spots = facSpots[mallShopsData[mallShop].facility];
         for (let k = 0; k < spots.length; k++) {
-          if (Math.abs(p.x - spots[k].x) < 44 && p.y > 140 && p.y < 470) {
+          if (Math.abs(p.x - spots[k].x) < 44 && p.y > (spots[k].y0 || 140) && p.y < (spots[k].y1 || 470)) {
             mm.goto = spots[k].x;
             mm.act = { kind: 'fac', i: k };
             return;
@@ -4823,12 +5032,12 @@ function drawOutdoorFront() {
       drawLift();
       // the services wing sign
       ctx.fillStyle = '#2b2230';
-      roundedRect(806, 100, 250, 26, 8);
+      roundedRect(806, 100, 330, 26, 8);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 12px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('SERVICES \u27A1  \u{1F54C} \u{1F6BB} ℹ️', 931, 118);
+      ctx.fillText('SERVICES \u27A1  \u{1F6BF} \u{1F54C} \u{1F6BB} ℹ️', 971, 118);
       // the shiny floor
       const floor = ctx.createLinearGradient(0, 400, 0, H);
       floor.addColorStop(0, upper ? '#eadfce' : '#e6dfd3');
