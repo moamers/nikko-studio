@@ -37,6 +37,15 @@
   .mark img { width: 44px; height: 44px; display: block; margin: 0 auto; }
   .mark small { display: block; font-size: 13px; margin-top: 6px; white-space: nowrap; position: relative; top: 24px; }
   #me { position: absolute; top: 14px; width: 48px; height: 48px; transform: translateX(-50%) rotate(90deg); }
+  #world { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 10; display: none; touch-action: none; background: #000; }
+  #sceneHud { position: fixed; top: 8px; left: 0; width: 100%; text-align: center; font-size: 20px; z-index: 11; pointer-events: none; text-shadow: 0 0 6px #000, 0 0 3px #000; display: none; padding: 0 12px; box-sizing: border-box; }
+  #sceneToast { position: fixed; top: 22%; left: 0; width: 100%; text-align: center; font-size: 38px; z-index: 11; pointer-events: none; text-shadow: 0 0 10px #000; display: none; }
+  #sceneMsg { position: fixed; inset: 0; z-index: 12; background: #000000b8; display: none; align-items: center; justify-content: center; text-align: center; font-size: 32px; line-height: 1.4; padding: 20px; }
+  #landBtn { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 7; display: none; background: #2ecc71; color: #052a14; font-weight: bold; font-size: 24px; margin: 0; padding: 12px 24px; }
+  #landBtn img { width: 36px; height: 36px; vertical-align: middle; margin-right: 8px; }
+  body.scene #space, body.scene #topButtons, body.scene #boost, body.scene #shieldBtn, body.scene #landBtn, body.scene #map { display: none !important; }
+  body.scene #world, body.scene #sceneHud { display: block; }
+  body:not(.scene) #sceneToast { display: none !important; }
 </style>
 </head>
 <body>
@@ -50,6 +59,11 @@
   <div id="rocket"></div>
   <div id="shield"></div>
 </div>
+<canvas id="world"></canvas>
+<div id="sceneHud"></div>
+<div id="sceneToast"></div>
+<div id="sceneMsg"></div>
+<button id="landBtn"></button>
 <div id="topButtons">
   <button id="mapBtn">Map (M)</button>
   <button id="easyBtn">Easy: OFF (E)</button>
@@ -74,6 +88,16 @@ const ROCKET_SIZE    = 100;       // How big the rocket is. Try 160!
 const ROCKET_SPEED   = 14;        // Arrow-key speed at Level 1. Try 25 for SUPER fast!
 const SPACE_COLOUR   = "#05061a"; // Try "#0a0030" or "#001a2e"
 
+// ---- The story: house, car, NASA, rocket, planets, Moon, home ----
+const PLAYER_SPEED   = 5;         // How fast you walk. Try 10!
+const PLAYER_SHIRT   = "#2a9d8f"; // Your shirt colour. Try "orange" or "purple"
+const CAR_COLOUR     = "#e63946"; // Your car's colour. Try "gold" or "blue"
+const DRIVE_SECONDS  = 18;        // How long each car ride takes. Try 40 for a LONG drive!
+const CRYSTAL_SCORE  = 50;        // Score for each crystal or rock you find on a planet
+const RETURN_LEVELS  = 2;         // How many levels on the flight home
+const RETURN_SECONDS_PER_LEVEL = 12;
+const GARAGE_BIG_SCORE = 1000;    // Score you need to park one level higher in the 5-level parking lot
+
 // ---- The journey to the Moon ----
 const LEVELS            = 5;      // How many levels before the Moon. Try 10!
 const SECONDS_PER_LEVEL = 25;     // How long each level takes. Try 10 for a quick game!
@@ -95,8 +119,8 @@ const START_LIVES    = 4;         // How many hull blocks you start with
 const ROCK_SPEED     = 7;         // How fast rocks fall. Try 12 if you're brave!
 const ROCK_DAMAGE    = 3;         // Hull blocks a rock takes away. Try 1 for easier!
 const ROCK_EVERY     = 350;       // Milliseconds between rocks. Smaller = MORE rocks!
-const ALIEN_EVERY    = 1400;      // How often alien ships appear
-const ALIEN_SPEED    = 3;         // Alien ships CHASE you at this speed. Shoot them fast!
+const ALIEN_EVERY    = 2800;      // How often alien ships appear. Smaller = MORE aliens!
+const ALIEN_SPEED    = 1.8;       // Alien ships CHASE you at this speed (gentle!). Try 4 for mean aliens!
 const BULLET_SPEED   = 10;
 
 // ---- Easy button ----
@@ -326,6 +350,11 @@ const PIC = {
 
 // =====================================================
 //  THE GAME PART  -  ask Claude "what does this do?" any time
+//
+//  The story is a list of CHAPTERS. Each chapter is a "scene":
+//    house -> drive -> nasa -> flight (+ planets) -> moon -> flight home -> nasa -> drive -> garage
+//  The scene functions are called  makeHouse, makeDrive, makeNasa, makeSurface, makeGarage.
+//  The flight (the rocket part) is the big code further down.
 // =====================================================
 const space   = document.getElementById("space");
 const hud     = document.getElementById("hud");
@@ -339,28 +368,42 @@ const easyBtn  = document.getElementById("easyBtn");
 const mapEl    = document.getElementById("map");
 const shieldEl  = document.getElementById("shield");
 const shieldBtn = document.getElementById("shieldBtn");
+const landBtn   = document.getElementById("landBtn");
 const starCanvas = document.getElementById("stars");
 const starPen = starCanvas.getContext("2d");
+const worldCanvas = document.getElementById("world");
+const wg = worldCanvas.getContext("2d");
+const sceneHud = document.getElementById("sceneHud");
+const sceneMsg = document.getElementById("sceneMsg");
+const sceneToast = document.getElementById("sceneToast");
 const SIZE = 56;          // size of rocks, aliens, stars
 const BOLT_SIZE = 40;     // size of a laser bolt
 
 document.body.style.background = SPACE_COLOUR;
 rocket.style.width = rocket.style.height = ROCKET_SIZE + "px";
-moon.style.backgroundImage = "url(" + PIC.moon + ")";
 function setPicture(el, src) { el.style.backgroundImage = "url(" + src + ")"; }
 setPicture(rocket, PIC.rocket);
+function loadImage(src) { const i = new Image(); i.src = src; return i; }
+const IMG = { rocket: loadImage(PIC.rocket), station: loadImage(PIC.station) };
 
 // Places on the map (0 = Earth, 1 = Moon)
-const PLACES = [
+const PLACES_OUT = [
   { at: 0,    pic: PIC.planets[2], name: "Earth" },
   { at: 0.25, pic: PIC.station,    name: "Space Station" },
   { at: 0.5,  pic: PIC.planets[0], name: "Ring Planet" },
   { at: 0.75, pic: PIC.planets[1], name: "Red Planet" },
   { at: 1,    pic: PIC.moon,       name: "Moon" }
 ];
+const PLACES_BACK = [
+  { at: 0, pic: PIC.moon,       name: "Moon" },
+  { at: 1, pic: PIC.planets[2], name: "Earth" }
+];
 
 // Variables: labelled boxes that remember things
-let x, y, score, lives, playing, paused, things, planets, progress, level, last;
+let mode = "house";                        // which chapter are we in?
+let x, y, score = 0, lives, playing = false, paused = false, things = [], planets = [], progress = 0, level = 1, last = 0;
+let trip = null;                           // the flight we are on (out to the Moon, or back home)
+let landed = 0;                            // how many planets we landed on
 let boostUntil = 0, boostReadyAt = 0, rocketLooksBoosted = false;
 let shieldUntil = 0, shieldReadyAt = 0;
 let rockTimer = 0, alienTimer = 0, starTimer = 0, planetTimer = 0;
@@ -384,6 +427,7 @@ window.addEventListener("keydown", e => {
   if (e.key === " ") { e.preventDefault(); shoot(); }
   if (e.key === "b" || e.key === "B") boost();
   if (e.key === "s" || e.key === "S") useShield();
+  if (e.key === "l" || e.key === "L") landNow();
   if (e.key === "m" || e.key === "M") toggleMap();
   if (e.key === "e" || e.key === "E") toggleEasy();
   if (e.key === "Escape" && paused) toggleMap();
@@ -404,20 +448,23 @@ space.addEventListener("pointerdown", e => {
 
 boostBtn.addEventListener("click", boost);
 shieldBtn.addEventListener("click", useShield);
+landBtn.addEventListener("click", landNow);
 easyBtn.addEventListener("click", toggleEasy);
 document.getElementById("mapBtn").addEventListener("click", toggleMap);
 document.getElementById("mapClose").addEventListener("click", toggleMap);
 
+function inFlight() { return mode === "flight" && playing && !paused; }
+
 function boost() {
   const now = performance.now();
-  if (!playing || paused || now < boostReadyAt) return;
+  if (!inFlight() || now < boostReadyAt) return;
   boostUntil = now + BOOST_TIME;
   boostReadyAt = now + BOOST_TIME + BOOST_COOLDOWN;
 }
 
 function useShield() {
   const now = performance.now();
-  if (!playing || paused || now < shieldReadyAt) return;
+  if (!inFlight() || now < shieldReadyAt) return;
   shieldUntil = now + SHIELD_TIME;
   shieldReadyAt = now + SHIELD_TIME + SHIELD_COOLDOWN;
 }
@@ -437,19 +484,19 @@ function showButtons() {
 function kmLeft() { return Math.round(MOON_KM * (1 - progress) / 100) * 100; }
 
 function toggleMap() {
-  if (!playing) return;
+  if (!playing || mode !== "flight") return;
   paused = !paused;
   mapEl.style.display = paused ? "block" : "none";
   if (paused) {
-    document.getElementById("track").innerHTML = PLACES.map(p =>
+    document.getElementById("track").innerHTML = trip.places.map(p =>
       '<div class="mark" style="left:' + p.at * 100 + '%"><img src="' + p.pic + '"><small>' + p.name + '</small></div>'
     ).join("") + '<img id="me" src="' + PIC.rocket + '" style="left:' + progress * 100 + '%">';
     document.getElementById("mapText").innerHTML =
-      "You are " + kmLeft().toLocaleString() + " km from the Moon!<br>Level " + level + " of " + LEVELS;
+      "You are " + kmLeft().toLocaleString() + " km from " + trip.goal + "!<br>Level " + level + " of " + trip.levels;
   }
 }
 
-// ---------- Making things ----------
+// ---------- Making things (flight) ----------
 function makeThing(kind, pic, px, py, speed, size) {
   const el = document.createElement("div");
   el.className = "thing";
@@ -459,20 +506,20 @@ function makeThing(kind, pic, px, py, speed, size) {
   things.push({ kind, el, x: px, y: py, speed, size });
 }
 
-function makePlanet() {
-  const size = 140 + Math.random() * 130;
+function makePlanet(pic, size, px, speed) {
   const el = document.createElement("div");
   el.className = "planet";
-  setPicture(el, PIC.planets[Math.floor(Math.random() * PIC.planets.length)]);
+  setPicture(el, pic || PIC.planets[Math.floor(Math.random() * PIC.planets.length)]);
+  size = size || 140 + Math.random() * 130;
   el.style.width = el.style.height = size + "px";
   space.appendChild(el);
-  planets.push({ el, x: Math.random() * (window.innerWidth - size), y: -size, speed: 0.6 + Math.random() * 0.8 });
+  planets.push({ el, x: px !== undefined ? px : Math.random() * (window.innerWidth - size), y: -size, speed: speed || 0.6 + Math.random() * 0.8 });
 }
 
 function randomX() { return Math.random() * (window.innerWidth - SIZE); }
 
 function shoot() {
-  if (!playing || paused) return;
+  if (!inFlight()) return;
   makeThing("bullet", PIC.bolt, x + ROCKET_SIZE / 2 - BOLT_SIZE / 2, y - 30, -BULLET_SPEED, BOLT_SIZE);
 }
 
@@ -485,20 +532,20 @@ function removeThing(t) { t.el.remove(); things = things.filter(o => o !== t); }
 
 function showHud() {
   hud.textContent = (ROCKET_NAME ? ROCKET_NAME + "     " : "") +
-                    "Score " + score + "     Level " + level + "/" + LEVELS + "     Hull " + "█".repeat(Math.max(lives, 0));
+                    "Score " + score + "     Level " + level + "/" + trip.levels + "     Hull " + "█".repeat(Math.max(lives, 0));
   fill.style.width = progress * 100 + "%";
 }
 
 function loseLife(amount) {
   lives = lives - amount;
   showHud();
-  if (lives <= 0) endGame(false);
+  if (lives <= 0) flightOver();
 }
 
 function showBanner(text) {
   banner.textContent = text;
   banner.style.display = "block";
-  setTimeout(() => { banner.style.display = "none"; }, 1500);
+  setTimeout(() => { banner.style.display = "none"; }, 1800);
 }
 
 // ---------- The star field: it rushes past faster when you go faster ----------
@@ -519,28 +566,589 @@ function drawStars(k, moving) {
   }
 }
 
+// =====================================================
+//  THE STORY WORLD  -  walking, driving and parking
+//  These scenes are drawn from above on a 1000 x 600 board.
+// =====================================================
+const VW = 1000, VH = 600;
+let scene = null, waitingStart = true;
+const view = { s: 1, ox: 0, oy: 0 };
+const ptr = { down: false, x: 0, y: 0 };
+const P = { x: 0, y: 0, bob: 0, angle: -Math.PI / 2, moving: false, suit: false, helmet: false };
+
+function toWorld(e) { return { x: (e.clientX - view.ox) / view.s, y: (e.clientY - view.oy) / view.s }; }
+worldCanvas.addEventListener("pointerdown", e => { ptr.down = true; Object.assign(ptr, toWorld(e)); });
+worldCanvas.addEventListener("pointermove", e => { if (ptr.down) Object.assign(ptr, toWorld(e)); });
+window.addEventListener("pointerup", () => { ptr.down = false; });
+
+function goMode(m) {
+  mode = m;
+  document.body.classList.toggle("scene", m !== "flight");
+  sceneHud.textContent = "";
+}
+
+function showSceneMsg(html, buttonText, onClick) {
+  sceneMsg.innerHTML = "<div>" + html + "<br><button id='sceneBtn'>" + buttonText + "</button></div>";
+  sceneMsg.style.display = "flex";
+  document.getElementById("sceneBtn").addEventListener("click", () => { sceneMsg.style.display = "none"; onClick(); });
+}
+let toastTimer;
+function toast(text) {
+  sceneToast.textContent = text;
+  sceneToast.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { sceneToast.style.display = "none"; }, 2500);
+}
+
+function offscreen(drawIt) { const c = makeCanvas(VW, VH); drawIt(c.getContext("2d")); return c; }
+function label(g, text, px, py, size, colour) {
+  g.font = "bold " + size + "px sans-serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = colour || "white"; g.fillText(text, px, py);
+}
+
+// ----- the person (a boy or girl seen from above) -----
+function inputDir() {
+  let dx = 0, dy = 0;
+  if (keys["ArrowLeft"]  || keys["a"] || keys["A"]) dx -= 1;
+  if (keys["ArrowRight"] || keys["d"] || keys["D"]) dx += 1;
+  if (keys["ArrowUp"]    || keys["w"] || keys["W"]) dy -= 1;
+  if (keys["ArrowDown"]  || keys["s"] || keys["S"]) dy += 1;
+  if (!dx && !dy && ptr.down) {                        // touch and hold: walk toward your finger
+    const ddx = ptr.x - P.x, ddy = ptr.y - P.y, d = Math.hypot(ddx, ddy);
+    if (d > 12) { dx = ddx / d; dy = ddy / d; }
+  }
+  const m = Math.hypot(dx, dy);
+  return m ? { dx: dx / m, dy: dy / m } : { dx: 0, dy: 0 };
+}
+function circleHitsRect(cx, cy, r, w) {
+  const nx = Math.max(w.x, Math.min(cx, w.x + w.w)), ny = Math.max(w.y, Math.min(cy, w.y + w.h));
+  return (cx - nx) * (cx - nx) + (cy - ny) * (cy - ny) < r * r;
+}
+function movePlayer(k, walls) {
+  const d = inputDir(), sp = PLAYER_SPEED * k, r = 17;
+  P.moving = d.dx !== 0 || d.dy !== 0;
+  if (P.moving) { P.bob += 0.25 * k; P.angle = Math.atan2(d.dy, d.dx); }
+  const nx = P.x + d.dx * sp;
+  if (!walls.some(w => circleHitsRect(nx, P.y, r, w))) P.x = nx;
+  const ny = P.y + d.dy * sp;
+  if (!walls.some(w => circleHitsRect(P.x, ny, r, w))) P.y = ny;
+  P.x = Math.max(r, Math.min(VW - r, P.x));
+  P.y = Math.max(r, Math.min(VH - r, P.y));
+}
+function drawPerson(g) {
+  const swing = P.moving ? Math.sin(P.bob) * 4 : 0;
+  g.save();
+  g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.ellipse(P.x + 5, P.y + 6, 20, 15, 0, 0, 7); g.fill();
+  g.translate(P.x, P.y); g.scale(1.35, 1.35); g.rotate(P.angle + Math.PI / 2);   // the person faces where they walk
+  g.fillStyle = P.suit ? "#d8dde3" : "#34445c";                  // legs
+  g.fillRect(-7, 2 + swing, 6, 10); g.fillRect(1, 2 - swing, 6, 10);
+  if (P.suit) { g.fillStyle = "#b9c0c8"; g.fillRect(-8, 2, 16, 12); }  // backpack
+  g.fillStyle = P.suit ? "#f2f4f7" : PLAYER_SHIRT;                // body
+  g.beginPath(); g.ellipse(0, 0, 14, 8, 0, 0, 7); g.fill();
+  g.fillStyle = P.suit ? "#f2f4f7" : "#f1c9a0";                   // arms
+  g.beginPath(); g.arc(-14, swing, 4.5, 0, 7); g.fill();
+  g.beginPath(); g.arc(14, -swing, 4.5, 0, 7); g.fill();
+  if (P.helmet) {                                                // helmet
+    g.fillStyle = "#f7f9fb"; g.beginPath(); g.arc(0, -1, 11, 0, 7); g.fill();
+    const vg = g.createLinearGradient(-7, -10, 7, -2); vg.addColorStop(0, "#7fc4ff"); vg.addColorStop(1, "#1b3d6e");
+    g.fillStyle = vg; g.beginPath(); g.ellipse(0, -5, 7, 4.5, 0, 0, 7); g.fill();
+  } else {                                                       // head and hair
+    g.fillStyle = "#f1c9a0"; g.beginPath(); g.arc(0, -1, 8, 0, 7); g.fill();
+    g.fillStyle = "#4a2f1d"; g.beginPath(); g.arc(0, 1, 8.5, 0, Math.PI); g.fill();
+  }
+  g.restore();
+}
+
+// ----- a car seen from above (it faces up) -----
+function drawCar(g, cx, cy, w, h, col) {
+  g.save(); g.translate(cx, cy);
+  g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.roundRect(-w / 2 + 5, -h / 2 + 7, w, h, 12); g.fill();
+  g.fillStyle = "#111";
+  [[-w / 2 - 3, -h * 0.3], [w / 2 - 3, -h * 0.3], [-w / 2 - 3, h * 0.17], [w / 2 - 3, h * 0.17]].forEach(p => g.fillRect(p[0], p[1], 6, h * 0.2));
+  const bg = g.createLinearGradient(-w / 2, 0, w / 2, 0);
+  bg.addColorStop(0, col); bg.addColorStop(0.5, "rgba(255,255,255,0.35)"); bg.addColorStop(1, col);
+  g.fillStyle = col; g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, 12); g.fill();
+  g.fillStyle = bg; g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, 12); g.fill();
+  g.strokeStyle = "rgba(0,0,0,0.5)"; g.lineWidth = 1.5; g.stroke();
+  g.fillStyle = "#1f3447";
+  g.beginPath(); g.roundRect(-w / 2 + 6, -h * 0.24, w - 12, h * 0.15, 4); g.fill();     // front window
+  g.beginPath(); g.roundRect(-w / 2 + 6, h * 0.16, w - 12, h * 0.12, 4); g.fill();      // back window
+  g.fillStyle = "rgba(255,255,255,0.28)"; g.beginPath(); g.roundRect(-w / 2 + 8, -h * 0.07, w - 16, h * 0.22, 5); g.fill();  // roof
+  g.fillStyle = "#fff3b0"; g.fillRect(-w / 2 + 5, -h / 2 + 2, 9, 5); g.fillRect(w / 2 - 14, -h / 2 + 2, 9, 5);   // headlights
+  g.fillStyle = "#d62828"; g.fillRect(-w / 2 + 5, h / 2 - 6, 9, 4); g.fillRect(w / 2 - 14, h / 2 - 6, 9, 4);     // tail lights
+  g.restore();
+}
+
+function drawTree(g, tx, ty, r) {
+  g.fillStyle = "rgba(0,0,0,0.25)"; g.beginPath(); g.arc(tx + 6, ty + 8, r, 0, 7); g.fill();
+  g.fillStyle = "#2f7d32"; g.beginPath(); g.arc(tx, ty, r, 0, 7); g.fill();
+  g.fillStyle = "#3f9a43"; g.beginPath(); g.arc(tx - r * 0.25, ty - r * 0.25, r * 0.65, 0, 7); g.fill();
+  g.fillStyle = "#5bb85f"; g.beginPath(); g.arc(tx - r * 0.4, ty - r * 0.4, r * 0.28, 0, 7); g.fill();
+}
+
+// ----- chapter 1: your house -----
+function makeHouse(done) {
+  P.x = 235; P.y = 285; P.angle = Math.PI / 2; P.suit = false; P.helmet = false;
+  const trees = [[520, 110, 36], [900, 120, 40], [110, 400, 40], [300, 520, 34], [470, 440, 30]];
+  const carRect = { x: 665, y: 365, w: 70, h: 130 };
+  const walls = [{ x: 70, y: 40, w: 330, h: 200 }, carRect].concat(trees.map(t => ({ x: t[0] - t[2] * 0.6, y: t[1] - t[2] * 0.6, w: t[2] * 1.2, h: t[2] * 1.2 })));
+  const R = rng(5);
+  const bg = offscreen(g => {
+    g.fillStyle = "#4f9d4a"; g.fillRect(0, 0, VW, VH);
+    for (let i = 0; i < 700; i++) { g.fillStyle = R() > 0.5 ? "#5aab54" : "#43893f"; g.fillRect(R() * VW, R() * VH, 3, 8); }
+    g.fillStyle = "#6d6f73"; g.fillRect(560, 320, 300, 280);                         // driveway
+    g.strokeStyle = "rgba(255,255,255,0.5)"; g.lineWidth = 3; g.strokeRect(575, 335, 270, 250);
+    g.fillStyle = "#d4cbb8"; g.fillRect(212, 240, 46, 80); g.fillRect(212, 290, 360, 40);   // path
+    g.fillStyle = "#9c3d32"; g.fillRect(70, 40, 330, 200);                            // roof
+    for (let yy = 40; yy < 240; yy += 14) { g.strokeStyle = "rgba(0,0,0,0.2)"; g.beginPath(); g.moveTo(70, yy); g.lineTo(400, yy); g.stroke(); }
+    g.fillStyle = "rgba(0,0,0,0.18)"; g.fillRect(235, 40, 165, 200);
+    g.strokeStyle = "#e8b9a8"; g.lineWidth = 4; g.beginPath(); g.moveTo(235, 40); g.lineTo(235, 240); g.stroke();
+    g.strokeStyle = "#4a1c16"; g.lineWidth = 3; g.strokeRect(70, 40, 330, 200);
+    g.fillStyle = "#7a4a3a"; g.fillRect(330, 62, 34, 34);                              // chimney
+    g.fillStyle = "#c9b79a"; g.fillRect(203, 240, 64, 22);                             // porch
+    g.fillStyle = "#6b3f24"; g.fillRect(220, 236, 30, 8);                              // door
+    for (let i = 0; i < 40; i++) { g.fillStyle = ["#ff6b9d", "#ffd23f", "#ffffff", "#c77dff"][i % 4]; g.beginPath(); g.arc(60 + R() * 360, 250 + R() * 20, 3, 0, 7); g.fill(); }
+    trees.forEach(t => drawTree(g, t[0], t[1], t[2]));
+  });
+  let finished = false;
+  return {
+    hud: "Walk to your car!  (arrow keys or WASD. On a touch screen, hold your finger where you want to go.)",
+    update(dt, k) {
+      movePlayer(k, walls);
+      if (!finished && circleHitsRect(P.x, P.y, 13 + 18, carRect)) { finished = true; done(); }
+    },
+    draw(g, t) {
+      g.drawImage(bg, 0, 0);
+      drawCar(g, 700, 430, 70, 130, CAR_COLOUR);
+      label(g, "YOUR CAR", 700, 345 + Math.sin(t / 250) * 5, 16, "#fff");
+      g.fillStyle = "#ffd23f"; g.beginPath(); g.moveTo(690, 355 + Math.sin(t / 250) * 5); g.lineTo(710, 355 + Math.sin(t / 250) * 5); g.lineTo(700, 366 + Math.sin(t / 250) * 5); g.fill();
+      drawPerson(g);
+    }
+  };
+}
+
+// ----- chapters 2 and 8: driving (to NASA, and back home) -----
+function makeDrive(dest, done) {
+  const roadL = 300, roadR = 700;
+  let dist = 0, scroll = 0, bump = 0, spawn = 0, finished = false;
+  const car = { x: 500, y: 470 };
+  let obstacles = [];
+  const trees = [];
+  for (let i = 0; i < 16; i++) trees.push({ x: i % 2 ? 40 + Math.random() * 220 : 740 + Math.random() * 220, y: Math.random() * VH, r: 22 + Math.random() * 16 });
+  const colours = ["#2a6fdb", "#f4a261", "#8d99ae", "#2a9d8f", "#9b5de5"];
+  return {
+    hud: "Drive to " + (dest === "nasa" ? "NASA" : "your house") + "!  Steer left and right.",
+    update(dt, k) {
+      if (finished) return;
+      const slow = bump > 0 ? 0.4 : 1;
+      bump = Math.max(0, bump - dt);
+      const sp = 6 * k * slow;
+      scroll += sp;
+      dist += dt / 1000 / DRIVE_SECONDS * slow;
+      let steer = 0;
+      if (keys["ArrowLeft"] || keys["a"] || keys["A"]) steer -= 1;
+      if (keys["ArrowRight"] || keys["d"] || keys["D"]) steer += 1;
+      if (steer) car.x += steer * 8 * k;
+      else if (ptr.down) car.x += Math.max(-8 * k, Math.min(8 * k, ptr.x - car.x));
+      car.x = Math.max(roadL + 36, Math.min(roadR - 36, car.x));
+      spawn += dt;
+      if (spawn > 1100 && dist < 0.88) {
+        spawn = 0;
+        const cone = Math.random() < 0.4;
+        obstacles.push({ cone, x: roadL + 50 + Math.random() * (roadR - roadL - 100), y: -120, w: cone ? 26 : 56, h: cone ? 30 : 100, col: colours[Math.floor(Math.random() * colours.length)] });
+      }
+      for (const o of [...obstacles]) {
+        o.y += sp * (o.cone ? 1 : 0.55);
+        if (Math.abs(car.x - o.x) < (56 + o.w) / 2 - 8 && Math.abs(car.y - o.y) < (100 + o.h) / 2 - 8) { bump = 900; obstacles = obstacles.filter(q => q !== o); }
+        else if (o.y > VH + 150) obstacles = obstacles.filter(q => q !== o);
+      }
+      sceneHud.textContent = this.hud + "   " + Math.min(100, Math.round(dist * 100)) + "%";
+      if (dist >= 1) { finished = true; done(); }
+    },
+    draw(g, t) {
+      g.fillStyle = "#4f9d4a"; g.fillRect(0, 0, VW, VH);
+      trees.forEach(tr => drawTree(g, tr.x, ((tr.y + scroll * 0.9) % (VH + 100)) - 50, tr.r));
+      g.fillStyle = "#44484f"; g.fillRect(roadL, 0, roadR - roadL, VH);               // road
+      g.fillStyle = "#f4f4f4"; g.fillRect(roadL, 0, 6, VH); g.fillRect(roadR - 6, 0, 6, VH);
+      for (let yy = -80 + (scroll % 80); yy < VH; yy += 80) { g.fillRect(432, yy, 8, 40); g.fillRect(560, yy, 8, 40); }
+      obstacles.forEach(o => {
+        if (o.cone) {
+          g.fillStyle = "#ff7a00"; g.beginPath(); g.moveTo(o.x, o.y - 15); g.lineTo(o.x + 13, o.y + 15); g.lineTo(o.x - 13, o.y + 15); g.fill();
+          g.fillStyle = "#fff"; g.fillRect(o.x - 7, o.y + 2, 14, 4);
+        } else drawCar(g, o.x, o.y, o.w, o.h, o.col);
+      });
+      if (dist > 0.9) {                                                                 // the gate comes closer
+        const gy = -60 + (dist - 0.9) / 0.1 * (car.y - 20 + 60);
+        g.fillStyle = "#1d3f7a"; g.fillRect(roadL - 30, gy - 40, roadR - roadL + 60, 50);
+        g.fillStyle = "#fff"; g.fillRect(roadL - 30, gy - 40, 16, 120); g.fillRect(roadR + 14, gy - 40, 16, 120);
+        label(g, dest === "nasa" ? "NASA" : "HOME", 500, gy - 15, 34, "#fff");
+      }
+      drawCar(g, car.x, car.y, 56, 100, CAR_COLOUR);
+      if (bump > 0) label(g, "Bump!", car.x, car.y - 70, 24, "#ffd23f");
+    }
+  };
+}
+
+// ----- chapters 3 and 7: inside NASA -----
+function makeNasa(back, done) {
+  const items = back ? [] : [
+    { x: 225, y: 125, name: "Visitor badge", kind: "badge", got: false },
+    { x: 485, y: 125, name: "Space suit",    kind: "suit",  got: false },
+    { x: 755, y: 125, name: "Helmet",        kind: "helmet", got: false }
+  ];
+  const rects = [[0, 0, 1000, 20], [0, 20, 100, 230], [330, 20, 40, 210], [600, 20, 40, 210], [870, 20, 130, 210],
+                 [100, 230, 90, 20], [260, 230, 200, 20], [530, 230, 200, 20], [800, 230, 70, 20], [0, 350, 1000, 250]];
+  const walls = rects.map(a => ({ x: a[0], y: a[1], w: a[2], h: a[3] }));
+  const gate = { x: 870, y: 250, w: 18, h: 100 };
+  const R = rng(9);
+  const bg = offscreen(g => {
+    for (let ty = 0; ty < VH; ty += 50) for (let tx = 0; tx < VW; tx += 50) { g.fillStyle = (tx + ty) % 100 ? "#d9dde3" : "#cfd4db"; g.fillRect(tx, ty, 50, 50); }
+    g.fillStyle = "#2b3d5c"; g.fillRect(0, 250, 870, 100);                              // hall carpet
+    g.fillStyle = "#3a5078"; g.fillRect(0, 290, 870, 20);
+    [[100, "#c9e4de"], [370, "#e6d8f2"], [640, "#f9e4c8"]].forEach(r => { g.fillStyle = r[1]; g.fillRect(r[0], 20, 230, 210); });   // rooms
+    g.fillStyle = "#9aa0a6"; g.fillRect(870, 250, 130, 100);                            // launch pad
+    g.strokeStyle = "#ffd23f"; g.lineWidth = 6; g.setLineDash([18, 12]); g.strokeRect(890, 256, 104, 88); g.setLineDash([]);
+    g.fillStyle = "#39424e"; walls.forEach(w => g.fillRect(w.x, w.y, w.w, w.h));         // walls
+    g.fillStyle = "#566273"; walls.forEach(w => g.fillRect(w.x, w.y, w.w, 4));
+    g.fillStyle = "#0e1c33"; g.fillRect(0, 350, 1000, 250);                              // bottom rooms (you can see, not enter)
+    for (let i = 0; i < 12; i++) {
+      const cx = 40 + i * 80;
+      g.fillStyle = "#26354f"; g.fillRect(cx, 400, 64, 36);
+      g.fillStyle = R() > 0.5 ? "#4dd2ff" : "#7CFC00"; g.fillRect(cx + 6, 406, 52, 18);
+      g.fillStyle = "#26354f"; g.fillRect(cx, 480, 64, 36);
+      g.fillStyle = R() > 0.5 ? "#ffd23f" : "#ff6b6b"; g.fillRect(cx + 6, 486, 52, 18);
+    }
+    label(g, "CONTROL ROOM", 300, 372, 20, "#9fb4d6"); label(g, "MISSION LAB", 720, 372, 20, "#9fb4d6");
+    label(g, "CHECK-IN", 225, 36, 16, "#2d5b52"); label(g, "SUITS", 485, 36, 16, "#5a3a78"); label(g, "HELMETS", 755, 36, 16, "#8a5a1f");
+    label(g, "ENTRANCE", 48, 330, 14, "#bcd");
+    label(g, "LAUNCH PAD", 935, 240, 12, "#333");
+  });
+  P.suit = false; P.helmet = false;
+  if (back) { P.x = 920; P.y = 330; P.angle = Math.PI; } else { P.x = 40; P.y = 300; P.angle = 0; }
+  let finished = false;
+  const gotCount = () => items.filter(i => i.got).length;
+  return {
+    hud: back ? "Welcome back! Walk to the ENTRANCE to go home." : "Collect your badge, suit and helmet. Then go to the rocket!",
+    update(dt, k) {
+      const open = back || gotCount() === items.length;
+      movePlayer(k, open ? walls : walls.concat([gate]));
+      items.forEach(it => {
+        if (!it.got && Math.hypot(P.x - it.x, P.y - it.y) < 30) {
+          it.got = true;
+          if (it.kind === "suit") P.suit = true;
+          if (it.kind === "helmet") P.helmet = true;
+          toast("You got the " + it.name + "!");
+        }
+      });
+      if (!back) sceneHud.textContent = gotCount() < items.length ? "Collect your badge, suit and helmet: " + gotCount() + " / " + items.length : "The gate is open! Walk to your rocket on the launch pad!";
+      if (!finished && ((!back && open && P.x > 905) || (back && P.x < 30))) { finished = true; done(); }
+    },
+    draw(g, t) {
+      g.drawImage(bg, 0, 0);
+      g.drawImage(IMG.rocket, 890, 245, 120, 120);                                      // your rocket
+      if (!back) {
+        const open = gotCount() === items.length;
+        g.fillStyle = open ? "rgba(80,255,140,0.35)" : "rgba(255,60,60,0.7)"; g.fillRect(gate.x, gate.y, gate.w, gate.h);
+        if (!open) { g.fillStyle = "#fff"; for (let i = 0; i < 4; i++) g.fillRect(gate.x, gate.y + 12 + i * 24, gate.w, 3); }
+      }
+      items.forEach(it => {
+        if (it.got) return;
+        const bob = Math.sin(t / 250 + it.x) * 3;
+        g.fillStyle = "rgba(255,230,80,0.35)"; g.beginPath(); g.arc(it.x, it.y + bob, 26, 0, 7); g.fill();
+        if (it.kind === "badge") {
+          g.fillStyle = "#fff"; g.beginPath(); g.roundRect(it.x - 11, it.y - 15 + bob, 22, 30, 3); g.fill();
+          g.fillStyle = "#1d5fc4"; g.fillRect(it.x - 11, it.y - 15 + bob, 22, 7);
+          g.fillStyle = "#c9a37a"; g.beginPath(); g.arc(it.x, it.y + 3 + bob, 6, 0, 7); g.fill();
+        } else if (it.kind === "suit") {
+          g.fillStyle = "#ff7a00"; g.fillRect(it.x - 9, it.y - 14 + bob, 18, 28); g.fillRect(it.x - 20, it.y - 12 + bob, 11, 8); g.fillRect(it.x + 9, it.y - 12 + bob, 11, 8);
+          g.fillStyle = "#fff"; g.fillRect(it.x - 9, it.y - 2 + bob, 18, 3);
+        } else {
+          g.fillStyle = "#f7f9fb"; g.beginPath(); g.arc(it.x, it.y + bob, 14, 0, 7); g.fill();
+          g.fillStyle = "#1b3d6e"; g.beginPath(); g.ellipse(it.x, it.y - 2 + bob, 9, 6, 0, 0, 7); g.fill();
+        }
+      });
+      drawPerson(g);
+    }
+  };
+}
+
+// ----- chapter 5 (and the planets): walking on a planet or the Moon -----
+const THEMES = {
+  station: { title: "the Space Station", ground: "#3d4857", ground2: "#566275", item: "#5dff9a", name: "energy cell", count: 4 },
+  ring:    { title: "the Ring Planet",   ground: "#c9a56b", ground2: "#a9854e", item: "#ffd23f", name: "gold crystal", count: 4 },
+  red:     { title: "the Red Planet",    ground: "#a8452c", ground2: "#7d301c", item: "#7df9ff", name: "blue crystal", count: 4 },
+  moon:    { title: "the Moon",          ground: "#a9a9a5", ground2: "#82827e", item: "#f1f1ea", name: "moon rock",    count: 3, flag: true }
+};
+function makeSurface(key, done) {
+  const T = THEMES[key], R = rng(31 + key.length);
+  const rocketSpot = { x: 500, y: 300 };
+  const rocketWall = { x: 478, y: 250, w: 44, h: 100 };
+  const items = [];
+  while (items.length < T.count) {
+    const ix = 90 + R() * 820, iy = 80 + R() * 440;
+    if (Math.hypot(ix - 500, iy - 300) > 130 && items.every(o => Math.hypot(o.x - ix, o.y - iy) > 120)) items.push({ x: ix, y: iy, got: false });
+  }
+  const flag = { x: 830, y: 150, planted: false };
+  P.x = 500; P.y = 430; P.angle = -Math.PI / 2; P.suit = true; P.helmet = true;
+  const bg = offscreen(g => {
+    g.fillStyle = T.ground; g.fillRect(0, 0, VW, VH);
+    for (let i = 0; i < 26; i++) { g.fillStyle = T.ground2; g.globalAlpha = 0.45; g.beginPath(); g.ellipse(R() * VW, R() * VH, 40 + R() * 90, 20 + R() * 50, R() * 3, 0, 7); g.fill(); }
+    g.globalAlpha = 1;
+    if (key === "station") {
+      g.strokeStyle = "rgba(255,255,255,0.12)"; g.lineWidth = 2;
+      for (let i = 0; i < VW; i += 50) { g.beginPath(); g.moveTo(i, 0); g.lineTo(i, VH); g.stroke(); }
+      for (let j = 0; j < VH; j += 50) { g.beginPath(); g.moveTo(0, j); g.lineTo(VW, j); g.stroke(); }
+    } else {
+      for (let i = 0; i < 30; i++) {
+        const cx = R() * VW, cy = R() * VH, cr = 8 + R() * 28;
+        g.fillStyle = "rgba(0,0,0,0.22)"; g.beginPath(); g.arc(cx, cy, cr, 0, 7); g.fill();
+        g.strokeStyle = "rgba(255,255,255,0.28)"; g.lineWidth = 2; g.beginPath(); g.arc(cx + 1, cy + 1, cr, 0.3, 2.5); g.stroke();
+      }
+      for (let i = 0; i < 60; i++) { g.fillStyle = "rgba(0,0,0,0.25)"; g.beginPath(); g.arc(R() * VW, R() * VH, 2 + R() * 4, 0, 7); g.fill(); }
+    }
+  });
+  let finished = false;
+  const got = () => items.filter(i => i.got).length;
+  const allDone = () => got() === T.count && (!T.flag || flag.planted);
+  toast("Welcome to " + T.title + "!");
+  return {
+    hud: "", items, flag,
+    update(dt, k) {
+      movePlayer(k, [rocketWall]);
+      items.forEach(it => {
+        if (!it.got && Math.hypot(P.x - it.x, P.y - it.y) < 28) { it.got = true; score += CRYSTAL_SCORE; toast("+" + CRYSTAL_SCORE + "  You found a " + T.name + "!"); }
+      });
+      if (T.flag && got() === T.count && !flag.planted && Math.hypot(P.x - flag.x, P.y - flag.y) < 34) { flag.planted = true; score += 100; toast("You planted the flag on the Moon!  +100"); }
+      sceneHud.textContent = (allDone() ? "All done! Walk to your rocket to go on." :
+        (T.flag && got() === T.count ? "Plant the flag on the glowing spot!" : "Find the " + T.name + "s: " + got() + " / " + T.count + "   (score " + score + ")")) +
+        (key === "moon" ? "" : "   You can leave any time: walk to the rocket.");
+      const nearRocket = Math.hypot(P.x - rocketSpot.x, P.y - rocketSpot.y) < 80;
+      if (!finished && nearRocket && (!T.flag || allDone())) { finished = true; if (got() === T.count) score += 100; done(); }
+      else if (nearRocket && T.flag && !allDone()) sceneHud.textContent = "You have to collect the rocks and plant the flag first!";
+    },
+    draw(g, t) {
+      g.drawImage(bg, 0, 0);
+      g.drawImage(IMG.rocket, 440, 220, 120, 120);
+      items.forEach(it => {
+        if (it.got) return;
+        const pulse = 0.5 + 0.5 * Math.sin(t / 300 + it.x);
+        g.fillStyle = T.item; g.globalAlpha = 0.25 + pulse * 0.3; g.beginPath(); g.arc(it.x, it.y, 26, 0, 7); g.fill(); g.globalAlpha = 1;
+        g.fillStyle = T.item; g.strokeStyle = "rgba(0,0,0,0.4)"; g.lineWidth = 2;
+        g.beginPath();
+        if (key === "moon") { g.arc(it.x, it.y, 11, 0, 7); }
+        else { g.moveTo(it.x, it.y - 15); g.lineTo(it.x + 10, it.y); g.lineTo(it.x, it.y + 15); g.lineTo(it.x - 10, it.y); g.closePath(); }
+        g.fill(); g.stroke();
+      });
+      if (T.flag && got() === T.count) {
+        if (!flag.planted) { g.fillStyle = "rgba(255,230,80," + (0.3 + 0.2 * Math.sin(t / 200)) + ")"; g.beginPath(); g.arc(flag.x, flag.y, 34, 0, 7); g.fill(); }
+        else {
+          g.strokeStyle = "#ddd"; g.lineWidth = 4; g.beginPath(); g.moveTo(flag.x, flag.y + 20); g.lineTo(flag.x, flag.y - 34); g.stroke();
+          g.fillStyle = "#e63946"; g.fillRect(flag.x, flag.y - 34, 38, 16); g.fillStyle = "#1d3f7a"; g.fillRect(flag.x, flag.y - 34, 14, 16);
+        }
+      }
+      drawPerson(g);
+    }
+  };
+}
+
+// ----- the last chapter: the parking lot with 5 levels -----
+function makeGarage(targetFloor, done) {
+  const base = f => 520 - f * 95;                       // how high floor f is
+  const pts = [{ x: 300, y: base(0) }];
+  for (let f = 0; f < targetFloor; f++) {
+    const edge = f % 2 === 0 ? 690 : 310;
+    pts.push({ x: edge, y: base(f) }); pts.push({ x: edge, y: base(f + 1) });
+  }
+  pts.push({ x: targetFloor % 2 === 0 ? 560 : 440, y: base(targetFloor) });
+  const segs = []; let total = 0;
+  for (let i = 1; i < pts.length; i++) { const len = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); segs.push(len); total += len; }
+  let travelled = 0, finished = false, dir = 1;
+  const R = rng(3);
+  return {
+    hud: "Driving home...",
+    update(dt, k) {
+      if (finished) return;
+      travelled = Math.min(total, travelled + dt / 1000 * 230);
+      if (travelled >= total) {
+        finished = true;
+        showSceneMsg("You are home!<br>You parked on <b>Level " + (targetFloor + 1) + "</b> of 5<br><span style='font-size:22px'>Score: " + score + "   Best: " + best + "</span>", "Play again", done);
+      }
+    },
+    draw(g, t) {
+      const sky = g.createLinearGradient(0, 0, 0, VH); sky.addColorStop(0, "#142a5c"); sky.addColorStop(1, "#e9a46a");
+      g.fillStyle = sky; g.fillRect(0, 0, VW, VH);
+      g.fillStyle = "#2c3e2f"; g.fillRect(0, 530, VW, 70);                                     // ground
+      g.fillStyle = "#e8d7b8"; g.fillRect(70, 430, 170, 100);                                  // your house
+      g.fillStyle = "#9c3d32"; g.beginPath(); g.moveTo(55, 430); g.lineTo(155, 360); g.lineTo(255, 430); g.fill();
+      g.fillStyle = "#6b3f24"; g.fillRect(140, 470, 30, 60); g.fillStyle = "#bfe4ff"; g.fillRect(90, 455, 34, 30); g.fillRect(185, 455, 34, 30);
+      label(g, "HOME", 155, 410, 18, "#fff");
+      g.fillStyle = "#555a62"; g.fillRect(270, 60, 460, 470);                                  // building
+      g.fillStyle = "#3a3e45"; g.fillRect(270, 60, 460, 24);
+      label(g, "PARKING  -  5 LEVELS", 500, 72, 16, "#ffd23f");
+      for (let f = 0; f < 5; f++) {
+        const fy = base(f);
+        g.fillStyle = "#2a2d33"; g.fillRect(285, fy - 82, 430, 82);                            // dark room behind the cars
+        g.strokeStyle = "rgba(255,255,255,0.35)"; g.lineWidth = 2;
+        for (let i = 0; i < 7; i++) { g.beginPath(); g.moveTo(350 + i * 52, fy - 4); g.lineTo(350 + i * 52, fy - 30); g.stroke(); }
+        label(g, "LEVEL " + (f + 1), 335, fy - 62, 15, f === targetFloor ? "#ffd23f" : "#9aa");
+        g.fillStyle = "#9a9da3"; g.fillRect(270, fy + 2, 460, 11);                              // floor slab
+        const edge = f % 2 === 0 ? 690 : 310;                                                    // ramp up to the next floor
+        if (f < 4) { g.fillStyle = "#7d8087"; g.beginPath(); g.moveTo(edge - 30, fy + 2); g.lineTo(edge + 30, fy - 94 + 13); g.lineTo(edge + 30, fy + 2); g.fill(); }
+      }
+      const parked = travelled >= total;
+      let cx = pts[0].x, cy = pts[0].y, d = travelled;
+      for (let i = 0; i < segs.length; i++) {
+        if (d <= segs[i] || i === segs.length - 1) { const u = Math.min(1, d / (segs[i] || 1)); cx = pts[i].x + (pts[i + 1].x - pts[i].x) * u; cy = pts[i].y + (pts[i + 1].y - pts[i].y) * u; if (pts[i + 1].x !== pts[i].x) dir = pts[i + 1].x > pts[i].x ? 1 : -1; break; }
+        d -= segs[i];
+      }
+      this.drawSideCar(g, cx, cy, dir);
+      if (parked) { g.fillStyle = "#ffd23f"; g.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 9 : 22; g.lineTo(cx + Math.cos(a) * r, cy - 80 + Math.sin(a) * r); } g.fill(); }
+    },
+    drawSideCar(g, cx, cy, dir) {
+      g.save(); g.translate(cx, cy); g.scale(dir, 1);
+      g.fillStyle = CAR_COLOUR; g.beginPath(); g.roundRect(-36, -28, 72, 20, 7); g.fill();
+      g.beginPath(); g.roundRect(-20, -44, 40, 20, 8); g.fill();
+      g.fillStyle = "#cfe8ff"; g.beginPath(); g.roundRect(-16, -41, 15, 13, 3); g.fill(); g.beginPath(); g.roundRect(2, -41, 15, 13, 3); g.fill();
+      g.fillStyle = "#fff3b0"; g.fillRect(32, -24, 6, 6);
+      g.fillStyle = "#111"; g.beginPath(); g.arc(-21, -8, 9, 0, 7); g.arc(21, -8, 9, 0, 7); g.fill();
+      g.fillStyle = "#aaa"; g.beginPath(); g.arc(-21, -8, 4, 0, 7); g.arc(21, -8, 4, 0, 7); g.fill();
+      g.restore();
+    }
+  };
+}
+
+// ----- the story, one chapter after another -----
+function newStory() {
+  score = 0; landed = 0;
+  startHouse();
+}
+function startHouse() { goMode("house"); scene = makeHouse(() => startDrive("nasa")); sceneHud.textContent = scene.hud; }
+function startDrive(dest) {
+  goMode("drive");
+  scene = makeDrive(dest, () => { if (dest === "nasa") startNasa(false); else startGarage(); });
+  sceneHud.textContent = scene.hud;
+}
+function startNasa(back) {
+  goMode("nasa");
+  scene = makeNasa(back, () => { if (back) startDrive("home"); else startFlight("out"); });
+  sceneHud.textContent = scene.hud;
+  toast(back ? "You landed safely at NASA!" : "Welcome to NASA!");
+}
+function startSurface(key, after) {
+  goMode("surface");
+  scene = makeSurface(key, after);
+}
+function startGarage() {
+  const floor = Math.min(4, landed + (score >= GARAGE_BIG_SCORE ? 1 : 0));   // 0 = Level 1 ... 4 = Level 5
+  if (score > best) { best = score; try { localStorage.setItem("rocketBest", String(best)); } catch (e) {} }
+  goMode("garage");
+  scene = makeGarage(floor, newStory);
+  sceneHud.textContent = scene.hud;
+}
+
+// =====================================================
+//  THE FLIGHT  -  the rocket game
+// =====================================================
+function startFlight(kind) {
+  things.forEach(t => t.el.remove());
+  planets.forEach(p => p.el.remove());
+  things = []; planets = [];
+  const out = kind === "out";
+  trip = out ? {
+    kind, levels: LEVELS, secs: SECONDS_PER_LEVEL, goal: "the Moon", goalPic: PIC.moon, places: PLACES_OUT,
+    stops: [
+      { at: 0.25, name: "the Space Station", theme: "station", pic: PIC.station,    size: 150, done: false },
+      { at: 0.5,  name: "the Ring Planet",   theme: "ring",    pic: PIC.planets[0], size: 260, done: false },
+      { at: 0.75, name: "the Red Planet",    theme: "red",     pic: PIC.planets[1], size: 260, done: false }
+    ]
+  } : {
+    kind, levels: RETURN_LEVELS, secs: RETURN_SECONDS_PER_LEVEL, goal: "Earth", goalPic: PIC.planets[2], places: PLACES_BACK, stops: []
+  };
+  trip.scoreAtStart = score;
+  trip.offer = null;
+  progress = 0; level = 1; paused = false; playing = true;
+  lives = easy ? EASY_LIVES : START_LIVES;
+  boostUntil = 0; boostReadyAt = 0; shieldUntil = 0; shieldReadyAt = 0;
+  rockTimer = alienTimer = starTimer = planetTimer = 0;
+  x = window.innerWidth / 2 - ROCKET_SIZE / 2;
+  y = window.innerHeight - ROCKET_SIZE * 1.6;
+  rocket.style.left = x + "px"; rocket.style.top = y + "px";
+  moon.style.display = "none";
+  moon.style.backgroundImage = "url(" + trip.goalPic + ")";
+  message.innerHTML = "";
+  goMode("flight");
+  showHud();
+  showBanner(out ? "Blast off!" : "Heading home!");
+}
+
+// A planet to land on is coming up! Press L (or the green button) to land.
+function landNow() {
+  if (!inFlight() || !trip.offer) return;
+  const stop = trip.offer;
+  stop.done = true; trip.offer = null;
+  things.forEach(t => t.el.remove()); things = [];
+  landed++;
+  startSurface(stop.theme, () => { goMode("flight"); showBanner("Back in space!"); });
+}
+
+function flightOver() {            // out of hull blocks
+  playing = false;
+  message.innerHTML = "Game over!<br>" + (ROCKET_NAME || "Your rocket") + " was " + kmLeft().toLocaleString() + " km from " + trip.goal +
+                      "<br>Score: " + score + "<br><button id='again'>Try this flight again</button>";
+  document.getElementById("again").addEventListener("click", () => { score = trip.scoreAtStart; startFlight(trip.kind); });
+}
+
+function flightDone() {            // we got there!
+  playing = false;
+  mapEl.style.display = "none";
+  if (trip.kind === "out") {
+    startSurface("moon", () => startFlight("back"));
+  } else {
+    startNasa(true);
+  }
+}
+
 // ---------- The game loop: runs 60 times a second ----------
 function frame(now) {
   const dt = Math.min(now - last, 50);   // time since last frame (ms)
   last = now;
   const k = dt / 16.67;                  // 1 when the game runs smoothly
-  const running = playing && !paused;
 
-  drawStars(paused ? 0 : k, running);
-  if (running) update(dt, k);
+  if (mode === "flight") {
+    const running = playing && !paused;
+    drawStars(paused ? 0 : k, running);
+    if (running) update(dt, k);
 
-  // The boost button shows if it's ready
-  const t0 = performance.now();
-  if (boosting()) { boostBtn.textContent = "BOOSTING!"; boostBtn.className = "on"; }
-  else if (t0 < boostReadyAt) { boostBtn.textContent = "Wait " + Math.ceil((boostReadyAt - t0) / 1000) + "s"; boostBtn.className = "cooling"; }
-  else { boostBtn.textContent = "BOOST (B)"; boostBtn.className = ""; }
-
-  if (shielding()) { shieldBtn.textContent = "SHIELD " + Math.ceil((shieldUntil - t0) / 1000) + "s"; shieldBtn.className = "on"; }
-  else if (t0 < shieldReadyAt) { shieldBtn.textContent = "Wait " + Math.ceil((shieldReadyAt - t0) / 1000) + "s"; shieldBtn.className = "cooling"; }
-  else { shieldBtn.textContent = "SHIELD (S)"; shieldBtn.className = ""; }
-  if (!shielding()) shieldEl.style.display = "none";
-
+    // The buttons show if they are ready
+    const t0 = performance.now();
+    if (boosting()) { boostBtn.textContent = "BOOSTING!"; boostBtn.className = "on"; }
+    else if (t0 < boostReadyAt) { boostBtn.textContent = "Wait " + Math.ceil((boostReadyAt - t0) / 1000) + "s"; boostBtn.className = "cooling"; }
+    else { boostBtn.textContent = "BOOST (B)"; boostBtn.className = ""; }
+    if (shielding()) { shieldBtn.textContent = "SHIELD " + Math.ceil((shieldUntil - t0) / 1000) + "s"; shieldBtn.className = "on"; }
+    else if (t0 < shieldReadyAt) { shieldBtn.textContent = "Wait " + Math.ceil((shieldReadyAt - t0) / 1000) + "s"; shieldBtn.className = "cooling"; }
+    else { shieldBtn.textContent = "SHIELD (S)"; shieldBtn.className = ""; }
+    if (!shielding()) shieldEl.style.display = "none";
+    landBtn.style.display = trip && trip.offer && running ? "block" : "none";
+  } else {
+    drawWorld(now, dt, k);
+  }
   requestAnimationFrame(frame);   // do it again, 60 times a second!
+}
+
+function drawWorld(now, dt, k) {
+  const w = window.innerWidth, h = window.innerHeight;
+  if (worldCanvas.width !== w || worldCanvas.height !== h) { worldCanvas.width = w; worldCanvas.height = h; }
+  view.s = Math.min(w / VW, h / VH);
+  view.ox = (w - VW * view.s) / 2; view.oy = (h - VH * view.s) / 2;
+  wg.setTransform(1, 0, 0, 1, 0, 0);
+  wg.fillStyle = "#000"; wg.fillRect(0, 0, w, h);
+  wg.setTransform(view.s, 0, 0, view.s, view.ox, view.oy);
+  wg.save(); wg.beginPath(); wg.rect(0, 0, VW, VH); wg.clip();
+  if (scene) {
+    if (!waitingStart) scene.update(dt, k);
+    scene.draw(wg, now);
+  }
+  wg.restore();
 }
 
 function update(dt, k) {
@@ -559,21 +1167,33 @@ function update(dt, k) {
     setPicture(rocket, rocketLooksBoosted ? PIC.rocketBoost : PIC.rocket);
   }
 
-  // The journey: we get closer to the Moon!
-  progress += dt / 1000 / (LEVELS * SECONDS_PER_LEVEL) * (boosting() ? BOOST_POWER : 1);
-  const newLevel = Math.min(LEVELS, Math.floor(progress * LEVELS) + 1);
+  // The journey: we get closer to the goal!
+  progress += dt / 1000 / (trip.levels * trip.secs) * (boosting() ? BOOST_POWER : 1);
+  const newLevel = Math.min(trip.levels, Math.floor(progress * trip.levels) + 1);
   if (newLevel > level) {
     level = newLevel;
     score += LEVEL_SCORE;
     showBanner("Level " + level + "!  Faster!");
   }
-  // The Moon grows as we get close
+  // The Moon (or Earth) grows as we get close
   if (progress > 0.82) {
-    const moonSize = 40 + Math.min(1, (progress - 0.82) / 0.18) * 280;
+    const goalSize = 40 + Math.min(1, (progress - 0.82) / 0.18) * 280;
     moon.style.display = "block";
-    moon.style.width = moon.style.height = moonSize + "px";
+    moon.style.width = moon.style.height = goalSize + "px";
   }
-  if (progress >= 1) { progress = 1; showHud(); endGame(true); return; }
+  if (progress >= 1) { progress = 1; showHud(); flightDone(); return; }
+
+  // A planet to land on?
+  if (!trip.offer) {
+    const stop = trip.stops.find(s => !s.done);
+    if (stop && progress >= stop.at) {
+      trip.offer = stop; stop.offerUntil = performance.now() + 9000;
+      landBtn.innerHTML = "<img src='" + stop.pic + "'> Land on " + stop.name + "! (L)";
+      makePlanet(stop.pic, stop.size, window.innerWidth / 2 - stop.size / 2, 1.2);
+    }
+  } else if (performance.now() > trip.offer.offerUntil) {
+    trip.offer.done = true; trip.offer = null;
+  }
 
   // New rocks, stars, aliens and planets
   rockTimer += dt; alienTimer += dt; starTimer += dt; planetTimer += dt;
@@ -643,49 +1263,18 @@ function update(dt, k) {
         }
       }
     }
+    if (!playing) return;
   }
   showHud();
-}
-
-function startGame() {
-  things.forEach(t => t.el.remove());
-  planets.forEach(p => p.el.remove());
-  things = []; planets = [];
-  score = 0; progress = 0; level = 1; paused = false; playing = true;
-  lives = easy ? EASY_LIVES : START_LIVES;
-  boostUntil = 0; boostReadyAt = 0; shieldUntil = 0; shieldReadyAt = 0;
-  rockTimer = alienTimer = starTimer = planetTimer = 0;
-  x = window.innerWidth / 2 - ROCKET_SIZE / 2;
-  y = window.innerHeight - ROCKET_SIZE * 1.6;
-  moon.style.display = "none";
-  message.innerHTML = "";
-  showHud();
-}
-
-function endGame(won) {
-  playing = false;
-  if (score > best) {
-    best = score;
-    try { localStorage.setItem("rocketBest", String(best)); } catch (e) {}
-  }
-  const name = ROCKET_NAME || "Your rocket";
-  message.innerHTML = (won
-      ? name + " landed on the Moon!"
-      : "Game over!<br>" + name + " was " + kmLeft().toLocaleString() + " km from the Moon") +
-    "<br>Score: " + score + "   Best: " + best +
-    "<br><button id='again'>Play again</button>";
-  document.getElementById("again").addEventListener("click", startGame);
 }
 
 // ---------- Start screen ----------
-things = []; planets = [];
-score = 0; progress = 0; level = 1; lives = easy ? EASY_LIVES : START_LIVES; playing = false; paused = false;
-x = window.innerWidth / 2 - ROCKET_SIZE / 2;
-y = window.innerHeight - ROCKET_SIZE * 1.6;
-rocket.style.left = x + "px"; rocket.style.top = y + "px";
-showHud(); showButtons();
-message.innerHTML = "Fly to the Moon!<br><span style='font-size:20px'>Arrows or mouse to fly &middot; Space or click to shoot<br>B = boost &middot; S = shield &middot; M = map &middot; E = easy</span><br><button id='go'>Start!</button>";
-document.getElementById("go").addEventListener("click", startGame);
+goMode("house");
+scene = makeHouse(() => startDrive("nasa"));
+showButtons();
+showSceneMsg("<h1 style='margin:0'>Moon Mission</h1><div style='font-size:22px;margin:10px 0'>Walk to your car, drive to NASA, fly to the Moon and come home again!</div>" +
+             "<div style='font-size:18px;color:#bcd;margin-bottom:6px'>Walk: arrow keys / WASD, or touch and hold<br>Rocket: arrows or mouse &middot; Space = shoot &middot; B = boost &middot; S = shield &middot; M = map &middot; L = land &middot; E = easy</div>",
+             "Start the mission!", () => { waitingStart = false; sceneHud.textContent = scene.hud; });
 last = performance.now();
 requestAnimationFrame(frame);
 </script>

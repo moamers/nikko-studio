@@ -40,3 +40,11 @@ Where I am: **Rung 1 – Tweak** (changing numbers and colours and seeing what h
 - I wanted a realistic game, so Claude drew everything with code instead of emojis: a metal rocket, rocks, alien saucers, planets and a cratered moon.
 - I invented the **SHIELD** button (my idea!): 15 seconds where rocks and aliens can't hurt the rocket.
 - New words: **canvas** (a drawing board the computer paints on), **shield time** is just a number: SHIELD_TIME = 15000 (that's milliseconds: 1000 = 1 second).
+
+### Session 7  - MY BIG STORY IDEA!
+- I told Claude the whole story: house -> car -> NASA -> rocket -> planets -> Moon -> fly back -> car -> home -> a parking lot with 5 levels.
+- Claude turned it into CHAPTERS (the game has a list of scenes, one after another). Aliens are gentler now.
+- I can land on 3 stops on the way (Space Station, Ring Planet, Red Planet) and collect crystals. On the Moon I plant a flag.
+- The parking lot has 5 levels. Which level I park on depends on how many places I landed on and my score!
+- New words: **scene** (one part of the game), **chapter** (one step in the story), **top-down** (looking from above).
+- Ideas for next time: my own house on the screen? a friend in the car? more planets with names? a boss alien?
