@@ -1215,6 +1215,9 @@
       }
       mallDone = mallShopsData.map(() => [false, false, false]);
       mallDifferent = new Set();
+      resetToilet();
+      salah = null;
+      facState.book = false;
       mallTrolley = false;
       mallTray = null;
       mallEat = null;
@@ -1249,6 +1252,11 @@
 
     function leaveMall() {
       if (phase !== 'mall' || mallRide) return;
+      if (toi.stage > 0) {
+        say('You need the toilet first! \u{1F6BB} Find the restrooms by the lift.', 200);
+        blip(220, 160, 0.2, 0.08);
+        return;
+      }
       mallShop = -1;
       say('Take the lift to your car! The green ring shows its level.', 200);
       openLift('mall', { type: 'floor', val: mallFloor });
@@ -1270,6 +1278,7 @@
       mallSlotIn = slot;
       facState.shoes = false;
       facState.washed = false;
+      facState.book = false;
       facFx = 0;
       mm.x = 70;
       mm.y = 500;
@@ -1288,6 +1297,8 @@
       const slot = mallSlotIn;
       if (facState.shoes) say('Shoes back on \u{1F45F}', 80);
       facState.shoes = false;
+      facState.book = false;
+      salah = null;
       if (mallTray) {
         mallTray = null;
         say('You left your food behind!', 100);
@@ -1343,19 +1354,62 @@
 
     // ---------- the services wing: prayer room, restrooms and the info desk (on every floor of every mall) ----------
     const inFacility = () => mallShop >= 0 && !!mallShopsData[mallShop].facility;
-    const facState = { shoes: false, washed: false };
-    let facFx = 0; // a little animation (water, hand dryer, a calm moment)
+    const facState = { shoes: false, washed: false, book: false };
+    let facFx = 0; // a little animation (water, hand dryer)
     let facFxKind = '';
+    let salah = null; // the prayer (or reading) you are doing on your mat
+    // needing the toilet: 0 no, 1 find the restroom, 2 wait outside, 3 your turn, 4 inside, 5 wash your hands
+    const toi = { stage: 0, timer: 1800, wait: 0, inside: 0, leave: -1 };
+    const mallBusy = () => !!(mallRide || mallEat || salah || toi.stage === 4);
     const facSpots = {
-      prayer: [{ x: 100, key: 'shoes', hint: '\u{1F45F} Tap to take your shoes off' }, { x: 205, key: 'mat', hint: '\u{1F54C} Tap to stand quietly on the mat' }, { x: 285, key: 'mat', hint: '\u{1F54C} Tap to stand quietly on the mat' }, { x: 360, key: 'mat', hint: '\u{1F54C} Tap to stand quietly on the mat' }],
-      wc: [{ x: 120, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 205, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 300, key: 'dryer', hint: '\u{1F4A8} Tap to dry your hands' }],
-      info: [{ x: 120, key: 'map', hint: '\u{1F5FA}️ Tap to look at the mall map' }, { x: 305, key: 'desk', hint: '\u{2139}️ Tap to talk to the helper' }],
+      prayer: [{ x: 85, key: 'shoes', hint: '\u{1F45F} Tap to take your shoes off' }, { x: 140, key: 'books', hint: '\u{1F4D6} Tap to take a book (or put it back)' }, { x: 210, key: 'mat', hint: '\u{1F932} Tap your mat to pray with the imam' }],
+      wc: [{ x: 120, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 205, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 290, key: 'dryer', hint: '\u{1F4A8} Tap to dry your hands' }, { x: 350, key: 'stall', hint: '\u{1F6BD} Tap the toilet' }],
+      info: [{ x: 120, key: 'map', hint: '\u{1F5FA}️ Tap to look at the mall map' }, { x: 305, key: 'desk', hint: 'ℹ️ Tap to talk to the helper' }],
     };
     const nearFac = () => {
       const spots = facSpots[mallShopsData[mallShop].facility];
-      for (let k = 0; k < spots.length; k++) if (Math.abs(mm.x - spots[k].x) < 38) return k;
+      for (let k = 0; k < spots.length; k++) if (Math.abs(mm.x - spots[k].x) < 34) return k;
       return -1;
     };
+    function resetToilet() {
+      toi.stage = 0;
+      toi.timer = 1500 + Math.random() * 900; // 25 to 40 seconds until you need the toilet
+      toi.wait = 0;
+      toi.inside = 0;
+      toi.leave = -1;
+    }
+    function updateToilet(step) {
+      if (toi.stage === 0) {
+        toi.timer -= step;
+        if (toi.timer <= 0) {
+          toi.stage = 1;
+          say('\u{1F6BB} You need the toilet! Go to the restrooms by the lift.', 260);
+          [523, 392].forEach((f, j) => blip(f, f, 0.2, 0.1, j * 0.2));
+        }
+      } else if (toi.stage === 2) {
+        toi.wait -= step;
+        if (toi.wait <= 0) {
+          toi.stage = 3;
+          toi.leave = 0;
+          say('The toilet is free now! Tap it \u{1F6BD}', 160);
+          blip(988, 988, 0.15, 0.1);
+        }
+      } else if (toi.stage === 4) {
+        toi.inside -= step;
+        if (toi.inside <= 0) {
+          toi.stage = 5;
+          mm.x = 320;
+          mm.y = 500;
+          mm.dir = -1;
+          say('Flush! \u{1F6BD} Now wash your hands \u{1F9FC}', 170);
+          blip(400, 150, 0.8, 0.07);
+        }
+      }
+      if (toi.leave >= 0) toi.leave += step;
+    }
+    const toiletText = () =>
+      ['', '\u{1F6BB} I need the toilet! Find the restrooms', '⏳ Someone is inside. Wait outside...', '✅ It is free! Tap the toilet', '\u{1F6BD} In the toilet...', '\u{1F9FC} Wash your hands!'][toi.stage];
+
     function facAward(k, pts, text) {
       if (mallDone[mallShop][k]) {
         say(text, 110);
@@ -1366,30 +1420,209 @@
       say(text + ' +' + pts, 150);
       [659, 784, 988].forEach((f, j) => blip(f, f, 0.14, 0.08, j * 0.07));
     }
+
+    // ---- the prayer: the imam leads, you follow him on your mat (2 rak'ahs)
+    const P = (ankle, knee, hip, shoulder, head, elbow, hand) => ({ ankle, knee, hip, shoulder, head, elbow, hand });
+    const prayPoses = {
+      qiyam: P([0, 0], [1, -18], [0, -36], [1, -62], [4, -75], [9, -48], [14, -52]),
+      ruku: P([0, 0], [2, -18], [-3, -37], [26, -48], [42, -50], [16, -30], [6, -22]),
+      rise: P([0, 0], [1, -18], [0, -36], [1, -62], [4, -75], [2, -46], [3, -32]),
+      kneel: P([-30, -3], [2, -4], [-12, -30], [-8, -58], [-5, -71], [-4, -42], [0, -30]),
+      sujood: P([-36, -3], [-14, -4], [-24, -26], [2, -20], [22, -9], [-4, -8], [16, -3]),
+      julus: P([-32, -3], [6, -5], [-18, -14], [-16, -42], [-13, -55], [-8, -26], [0, -12]),
+    };
+    const salahSeq = (() => {
+      const seq = [];
+      const add = (pose, trans, hold, text, turn) => seq.push({ pose, trans, hold, text, turn: turn || 0 });
+      for (let r = 0; r < 2; r++) {
+        if (r === 0) add('qiyam', 0, 110, 'Allahu Akbar \u{1F932} الله أكبر');
+        else {
+          add('kneel', 14, 0);
+          add('qiyam', 22, 90, 'Allahu Akbar الله أكبر');
+        }
+        add('ruku', 22, 70, 'Subhana Rabbiyal Azeem');
+        add('rise', 22, 50, "Sami'a Allahu liman hamidah");
+        add('kneel', 14, 0, 'Allahu Akbar');
+        add('sujood', 14, 85, "Subhana Rabbiyal A'la — sujood");
+        add('julus', 18, 50, 'Allahu Akbar');
+        add('sujood', 18, 85, "Subhana Rabbiyal A'la — sujood");
+      }
+      add('julus', 18, 110, 'At-tahiyyat');
+      add('julus', 0, 55, 'As-salamu alaykum wa rahmatullah ➡', 1);
+      add('julus', 0, 55, 'As-salamu alaykum wa rahmatullah ⬅', -1);
+      let t = 0;
+      seq.forEach((sg) => {
+        sg.start = t;
+        t += sg.trans + sg.hold;
+      });
+      seq.total = t;
+      return seq;
+    })();
+    const ease = (u) => u * u * (3 - 2 * u);
+    // the pose at time t of the prayer (a follower is a little behind the imam)
+    function salahPose(t) {
+      let i = 0;
+      while (i < salahSeq.length - 1 && t >= salahSeq[i + 1].start) i++;
+      const sg = salahSeq[i];
+      const to = prayPoses[sg.pose];
+      const u = t - sg.start;
+      if (i === 0 || u >= sg.trans) return { pose: to, turn: sg.turn, i };
+      const from = prayPoses[salahSeq[i - 1].pose];
+      const k = ease(u / sg.trans);
+      const out = {};
+      Object.keys(to).forEach((j) => (out[j] = [from[j][0] + (to[j][0] - from[j][0]) * k, from[j][1] + (to[j][1] - from[j][1]) * k]));
+      return { pose: out, turn: sg.turn, i };
+    }
+    function startSalah() {
+      mm.x = 210;
+      mm.y = 475;
+      mm.goto = null;
+      hold = null;
+      mm.dir = 1;
+      salah = { kind: 'pray', t: 0, seg: -1 };
+      say('The imam begins... Follow him \u{1F932}', 140);
+    }
+    function startReading() {
+      mm.x = 210;
+      mm.y = 475;
+      mm.goto = null;
+      hold = null;
+      salah = { kind: 'read', t: 0 };
+      say('You sit and read your book quietly \u{1F4D6}', 140);
+    }
+    function updateSalah(step) {
+      salah.t += step;
+      if (salah.kind === 'read') {
+        if (salah.t >= 260) {
+          salah = null;
+          facAward(1, 3, 'What a nice book \u{1F4D6}');
+        }
+        return;
+      }
+      const cur = salahPose(salah.t).i;
+      if (cur !== salah.seg) {
+        salah.seg = cur;
+        const sg = salahSeq[cur];
+        if (sg.text) say(sg.text, 110);
+        if (cur > 0) blip(260, 240, 0.18, 0.05);
+      }
+      if (salah.t >= salahSeq.total) {
+        salah = null;
+        facAward(0, 15, 'The prayer is finished \u{1F932}');
+      }
+    }
+    // a person praying, seen from the side, facing the niche on the right
+    function drawWorshipper(ax, ay, J, look, scale, imam, turn) {
+      const [skin, shirt, pants] = look;
+      const body = imam ? '#f6f3ea' : shirt;
+      const leg = imam ? '#f6f3ea' : pants;
+      const s = scale;
+      const pt = (p) => [ax + p[0] * s, ay + p[1] * s];
+      const seg = (p, q, w, col) => {
+        const a = pt(p);
+        const b = pt(q);
+        ctx.strokeStyle = col;
+        ctx.lineWidth = w * s;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]);
+        ctx.lineTo(b[0], b[1]);
+        ctx.stroke();
+      };
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+      ctx.beginPath();
+      ctx.ellipse(ax, ay + 2, 40 * s, 6 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+      seg(J.hip, J.knee, imam ? 12 : 10, leg);
+      seg(J.knee, J.ankle, imam ? 11 : 9, leg);
+      seg(J.ankle, [J.ankle[0] + 9, J.ankle[1]], 5, skin);
+      seg(J.hip, J.shoulder, imam ? 17 : 15, body);
+      seg(J.shoulder, J.elbow, 6, body);
+      seg(J.elbow, J.hand, 5, body);
+      const h = pt(J.head);
+      const hx = h[0] + turn * 3 * s;
+      ctx.fillStyle = skin;
+      ctx.beginPath();
+      ctx.arc(hx, h[1], 9 * s, 0, Math.PI * 2);
+      ctx.fill();
+      const hd = pt(J.hand);
+      ctx.beginPath();
+      ctx.arc(hd[0], hd[1], 3.4 * s, 0, Math.PI * 2);
+      ctx.fill();
+      // an eye, hair or the white cap and the beard of the imam
+      ctx.fillStyle = '#2a2a2a';
+      ctx.beginPath();
+      ctx.arc(hx + 4 * s, h[1] - 1 * s, 1.3 * s, 0, Math.PI * 2);
+      ctx.fill();
+      if (imam) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(hx, h[1] - 2 * s, 9.2 * s, Math.PI * 1.05, Math.PI * 1.95);
+        ctx.fill();
+        ctx.fillStyle = '#4a4a4a';
+        ctx.beginPath();
+        ctx.arc(hx + 3 * s, h[1] + 3 * s, 6.5 * s, 0.1, Math.PI * 0.9);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#2a2a2a';
+        ctx.beginPath();
+        ctx.arc(hx - 1 * s, h[1] - 2 * s, 9.2 * s, Math.PI * 0.95, Math.PI * 1.75);
+        ctx.fill();
+      }
+    }
+
     function facilityAct(k) {
       const kind = mallShopsData[mallShop].facility;
       const spot = facSpots[kind][k];
       if (!spot) return;
       if (spot.key === 'shoes') {
         facState.shoes = true;
-        say('Shoes off, on the rack. Now you can go onto the carpet \u{1F9E6}', 150);
+        say('Shoes off, on the rack \u{1F9E6} Now you can go onto the carpet', 150);
         blip(500, 420, 0.12, 0.08);
+      } else if (spot.key === 'books') {
+        facState.book = !facState.book;
+        say(facState.book ? 'You took a book \u{1F4D6} Sit on your mat to read it quietly' : 'Book back on the shelf \u{1F4DA}', 130);
+        blip(600, 700, 0.1, 0.06);
       } else if (spot.key === 'mat') {
         if (!facState.shoes) {
           say('Please take your shoes off first \u{1F45F}', 130);
           blip(220, 160, 0.2, 0.08);
           return;
         }
-        facFx = 200;
-        facFxKind = 'calm';
-        [392, 330, 262].forEach((f, j) => blip(f, f, 0.5, 0.05, j * 0.5));
-        facAward(0, 5, 'Shhh... a calm, quiet moment \u{1F90D}');
+        if (facState.book) startReading();
+        else startSalah();
+      } else if (spot.key === 'stall') {
+        if (toi.stage === 0) {
+          say('You do not need the toilet right now \u{1F642}', 110);
+        } else if (toi.stage === 1) {
+          // someone is in the toilet: wait outside
+          toi.stage = 2;
+          toi.wait = 240;
+          say('Someone is inside. Wait outside... ⏳', 200);
+          blip(330, 330, 0.12, 0.08);
+        } else if (toi.stage === 2) {
+          say('Someone is still inside. Wait outside ⏳', 100);
+        } else if (toi.stage === 3) {
+          toi.stage = 4;
+          toi.inside = 200;
+          toi.leave = -1;
+          mm.goto = null;
+          hold = null;
+          say('You go into the toilet \u{1F6BD}', 150);
+          blip(300, 300, 0.12, 0.08);
+        } else say('Go and wash your hands \u{1F9FC}', 100);
       } else if (spot.key === 'sink') {
         facState.washed = true;
         facFx = 110;
         facFxKind = 'water';
         blip(1500, 1800, 0.9, 0.05);
-        facAward(0, 2, 'Scrub scrub! Clean hands \u{1F9FC}');
+        if (toi.stage === 5) {
+          toi.stage = 0;
+          toi.timer = 2400 + Math.random() * 1500;
+          addScore(10);
+          say('Clean hands! You feel much better \u{1F9FC} +10', 190);
+          [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.16, 0.1, 0.3 + j * 0.08));
+        } else facAward(0, 2, 'Scrub scrub! Clean hands \u{1F9FC}');
       } else if (spot.key === 'dryer') {
         if (!facState.washed) {
           say('Wash your hands first! \u{1F9FC}', 120);
@@ -1447,92 +1680,122 @@
       ctx.fillText('EXIT', 28, 162);
     }
 
+    const imamLook = ['#e0ac84', '#f6f3ea', '#f6f3ea'];
+    const myLook = ['#f2c9a0', '#d71920', '#26344a'];
     function drawFacility() {
       const sh = mallShopsData[mallShop];
       drawFacilityShell(sh);
       const t = mallTime;
+      const things = [];
       if (sh.facility === 'prayer') {
-        // a soft green carpet with mats pointing at the niche in the wall
+        // a soft green carpet, the wall with the niche (the direction of prayer) on the right
         ctx.fillStyle = '#2f8f7a';
         ctx.fillRect(62, 360, W - 62, H - 360);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.18)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
         ctx.lineWidth = 2;
-        for (let x = 80; x < W; x += 40) {
+        for (let y = 372; y < H; y += 34) {
           ctx.beginPath();
-          ctx.moveTo(x, 360);
-          ctx.lineTo(x, H);
+          ctx.moveTo(62, y);
+          ctx.lineTo(W, y);
           ctx.stroke();
         }
-        // the niche
-        ctx.fillStyle = '#cfe9e2';
-        ctx.beginPath();
-        ctx.moveTo(215, 330);
-        ctx.lineTo(215, 200);
-        ctx.arc(260, 200, 45, Math.PI, 0);
-        ctx.lineTo(305, 330);
-        ctx.fill();
+        ctx.fillStyle = '#d7ece6';
+        ctx.fillRect(372, 150, 28, 220);
         ctx.fillStyle = '#2f8f7a';
         ctx.beginPath();
-        ctx.moveTo(228, 330);
-        ctx.lineTo(228, 202);
-        ctx.arc(260, 202, 32, Math.PI, 0);
-        ctx.lineTo(292, 330);
+        ctx.moveTo(400, 340);
+        ctx.lineTo(380, 340);
+        ctx.lineTo(380, 232);
+        ctx.arc(400, 232, 20, Math.PI, Math.PI * 1.5);
+        ctx.lineTo(400, 212);
         ctx.fill();
         ctx.fillStyle = '#ffd166';
         ctx.beginPath();
-        ctx.arc(260, 175, 7, 0, Math.PI * 2);
+        ctx.arc(388, 205, 5, 0, Math.PI * 2);
         ctx.fill();
-        // a bookshelf, a quiet sign and a clock
+        ctx.fillStyle = '#2f8f7a';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('QIBLA', 384, 170);
+        ctx.fillText('➡', 384, 184);
+        // a bookshelf and a quiet sign
         ctx.fillStyle = '#8a6c4a';
-        ctx.fillRect(82, 160, 90, 130);
+        ctx.fillRect(98, 160, 84, 130);
         ctx.fillStyle = '#e8dcc8';
-        ctx.fillRect(86, 164, 82, 122);
+        ctx.fillRect(102, 164, 76, 122);
         ctx.fillStyle = '#8a6c4a';
-        [196, 232].forEach((y) => ctx.fillRect(86, y, 82, 5));
-        ctx.font = '20px sans-serif';
+        [196, 232].forEach((y) => ctx.fillRect(102, y, 76, 5));
+        ctx.font = '19px sans-serif';
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'center';
-        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) ctx.fillText('\u{1F4D6}', 104 + c * 28, 190 + r * 36);
-        roundedRect(318, 150, 74, 44, 8);
+        for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (!(facState.book && r === 1 && c === 1)) ctx.fillText('\u{1F4D6}', 116 + c * 26, 190 + r * 36);
+        roundedRect(214, 150, 74, 44, 8);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
         ctx.fillStyle = '#2f8f7a';
         ctx.font = 'bold 11px sans-serif';
-        ctx.fillText('QUIET', 355, 168);
-        ctx.fillText('PLEASE \u{1F90D}', 355, 184);
+        ctx.fillText('QUIET', 251, 168);
+        ctx.fillText('PLEASE \u{1F90D}', 251, 184);
         // the shoe rack by the door
         ctx.fillStyle = '#6b4a2e';
-        ctx.fillRect(70, 392, 62, 8);
-        ctx.fillRect(70, 424, 62, 8);
-        ctx.fillRect(72, 392, 5, 44);
-        ctx.fillRect(125, 392, 5, 44);
-        ctx.font = '20px sans-serif';
+        ctx.fillRect(66, 392, 56, 7);
+        ctx.fillRect(66, 424, 56, 7);
+        ctx.fillRect(68, 392, 5, 42);
+        ctx.fillRect(115, 392, 5, 42);
+        ctx.font = '19px sans-serif';
         ctx.fillStyle = '#000000';
-        ctx.fillText('\u{1F45E}', 88, 420);
-        ctx.fillText('\u{1F45F}', 114, 420);
+        ctx.fillText('\u{1F45E}', 84, 419);
+        ctx.fillText('\u{1F45F}', 106, 419);
         if (facState.shoes) {
-          ctx.fillText('\u{1F45F}', 88, 452);
-          ctx.fillText('\u{1F45F}', 114, 452);
+          ctx.fillText('\u{1F45F}', 84, 451);
+          ctx.fillText('\u{1F45F}', 106, 451);
         }
-        // three mats
-        [205, 285, 360].forEach((mx) => {
-          roundedRect(mx - 26, 392, 52, 76, 10);
+        // the mats: the imam and you in front, two more people behind
+        [[210, 475], [315, 475], [210, 420], [315, 420]].forEach(([mx, my]) => {
+          roundedRect(mx - 46, my - 22, 92, 36, 8);
           ctx.fillStyle = '#d9c28f';
           ctx.fill();
           ctx.strokeStyle = '#8f7240';
           ctx.lineWidth = 2;
           ctx.stroke();
           ctx.beginPath();
-          ctx.moveTo(mx - 14, 412);
-          ctx.arc(mx, 412, 14, Math.PI, 0);
-          ctx.lineTo(mx + 14, 430);
-          ctx.lineTo(mx - 14, 430);
-          ctx.closePath();
-          ctx.strokeStyle = '#8f7240';
+          ctx.moveTo(mx + 30, my - 10);
+          ctx.lineTo(mx + 42, my - 4);
+          ctx.lineTo(mx + 30, my + 2);
           ctx.stroke();
         });
+        const pr = salah && salah.kind === 'pray';
+        const lead = pr ? salahPose(salah.t) : null;
+        const fol = pr ? salahPose(Math.max(0, salah.t - 14)) : null;
+        const idleP = prayPoses.qiyam;
+        things.push({ y: 420, draw: () => drawWorshipper(210, 424, pr ? fol.pose : idleP, shopperLook[1], 0.88, false, pr ? fol.turn : 0) });
+        things.push({ y: 421, draw: () => drawWorshipper(315, 424, pr ? fol.pose : idleP, shopperLook[3], 0.88, false, pr ? fol.turn : 0) });
+        things.push({ y: 476, draw: () => drawWorshipper(315, 479, pr ? lead.pose : idleP, imamLook, 1, true, pr ? lead.turn : 0) });
+        if (salah) {
+          things.push({ y: 477, draw: () => {
+            if (salah.kind === 'pray') {
+              drawWorshipper(210, 479, fol.pose, myLook, 1, false, fol.turn);
+            } else {
+              drawWorshipper(210, 479, prayPoses.julus, myLook, 1, false, 0);
+              ctx.font = '22px sans-serif';
+              ctx.fillStyle = '#000000';
+              ctx.textAlign = 'center';
+              ctx.fillText('\u{1F4D6}', 214, 462 + Math.sin(t / 20) * 1.5);
+            }
+          } });
+        } else {
+          things.push({ y: mm.y, draw: () => {
+            drawMe();
+            if (facState.book) {
+              ctx.font = '20px sans-serif';
+              ctx.fillStyle = '#000000';
+              ctx.textAlign = 'center';
+              ctx.fillText('\u{1F4D6}', mm.x + 16, mm.y - 28);
+            }
+          } });
+        }
       } else if (sh.facility === 'wc') {
-        // tiles on the wall, mirrors, basins, a hand dryer and a stall
+        // tiles on the wall, mirrors, basins, a hand dryer and the toilet door
         ctx.strokeStyle = 'rgba(70, 110, 160, 0.16)';
         ctx.lineWidth = 1.5;
         for (let x = 0; x < W; x += 30) {
@@ -1585,31 +1848,76 @@
             }
           });
         }
-        roundedRect(280, 230, 40, 56, 8);
+        roundedRect(262, 230, 40, 56, 8);
         ctx.fillStyle = '#d9dee3';
         ctx.fill();
         ctx.strokeStyle = '#7d8a96';
         ctx.lineWidth = 2;
         ctx.stroke();
         ctx.fillStyle = '#e63946';
-        ctx.fillRect(292, 242, 16, 6);
+        ctx.fillRect(274, 242, 16, 6);
         ctx.fillStyle = '#7d8a96';
-        ctx.fillRect(290, 286, 20, 6);
+        ctx.fillRect(272, 286, 20, 6);
         ctx.font = '12px sans-serif';
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'center';
-        ctx.fillText('\u{1F4A8}', 300, 275);
+        ctx.fillText('\u{1F4A8}', 282, 275);
         if (facFx > 0 && facFxKind === 'wind') {
           ctx.font = '22px sans-serif';
-          ctx.fillText('\u{1F4A8}', 300 + Math.sin(t / 2) * 6, 312 + ((t * 2) % 20));
+          ctx.fillText('\u{1F4A8}', 282 + Math.sin(t / 2) * 6, 312 + ((t * 2) % 20));
         }
+        // the toilet cubicle with its door and a sign
+        const closed = toi.stage === 2 || toi.stage === 4;
         ctx.fillStyle = '#e8edf1';
-        ctx.fillRect(338, 160, 56, 210);
-        ctx.fillStyle = '#c4ccd3';
-        ctx.fillRect(342, 166, 48, 198);
-        ctx.fillStyle = '#4a90d9';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText('\u{1F6BD}', 366, 330);
+        ctx.fillRect(322, 150, 78, 230);
+        ctx.fillStyle = closed ? '#8fb3d6' : '#cfe0ef';
+        ctx.fillRect(328, 160, 66, 214);
+        ctx.fillStyle = closed ? '#e63946' : '#2fbf71';
+        roundedRect(336, 190, 50, 22, 6);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(closed ? 'OCCUPIED' : 'FREE', 361, 205);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+        ctx.fillRect(328, 350, 66, 24);
+        if (toi.stage === 2) {
+          ctx.font = '16px sans-serif';
+          ctx.fillStyle = '#000000';
+          ctx.fillText('\u{1F45E}', 350, 369);
+          ctx.fillText('\u{1F45E}', 372, 369);
+        } else if (toi.stage === 4) {
+          ctx.font = '16px sans-serif';
+          ctx.fillStyle = '#000000';
+          ctx.fillText('\u{1F45F}', 350, 369);
+          ctx.fillText('\u{1F45F}', 372, 369);
+        } else {
+          // open: you can see the toilet
+          ctx.font = '38px sans-serif';
+          ctx.fillStyle = '#000000';
+          ctx.fillText('\u{1F6BD}', 361, 330);
+        }
+        if (toi.stage === 2 || toi.stage === 4) {
+          const frac = toi.stage === 2 ? toi.wait / 240 : toi.inside / 200;
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.arc(361, 260, 22, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.strokeStyle = '#ffd23f';
+          ctx.beginPath();
+          ctx.arc(361, 260, 22, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.max(0, frac));
+          ctx.stroke();
+          ctx.font = '18px sans-serif';
+          ctx.fillStyle = '#000000';
+          ctx.fillText('⏳', 361, 267);
+        }
+        // the person who was inside walks out
+        if (toi.leave >= 0 && toi.leave < 170) {
+          const lx = 340 - toi.leave * 1.9;
+          things.push({ y: 505, draw: () => drawShopper(lx, 505, shopperLook[2], 1, -1, true, toi.leave, false) });
+        }
+        if (toi.stage !== 4) things.push({ y: mm.y, draw: () => drawMe() });
       } else {
         // the info desk: a big mall map and a helper behind the counter
         roundedRect(70, 140, 100, 130, 8);
@@ -1641,23 +1949,14 @@
         ctx.fillStyle = '#e08a1e';
         ctx.fillRect(258, 332, 134, 14);
         drawShopper(330, 322, ['#c68c5c', '#e08a1e', '#26344a'], 0.95, -1, false, mallTime, false);
+        things.push({ y: mm.y, draw: () => drawMe() });
       }
-      if (facFx > 0 && facFxKind === 'calm') {
-        ctx.fillStyle = 'rgba(255, 255, 255, ' + Math.min(0.3, facFx / 400) + ')';
-        ctx.fillRect(62, 0, W, H);
-        ctx.font = '22px sans-serif';
-        ctx.fillStyle = '#000000';
-        ctx.textAlign = 'center';
-        ctx.fillText('\u{1F90D}', mm.x, mm.y - 100 - (200 - facFx) * 0.2);
-      }
-      const things = [];
-      things.push({ y: mm.y, draw: () => drawMe() });
       things.sort((a, b) => a.y - b.y).forEach((o) => o.draw());
-      const nk = nearFac();
+      const nk = salah || toi.stage === 4 ? -1 : nearFac();
       if (nk >= 0) {
         const hint = facSpots[sh.facility][nk].hint;
         ctx.fillStyle = 'rgba(10, 18, 28, 0.85)';
-        roundedRect(200 - 110, 300, 220, 24, 12);
+        roundedRect(200 - 120, 300, 240, 24, 12);
         ctx.fill();
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 12px sans-serif';
@@ -1739,7 +2038,7 @@
 
     // press the action: go in a shop, ride the escalator, take a trolley, buy, eat, or go out
     function mallAction() {
-      if (phase !== 'mall' || mallRide || mallEat) return;
+      if (phase !== 'mall' || mallBusy()) return;
       if (mallShop < 0) {
         const d = nearMallDoor();
         if (d >= 0) enterShop(d);
@@ -1766,7 +2065,7 @@
     function mallPress(p) {
       mm.goto = null;
       mm.act = null;
-      if (mallRide || mallEat) return;
+      if (mallBusy()) return;
       if (mallShop < 0) {
         for (let s = 0; s < mallSlots; s++) {
           const sx = mallDoorX(s) - mallCamX;
@@ -1856,6 +2155,12 @@
     function updateMall(step) {
       mallTime += step;
       facFx = Math.max(0, facFx - step);
+      updateToilet(step);
+      if (salah) {
+        updateSalah(step);
+        return;
+      }
+      if (toi.stage === 4) return;
       if (mallEat) {
         // sitting at the table, eating
         mallEat.t += step;
@@ -2405,6 +2710,11 @@
     }
 
     function startLiftRide(b) {
+      if (phase === 'mall' && b.type !== 'floor' && typeof toi !== 'undefined' && toi.stage > 0) {
+        say('You need the toilet first! \u{1F6BB} Find the restrooms by the lift.', 200);
+        blip(220, 160, 0.2, 0.08);
+        return;
+      }
       closeLift();
       if (b.type === 'metro') {
         enterStation(liftKind === 'home' ? homeStation : stationOfMall(dest.name));
@@ -4978,6 +5288,19 @@ function drawOutdoorFront() {
       ctx.fillText('\u{1F4B0} ' + mallWallet, 18, 63);
       ctx.fillStyle = '#ffffff';
       ctx.fillText('\u{1F6CD}\uFE0F ' + mallBag.length + (mallTrolley ? ' \u{1F6D2}' : '/3'), 72, 63);
+      if (toi.stage > 0) {
+        const flash = toi.stage === 1 && Math.floor(mallTime / 18) % 2;
+        ctx.fillStyle = flash ? '#ff4d5a' : '#c1121f';
+        roundedRect(8, 112, 262, 28, 14);
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText(toiletText(), 18, 131);
+      }
     }
 
     // ---------- at 0 km the road splits into lanes: one for each place you can go ----------
