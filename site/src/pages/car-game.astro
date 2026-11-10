@@ -1386,7 +1386,7 @@
     };
     function resetToilet() {
       toi.stage = 0;
-      toi.timer = 5400 + Math.random() * 2400; // 90 to 130 seconds until you need the toilet
+      toi.timer = 17400 + Math.random() * 1200; // about 5 minutes until you need the toilet
       toi.wait = 0;
       toi.inside = 0;
       toi.leave = -1;
@@ -1713,7 +1713,7 @@
         blip(1500, 1800, 0.9, 0.05);
         if (toi.stage === 5) {
           toi.stage = 0;
-          toi.timer = 9000 + Math.random() * 5400; // then 2.5 to 4 minutes until the next time
+          toi.timer = 17400 + Math.random() * 1200; // and about 5 minutes until the next time
           addScore(10);
           say('Clean hands! You feel much better \u{1F9FC} +10', 190);
           [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.16, 0.1, 0.3 + j * 0.08));
