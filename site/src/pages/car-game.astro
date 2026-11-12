@@ -827,12 +827,18 @@
 
     function nextTrip() {
       tripNo++;
-      gameDate = new Date(gameDate.getFullYear(), gameDate.getMonth(), gameDate.getDate() + 1);
+      const again = isFriday() && !fridayDone;
+      if (!again) {
+        gameDate = new Date(gameDate.getFullYear(), gameDate.getMonth(), gameDate.getDate() + 1);
+        fridayDone = false;
+      }
+      saveDay();
       shopped = false;
       mallBag = [];
       bootDone = false;
       mallActive = false;
       enterApartment(false);
+      if (again) say('It is Friday again! \u{1F54C} You still need to do your Friday prayer.', 280);
     }
 
     function startOrRestart() {
@@ -1737,7 +1743,11 @@
       }
       if (salah.t >= total) {
         salah = null;
-        if (mode === 'friday') facAward(2, 25, 'Jumu\'ah Mubarak! The Friday prayer is finished \u{1F932}');
+        if (mode === 'friday') {
+          facAward(2, 25, 'Jumu\'ah Mubarak! The Friday prayer is finished \u{1F932}');
+          fridayDone = true;
+          saveDay();
+        }
         else if (mode === 'eid') facAward(3, 40, 'Eid Mubarak! The Eid prayer is finished \u{1F319}');
         else facAward(0, 15, 'The prayer is finished \u{1F932}');
         if (mode === 'eid' && !eidParty) {
@@ -3005,6 +3015,22 @@
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const isFriday = () => gameDate.getDay() === 5;
+    let fridayDone = false; // you did the Friday prayer today
+    let towed = false;
+    function saveDay() {
+      try {
+        localStorage.setItem('carDodgeDay', JSON.stringify({ y: gameDate.getFullYear(), m: gameDate.getMonth(), d: gameDate.getDate(), fd: fridayDone }));
+      } catch (e) {}
+    }
+    function loadDay() {
+      try {
+        const sd = JSON.parse(localStorage.getItem('carDodgeDay') || 'null');
+        if (sd && sd.y > 2000 && sd.m >= 0 && sd.m < 12 && sd.d >= 1 && sd.d <= 31) {
+          gameDate = new Date(sd.y, sd.m, sd.d);
+          fridayDone = !!sd.fd;
+        }
+      } catch (e) {}
+    }
     let calOpen = false;
     let calLeave = false; // the calendar opened when you go out
     let aptRoom = 'kitchen'; // your flat: the bedroom, the bathroom (downstairs) and the kitchen
@@ -5258,6 +5284,16 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     function endGame() {
       if (gameOver) return;
       gameOver = true;
+      towed = false;
+      if (!derailed && carKindNow !== 'home') {
+        // after a crash your car is towed back to the car park of your building
+        carKindNow = 'home';
+        carPlaceName = 'Home';
+        carLevel = 3;
+        carBay = 5;
+        saveCarPlace();
+        towed = true;
+      }
       if (score > best) saveBest();
     }
 
@@ -8289,7 +8325,7 @@ function drawOutdoorFront() {
       if (phase === 'start') {
         drawOverlay('Tap to start', 'Make breakfast, get your keys', 'then drive or take the metro!');
       } else if (gameOver) {
-        drawOverlay(derailed ? 'Derailed! \u{1F687}' : 'Crashed!', 'Tap to start a new day \u2022 Score: ' + score, derailed || carKindNow !== 'home' ? 'Your car stays at ' + carPlaceName : 'Trips finished: ' + tripNo);
+        drawOverlay(derailed ? 'Derailed! \u{1F687}' : 'Crashed!', 'Tap to start a new day \u2022 Score: ' + score, derailed ? 'Your car stays at ' + carPlaceName : towed ? 'Your car was towed back home \u{1F69B}' : 'Trips finished: ' + tripNo);
       } else if (phase === 'homedone') {
         drawOverlay('Home sweet home! \u{1F3E0}', 'Trip ' + (tripNo + 1) + ' done • Score: ' + score, 'Tap for your next trip');
       }
@@ -8309,6 +8345,7 @@ function drawOutdoorFront() {
       // the title screen: your car in its bay at home
       dest = homeDest;
       loadCarPlace();
+      loadDay();
       setupHomeLot();
       draw();
       loop();
