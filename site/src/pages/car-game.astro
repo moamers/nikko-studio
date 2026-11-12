@@ -1214,10 +1214,11 @@
         mallWallet = 20;
         mallBag = [];
       }
-      mallDone = mallShopsData.map(() => [false, false, false, false]);
+      mallDone = mallShopsData.map(() => [false, false, false, false, false]);
       mallDifferent = new Set();
       resetToilet();
       resetAdhan();
+      facState.eidi = false;
       wuduDone = false;
       salah = null;
       facState.book = false;
@@ -1360,7 +1361,8 @@
 
     // ---------- the services wing: prayer room, restrooms and the info desk (on every floor of every mall) ----------
     const inFacility = () => mallShop >= 0 && !!mallShopsData[mallShop].facility;
-    const facState = { shoes: false, washed: false, book: false };
+    const facState = { shoes: false, washed: false, book: false, eidi: false }; // eidi: the imam has an Eidi envelope for you
+    let eidiAmt = 0;
     let wuduDone = false; // you have washed (wudu) and can pray; using the toilet undoes it
     let prayMode = new Date().getDay() === 5 ? 'friday' : 'normal'; // normal, friday (Jumu'ah) or eid: bigger and bigger crowds
     let facFx = 0; // a little animation (water, hand dryer)
@@ -1457,6 +1459,7 @@
         { x: 85, key: 'shoes', y0: 380, y1: 470, hint: '\u{1F45F} Tap to take your shoes off' },
         { x: 140, key: 'books', y0: 150, y1: 300, hint: '\u{1F4D6} Tap to take a book (or put it back)' },
         { x: 210, key: 'mat', y0: 370, y1: 540, hint: '\u{1F932} Tap your mat to pray with the imam' },
+        { x: 322, key: 'eidi', y0: 380, y1: 540, hint: '' },
         { x: 252, key: 'friday', y0: 130, y1: 215, hint: '\u{1F54C} Tap the board: normal, Friday or Eid prayer' },
       ],
       wudu: [{ x: 125, key: 'wudu', y0: 340, y1: 540, hint: '\u{1F6BF} Tap to do your wudu (washing for prayer)' }],
@@ -1720,6 +1723,10 @@
         if (mode === 'friday') facAward(2, 25, 'Jumu\'ah Mubarak! The Friday prayer is finished \u{1F932}');
         else if (mode === 'eid') facAward(3, 40, 'Eid Mubarak! The Eid prayer is finished \u{1F319}');
         else facAward(0, 15, 'The prayer is finished \u{1F932}');
+        if (mode === 'eid' && !mallDone[mallShop][4]) {
+          facState.eidi = true;
+          say('The imam has an Eidi for you \u{1F9E7} Tap him!', 240);
+        }
         if (adhan.window > 0 && adhan.t < 0) {
           adhan.window = 0;
           addScore(10);
@@ -1801,6 +1808,22 @@
         blip(600, 700, 0.1, 0.06);
       } else if (spot.key === 'wudu') {
         startWudu();
+      } else if (spot.key === 'eidi') {
+        if (facState.eidi) {
+          if (mallDone[mallShop][4]) {
+            facState.eidi = false;
+            say('You already have your Eidi, thank you! \u{1F604}', 130);
+            return;
+          }
+          mallDone[mallShop][4] = true;
+          facState.eidi = false;
+          eidiAmt = 8 + Math.floor(Math.random() * 8);
+          mallWallet += eidiAmt;
+          facFx = 170;
+          facFxKind = 'eidi';
+          say('The imam gives you an Eidi \u{1F9E7} +' + eidiAmt + ' coins!', 230);
+          [784, 988, 1175, 1568].forEach((f, j) => blip(f, f, 0.16, 0.1, 0.5 + j * 0.1));
+        } else say(prayMode === 'eid' ? 'Eid Mubarak! \u{1F319} (Pray the Eid prayer to get your Eidi)' : 'The imam smiles and says salam \u{1F642}', 140);
       } else if (spot.key === 'friday') {
         prayMode = prayMode === 'normal' ? 'friday' : prayMode === 'friday' ? 'eid' : 'normal';
         say(prayMode === 'friday' ? 'Friday prayer (Jumu\'ah): a big crowd and the khutbah \u{1F54C}' : prayMode === 'eid' ? 'Eid prayer: the biggest crowd of the year! \u{1F319}✨' : 'Normal prayer with the imam \u{1F932}', 170);
@@ -2402,9 +2425,69 @@
         ctx.font = 'bold 20px sans-serif';
         ctx.fillText('EID MUBARAK! عيد مبارك', 200, 226);
       }
+      if (prayMode === 'eid' && facState.eidi && !salah) {
+        // the Eidi envelope above the imam's head
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('\u{1F9E7}', 338, 380 + Math.sin(mallTime / 12) * 5);
+      }
+      if (facFx > 0 && facFxKind === 'eidi') {
+        const u = 1 - facFx / 170;
+        const a = Math.min(1, u / 0.35);
+        const ex = 338 + (200 - 338) * a;
+        const ey = 430 + (300 - 430) * a - Math.sin(a * Math.PI) * 36;
+        const open = Math.max(0, Math.min(1, (u - 0.35) / 0.15));
+        ctx.save();
+        ctx.translate(ex, ey);
+        ctx.fillStyle = '#c1121f';
+        roundedRect(-36, -24, 72, 48, 6);
+        ctx.fill();
+        ctx.strokeStyle = '#f2c14e';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = open > 0 ? '#e5383b' : '#a30f1b';
+        ctx.beginPath();
+        ctx.moveTo(-36, -24);
+        ctx.lineTo(36, -24);
+        ctx.lineTo(0, -24 + 26 * (1 - 2 * open));
+        ctx.fill();
+        ctx.font = '18px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#f2c14e';
+        if (open < 0.5) ctx.fillText('\u{1F319}', 0, 14);
+        ctx.restore();
+        if (u > 0.5) {
+          const c = (u - 0.5) / 0.5;
+          for (let k = 0; k < 14; k++) {
+            const ang = (k / 14) * Math.PI * 2;
+            const r = 20 + c * (60 + (k % 3) * 18);
+            const cx = ex + Math.cos(ang) * r;
+            const cy = ey - 10 + Math.sin(ang) * r * 0.55 + c * c * 70;
+            ctx.beginPath();
+            ctx.arc(cx, cy, 8, 0, Math.PI * 2);
+            ctx.fillStyle = '#f2c14e';
+            ctx.fill();
+            ctx.strokeStyle = '#b8860b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.fillStyle = '#b8860b';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillText('$', cx, cy + 3);
+          }
+          roundedRect(110, 240, 180, 34, 17);
+          ctx.fillStyle = 'rgba(217, 79, 138, 0.93)';
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 17px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('EIDI! +' + eidiAmt + ' coins \u{1F4B0}', 200, 263);
+        }
+      }
       const nk = salah || toi.stage === 4 ? -1 : nearFac();
       if (nk >= 0) {
-        const hint = facSpots[sh.facility][nk].hint;
+        const spotK = facSpots[sh.facility][nk];
+        const hint = spotK.key === 'eidi' ? (facState.eidi ? '\u{1F9E7} Tap the imam to get your Eidi!' : '\u{1F642} Tap the imam to say hello') : spotK.hint;
         ctx.fillStyle = 'rgba(10, 18, 28, 0.85)';
         roundedRect(200 - 120, 300, 240, 24, 12);
         ctx.fill();
