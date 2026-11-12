@@ -1124,6 +1124,7 @@
 
     function finishHome() {
       phase = 'homedone';
+      aptRoom = 'kitchen';
 
       addScore(20);
       say('Home sweet home! \u{1F3E0}', 300);
@@ -1221,6 +1222,12 @@
       facState.eidi = false;
       eidParty = false;
       eidPartyDone = false;
+      kidGift = [false, false, false, false];
+      kidSay = [0, 0, 0, 0];
+      buddy = null;
+      partner = null;
+      partnerGone = false;
+      buddyAsk = false;
       wuduDone = false;
       salah = null;
       facState.book = false;
@@ -1261,6 +1268,10 @@
       if (toi.stage > 0) {
         say('You need the toilet first! \u{1F6BB} Find the restrooms by the lift.', 200);
         blip(220, 160, 0.2, 0.08);
+        return;
+      }
+      if (buddy && !buddy.bye) {
+        buddyBye(() => leaveMall());
         return;
       }
       mallShop = -1;
@@ -2523,6 +2534,176 @@
       }
     }
 
+    // ---------- people: kids at the Eid party, a chat at the table and a friend to walk around with ----------
+    const partyKids = [[96, 420, 2], [150, 410, 3], [212, 424, 5], [296, 414, 0]];
+    let kidGift = [false, false, false, false];
+    let kidSay = [0, 0, 0, 0];
+    const nearKid = () => {
+      for (let i = 0; i < partyKids.length; i++) if (Math.abs(mm.x - partyKids[i][0]) < 26) return i;
+      return -1;
+    };
+    function giveKidGift(i) {
+      if (!eidParty) return;
+      if (kidGift[i]) {
+        say('This kid already has a \u{1F381}! Try another kid.', 100);
+        return;
+      }
+      if (mallWallet < 3) {
+        say('You need 3 coins \u{1F4B0} for a gift. The imam gives an Eidi after the Eid prayer!', 190);
+        blip(220, 160, 0.2, 0.08);
+        return;
+      }
+      mallWallet -= 3;
+      kidGift[i] = true;
+      kidSay[i] = 180;
+      addScore(5);
+      say('You gave the kid a \u{1F381} and some money \u{1F4B0} Eid Mubarak! +5', 190);
+      [784, 988, 1175].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.08));
+      if (kidGift.every(Boolean)) {
+        addScore(15);
+        say('All the kids are happy! \u{1F389} +15', 220);
+        [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.25, 0.1, 0.3 + j * 0.1));
+      }
+    }
+
+    let buddy = null; // a friend who walks around the mall with you
+    let partner = null; // the person sitting opposite you at the table
+    let partnerGone = false;
+    let buddyAsk = false;
+    const buddyNames = ['Omar', 'Maryam', 'Yusuf', 'Aisha', 'Zayd', 'Layla'];
+    const CHAT_LINE = 110;
+    const chatLines = () => [
+      ['p', 'Hi! I am ' + partner.name + '. ' + (eidParty ? 'Eid Mubarak!' : 'Nice to meet you!')],
+      ['me', 'Hi ' + partner.name + '! Nice to meet you!'],
+      ['p', 'What is your favourite shop here?'],
+      ['me', 'I love the toy store! \u{1F9F8}'],
+      ['p', 'Me too! Shall we walk around the mall together?'],
+    ];
+    function chatWait(step) {
+      if (!partner || partner.done) return true;
+      partner.chatT += step;
+      if (partner.chatT >= CHAT_LINE * chatLines().length && !buddyAsk) {
+        buddyAsk = true;
+        blip(784, 784, 0.15, 0.08);
+      }
+      return false;
+    }
+    function buddyAskPress(p) {
+      const yes = p.x > 50 && p.x < 190 && p.y > 330 && p.y < 376;
+      const no = p.x > 210 && p.x < 350 && p.y > 330 && p.y < 376;
+      if (!yes && !no) return;
+      buddyAsk = false;
+      partner.done = true;
+      if (yes) {
+        buddy = { name: partner.name, look: partner.look, x: tableX[partner.table] + 30, y: 480, dir: -1, moving: false, t: 0, say: 'Yay! Let\'s go!', sayT: 200, nextSay: 500, bye: null };
+        say(partner.name + ' walks around the mall with you \u{1F6B6}\u{1F6B6}', 160);
+        [659, 784, 988].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.08));
+      } else {
+        partnerGone = true;
+        say('Okay! Bye ' + partner.name + '! \u{1F44B}', 130);
+      }
+    }
+    function drawBuddyAsk() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(26, 200, 348, 200, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#2fa4d8';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#2b2230';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 17px sans-serif';
+      ctx.fillText(partner.name + ' asks:', 200, 240);
+      ctx.font = 'bold 16px sans-serif';
+      fitText('Shall we walk around the mall together?', 310, 16);
+      ctx.fillText('Shall we walk around the mall together?', 200, 275);
+      ctx.font = '30px sans-serif';
+      ctx.fillText('\u{1F6B6}\u{1F6B6}', 200, 312);
+      [[50, '#2fbf71', 'Yes! \u{1F44D}'], [210, '#e08a1e', 'No thanks']].forEach(([x, c, t]) => {
+        roundedRect(x, 330, 140, 46, 23);
+        ctx.fillStyle = c;
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText(t, x + 70, 360);
+      });
+    }
+    // a speech bubble
+    function drawBubble(x, y, text) {
+      ctx.font = 'bold 12px sans-serif';
+      fitText(text, 170, 12);
+      const w = Math.min(190, ctx.measureText(text).width + 22);
+      const bx = Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, x)) ;
+      roundedRect(bx - w / 2, y - 28, w, 26, 12);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#2b2230';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x - 6, y - 3);
+      ctx.lineTo(x + 6, y - 3);
+      ctx.lineTo(x, y + 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.fillStyle = '#2b2230';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, bx, y - 10);
+    }
+    function updateBuddy(step) {
+      if (!buddy || inFacility() || salah) return;
+      buddy.t += step;
+      const minX = mallShop < 0 ? 30 : 22;
+      const maxX = mallShop < 0 ? mallWorldW - 30 : 380;
+      const tx = Math.max(minX, Math.min(maxX, mm.x - mm.dir * 46));
+      const ty = Math.max(452, Math.min(548, mm.y - 6));
+      const dx = tx - buddy.x;
+      if (Math.abs(dx) > 300) buddy.x = tx;
+      buddy.moving = Math.abs(dx) > 5;
+      if (buddy.moving) {
+        buddy.x += Math.sign(dx) * Math.min(Math.abs(dx), 2.6 * step);
+        buddy.dir = dx > 0 ? 1 : -1;
+      }
+      buddy.y += (ty - buddy.y) * Math.min(1, 0.1 * step);
+      buddy.sayT = Math.max(0, buddy.sayT - step);
+      buddy.nextSay -= step;
+      if (buddy.nextSay <= 0 && buddy.sayT <= 0) {
+        const lines = mallShop >= 0 ? ['Look at all this stuff!', 'Nice shop!', 'I want that one!', 'This is fun! \u{1F604}'] : ['Wow, this mall is so big!', 'Can we get ice cream? \u{1F366}', 'I like walking with you!', 'Look at that! \u{1F440}', 'What a fun day!'];
+        buddy.say = lines[Math.floor(Math.random() * lines.length)];
+        buddy.sayT = 170;
+        buddy.nextSay = 700 + Math.random() * 600;
+      }
+    }
+    function buddyBye(then) {
+      if (!buddy) {
+        then();
+        return;
+      }
+      buddy.bye = { t: 0, then };
+      say('Bye ' + buddy.name + '! See you again \u{1F44B}', 140);
+    }
+    function updateBuddyBye(step) {
+      buddy.bye.t += step;
+      if (buddy.bye.t >= 130) {
+        const f = buddy.bye.then;
+        buddy = null;
+        f();
+      }
+    }
+    function pushBuddy(things, sc) {
+      if (!buddy || inFacility()) return;
+      things.push({ y: buddy.y, draw: () => {
+        const k = sc + (buddy.y - 440) / 330;
+        drawShopper(buddy.x, buddy.y, buddy.look, k, buddy.dir, buddy.moving, buddy.t, false);
+        let text = '';
+        if (buddy.bye) text = buddy.bye.t >= 65 ? 'Bye! See you soon! \u{1F44B}' : '';
+        else if (buddy.sayT > 0) text = buddy.say;
+        if (text) drawBubble(buddy.x, buddy.y - 100 * k, text);
+      } });
+    }
+
     // ---------- the food court ----------
     const stallX = [110, 190, 270, 350];
     const tableX = [110, 200, 290];
@@ -2584,6 +2765,10 @@
       mm.dir = 1;
       mm.goto = null;
       say('Yum! Eating your ' + mallTray.name.toLowerCase() + '...', 130);
+      if (!buddy && !partnerGone) {
+        partner = { name: buddyNames[Math.floor(Math.random() * buddyNames.length)], look: t === 2 ? shopperLook[2] : shopperLook[4], table: t, chatT: 0, done: false };
+        say(partner.name + ' is sitting opposite you \u{1F642} Yum! Eating your ' + mallTray.name.toLowerCase() + '...', 150);
+      }
     }
 
     // press the action: go in a shop, ride the escalator, take a trolley, buy, eat, or go out
@@ -2644,6 +2829,15 @@
         if (p.x < 70 && p.y > 170 && p.y < 420) {
           mm.goto = 20;
           return;
+        }
+        if (eidParty) {
+          for (let i = 0; i < partyKids.length; i++) {
+            if (Math.abs(p.x - partyKids[i][0]) < 26 && p.y > partyKids[i][1] - 58 && p.y < partyKids[i][1] + 10) {
+              mm.goto = partyKids[i][0];
+              mm.act = { kind: 'kid', i };
+              return;
+            }
+          }
         }
         for (let k = 0; k < 4; k++) {
           if (Math.abs(p.x - stallX[k]) < 40 && p.y > 190 && p.y < 340) {
@@ -2707,6 +2901,11 @@
       facFx = Math.max(0, facFx - step);
       updateToilet(step);
       updateAdhan(step);
+      for (let i = 0; i < 4; i++) kidSay[i] = Math.max(0, kidSay[i] - step);
+      if (buddy && buddy.bye) {
+        updateBuddyBye(step);
+        return;
+      }
       if (salah) {
         updateSalah(step);
         return;
@@ -2716,7 +2915,7 @@
         // sitting at the table, eating
         mallEat.t += step;
         if (Math.floor(mallEat.t / 26) !== Math.floor((mallEat.t - step) / 26) && mallEat.t < 130) blip(280 + Math.random() * 120, 200, 0.07, 0.07);
-        if (mallEat.t >= 140) {
+        if (mallEat.t >= 140 && chatWait(step)) {
           const price = mallEat.tray.price;
           mallEat = null;
           mallTray = null;
@@ -2764,6 +2963,7 @@
           else if (a && a.kind === 'stall') orderFood(a.i);
           else if (a && a.kind === 'table') sitDown(a.i);
           else if (a && a.kind === 'fac') facilityAct(a.i);
+          else if (a && a.kind === 'kid') giveKidGift(a.i);
           else mallAction();
         } else dx = mm.goto > mm.x ? 1 : -1;
       }
@@ -2786,6 +2986,7 @@
         mm.y = Math.max(452, Math.min(548, mm.y + Math.sign(dy) * 1.8 * step));
         mm.stepT += step;
       }
+      updateBuddy(step);
       if (mallShop < 0) {
         if (adhan.t < 0) mallShoppers.forEach((s) => wander(s, step, 60, mallWorldW - 60));
         const want = Math.max(0, Math.min(mallWorldW - W, mm.x - 200));
@@ -2797,7 +2998,20 @@
     }
 
     // ---------- your home: wake up, make breakfast, get your things and go down in the lift ----------
-    const apt = { food: false, cooking: 0, cooked: false, eating: null, eaten: false, items: [false, false, false, false] };
+    const apt = { food: false, cooking: 0, cooked: false, eating: null, eaten: false, items: [false, false, false, false], woke: false, showered: false, brushed: false, shower: 0, menu: [], fade: 0 };
+    let aptRoom = 'kitchen'; // your flat: the bedroom, the bathroom (downstairs) and the kitchen
+    const bedX = 85;
+    const stairsX = 352;
+    const bathX = { shower: 75, sink: 190, door: 352 };
+    // what is in the fridge: [emoji, name, needs cooking]
+    const fridgeFoods = [
+      ['\u{1F95A}', 'Eggs', true], ['\u{1F95E}', 'Pancakes', true], ['\u{1F9C7}', 'Waffles', true], ['\u{1F35E}', 'Toast', true],
+      ['\u{1F341}', 'Maple syrup', false], ['\u{1F36F}', 'Honey', false], ['\u{1F9C8}', 'Butter', false], ['\u{1F95B}', 'Milk', false],
+      ['\u{1F9C3}', 'Juice', false], ['\u{1F353}', 'Strawberries', false], ['\u{1F34C}', 'Banana', false], ['\u{1F963}', 'Cereal', false],
+    ];
+    let fridgeOpen = false;
+    let fridgePick = [];
+    const fridgeCell = (i) => ({ x: 30 + (i % 3) * 112, y: 112 + Math.floor(i / 3) * 70, w: 104, h: 62 });
     const hm = { x: 200, y: 505, dir: 1, stepT: 0, moving: false, goto: null, act: null };
     const aptX = { fridge: 50, stove: 132, table: 222, shelf: 305, door: 368 };
     const aptItems = [['\u{1F511}', 'car keys'], ['\u{1F45B}', 'wallet'], ['\u{1F4F1}', 'phone'], ['\u{1F392}', 'bag']];
@@ -2835,35 +3049,97 @@
       apt.eaten = false;
       apt.skipped = false;
       apt.items = [false, false, false, false];
-      hm.x = 150;
+      aptRoom = 'bed';
+      apt.woke = false;
+      apt.showered = false;
+      apt.brushed = false;
+      apt.shower = 0;
+      apt.menu = [];
+      apt.fade = 0;
+      fridgeOpen = false;
+      fridgePick = [];
+      hm.x = bedX;
       hm.y = 505;
+      hm.dir = 1;
       hm.goto = null;
       hm.act = null;
       hold = null;
       departing = false;
       setupHomeLot();
-      say(carKindNow !== 'home' ? 'Your car is at ' + carPlaceName + ' (level ' + carLevel + '). Take the metro to get it!' : first ? 'Good morning! Make breakfast, get your car keys and go.' : 'A new day! Make breakfast and get your car keys.', 300);
+      say((first ? 'Good morning! ' : 'A new day! ') + 'Tap to wake up \u2600\uFE0F', 240);
+    }
+
+    function goRoom(r) {
+      aptRoom = r;
+      apt.fade = 50;
+      hm.goto = null;
+      hm.act = null;
+      hold = null;
+      hm.y = 505;
+      if (r === 'bath') {
+        hm.x = 330;
+        hm.dir = -1;
+        say('Down the stairs ⬇️ to the bathroom. Time for a shower! \u{1F6BF}', 200);
+        [600, 500, 400].forEach((f, j) => blip(f, f, 0.1, 0.07, j * 0.12));
+      } else if (r === 'kitchen') {
+        hm.x = 40;
+        hm.dir = 1;
+        say(carKindNow !== 'home' ? 'Your car is at ' + carPlaceName + ' (level ' + carLevel + '). Take the metro to get it!' : 'Open the fridge and choose your breakfast \u{1F373}', 240);
+        blip(500, 700, 0.2, 0.07);
+      }
     }
 
     function aptAction(a) {
-      if (phase !== 'apartment' || apt.eating || apt.cooking > 0) return;
-      if (a === 'fridge') {
-        if (apt.food) say('You already have the eggs and milk.', 90);
-        else {
-          apt.food = true;
-          addScore(1);
-          say('You took eggs \u{1F95A} and milk \u{1F95B} from the fridge! +1', 130);
-          blip(500, 800, 0.15, 0.1);
+      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || apt.fade > 25) return;
+      if (aptRoom === 'bed') {
+        if (a === 'bed') {
+          if (!apt.woke) {
+            apt.woke = true;
+            hm.x = 178;
+            hm.dir = 1;
+            say('Good morning! ☀️ Go down the stairs to the shower.', 220);
+            [392, 523, 659].forEach((f, j) => blip(f, f, 0.2, 0.08, j * 0.12));
+          } else say('Your bed is made. Time for the shower! \u{1F6BF}', 110);
+        } else if (a === 'stairs') {
+          if (!apt.woke) say('Wake up first! Tap your bed \u{1F6CF}️', 100);
+          else goRoom('bath');
         }
+        return;
+      }
+      if (aptRoom === 'bath') {
+        if (a === 'shower') {
+          if (apt.showered) say('You are already clean ✨', 90);
+          else {
+            apt.shower = 230;
+            hm.goto = null;
+            hm.x = bathX.shower;
+            say('Shower time! \u{1F6BF}', 130);
+          }
+        } else if (a === 'sink') {
+          if (!apt.brushed) {
+            apt.brushed = true;
+            addScore(1);
+            say('Brush brush! \u{1FAA5} Clean teeth +1', 120);
+            blip(900, 1100, 0.15, 0.06);
+          } else say('Your teeth are clean \u{1F601}', 90);
+        } else if (a === 'door') {
+          if (!apt.showered) say('Have your shower first! \u{1F6BF}', 110);
+          else goRoom('kitchen');
+        }
+        return;
+      }
+      if (a === 'fridge') {
+        if (apt.food) say('You chose your breakfast: ' + apt.menu.map((m) => m[0]).join(' '), 110);
+        else openFridge();
       } else if (a === 'stove') {
-        if (!apt.food) say('Get the eggs and milk from the fridge first!', 110);
+        if (!apt.food) say('Choose your breakfast from the fridge first!', 110);
         else if (apt.cooked) say('Breakfast is ready on the table!', 90);
         else {
           apt.cooking = 110;
-          say('Cooking breakfast... \u{1F373}', 100);
+          say('Cooking ' + apt.menu.filter((m) => m[2]).map((m) => m[1].toLowerCase()).join(' and ') + '... \u{1F373}', 100);
         }
       } else if (a === 'table') {
-        if (!apt.cooked) say(apt.food ? 'Cook the breakfast first!' : 'Start by taking food from the fridge.', 100);
+        if (!apt.cooked) say(apt.food ? 'Cook the breakfast first!' : 'Start by choosing food from the fridge.', 100);
         else if (apt.eaten) say('You have had your breakfast.', 90);
         else {
           apt.eating = { t: 0 };
@@ -2888,7 +3164,115 @@
       }
     }
 
+    // ---- the open fridge: choose up to 3 things for breakfast
+    function openFridge() {
+      fridgeOpen = true;
+      fridgePick = [];
+      hold = null;
+      blip(700, 500, 0.15, 0.08);
+      say('The fridge is open! Choose up to 3 things.', 160);
+    }
+    function confirmFridge() {
+      fridgeOpen = false;
+      apt.food = true;
+      apt.menu = fridgePick.map((i) => fridgeFoods[i]);
+      addScore(1);
+      blip(500, 800, 0.15, 0.1);
+      if (apt.menu.some((m) => m[2])) say('Nice choice! ' + apt.menu.map((m) => m[0]).join(' ') + ' Now cook it on the stove \u{1F373}', 200);
+      else {
+        apt.cooked = true;
+        say('Nice choice! ' + apt.menu.map((m) => m[0]).join(' ') + ' No cooking needed: take it to the table.', 200);
+      }
+    }
+    function fridgePress(p) {
+      if (p.x > 130 && p.x < 270 && p.y > 508 && p.y < 548) {
+        fridgeOpen = false;
+        return;
+      }
+      if (p.x > 90 && p.x < 310 && p.y > 440 && p.y < 490 && fridgePick.length) {
+        confirmFridge();
+        return;
+      }
+      for (let i = 0; i < fridgeFoods.length; i++) {
+        const c = fridgeCell(i);
+        if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
+          const at = fridgePick.indexOf(i);
+          if (at >= 0) fridgePick.splice(at, 1);
+          else if (fridgePick.length >= 3) say('Only 3 things! Tap one to put it back.', 100);
+          else fridgePick.push(i);
+          blip(800, 800, 0.05, 0.06);
+          return;
+        }
+      }
+    }
+    function drawFridgePanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(16, 40, 368, 520, 18);
+      ctx.fillStyle = '#eef6fb';
+      ctx.fill();
+      ctx.strokeStyle = '#7fb2d9';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#7fb2d9';
+      roundedRect(16, 40, 368, 56, 18);
+      ctx.fill();
+      ctx.fillRect(16, 74, 368, 22);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('\u{1F9CA} THE FRIDGE: CHOOSE BREAKFAST', 200, 66);
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Pick up to 3 things (' + fridgePick.length + '/3)', 200, 87);
+      fridgeFoods.forEach((f, i) => {
+        const c = fridgeCell(i);
+        const on = fridgePick.indexOf(i) >= 0;
+        roundedRect(c.x, c.y, c.w, c.h, 12);
+        ctx.fillStyle = on ? '#d9f7e3' : '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = on ? '#2fbf71' : '#b9c7d3';
+        ctx.lineWidth = on ? 4 : 2;
+        ctx.stroke();
+        ctx.font = '28px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.fillText(f[0], c.x + c.w / 2, c.y + 34);
+        fitText(f[1], c.w - 8, 12);
+        ctx.fillStyle = '#2b2230';
+        ctx.fillText(f[1], c.x + c.w / 2, c.y + 54);
+        if (f[2]) {
+          ctx.font = '11px sans-serif';
+          ctx.fillText('\u{1F525}', c.x + c.w - 12, c.y + 16);
+        }
+        if (on) {
+          ctx.font = 'bold 14px sans-serif';
+          ctx.fillStyle = '#2fbf71';
+          ctx.fillText('✅', c.x + 12, c.y + 16);
+        }
+      });
+      ctx.fillStyle = '#6b727b';
+      ctx.font = '12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F525} = needs cooking on the stove', 200, 426);
+      roundedRect(90, 440, 220, 46, 23);
+      ctx.fillStyle = fridgePick.length ? '#2fbf71' : '#b9c7d3';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('Take it to the kitchen ✅', 200, 470);
+      ctx.fillStyle = '#e63946';
+      roundedRect(130, 508, 140, 40, 20);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('Close ✖', 200, 533);
+    }
+
     function aptKey() {
+      if (aptRoom === 'bed' && !apt.woke) {
+        aptAction('bed');
+        return;
+      }
       const n = nearApt();
       if (!n) return;
       if (n === 'shelf') {
@@ -2906,7 +3290,34 @@
     function aptPress(p) {
       hm.goto = null;
       hm.act = null;
-      if (apt.eating || apt.cooking > 0) return;
+      if (apt.eating || apt.cooking > 0 || apt.shower > 0) return;
+      if (aptRoom === 'bed') {
+        if (!apt.woke) {
+          aptAction('bed');
+          return;
+        }
+        if (p.x < 170 && p.y > 300 && p.y < 440) {
+          hm.goto = bedX + 60;
+          hm.act = 'bed';
+        } else if (p.x > 320 && p.y > 160) {
+          hm.goto = stairsX;
+          hm.act = 'stairs';
+        } else hold = p;
+        return;
+      }
+      if (aptRoom === 'bath') {
+        if (p.x < 135 && p.y > 150 && p.y < 440) {
+          hm.goto = bathX.shower;
+          hm.act = 'shower';
+        } else if (p.x >= 140 && p.x < 250 && p.y > 140 && p.y < 440) {
+          hm.goto = bathX.sink;
+          hm.act = 'sink';
+        } else if (p.x > 320 && p.y > 160 && p.y < 440) {
+          hm.goto = bathX.door;
+          hm.act = 'door';
+        } else hold = p;
+        return;
+      }
       for (let k = 0; k < 4; k++) {
         if (Math.abs(p.x - aptItemX[k]) < 13 && Math.abs(p.y - 248) < 22) {
           hm.goto = aptX.shelf;
@@ -2932,6 +3343,17 @@
     }
 
     function nearApt() {
+      if (aptRoom === 'bed') {
+        if (Math.abs(hm.x - bedX) < 70) return 'bed';
+        if (Math.abs(hm.x - stairsX) < 34) return 'stairs';
+        return null;
+      }
+      if (aptRoom === 'bath') {
+        if (Math.abs(hm.x - bathX.shower) < 40) return 'shower';
+        if (Math.abs(hm.x - bathX.sink) < 40) return 'sink';
+        if (Math.abs(hm.x - bathX.door) < 30) return 'door';
+        return null;
+      }
       if (Math.abs(hm.x - aptX.fridge) < 36) return 'fridge';
       if (Math.abs(hm.x - aptX.stove) < 36) return 'stove';
       if (Math.abs(hm.x - aptX.table) < 40) return 'table';
@@ -2941,6 +3363,20 @@
     }
 
     function updateApartment(step) {
+      if (apt.fade > 0) apt.fade = Math.max(0, apt.fade - step);
+      if (apt.shower > 0) {
+        apt.shower -= step;
+        if (Math.floor(apt.shower / 14) !== Math.floor((apt.shower + step) / 14)) blip(1500 + Math.random() * 400, 1800, 0.08, 0.025);
+        if (apt.shower <= 0) {
+          apt.shower = 0;
+          apt.showered = true;
+          hm.x = 150;
+          addScore(3);
+          say('Fresh and clean! \u{1F6BF}✨ +3', 150);
+          [523, 659, 784].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.1));
+        }
+        return;
+      }
       if (apt.cooking > 0) {
         apt.cooking -= step;
         if (Math.floor(apt.cooking / 20) !== Math.floor((apt.cooking + step) / 20)) blip(200 + Math.random() * 80, 120, 0.1, 0.05);
@@ -2948,7 +3384,7 @@
           apt.cooking = 0;
           apt.cooked = true;
           addScore(2);
-          say('Breakfast is ready! \u{1F373}\u{1F35E} Take it to the table. +2', 160);
+          say('Breakfast is ready! ' + apt.menu.map((m) => m[0]).join('') + ' Take it to the table. +2', 160);
           [660, 880].forEach((f, j) => blip(f, f, 0.15, 0.1, j * 0.1));
         }
         return;
@@ -2960,12 +3396,14 @@
           apt.eating = null;
           apt.eaten = true;
           hm.x = aptX.table - 60;
-          addScore(10);
-          say('Yummy breakfast! \u{1F60B} +10', 150);
+          const pts = 10 + apt.menu.length;
+          addScore(pts);
+          say('Yummy breakfast! \u{1F60B} +' + pts, 150);
           [523, 659, 784].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.1));
         }
         return;
       }
+      if (aptRoom === 'bed' && !apt.woke) return;
       let dx = 0;
       if (hm.goto !== null) {
         if (Math.abs(hm.goto - hm.x) < 6) {
@@ -2990,7 +3428,7 @@
       }
     }
 
-    function drawApartment() {
+    function drawKitchen() {
       // the wall and the floor
       const wall = ctx.createLinearGradient(0, 0, 0, 400);
       wall.addColorStop(0, '#fbeedd');
@@ -3124,7 +3562,7 @@
       if (apt.cooked && !apt.eaten) {
         ctx.font = '22px sans-serif';
         ctx.fillStyle = '#000000';
-        ctx.fillText('\u{1F373}\u{1F35E}', 222, 386 - (apt.eating ? Math.abs(Math.sin(apt.eating.t / 9)) * 5 : 0));
+        ctx.fillText(apt.menu.length ? apt.menu.map((m) => m[0]).join('') : '\u{1F373}', 222, 386 - (apt.eating ? Math.abs(Math.sin(apt.eating.t / 9)) * 5 : 0));
       }
       // the shelf by the door with your things on it
       ctx.fillStyle = '#7b5a3a';
@@ -3172,8 +3610,8 @@
       const n = nearApt();
       if (n && !apt.eating && apt.cooking <= 0) {
         const texts = {
-          fridge: apt.food ? 'Fridge: you have the food' : 'Tap the fridge for food',
-          stove: apt.cooked ? 'Breakfast is ready' : apt.food ? 'Tap to cook breakfast' : 'Get food from the fridge',
+          fridge: apt.food ? 'You chose your breakfast' : 'Tap the fridge: choose food',
+          stove: apt.cooked ? 'Breakfast is ready' : apt.food ? 'Tap to cook breakfast' : 'Choose food at the fridge',
           table: apt.cooked && !apt.eaten ? 'Tap to sit and eat' : 'The kitchen table',
           shelf: 'Tap your things to take them',
           door: 'Tap the door to go out',
@@ -3187,14 +3625,306 @@
         ctx.textAlign = 'center';
         ctx.fillText(texts[n], hx, 360);
       }
-      // the little checklist
+    }
+
+
+    // ---------- the bedroom and the bathroom of your flat ----------
+    function drawAptHud() {
       ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
-      roundedRect(8, 44, 172, 28, 14);
+      roundedRect(8, 44, 214, 28, 14);
       ctx.fill();
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText((apt.food ? '✅' : '\u{1F95A}') + (apt.cooked ? '✅' : '\u{1F373}') + (apt.eaten ? '✅' : '\u{1F35E}') + '  ' + aptItems.map(([e], k) => (apt.items[k] ? '✅' : e)).join(''), 16, 63);
+      ctx.fillText((apt.woke ? '✅' : '\u{1F6CF}️') + (apt.showered ? '✅' : '\u{1F6BF}') + (apt.food ? '✅' : '\u{1F95A}') + (apt.cooked ? '✅' : '\u{1F373}') + (apt.eaten ? '✅' : '\u{1F35E}') + '  ' + aptItems.map(([e], k) => (apt.items[k] ? '✅' : e)).join(''), 16, 63);
+    }
+    function drawAptFade() {
+      if (apt.fade > 0) {
+        ctx.fillStyle = 'rgba(0, 0, 0, ' + Math.min(1, apt.fade / 35) + ')';
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+    function drawAptHint(text, x) {
+      const hx = Math.max(80, Math.min(W - 80, x));
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+      roundedRect(hx - 80, 344, 160, 24, 12);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, hx, 360);
+    }
+
+    function drawBedroom() {
+      const wall = ctx.createLinearGradient(0, 0, 0, 410);
+      wall.addColorStop(0, '#dfe9f7');
+      wall.addColorStop(1, '#c6d6ee');
+      ctx.fillStyle = wall;
+      ctx.fillRect(0, 0, W, 410);
+      ctx.fillStyle = '#b98a5a';
+      ctx.fillRect(0, 410, W, H - 410);
+      ctx.strokeStyle = 'rgba(90, 55, 20, 0.18)';
+      ctx.lineWidth = 1.5;
+      for (let y = 422; y < H; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#e6d2b0';
+      ctx.fillRect(0, 398, W, 12);
+      // the window and the morning sun
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(206, 84, 112, 112);
+      const sky = ctx.createLinearGradient(0, 90, 0, 190);
+      sky.addColorStop(0, '#8fd0f2');
+      sky.addColorStop(1, '#ffe3a8');
+      ctx.fillStyle = sky;
+      ctx.fillRect(212, 90, 100, 100);
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      ctx.arc(290, 130, 13, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(110, 140, 170, 0.75)';
+      [[218, 158, 14], [234, 166, 12], [268, 160, 16], [288, 170, 12]].forEach(([x, y, w]) => ctx.fillRect(x, y, w, 190 - y));
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(260, 90, 4, 100);
+      ctx.fillRect(212, 138, 100, 4);
+      ctx.fillStyle = 'rgba(255, 230, 150, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(212, 190);
+      ctx.lineTo(312, 190);
+      ctx.lineTo(300, 400);
+      ctx.lineTo(160, 400);
+      ctx.fill();
+      // a picture and a rug
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(60, 110, 74, 56);
+      ctx.fillStyle = '#9fd8c4';
+      ctx.fillRect(65, 115, 64, 46);
+      ctx.fillStyle = '#ffd166';
+      ctx.beginPath();
+      ctx.arc(97, 138, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c96f6f';
+      ctx.beginPath();
+      ctx.ellipse(230, 500, 110, 30, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#f2d6a2';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      // the bed
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(12, 330, 12, 100);
+      ctx.fillRect(12, 400, 152, 24);
+      ctx.fillRect(152, 380, 12, 50);
+      ctx.fillStyle = '#ffffff';
+      roundedRect(22, 372, 134, 32, 8);
+      ctx.fill();
+      ctx.fillStyle = '#f4f7fb';
+      ctx.beginPath();
+      ctx.ellipse(46, 366, 26, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      if (!apt.woke) {
+        // you, fast asleep under the blanket
+        ctx.fillStyle = '#f2c9a0';
+        ctx.beginPath();
+        ctx.arc(44, 360, 11, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#2a2a2a';
+        ctx.beginPath();
+        ctx.arc(42, 354, 11, Math.PI, Math.PI * 1.8);
+        ctx.fill();
+        ctx.fillRect(48, 361, 5, 1.5);
+        ctx.fillStyle = '#4a90d9';
+        roundedRect(60, 358, 98, 40, 12);
+        ctx.fill();
+        ctx.strokeStyle = '#2f6fb5';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#2f6fb5';
+        ctx.font = 'bold 18px sans-serif';
+        ctx.textAlign = 'center';
+        for (let k = 0; k < 3; k++) ctx.fillText('z', 66 + k * 14, 340 - k * 14 - ((frameCount / 3 + k * 13) % 14));
+        roundedRect(70, 226, 160, 40, 20);
+        ctx.fillStyle = 'rgba(255, 210, 63, 0.95)';
+        ctx.fill();
+        ctx.fillStyle = '#3a2f12';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillText('☀️ Tap to wake up!', 150, 252);
+      } else {
+        ctx.fillStyle = '#4a90d9';
+        roundedRect(60, 376, 98, 26, 8);
+        ctx.fill();
+      }
+      // the lamp
+      ctx.fillStyle = '#9a7448';
+      ctx.fillRect(176, 392, 30, 38);
+      ctx.fillStyle = '#ffd166';
+      ctx.beginPath();
+      ctx.moveTo(180, 392);
+      ctx.lineTo(202, 392);
+      ctx.lineTo(196, 366);
+      ctx.lineTo(186, 366);
+      ctx.fill();
+      // the stairs going down
+      ctx.fillStyle = '#4a3a2a';
+      ctx.beginPath();
+      ctx.moveTo(326, 410);
+      ctx.lineTo(400, 410);
+      ctx.lineTo(400, 560);
+      ctx.lineTo(300, 560);
+      ctx.fill();
+      for (let k = 0; k < 5; k++) {
+        ctx.fillStyle = k % 2 ? '#8a6c4a' : '#a47e55';
+        ctx.fillRect(326 - k * 6, 412 + k * 28, 74 + k * 6, 24);
+      }
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(322, 380, 6, 40);
+      ctx.fillRect(322, 380, 78, 6);
+      ctx.fillStyle = '#2d6a4f';
+      roundedRect(326, 340, 70, 22, 6);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⬇️ STAIRS', 361, 355);
+      if (apt.woke) drawShopper(hm.x, hm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.98, hm.dir, hm.moving, hm.stepT, false);
+      const n = apt.woke ? nearApt() : null;
+      if (n) drawAptHint(n === 'stairs' ? 'Tap the stairs: go to the shower' : 'Your bed', n === 'stairs' ? stairsX : bedX);
+      drawAptHud();
+    }
+
+    function drawBathroom() {
+      ctx.fillStyle = '#e3f4f3';
+      ctx.fillRect(0, 0, W, 410);
+      ctx.strokeStyle = 'rgba(60, 130, 150, 0.2)';
+      ctx.lineWidth = 1.5;
+      for (let x = 0; x < W; x += 36) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, 410);
+        ctx.stroke();
+      }
+      for (let y = 0; y < 410; y += 36) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#cdd6dc';
+      ctx.fillRect(0, 410, W, H - 410);
+      ctx.strokeStyle = 'rgba(80, 90, 105, 0.16)';
+      for (let y = 424; y < H; y += 34) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      // the shower cabin
+      ctx.fillStyle = '#9aa5ae';
+      ctx.fillRect(24, 150, 104, 266);
+      ctx.fillStyle = '#d6edf9';
+      ctx.fillRect(30, 156, 92, 254);
+      ctx.fillStyle = '#7d8a96';
+      ctx.fillRect(74, 156, 6, 30);
+      ctx.fillRect(56, 184, 44, 10);
+      ctx.fillStyle = '#b9c7d3';
+      ctx.fillRect(24, 404, 104, 12);
+      const showering = apt.shower > 0;
+      if (showering) {
+        ctx.strokeStyle = 'rgba(70, 160, 230, 0.8)';
+        ctx.lineWidth = 2;
+        for (let k = 0; k < 14; k++) {
+          const x = 60 + (k % 7) * 7;
+          const y0 = 196 + ((frameCount * 6 + k * 29) % 200);
+          ctx.beginPath();
+          ctx.moveTo(x, y0);
+          ctx.lineTo(x - 1, y0 + 9);
+          ctx.stroke();
+        }
+        drawShopper(bathX.shower, 422, ['#f2c9a0', '#2fa4d8', '#2fa4d8'], 0.9, 1, false, 0, false);
+      }
+      ctx.fillStyle = showering ? 'rgba(255, 255, 255, 0.55)' : 'rgba(200, 230, 245, 0.35)';
+      ctx.fillRect(30, 156, 92, 254);
+      if (showering) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        for (let k = 0; k < 5; k++) {
+          ctx.beginPath();
+          ctx.arc(46 + k * 16 + Math.sin(frameCount / 14 + k) * 6, 392 - ((frameCount * 0.8 + k * 50) % 220), 14, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      // the sink and the mirror
+      roundedRect(158, 150, 84, 100, 10);
+      ctx.fillStyle = '#c9e6f5';
+      ctx.fill();
+      ctx.strokeStyle = '#7d8a96';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.beginPath();
+      ctx.moveTo(168, 160);
+      ctx.lineTo(190, 160);
+      ctx.lineTo(168, 196);
+      ctx.fill();
+      ctx.fillStyle = '#b9a07a';
+      ctx.fillRect(150, 330, 100, 84);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.ellipse(200, 330, 44, 14, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#aab4bd';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#9aa5ae';
+      ctx.fillRect(197, 296, 6, 28);
+      ctx.fillRect(197, 294, 18, 5);
+      ctx.font = '20px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText(apt.brushed ? '✨' : '\u{1FAA5}', 226, 322);
+      // a towel
+      ctx.fillStyle = '#7d8a96';
+      ctx.fillRect(262, 190, 50, 5);
+      ctx.fillStyle = '#f2a65a';
+      roundedRect(270, 194, 34, 66, 4);
+      ctx.fill();
+      // the door to the kitchen
+      ctx.fillStyle = '#5b4026';
+      ctx.fillRect(332, 170, 68, 240);
+      ctx.fillStyle = '#8a6a44';
+      ctx.fillRect(336, 176, 60, 234);
+      ctx.fillStyle = '#c9a26b';
+      ctx.fillRect(342, 190, 48, 80);
+      ctx.fillRect(342, 284, 48, 100);
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      ctx.arc(346, 300, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2d6a4f';
+      roundedRect(338, 148, 56, 18, 4);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('\u{1F373} KITCHEN', 366, 161);
+      if (!showering) drawShopper(hm.x, hm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.98, hm.dir, hm.moving, hm.stepT, false);
+      const n = showering ? null : nearApt();
+      if (n) {
+        const texts = { shower: apt.showered ? 'You are clean ✨' : 'Tap the shower \u{1F6BF}', sink: apt.brushed ? 'Clean teeth' : 'Tap to brush your teeth', door: apt.showered ? 'Tap the door: kitchen' : 'Shower first!' };
+        drawAptHint(texts[n], { shower: bathX.shower, sink: bathX.sink, door: bathX.door }[n]);
+      }
+      drawAptHud();
+    }
+
+    function drawApartment() {
+      if (aptRoom === 'bed') drawBedroom();
+      else if (aptRoom === 'bath') drawBathroom();
+      else {
+        drawKitchen();
+        drawAptHud();
+      }
+      drawAptFade();
     }
 
     // ---------- the lifts: take them to any floor of the mall or any level of the car park ----------
@@ -3271,6 +4001,11 @@
       if (phase === 'mall' && b.type !== 'floor' && typeof toi !== 'undefined' && toi.stage > 0) {
         say('You need the toilet first! \u{1F6BB} Find the restrooms by the lift.', 200);
         blip(220, 160, 0.2, 0.08);
+        return;
+      }
+      if (phase === 'mall' && buddy && !buddy.bye && b.type !== 'floor') {
+        closeLift();
+        buddyBye(() => startLiftRide(b));
         return;
       }
       closeLift();
@@ -4024,7 +4759,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
         else if (phase === 'mall') label = '\u{1F6AA} Leave the mall';
@@ -4056,11 +4791,21 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     }
 
     function pressAt(clientX, clientY) {
+      const wasIdle = phase === 'start' || phase === 'homedone' || gameOver;
       startOrRestart();
+      if (wasIdle) return;
       const p = pointerPt(clientX, clientY);
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (buddyAsk) {
+        buddyAskPress(p);
+        return;
+      }
+      if (fridgeOpen) {
+        fridgePress(p);
         return;
       }
       if (metroOpen) {
@@ -4116,6 +4861,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (e.code === 'KeyK' || (e.code === 'Space' && phase === 'beach')) tugKite();
       if (e.code === 'Escape' && liftOpen) closeLift();
       if (e.code === 'Escape' && metroOpen) metroOpen = false;
+      if (e.code === 'Escape' && fridgeOpen) fridgeOpen = false;
       if (e.code === 'Enter' || e.code === 'KeyE') {
         if (phase === 'mall') mallAction();
         else if (phase === 'apartment') aptKey();
@@ -4371,7 +5117,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           openMetro();
         }
       }
-      if (liftOpen || metroOpen) return;
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
@@ -5417,6 +6163,7 @@ function drawOutdoorFront() {
       [190, 460, 540, 650].forEach((bx, i) => things.push({ y: 446, draw: () => drawBench(bx, 446, i % 2 ? shopperLook[(i + 1) % 6] : null) }));
       [20, 300, 400, 680].forEach((px) => things.push({ y: 440, draw: () => drawPlant(px, 440) }));
       mallShoppers.filter((s) => s.floor === mallFloor).forEach((s) => things.push({ y: s.y, draw: () => drawShopper(s.x, s.y, s.look, 0.8 + (s.y - 440) / 330, s.dir, s.v > 0 && s.pause <= 0, s.t, s.bag) }));
+      pushBuddy(things, 0.8);
       if (!mallRide || (mallRide.kind === 'lift' && mallRide.t >= 45)) things.push({ y: mm.y, draw: () => drawMe() });
       things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
       if (mallRide && mallRide.kind !== 'lift') {
@@ -5554,6 +6301,7 @@ function drawOutdoorFront() {
       }
       const things = [];
       mallShopFolk.forEach((p) => things.push({ y: p.y, draw: () => drawShopper(p.x, p.y, p.look, 0.9 + (p.y - 440) / 330, p.dir, p.v > 0 && p.pause <= 0, p.t, p.bag) }));
+      pushBuddy(things, 0.9);
       things.push({ y: mm.y, draw: () => drawMe() });
       things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
       const nk = nearShelf();
@@ -5805,13 +6553,14 @@ function drawOutdoorFront() {
         });
       });
       // a lone person at the last table
-      things.push({ y: 471, draw: () => drawSitter(tableX[2] + 30, 476, shopperLook[2]) });
+      if (!buddy && !partnerGone && !(mallEat && mallEat.table === 2)) things.push({ y: 471, draw: () => drawSitter(tableX[2] + 30, 476, shopperLook[2]) });
       if (mallEat) {
         const ex = tableX[mallEat.table];
         things.push({
           y: 480,
           draw: () => {
             drawSitter(ex - 30, 476, ['#f2c9a0', '#d71920', '#26344a']);
+            if (partner && !partner.done) drawSitter(ex + 30, 476, partner.look);
             // the food on the table, with steam, and a chomping mouth
             ctx.font = '22px sans-serif';
             ctx.fillStyle = '#000000';
@@ -5833,7 +6582,7 @@ function drawOutdoorFront() {
       mallShopFolk.forEach((p) => things.push({ y: p.y + 10, draw: () => drawShopper(p.x, p.y + 30, p.look, 0.9, p.dir, p.v > 0 && p.pause <= 0, p.t, p.bag) }));
       if (eidParty) {
         // the guests dance and celebrate between the stalls and the tables
-        [[64, 404, 1, 0.85], [150, 410, 3, 0.62], [240, 406, 4, 0.85], [296, 414, 0, 0.62], [338, 402, 5, 0.85]].forEach(([dx, dy, lk, sc], k) => {
+        [[64, 404, 1, 0.85], [240, 406, 4, 0.85], [338, 402, 5, 0.85]].forEach(([dx, dy, lk, sc], k) => {
           things.push({ y: dy, draw: () => {
             const bob = Math.abs(Math.sin(mallTime / 8 + k * 1.7)) * 5;
             drawShopper(dx, dy - bob, shopperLook[lk], sc, k % 2 ? -1 : 1, true, mallTime * 1.3 + k * 11, false);
@@ -5843,15 +6592,39 @@ function drawOutdoorFront() {
             ctx.fillText(sc < 0.7 ? '\u{1F388}' : '\u{1F389}', dx + 14, dy - 58 * sc - bob);
           } });
         });
+        // the kids: give them a present and some money
+        partyKids.forEach(([kx, ky, lk], i) => {
+          things.push({ y: ky, draw: () => {
+            const bob = Math.abs(Math.sin(mallTime / 8 + i * 1.3)) * (kidGift[i] ? 7 : 4);
+            drawShopper(kx, ky - bob, shopperLook[lk], 0.62, i % 2 ? -1 : 1, true, mallTime * 1.3 + i * 9, false);
+            ctx.font = '20px sans-serif';
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            ctx.fillText(kidGift[i] ? '\u{1F381}' : '\u{1F388}', kx + 13, ky - 40 - bob);
+          } });
+        });
       }
+      pushBuddy(things, 0.9);
       things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
+      partyKids.forEach(([kx, ky], i) => {
+        if (eidParty && kidSay[i] > 0) drawBubble(kx, ky - 58, 'Thank you! Eid Mubarak!');
+      });
+      if (mallEat && partner && !partner.done && mallEat.t >= 140) {
+        const lines = chatLines();
+        const li = Math.floor(partner.chatT / CHAT_LINE);
+        if (li < lines.length) drawBubble(tableX[mallEat.table] + (lines[li][0] === 'p' ? 30 : -30), 408, lines[li][1]);
+      }
       // hints
       const ns = nearStall();
       const nt = nearTable();
+      const nkid = eidParty ? nearKid() : -1;
       if (!mallEat) {
         let text = null;
         let hx = 200;
-        if (ns >= 0) {
+        if (nkid >= 0) {
+          text = kidGift[nkid] ? '\u{1F60A} A happy kid!' : 'Tap: give a \u{1F381} + \u{1F4B0} (3 coins)';
+          hx = partyKids[nkid][0];
+        } else if (ns >= 0) {
           text = mallTray ? 'Eat your food first!' : 'Tap to order ' + curStalls()[ns][0] + ' \u{1F4B0}' + curStalls()[ns][2];
           hx = stallX[ns];
         } else if (nt >= 0) {
@@ -5896,6 +6669,7 @@ function drawOutdoorFront() {
       ctx.fillStyle = '#ffffff';
       ctx.fillText('\u{1F6CD}\uFE0F ' + mallBag.length + (mallTrolley ? ' \u{1F6D2}' : '/3'), 72, 63);
       drawAdhan();
+      if (buddy && buddy.bye && buddy.bye.t < 65) drawBubble(mm.x - (mallShop < 0 ? mallCamX : 0), mm.y - 96, 'Bye ' + buddy.name + '! \u{1F44B}');
       if (eidParty && !eidPartyDone && mallShop < 0) {
         roundedRect(8, 178, 330, 28, 14);
         ctx.fillStyle = '#d94f8a';
@@ -6738,7 +7512,7 @@ function drawOutdoorFront() {
       else if (phase === 'beach') drawBeach();
       else if (phase === 'apartment' || phase === 'start' || phase === 'homedone') {
         drawApartment();
-        drawMedalShelf();
+        if (aptRoom === 'kitchen') drawMedalShelf();
       }
       else if (phase === 'station') drawStation();
       else if (phase === 'ride') return;
@@ -6784,6 +7558,8 @@ function drawOutdoorFront() {
       if (!gameOver) drawMessage();
       if (liftOpen) drawLiftPanel();
       if (metroOpen) drawMetroPanel();
+      if (fridgeOpen) drawFridgePanel();
+      if (buddyAsk) drawBuddyAsk();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
         drawOverlay('Tap to start', 'Make breakfast, get your keys', 'then drive or take the metro!');
