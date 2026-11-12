@@ -1219,6 +1219,8 @@
       resetToilet();
       resetAdhan();
       facState.eidi = false;
+      eidParty = false;
+      eidPartyDone = false;
       wuduDone = false;
       salah = null;
       facState.book = false;
@@ -1298,6 +1300,7 @@
       }
       blip(988, 988, 0.15, 0.08);
       blip(1318, 1318, 0.2, 0.08, 0.14);
+      if (eidParty && !!mallShopsData[mallShop].food) say('Eid Mubarak! Join the Eid breakfast party \u{1F389} Order something sweet!', 240);
     }
 
     function leaveShop() {
@@ -1363,6 +1366,8 @@
     const inFacility = () => mallShop >= 0 && !!mallShopsData[mallShop].facility;
     const facState = { shoes: false, washed: false, book: false, eidi: false }; // eidi: the imam has an Eidi envelope for you
     let eidiAmt = 0;
+    let eidParty = false; // after the Eid prayer: the Eid breakfast party in the food court
+    let eidPartyDone = false;
     let wuduDone = false; // you have washed (wudu) and can pray; using the toilet undoes it
     let prayMode = new Date().getDay() === 5 ? 'friday' : 'normal'; // normal, friday (Jumu'ah) or eid: bigger and bigger crowds
     let facFx = 0; // a little animation (water, hand dryer)
@@ -1723,6 +1728,10 @@
         if (mode === 'friday') facAward(2, 25, 'Jumu\'ah Mubarak! The Friday prayer is finished \u{1F932}');
         else if (mode === 'eid') facAward(3, 40, 'Eid Mubarak! The Eid prayer is finished \u{1F319}');
         else facAward(0, 15, 'The prayer is finished \u{1F932}');
+        if (mode === 'eid' && !eidParty) {
+          eidParty = true;
+          eidPartyDone = false;
+        }
         if (mode === 'eid' && !mallDone[mallShop][4]) {
           facState.eidi = true;
           say('The imam has an Eidi for you \u{1F9E7} Tap him!', 240);
@@ -2524,6 +2533,14 @@
       ['\u{1F363}', 'Sushi', 4, '#2a9d8f'],
       ['\u{1F964}', 'Juice', 1, '#8e44ad'],
     ];
+    // the Eid breakfast menu at the party: cheap, sweet and special
+    const eidStalls = [
+      ['\u{1F334}', 'Dates', 1, '#8d5a2b'],
+      ['\u{1F369}', 'Luqaimat', 2, '#d9822b'],
+      ['\u{1F36A}', "Ma'amoul", 2, '#b5651d'],
+      ['☕', 'Karak chai', 1, '#c0392b'],
+    ];
+    const curStalls = () => (eidParty ? eidStalls : foodStalls);
     const inFoodCourt = () => mallShop >= 0 && !!mallShopsData[mallShop].food;
     const nearStall = () => {
       for (let k = 0; k < 4; k++) if (Math.abs(mm.x - stallX[k]) < 36) return k;
@@ -2535,7 +2552,7 @@
     };
 
     function orderFood(k) {
-      const [emoji, name, price] = foodStalls[k];
+      const [emoji, name, price] = curStalls()[k];
       if (mallTray) {
         say('Eat your food first! Find a free table.', 110);
         return;
@@ -2705,8 +2722,15 @@
           mallTray = null;
           mm.x = tableX[nearTable() >= 0 ? nearTable() : 1] - 60;
           mm.y = 500;
-          addScore(5 + price);
-          say('Yummy! \u{1F60B} +' + (5 + price), 150);
+          if (eidParty && !eidPartyDone) {
+            eidPartyDone = true;
+            addScore(15 + price);
+            say('Eid breakfast with everyone! \u{1F973} +' + (15 + price), 220);
+            [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.25, 0.1, j * 0.12));
+          } else {
+            addScore(5 + price);
+            say('Yummy! \u{1F60B} +' + (5 + price), 150);
+          }
           [523, 659, 784].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.1));
         }
         mallShopFolk.forEach((s) => wander(s, step, 60, 360));
@@ -5667,9 +5691,45 @@ function drawOutdoorFront() {
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 18px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText('\u{1F37D}\uFE0F FOOD COURT \u2022 مطاعم', 200, 89);
+      ctx.fillText(eidParty ? '\u{1F389} EID BREAKFAST PARTY' : '\u{1F37D}️ FOOD COURT • مطاعم', 200, 89);
+      if (eidParty) {
+        // flags, balloons and confetti for the Eid party
+        const fcols = ['#e63946', '#ffd166', '#2a9d8f', '#4a90d9', '#f15bb5', '#52b788'];
+        ctx.strokeStyle = '#7b5a3a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 108);
+        ctx.quadraticCurveTo(200, 138, 400, 108);
+        ctx.stroke();
+        for (let k = 0; k < 16; k++) {
+          const u = (k + 0.5) / 16;
+          const fx = u * 400;
+          const fy = (1 - u) * (1 - u) * 108 + 2 * (1 - u) * u * 123 + u * u * 108;
+          ctx.fillStyle = fcols[k % 6];
+          ctx.beginPath();
+          ctx.moveTo(fx - 8, fy);
+          ctx.lineTo(fx + 8, fy);
+          ctx.lineTo(fx, fy + 16);
+          ctx.fill();
+        }
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000000';
+        [[24, 190], [376, 190], [46, 230], [354, 232]].forEach(([bx, by], k) => ctx.fillText(k % 2 ? '\u{1F388}' : '\u{1F38A}', bx, by + Math.sin(mallTime / 20 + k) * 5));
+        ctx.font = '22px sans-serif';
+        ctx.fillText('\u{1F3EE}', 70, 120 + Math.sin(mallTime / 25) * 3);
+        ctx.fillText('\u{1F3EE}', 330, 120 + Math.cos(mallTime / 25) * 3);
+        ctx.fillText('\u{1F319}', 200, 128);
+        const ccols = ['#e63946', '#ffd166', '#2a9d8f', '#4a90d9', '#f15bb5', '#52b788'];
+        for (let k = 0; k < 28; k++) {
+          const cx = (k * 61 + mallTime * (0.3 + (k % 3) * 0.2)) % 400;
+          const cy = (mallTime * (0.8 + (k % 4) * 0.3) + k * 37) % 360;
+          ctx.fillStyle = ccols[k % 6];
+          ctx.fillRect(cx, cy, 5, 8);
+        }
+      }
       // the food stalls
-      foodStalls.forEach(([emoji, name, price, colour], k) => {
+      curStalls().forEach(([emoji, name, price, colour], k) => {
         const x = stallX[k];
         ctx.fillStyle = '#efe3d0';
         ctx.fillRect(x - 38, 150, 76, 150);
@@ -5771,6 +5831,19 @@ function drawOutdoorFront() {
         things.push({ y: mm.y, draw: drawMe });
       }
       mallShopFolk.forEach((p) => things.push({ y: p.y + 10, draw: () => drawShopper(p.x, p.y + 30, p.look, 0.9, p.dir, p.v > 0 && p.pause <= 0, p.t, p.bag) }));
+      if (eidParty) {
+        // the guests dance and celebrate between the stalls and the tables
+        [[64, 404, 1, 0.85], [150, 410, 3, 0.62], [240, 406, 4, 0.85], [296, 414, 0, 0.62], [338, 402, 5, 0.85]].forEach(([dx, dy, lk, sc], k) => {
+          things.push({ y: dy, draw: () => {
+            const bob = Math.abs(Math.sin(mallTime / 8 + k * 1.7)) * 5;
+            drawShopper(dx, dy - bob, shopperLook[lk], sc, k % 2 ? -1 : 1, true, mallTime * 1.3 + k * 11, false);
+            ctx.font = (sc < 0.7 ? 20 : 17) + 'px sans-serif';
+            ctx.fillStyle = '#000000';
+            ctx.textAlign = 'center';
+            ctx.fillText(sc < 0.7 ? '\u{1F388}' : '\u{1F389}', dx + 14, dy - 58 * sc - bob);
+          } });
+        });
+      }
       things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
       // hints
       const ns = nearStall();
@@ -5779,7 +5852,7 @@ function drawOutdoorFront() {
         let text = null;
         let hx = 200;
         if (ns >= 0) {
-          text = mallTray ? 'Eat your food first!' : 'Tap to order ' + foodStalls[ns][0] + ' \u{1F4B0}' + foodStalls[ns][2];
+          text = mallTray ? 'Eat your food first!' : 'Tap to order ' + curStalls()[ns][0] + ' \u{1F4B0}' + curStalls()[ns][2];
           hx = stallX[ns];
         } else if (nt >= 0) {
           text = mallTray ? (tableBusy[nt] ? 'This table is taken' : 'Tap to sit and eat!') : 'Order some food first';
@@ -5823,6 +5896,18 @@ function drawOutdoorFront() {
       ctx.fillStyle = '#ffffff';
       ctx.fillText('\u{1F6CD}\uFE0F ' + mallBag.length + (mallTrolley ? ' \u{1F6D2}' : '/3'), 72, 63);
       drawAdhan();
+      if (eidParty && !eidPartyDone && mallShop < 0) {
+        roundedRect(8, 178, 330, 28, 14);
+        ctx.fillStyle = '#d94f8a';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('\u{1F389} Eid breakfast party! Food Court, level 1', 18, 197);
+      }
       if (toi.stage > 0) {
         const flash = toi.stage === 1 && Math.floor(mallTime / 18) % 2;
         ctx.fillStyle = flash ? '#ff4d5a' : '#c1121f';
