@@ -572,6 +572,14 @@
       { name: 'Circle Mall', ar: 'سيركل مول', colour: '#8338ec', kind: 'mall' },
     ];
     // the beaches you can drive to
+    // the mosques you can drive to: Sharjah Mosque has an indoor car park with 5 levels, the others have outdoor parking
+    const mosques = [
+      { name: 'Sharjah Mosque', ar: 'مسجد الشارقة', colour: '#1f7a5a', kind: 'mosque', indoor: true },
+      { name: 'Jumeirah Mosque', ar: 'مسجد جميرا', colour: '#b8893a', kind: 'mosque' },
+      { name: 'Sheikh Zayed Grand Mosque', ar: 'جامع الشيخ زايد الكبير', colour: '#5f7a99', kind: 'mosque' },
+      { name: 'Al Farooq Mosque', ar: 'مسجد الفاروق', colour: '#2a7f9e', kind: 'mosque' },
+      { name: 'Al Noor Mosque', ar: 'مسجد النور', colour: '#8a5fb0', kind: 'mosque' },
+    ];
     const beaches = [
       { name: 'Jumeirah Beach', ar: 'شاطئ جميرا', colour: '#1ea7c9', kind: 'beach' },
       { name: 'Kite Beach', ar: 'شاطئ الطائرات الورقية', colour: '#0096c7', kind: 'beach' },
@@ -866,9 +874,10 @@
     let levelFadeTo = 0;
     let lotKind = 'home';
     // the car park has levels 1 to 11 and an outdoor level on the top (homes have 3 and outdoor)
-    const topLevel = () => (lotKind === 'home' ? 12 : lotKind === 'beach' || lotKind === 'metro' ? 1 : 10);
-    const levelName = (l) => (lotKind === 'beach' ? 'Beach car park' : lotKind === 'metro' ? 'Park & Ride' : l === topLevel() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
-    const lotOutdoor = () => lotLevel === topLevel();
+    const topLevel = () => (lotKind === 'home' ? 12 : lotKind === 'beach' || lotKind === 'metro' ? 1 : lotKind === 'mosque' ? (dest.indoor ? 5 : 1) : 10);
+    const indoorMosque = () => lotKind === 'mosque' && !!dest.indoor;
+    const levelName = (l) => (lotKind === 'beach' ? 'Beach car park' : lotKind === 'metro' ? 'Park & Ride' : lotKind === 'mosque' && !dest.indoor ? 'Mosque car park' : l === topLevel() && !indoorMosque() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
+    const lotOutdoor = () => lotLevel === topLevel() && !indoorMosque();
     let parked = false;
     let parkedT = 0;
     let lotCars = [];
@@ -1112,6 +1121,12 @@
         if (lotKind === 'beach') {
           if (leg === 'out' && !shopped) enterBeach();
           else leaveBackToCar();
+        } else if (lotKind === 'mosque') {
+          me.y = 192;
+          hold = null;
+          if (dest.indoor) openLift('mosque', { type: 'level', val: lotLevel });
+          else if (leg === 'out' && !shopped) enterMosque();
+          else leaveBackToCar();
         } else if (lotKind === 'metro') {
           me.y = 192;
           hold = null;
@@ -1185,6 +1200,9 @@
     const mallSlotX = [0, 100, 200, 400, 500, 600, 800, 880, 960, 1040]; // the six shops on each floor; the escalator is in the middle; then the lift and the services wing
     const mallSlots = 10;
     const mallWorldW = 1160;
+    const isMosque = () => !!dest && dest.kind === 'mosque';
+    const worldW = () => (isMosque() ? W : mallWorldW);
+    const slotCount = () => (isMosque() ? 3 : mallSlots);
     const liftX = 750;
     const mallEscX = 350;
     const mm = { x: 200, y: 505, dir: 1, stepT: 0, moving: false, goto: null };
@@ -1210,9 +1228,9 @@
       ['#f2c9a0', '#6a4c93', '#4a4a4a'], ['#e0ac84', '#ffd166', '#1d3557'], ['#6f4426', '#ffffff', '#7a5a3a'],
     ];
     const mallShelfX = [96, 200, 304];
-    const mallShopIdx = (slot) => (slot >= 6 ? 18 + slot : mallFloor * 6 + slot);
+    const mallShopIdx = (slot) => (isMosque() ? 24 + slot : slot >= 6 ? 18 + slot : mallFloor * 6 + slot);
     let mallSlotIn = 0;
-    const mallDoorX = (slot) => mallSlotX[slot] + 50;
+    const mallDoorX = (slot) => (isMosque() ? 90 + slot * 110 : mallSlotX[slot] + 50);
 
     let mallPlace = '';
     function initMallState(keep) {
@@ -1270,6 +1288,261 @@
       blip(1318, 1318, 0.2, 0.1, 0.14);
     }
 
+    // ---------- the mosque: wudu, the prayer hall and the restrooms ----------
+    function enterMosque() {
+      if (!mallActive || mallPlace !== dest.name) initMallState(mallActive);
+      mallActive = true;
+      mallPlace = dest.name;
+      phase = 'mall';
+      mallFloor = 0;
+      mallShop = -1;
+      mallRide = null;
+      mm.x = 200;
+      mm.y = 505;
+      mm.goto = null;
+      mm.dir = 1;
+      mallCamX = 0;
+      hold = null;
+      say('Welcome to ' + dest.name + '! Do your wudu first, then pray in the prayer hall \u{1F54C}', 260);
+      blip(988, 988, 0.15, 0.1);
+      blip(1318, 1318, 0.2, 0.1, 0.14);
+    }
+    function leaveMosque() {
+      mallShop = -1;
+      if (dest.indoor) {
+        say('Take the lift to your car! The green ring shows its level.', 200);
+        openLift('mosque', { type: 'mosque', val: 0 });
+      } else {
+        phase = 'walk';
+        shopped = true;
+        me.x = 200;
+        me.y = 200;
+        me.hurt = 0;
+        leftCar = true;
+        hold = null;
+        say('Walk back to your car and get in!', 200);
+      }
+    }
+    function drawMosqueStreet() {
+      const wall = ctx.createLinearGradient(0, 0, 0, 400);
+      wall.addColorStop(0, '#efe3c6');
+      wall.addColorStop(1, '#f8f1df');
+      ctx.fillStyle = wall;
+      ctx.fillRect(0, 0, W, 410);
+      // a geometric band along the wall
+      ctx.fillStyle = '#2f8f7a';
+      ctx.fillRect(0, 126, W, 10);
+      ctx.fillStyle = '#ffd166';
+      for (let x = 10; x < W; x += 20) {
+        ctx.beginPath();
+        ctx.moveTo(x, 131);
+        ctx.lineTo(x + 5, 126);
+        ctx.lineTo(x + 10, 131);
+        ctx.lineTo(x + 5, 136);
+        ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(47, 143, 122, 0.12)';
+      for (let x = 0; x < W; x += 40) for (let y = 142; y < 400; y += 40) ctx.fillRect(x + 8, y + 8, 24, 24);
+      // lamps
+      [50, 150, 250, 350].forEach((lx, k) => {
+        ctx.strokeStyle = '#8a6c4a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(lx, 0);
+        ctx.lineTo(lx, 50 + (k % 2) * 8);
+        ctx.stroke();
+        ctx.fillStyle = '#ffd166';
+        ctx.beginPath();
+        ctx.ellipse(lx, 58 + (k % 2) * 8, 11, 9, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 230, 150, 0.2)';
+        ctx.beginPath();
+        ctx.arc(lx, 58 + (k % 2) * 8, 24, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      // the name of the mosque
+      roundedRect(50, 82, 300, 36, 10);
+      ctx.fillStyle = dest.colour;
+      ctx.fill();
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      fitText('\u{1F54C} ' + dest.name, 270, 17);
+      ctx.fillText('\u{1F54C} ' + dest.name, 200, 106);
+      // the three doors under arches
+      const names = ['Wudu Area', 'Prayer Hall', 'Restrooms'];
+      for (let s = 0; s < 3; s++) {
+        const x = mallDoorX(s);
+        const sh = mallShopsData[24 + s];
+        ctx.beginPath();
+        ctx.moveTo(x - 42, 404);
+        ctx.lineTo(x - 42, 300);
+        ctx.arc(x, 300, 42, Math.PI, 0);
+        ctx.lineTo(x + 42, 404);
+        ctx.closePath();
+        ctx.fillStyle = s === 1 ? '#e8cf85' : '#d9c89a';
+        ctx.fill();
+        ctx.strokeStyle = '#b8893a';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x - 32, 404);
+        ctx.lineTo(x - 32, 302);
+        ctx.arc(x, 302, 32, Math.PI, 0);
+        ctx.lineTo(x + 32, 404);
+        ctx.closePath();
+        ctx.fillStyle = '#6b4a2e';
+        ctx.fill();
+        ctx.fillStyle = '#8a6a44';
+        ctx.fillRect(x - 28, 310, 26, 90);
+        ctx.fillRect(x + 2, 310, 26, 90);
+        ctx.fillStyle = '#ffd166';
+        ctx.beginPath();
+        ctx.arc(x - 6, 360, 2.5, 0, Math.PI * 2);
+        ctx.arc(x + 6, 360, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        roundedRect(x - 46, 228, 92, 24, 6);
+        ctx.fillStyle = sh.colour;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        fitText(sh.emoji + ' ' + names[s], 84, 11);
+        ctx.fillText(sh.emoji + ' ' + names[s], x, 245);
+      }
+      // the floor with a green carpet
+      ctx.fillStyle = '#e9e1cf';
+      ctx.fillRect(0, 404, W, H - 404);
+      ctx.strokeStyle = 'rgba(120, 110, 95, 0.16)';
+      ctx.lineWidth = 1.5;
+      [420, 450, 490, 540].forEach((y) => {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      });
+      roundedRect(30, 430, 340, 130, 10);
+      ctx.fillStyle = '#2f8f7a';
+      ctx.fill();
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.lineWidth = 2;
+      for (let x = 60; x < 360; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 452);
+        ctx.lineTo(x + 20, 495);
+        ctx.lineTo(x, 538);
+        ctx.lineTo(x - 20, 495);
+        ctx.closePath();
+        ctx.stroke();
+      }
+      const things = [];
+      pushBuddy(things, 0.8);
+      things.push({ y: mm.y, draw: () => drawMe() });
+      things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
+      const nd = nearMallDoor();
+      if (nd >= 0 && !mallRide) {
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+        roundedRect(mallDoorX(nd) - 66, 196, 132, 26, 13);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F6AA} Tap the door to go in', mallDoorX(nd), 214);
+      }
+    }
+    function drawMosqueFront() {
+      const sky = ctx.createLinearGradient(0, 0, 0, 172);
+      sky.addColorStop(0, '#9fd3ee');
+      sky.addColorStop(1, '#f2f7e8');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 172);
+      ctx.fillStyle = 'rgba(120, 150, 175, 0.35)';
+      [[2, 90, 22], [378, 80, 22]].forEach(([x, y, w]) => ctx.fillRect(x, y, w, 172 - y));
+      // the minarets
+      [58, 342].forEach((mx) => {
+        ctx.fillStyle = '#f3ead7';
+        ctx.fillRect(mx - 8, 40, 16, 132);
+        ctx.fillStyle = '#d8c39a';
+        ctx.fillRect(mx - 11, 62, 22, 6);
+        ctx.fillRect(mx - 11, 100, 22, 6);
+        ctx.fillStyle = '#2f8f7a';
+        ctx.beginPath();
+        ctx.moveTo(mx - 10, 40);
+        ctx.quadraticCurveTo(mx, 6, mx + 10, 40);
+        ctx.fill();
+        ctx.fillStyle = '#ffd166';
+        ctx.fillRect(mx - 1, 8, 2, 8);
+        ctx.fillStyle = '#9fc6de';
+        ctx.fillRect(mx - 3, 76, 6, 14);
+      });
+      // the main building and the big dome
+      ctx.fillStyle = '#f3ead7';
+      ctx.fillRect(84, 84, 232, 88);
+      ctx.fillStyle = '#d8c39a';
+      ctx.fillRect(84, 84, 232, 6);
+      const dg = ctx.createLinearGradient(0, 20, 0, 84);
+      dg.addColorStop(0, '#ffffff');
+      dg.addColorStop(1, '#d7ece6');
+      ctx.fillStyle = dg;
+      ctx.beginPath();
+      ctx.arc(200, 84, 52, Math.PI, 0);
+      ctx.fill();
+      ctx.strokeStyle = '#2f8f7a';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = '#ffd166';
+      ctx.fillRect(199, 20, 2, 12);
+      ctx.beginPath();
+      ctx.arc(200, 24, 4, 0.5, Math.PI * 2 - 0.5);
+      ctx.fill();
+      // arched windows
+      [102, 134, 266, 298].forEach((wx) => {
+        ctx.fillStyle = '#9fc6de';
+        ctx.beginPath();
+        ctx.moveTo(wx - 9, 140);
+        ctx.lineTo(wx - 9, 112);
+        ctx.arc(wx, 112, 9, Math.PI, 0);
+        ctx.lineTo(wx + 9, 140);
+        ctx.fill();
+      });
+      // the entrance and the sign
+      ctx.fillStyle = '#b8893a';
+      ctx.beginPath();
+      ctx.moveTo(166, 172);
+      ctx.lineTo(166, 126);
+      ctx.arc(200, 126, 34, Math.PI, 0);
+      ctx.lineTo(234, 172);
+      ctx.fill();
+      ctx.fillStyle = '#6b4a2e';
+      ctx.beginPath();
+      ctx.moveTo(174, 172);
+      ctx.lineTo(174, 128);
+      ctx.arc(200, 128, 26, Math.PI, 0);
+      ctx.lineTo(226, 172);
+      ctx.fill();
+      roundedRect(130, 92, 140, 22, 6);
+      ctx.fillStyle = dest.colour;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      fitText(dest.name, 130, 13);
+      ctx.fillText(dest.name, 200, 108);
+      [[24, 168], [376, 168]].forEach(([px, py]) => {
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(px - 2, py - 24, 4, 24);
+        drawPalm(px, py - 26);
+      });
+    }
+
     function leaveMall() {
       if (phase !== 'mall' || mallRide) return;
       if (toi.stage > 0) {
@@ -1281,17 +1554,21 @@
         buddyBye(() => leaveMall());
         return;
       }
+      if (isMosque()) {
+        leaveMosque();
+        return;
+      }
       mallShop = -1;
       say('Take the lift to your car! The green ring shows its level.', 200);
       openLift('mall', { type: 'floor', val: mallFloor });
     }
 
     function nearMallDoor() {
-      for (let s = 0; s < mallSlots; s++) if (Math.abs(mm.x - mallDoorX(s)) < 36) return s;
+      for (let s = 0; s < slotCount(); s++) if (Math.abs(mm.x - mallDoorX(s)) < 36) return s;
       return -1;
     }
-    const nearMallEsc = () => Math.abs(mm.x - mallEscX) < 42;
-    const nearLift = () => Math.abs(mm.x - liftX) < 40;
+    const nearMallEsc = () => !isMosque() && Math.abs(mm.x - mallEscX) < 42;
+    const nearLift = () => !isMosque() && Math.abs(mm.x - liftX) < 40;
     function nearShelf() {
       for (let k = 0; k < 3; k++) if (Math.abs(mm.x - mallShelfX[k]) < 40) return k;
       return -1;
@@ -2530,7 +2807,7 @@
     }
 
     // ---------- the trolley ----------
-    const nearTrolleyBay = () => mallFloor === 0 && mallShop < 0 && Math.abs(mm.x - trolleyBayX) < 30;
+    const nearTrolleyBay = () => !isMosque() && mallFloor === 0 && mallShop < 0 && Math.abs(mm.x - trolleyBayX) < 30;
     function trolleyAction() {
       if (!mallTrolley) {
         mallTrolley = true;
@@ -2667,7 +2944,7 @@
       if (!buddy || inFacility() || salah) return;
       buddy.t += step;
       const minX = mallShop < 0 ? 30 : 22;
-      const maxX = mallShop < 0 ? mallWorldW - 30 : 380;
+      const maxX = mallShop < 0 ? worldW() - 30 : 380;
       const tx = Math.max(minX, Math.min(maxX, mm.x - mm.dir * 46));
       const ty = Math.max(452, Math.min(548, mm.y - 6));
       const dx = tx - buddy.x;
@@ -2813,7 +3090,7 @@
       mm.act = null;
       if (mallBusy()) return;
       if (mallShop < 0) {
-        for (let s = 0; s < mallSlots; s++) {
+        for (let s = 0; s < slotCount(); s++) {
           const sx = mallDoorX(s) - mallCamX;
           if (p.x > sx - 40 && p.x < sx + 40 && p.y > 240 && p.y < 416) {
             mm.goto = mallDoorX(s);
@@ -2821,17 +3098,17 @@
           }
         }
         const ex = mallEscX - mallCamX;
-        if (p.x > ex - 56 && p.x < ex + 56 && p.y > 200 && p.y < 440) {
+        if (!isMosque() && p.x > ex - 56 && p.x < ex + 56 && p.y > 200 && p.y < 440) {
           mm.goto = mallEscX;
           return;
         }
         const lx = liftX - mallCamX;
-        if (p.x > lx - 48 && p.x < lx + 48 && p.y > 200 && p.y < 440) {
+        if (!isMosque() && p.x > lx - 48 && p.x < lx + 48 && p.y > 200 && p.y < 440) {
           mm.goto = liftX;
           return;
         }
         const bx = trolleyBayX - mallCamX;
-        if (mallFloor === 0 && p.x > bx - 44 && p.x < bx + 44 && p.y >= 416 && p.y < 475) {
+        if (!isMosque() && mallFloor === 0 && p.x > bx - 44 && p.x < bx + 44 && p.y >= 416 && p.y < 475) {
           mm.goto = trolleyBayX;
           mm.act = { kind: 'trolley' };
           return;
@@ -2992,7 +3269,7 @@
       mm.moving = dx !== 0 || dy !== 0;
       if (mm.moving) {
         if (dx !== 0) mm.dir = dx > 0 ? 1 : -1;
-        const maxX = mallShop < 0 ? mallWorldW - 30 : 380;
+        const maxX = mallShop < 0 ? worldW() - 30 : 380;
         mm.x = Math.max(mallShop < 0 ? 30 : 22, Math.min(maxX, mm.x + Math.sign(dx) * 2.8 * step));
         mm.y = Math.max(452, Math.min(548, mm.y + Math.sign(dy) * 1.8 * step));
         mm.stepT += step;
@@ -3000,7 +3277,7 @@
       updateBuddy(step);
       if (mallShop < 0) {
         if (adhan.t < 0) mallShoppers.forEach((s) => wander(s, step, 60, mallWorldW - 60));
-        const want = Math.max(0, Math.min(mallWorldW - W, mm.x - 200));
+        const want = Math.max(0, Math.min(worldW() - W, mm.x - 200));
         mallCamX += (want - mallCamX) * (1 - Math.pow(1 - 0.12, step));
       } else {
         if (!inFacility()) mallShopFolk.forEach((s) => wander(s, step, 60, 360));
@@ -4112,7 +4389,7 @@
     let liftRide = null;
     let departing = false;
     let mallActive = false;
-    const carParkTop = (kind) => (kind === 'home' ? 12 : 10);
+    const carParkTop = (kind) => (kind === 'home' ? 12 : kind === 'mosque' ? (dest.indoor ? 5 : 1) : 10);
     const lvlName = (kind, l) => (l === carParkTop(kind) ? 'Level ' + l + ' (outdoor)' : 'Level ' + l);
     const floorLabel = ['G', '1', '2', '3'];
 
@@ -4128,6 +4405,13 @@
         for (let l = 1; l <= top; l++) {
           const i = l - 1;
           b.push({ label: 'P' + l, type: 'level', val: l, x: 20 + ((i % 5) + 0.5) * 72, y: 278 + Math.floor(i / 5) * 66, r: 24, roof: l === top });
+        }
+      } else if (kind === 'mosque') {
+        b.push({ label: '\u{1F54C} The mosque', type: 'mosque', val: 0, x: 200, y: 166, r: 26, big: true });
+        const top = carParkTop(kind);
+        for (let l = 1; l <= top; l++) {
+          const i = l - 1;
+          b.push({ label: 'P' + l, type: 'level', val: l, x: 20 + ((i % 6) + 0.5) * 60, y: 292 + Math.floor(i / 6) * 62, r: 22 });
         }
       } else {
         b.push({ label: '\u{1F3E0} My flat', type: 'flat', val: 0, x: 200, y: 166, r: 26, big: true });
@@ -4169,7 +4453,7 @@
     }
 
     function labelOfSel(s) {
-      return s.type === 'floor' ? floorLabel[s.val] : s.type === 'flat' ? 'Flat' : s.type === 'metro' ? 'Metro' : 'P' + s.val;
+      return s.type === 'floor' ? floorLabel[s.val] : s.type === 'flat' ? 'Flat' : s.type === 'mosque' ? 'Mosque' : s.type === 'metro' ? 'Metro' : 'P' + s.val;
     }
 
     function startLiftRide(b) {
@@ -4184,6 +4468,10 @@
         return;
       }
       closeLift();
+      if (b.type === 'mosque') {
+        enterMosque();
+        return;
+      }
       if (b.type === 'metro') {
         enterStation(liftKind === 'home' ? homeStation : stationOfMall(dest.name));
         return;
@@ -4222,7 +4510,7 @@
         if (fromMall) mallShop = -1;
         if (!(kind === 'home' && from && from.type === 'flat')) shopped = true;
         phase = 'walk';
-        lotKind = kind === 'home' ? 'home' : 'mall';
+        lotKind = kind === 'home' ? 'home' : kind === 'mosque' ? 'mosque' : 'mall';
         if (kind === 'home' && from && from.type === 'flat') departing = true;
         lotLevel = to.val;
         bays = levelBays[lotLevel] || (levelBays[lotLevel] = makeLevel(lotLevel));
@@ -4273,6 +4561,9 @@
       if (liftKind === 'mall') {
         ctx.fillText('MALL FLOORS', 40, 130);
         ctx.fillText('CAR PARK', 40, 236);
+      } else if (liftKind === 'mosque') {
+        ctx.fillText('THE MOSQUE', 40, 130);
+        ctx.fillText('CAR PARK (5 INDOOR LEVELS)', 40, 262);
       } else {
         ctx.fillText('YOUR FLAT', 40, 130);
         ctx.fillText('CAR PARK UNDER YOUR BUILDING', 40, 246);
@@ -4937,7 +5228,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
-        else if (phase === 'mall') label = '\u{1F6AA} Leave the mall';
+        else if (phase === 'mall') label = isMosque() ? '\u{1F6AA} Leave the mosque' : '\u{1F6AA} Leave the mall';
         else if (phase === 'beach') label = nearSalt() ? '\u{1F354} Order at SALT' : nearKarak() ? '\u2615 Order at KARAK' : '\u{1F6AA} Leave the beach';
         else if (phase === 'station' && !(trip && trip.stage === 'end' && trip.timer > 0)) label = '\u{1F687} Open the metro map';
       }
@@ -5080,7 +5371,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       shields = [];
       police = null;
       addScore(10);
-      say(leg === 'out' ? 'Off to ' + dest.name + '! ' + (dest.kind === 'beach' ? '\u{1F3D6}\uFE0F' : '\u{1F6CD}\uFE0F') : 'You are home!', 140);
+      say(leg === 'out' ? 'Off to ' + dest.name + '! ' + (dest.kind === 'beach' ? '\u{1F3D6}\uFE0F' : dest.kind === 'mosque' ? '\u{1F54C}' : '\u{1F6CD}\uFE0F') : 'You are home!', 140);
       blip(660, 990, 0.2, 0.1);
     }
 
@@ -5853,7 +6144,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         const target = up ? lotLevel + 1 : lotLevel - 1;
-        ctx.fillText((up ? '\u2B06 ' : '\u2B07 ') + (target === topLevel() ? 'L' + target + ' Outdoor' : 'Level ' + target), x0 + 38, 483);
+        ctx.fillText((up ? '\u2B06 ' : '\u2B07 ') + (target === topLevel() && !indoorMosque() ? 'L' + target + ' Outdoor' : 'Level ' + target), x0 + 38, 483);
       };
       if (lotLevel < topLevel()) ramp(322, true);
       if (lotLevel > 1) ramp(2, false);
@@ -5869,6 +6160,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     }
 
 function drawOutdoorFront() {
+      if (lotKind === 'mosque') {
+        drawMosqueFront();
+        return;
+      }
       if (lotKind === 'beach') {
         drawBeachFront();
         return;
@@ -6856,7 +7151,8 @@ function drawOutdoorFront() {
         if (mallShopsData[mallShop].food) drawFoodCourt();
         else if (mallShopsData[mallShop].facility) drawFacility();
         else drawShopInside();
-      } else drawMallStreet();
+      } else if (isMosque()) drawMosqueStreet();
+      else drawMallStreet();
       // your coins, bags and trolley
       ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
       roundedRect(8, 44, mallTrolley ? 138 : 112, 28, 14);
@@ -6869,7 +7165,7 @@ function drawOutdoorFront() {
       ctx.fillText('\u{1F6CD}\uFE0F ' + mallBag.length + (mallTrolley ? ' \u{1F6D2}' : '/3'), 72, 63);
       drawAdhan();
       if (buddy && buddy.bye && buddy.bye.t < 65) drawBubble(mm.x - (mallShop < 0 ? mallCamX : 0), mm.y - 96, 'Bye ' + buddy.name + '! \u{1F44B}');
-      if (eidParty && !eidPartyDone && mallShop < 0) {
+      if (eidParty && !eidPartyDone && mallShop < 0 && !isMosque()) {
         roundedRect(8, 178, 330, 28, 14);
         ctx.fillStyle = '#d94f8a';
         ctx.fill();
@@ -6900,9 +7196,10 @@ function drawOutdoorFront() {
     const laneCount = 5;
     const laneW = (roadRight - roadLeft) / laneCount;
     function pickLanes() {
-      const pool = malls.slice().sort(() => Math.random() - 0.5).slice(0, laneCount - 2);
+      const pool = malls.slice().sort(() => Math.random() - 0.5).slice(0, laneCount - 3);
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, beaches[Math.floor(Math.random() * beaches.length)]); // the beach is one of the tunnels
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, metroDest); // and so are the metro stations
+      pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, mosques[Math.floor(Math.random() * mosques.length)]); // and a mosque
       return pool;
     }
     let gateRow = null;
@@ -7027,7 +7324,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.font = '13px sans-serif';
-        ctx.fillText(d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : '\u{1F6CD}️', cx, y - 88);
+        ctx.fillText(d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : '\u{1F6CD}️', cx, y - 88);
         const words = d.name.split(' ');
         const half = Math.ceil(words.length / 2);
         const l1 = words.slice(0, half).join(' ');
@@ -8150,7 +8447,7 @@ function drawOutdoorFront() {
         ctx.fillText('بيتي • Lift ⬆', 200, 99);
       } else {
         fitText(dest.name, 130, 15);
-        ctx.fillText('\u{1F6CD}️ ' + dest.name, 200, 82);
+        ctx.fillText((dest.kind === 'mosque' ? '\u{1F54C} ' : '\u{1F6CD}️ ') + dest.name, 200, 82);
         fitText(dest.ar, 130, 12, '');
         ctx.fillText(dest.ar + ' • Lift ⬆', 200, 99);
       }
@@ -8288,7 +8585,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : dest.kind === 'beach' ? '\u{1F3D6}\uFE0F ' : dest.kind === 'metro' ? '\u{1F687} ' : '\u{1F6CD}\uFE0F ') + dest.name, W / 2, 28);
+        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : dest.kind === 'beach' ? '\u{1F3D6}\uFE0F ' : dest.kind === 'metro' ? '\u{1F687} ' : dest.kind === 'mosque' ? '\u{1F54C} ' : '\u{1F6CD}\uFE0F ') + dest.name, W / 2, 28);
       }
       if ((phase === 'park' || phase === 'walk') && levelFade <= 0) {
         ctx.fillStyle = 'rgba(31, 95, 168, 0.85)';
