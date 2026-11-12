@@ -827,6 +827,7 @@
 
     function nextTrip() {
       tripNo++;
+      gameDate = new Date(gameDate.getFullYear(), gameDate.getMonth(), gameDate.getDate() + 1);
       shopped = false;
       mallBag = [];
       bootDone = false;
@@ -2999,6 +3000,13 @@
 
     // ---------- your home: wake up, make breakfast, get your things and go down in the lift ----------
     const apt = { food: false, cooking: 0, cooked: false, eating: null, eaten: false, items: [false, false, false, false], woke: false, showered: false, brushed: false, shower: 0, menu: [], fade: 0 };
+    // the calendar: every new day is the next day of the week, and Friday is the day of the Friday prayer
+    let gameDate = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const isFriday = () => gameDate.getDay() === 5;
+    let calOpen = false;
+    let calLeave = false; // the calendar opened when you go out
     let aptRoom = 'kitchen'; // your flat: the bedroom, the bathroom (downstairs) and the kitchen
     const bedX = 85;
     const stairsX = 352;
@@ -3050,6 +3058,9 @@
       apt.skipped = false;
       apt.items = [false, false, false, false];
       aptRoom = 'bed';
+      apt.calSeen = false;
+      calOpen = false;
+      prayMode = isFriday() ? 'friday' : 'normal';
       apt.woke = false;
       apt.showered = false;
       apt.brushed = false;
@@ -3066,7 +3077,7 @@
       hold = null;
       departing = false;
       setupHomeLot();
-      say((first ? 'Good morning! ' : 'A new day! ') + 'Tap to wake up \u2600\uFE0F', 240);
+      say((first ? 'Good morning! ' : 'A new day! ') + 'It is ' + dayNames[gameDate.getDay()] + (isFriday() ? ' \u{1F54C}' : '') + ' \u2600\uFE0F Tap to wake up', 260);
     }
 
     function goRoom(r) {
@@ -3090,7 +3101,7 @@
     }
 
     function aptAction(a) {
-      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || apt.fade > 25) return;
+      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || calOpen || apt.fade > 25) return;
       if (aptRoom === 'bed') {
         if (a === 'bed') {
           if (!apt.woke) {
@@ -3152,7 +3163,8 @@
         else if (!apt.eaten && !apt.skipped) {
           apt.skipped = true;
           say('Breakfast first? Tap the table. Or tap the door again to go without it.', 170);
-        } else leaveApartment();
+        } else if (!apt.calSeen) openCalendar(true);
+        else leaveApartment();
       } else if (typeof a === 'number') {
         if (apt.items[a]) say('You already have your ' + aptItems[a][1] + '.', 80);
         else {
@@ -3268,6 +3280,146 @@
       ctx.fillText('Close ✖', 200, 533);
     }
 
+    // ---- the calendar
+    function openCalendar(leaving) {
+      calOpen = true;
+      calLeave = leaving;
+      hold = null;
+      blip(700, 700, 0.08, 0.08);
+    }
+    function calendarPress(p) {
+      if (calLeave) {
+        if (p.x > 40 && p.x < 190 && p.y > 498 && p.y < 542) {
+          calOpen = false;
+          apt.calSeen = true;
+          leaveApartment();
+        } else if (p.x > 210 && p.x < 360 && p.y > 498 && p.y < 542) calOpen = false;
+      } else if (p.x > 130 && p.x < 270 && p.y > 498 && p.y < 542) calOpen = false;
+    }
+    function wrapLines(text, maxChars) {
+      const out = [];
+      let line = '';
+      text.split(' ').forEach((w) => {
+        if ((line + ' ' + w).trim().length > maxChars) {
+          out.push(line);
+          line = w;
+        } else line = (line + ' ' + w).trim();
+      });
+      if (line) out.push(line);
+      return out;
+    }
+    function drawCalendarPanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(20, 40, 360, 520, 18);
+      ctx.fillStyle = '#fffdf6';
+      ctx.fill();
+      ctx.strokeStyle = '#d62828';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#d62828';
+      roundedRect(20, 40, 360, 62, 18);
+      ctx.fill();
+      ctx.fillRect(20, 80, 360, 22);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText('\u{1F4C5} ' + monthNames[gameDate.getMonth()].toUpperCase() + ' ' + gameDate.getFullYear(), 200, 70);
+      ctx.font = '13px sans-serif';
+      ctx.fillText(calLeave ? 'Before you go out: what day is it?' : 'Your calendar', 200, 93);
+      ctx.fillStyle = '#2b2230';
+      ctx.font = 'bold 17px sans-serif';
+      ctx.fillText('Today is ' + dayNames[gameDate.getDay()] + ', ' + gameDate.getDate() + ' ' + monthNames[gameDate.getMonth()] + (isFriday() ? ' \u{1F54C}' : ''), 200, 130);
+      // the days
+      const y0 = gameDate.getFullYear();
+      const m0 = gameDate.getMonth();
+      const first = new Date(y0, m0, 1).getDay();
+      const count = new Date(y0, m0 + 1, 0).getDate();
+      const gx = 29;
+      const gy = 168;
+      ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].forEach((n, i) => {
+        ctx.fillStyle = i === 5 ? '#1f9d55' : '#6b727b';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(n, gx + i * 46 + 23, gy - 8);
+      });
+      for (let d = 1; d <= count; d++) {
+        const idx = first + d - 1;
+        const cx = gx + (idx % 7) * 46;
+        const cy = gy + Math.floor(idx / 7) * 42;
+        const fri = idx % 7 === 5;
+        const today = d === gameDate.getDate();
+        roundedRect(cx + 2, cy, 42, 38, 8);
+        ctx.fillStyle = today ? '#ffd23f' : fri ? '#d9f7e3' : '#f3f0e6';
+        ctx.fill();
+        if (today) {
+          ctx.strokeStyle = '#d62828';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+        } else if (fri) {
+          ctx.strokeStyle = '#1f9d55';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#2b2230';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(String(d), cx + 23, cy + 22);
+        if (fri) {
+          ctx.font = '11px sans-serif';
+          ctx.fillText('\u{1F54C}', cx + 23, cy + 35);
+        }
+      }
+      // what it means
+      const toFri = (5 - gameDate.getDay() + 7) % 7;
+      const nf = new Date(gameDate.getFullYear(), gameDate.getMonth(), gameDate.getDate() + toFri);
+      const note = isFriday() ? 'Today is Friday! It is the day of the Friday prayer (Jumu\'ah). Do your wudu and pray in the prayer room at the mall.' : 'The next Friday prayer is on Friday ' + nf.getDate() + ' ' + monthNames[nf.getMonth()] + ', in ' + toFri + (toFri === 1 ? ' day.' : ' days.');
+      roundedRect(34, 420, 332, 62, 12);
+      ctx.fillStyle = isFriday() ? '#d9f7e3' : '#eef3f8';
+      ctx.fill();
+      ctx.strokeStyle = isFriday() ? '#1f9d55' : '#b9c7d3';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#2b2230';
+      ctx.font = 'bold 13px sans-serif';
+      wrapLines(note, 42).forEach((ln, i) => ctx.fillText(ln, 200, 442 + i * 17));
+      // the buttons
+      const btn = (x, w, col, label) => {
+        roundedRect(x, 498, w, 44, 22);
+        ctx.fillStyle = col;
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillText(label, x + w / 2, 526);
+      };
+      if (calLeave) {
+        btn(40, 150, '#2fbf71', 'Go out \u{1F6AA}');
+        btn(210, 150, '#e08a1e', 'Stay home');
+      } else btn(130, 140, '#e63946', 'Close ✖');
+    }
+    // a calendar on the wall
+    function drawWallCalendar(x, y, w) {
+      const h = w * 1.12;
+      const fri = isFriday();
+      roundedRect(x, y, w, h, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = fri ? '#1f9d55' : '#8a8f96';
+      ctx.lineWidth = fri ? 3 : 2;
+      ctx.stroke();
+      ctx.fillStyle = '#d62828';
+      ctx.fillRect(x, y, w, h * 0.26);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold ' + Math.round(w * 0.15) + 'px sans-serif';
+      ctx.fillText(monthNames[gameDate.getMonth()].slice(0, 3).toUpperCase(), x + w / 2, y + h * 0.19);
+      ctx.fillStyle = '#2b2230';
+      ctx.font = 'bold ' + Math.round(w * 0.38) + 'px sans-serif';
+      ctx.fillText(String(gameDate.getDate()), x + w / 2, y + h * 0.65);
+      ctx.fillStyle = fri ? '#1f9d55' : '#6b727b';
+      ctx.font = 'bold ' + Math.round(w * 0.15) + 'px sans-serif';
+      ctx.fillText(dayNames[gameDate.getDay()].slice(0, 3).toUpperCase() + (fri ? ' \u{1F54C}' : ''), x + w / 2, y + h * 0.9);
+    }
+
     function aptKey() {
       if (aptRoom === 'bed' && !apt.woke) {
         aptAction('bed');
@@ -3296,6 +3448,10 @@
           aptAction('bed');
           return;
         }
+        if (p.x > 52 && p.x < 148 && p.y > 86 && p.y < 196) {
+          openCalendar(false);
+          return;
+        }
         if (p.x < 170 && p.y > 300 && p.y < 440) {
           hm.goto = bedX + 60;
           hm.act = 'bed';
@@ -3316,6 +3472,10 @@
           hm.goto = bathX.door;
           hm.act = 'door';
         } else hold = p;
+        return;
+      }
+      if (p.x > 284 && p.x < 352 && p.y > 82 && p.y < 156) {
+        openCalendar(false);
         return;
       }
       for (let k = 0; k < 4; k++) {
@@ -3474,15 +3634,7 @@
       ctx.fillRect(184, 98, 2, 106);
       ctx.fillRect(118, 148, 134, 3);
       // pictures and a clock
-      ctx.fillStyle = '#7b5a3a';
-      roundedRect(290, 100, 56, 44, 4);
-      ctx.fill();
-      ctx.fillStyle = '#9fd3c7';
-      ctx.fillRect(294, 104, 48, 36);
-      ctx.fillStyle = '#e8c07a';
-      ctx.beginPath();
-      ctx.arc(318, 128, 10, 0, Math.PI * 2);
-      ctx.fill();
+      drawWallCalendar(290, 88, 56);
       ctx.beginPath();
       ctx.arc(60, 112, 20, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff';
@@ -3698,14 +3850,11 @@
       ctx.lineTo(160, 400);
       ctx.fill();
       // a picture and a rug
-      ctx.fillStyle = '#7b5a3a';
-      ctx.fillRect(60, 110, 74, 56);
-      ctx.fillStyle = '#9fd8c4';
-      ctx.fillRect(65, 115, 64, 46);
-      ctx.fillStyle = '#ffd166';
-      ctx.beginPath();
-      ctx.arc(97, 138, 11, 0, Math.PI * 2);
-      ctx.fill();
+      drawWallCalendar(58, 92, 84);
+      ctx.fillStyle = 'rgba(70, 70, 90, 0.7)';
+      ctx.font = '10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('tap the calendar', 100, 204);
       ctx.fillStyle = '#c96f6f';
       ctx.beginPath();
       ctx.ellipse(230, 500, 110, 30, 0, 0, Math.PI * 2);
@@ -4759,7 +4908,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
         else if (phase === 'mall') label = '\u{1F6AA} Leave the mall';
@@ -4798,6 +4947,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (calOpen) {
+        calendarPress(p);
         return;
       }
       if (buddyAsk) {
@@ -4862,6 +5015,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (e.code === 'Escape' && liftOpen) closeLift();
       if (e.code === 'Escape' && metroOpen) metroOpen = false;
       if (e.code === 'Escape' && fridgeOpen) fridgeOpen = false;
+      if (e.code === 'Escape' && calOpen) calOpen = false;
       if (e.code === 'Enter' || e.code === 'KeyE') {
         if (phase === 'mall') mallAction();
         else if (phase === 'apartment') aptKey();
@@ -5117,7 +5271,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           openMetro();
         }
       }
-      if (liftOpen || metroOpen || fridgeOpen || buddyAsk) return;
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
@@ -7560,6 +7714,7 @@ function drawOutdoorFront() {
       if (metroOpen) drawMetroPanel();
       if (fridgeOpen) drawFridgePanel();
       if (buddyAsk) drawBuddyAsk();
+      if (calOpen) drawCalendarPanel();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
         drawOverlay('Tap to start', 'Make breakfast, get your keys', 'then drive or take the metro!');
