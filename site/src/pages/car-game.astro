@@ -1214,7 +1214,7 @@
         mallWallet = 20;
         mallBag = [];
       }
-      mallDone = mallShopsData.map(() => [false, false, false]);
+      mallDone = mallShopsData.map(() => [false, false, false, false]);
       mallDifferent = new Set();
       resetToilet();
       resetAdhan();
@@ -1362,7 +1362,7 @@
     const inFacility = () => mallShop >= 0 && !!mallShopsData[mallShop].facility;
     const facState = { shoes: false, washed: false, book: false };
     let wuduDone = false; // you have washed (wudu) and can pray; using the toilet undoes it
-    let fridayMode = new Date().getDay() === 5; // Friday prayer (Jumu'ah) with a big crowd
+    let prayMode = new Date().getDay() === 5 ? 'friday' : 'normal'; // normal, friday (Jumu'ah) or eid: bigger and bigger crowds
     let facFx = 0; // a little animation (water, hand dryer)
     let facFxKind = '';
     let salah = null; // the prayer (or reading) you are doing on your mat
@@ -1457,7 +1457,7 @@
         { x: 85, key: 'shoes', y0: 380, y1: 470, hint: '\u{1F45F} Tap to take your shoes off' },
         { x: 140, key: 'books', y0: 150, y1: 300, hint: '\u{1F4D6} Tap to take a book (or put it back)' },
         { x: 210, key: 'mat', y0: 370, y1: 540, hint: '\u{1F932} Tap your mat to pray with the imam' },
-        { x: 252, key: 'friday', y0: 130, y1: 215, hint: '\u{1F54C} Tap the board: normal or Friday prayer' },
+        { x: 252, key: 'friday', y0: 130, y1: 215, hint: '\u{1F54C} Tap the board: normal, Friday or Eid prayer' },
       ],
       wudu: [{ x: 125, key: 'wudu', y0: 340, y1: 540, hint: '\u{1F6BF} Tap to do your wudu (washing for prayer)' }],
       wc: [{ x: 120, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 205, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 290, key: 'dryer', hint: '\u{1F4A8} Tap to dry your hands' }, { x: 350, key: 'stall', hint: '\u{1F6BD} Tap the toilet' }],
@@ -1529,8 +1529,9 @@
       kneel: P([-30, -3], [2, -4], [-12, -30], [-8, -58], [-5, -71], [-4, -42], [0, -30]),
       sujood: P([-36, -3], [-14, -4], [-24, -26], [2, -20], [22, -9], [-4, -8], [16, -3]),
       julus: P([-32, -3], [6, -5], [-18, -14], [-16, -42], [-13, -55], [-8, -26], [0, -12]),
+      takbir: P([0, 0], [1, -18], [0, -36], [1, -62], [4, -75], [10, -64], [9, -77]),
     };
-    const salahSeq = (() => {
+    const buildSalahSeq = (x1, x2) => {
       const seq = [];
       const add = (pose, trans, hold, text, turn) => seq.push({ pose, trans, hold, text, turn: turn || 0 });
       for (let r = 0; r < 2; r++) {
@@ -1538,6 +1539,10 @@
         else {
           add('kneel', 14, 0);
           add('qiyam', 22, 90, 'Allahu Akbar الله أكبر');
+        }
+        for (let k = 0; k < (r === 0 ? x1 : x2); k++) {
+          add('takbir', 8, 12, k === 0 ? (r === 0 ? '7 extra takbirs: Allahu Akbar ×7' : '5 extra takbirs: Allahu Akbar ×5') : '');
+          add('qiyam', 8, 12, '');
         }
         add('ruku', 22, 70, 'Subhana Rabbiyal Azeem');
         add('rise', 22, 50, "Sami'a Allahu liman hamidah");
@@ -1556,17 +1561,20 @@
       });
       seq.total = t;
       return seq;
-    })();
+    };
+    const salahSeq = buildSalahSeq(0, 0);
+    const eidSeq = buildSalahSeq(7, 5); // the Eid prayer has extra takbirs
     const ease = (u) => u * u * (3 - 2 * u);
     // the pose at time t of the prayer (a follower is a little behind the imam)
-    function salahPose(t) {
+    function salahPose(t, sq) {
+      sq = sq || salahSeq;
       let i = 0;
-      while (i < salahSeq.length - 1 && t >= salahSeq[i + 1].start) i++;
-      const sg = salahSeq[i];
+      while (i < sq.length - 1 && t >= sq[i + 1].start) i++;
+      const sg = sq[i];
       const to = prayPoses[sg.pose];
       const u = t - sg.start;
       if (i === 0 || u >= sg.trans) return { pose: to, turn: sg.turn, i };
-      const from = prayPoses[salahSeq[i - 1].pose];
+      const from = prayPoses[sq[i - 1].pose];
       const k = ease(u / sg.trans);
       const out = {};
       Object.keys(to).forEach((j) => (out[j] = [from[j][0] + (to[j][0] - from[j][0]) * k, from[j][1] + (to[j][1] - from[j][1]) * k]));
@@ -1579,17 +1587,31 @@
     };
     // Friday prayer: first the imam gives the khutbah (everyone sits and listens), then the prayer
     const FRI_K = 420;
-    function prayStates(t, friday) {
-      if (!friday) return { lead: salahPose(t), fol: salahPose(Math.max(0, t - 14)) };
-      if (t < FRI_K) {
-        const lead = { pose: Object.assign({}, prayPoses.qiyam, { hand: [16 + Math.sin(t / 9) * 8, -58 + Math.cos(t / 9) * 6], elbow: [12 + Math.sin(t / 9) * 3, -46] }), turn: 0, i: 0 };
-        return { lead, fol: { pose: prayPoses.julus, turn: 0, i: 0 } };
+    const EID_K = 360; // the Eid khutbah after the prayer
+    const EID_G = 280; // then everyone says Eid Mubarak
+    const preach = (t) => Object.assign({}, prayPoses.qiyam, { hand: [16 + Math.sin(t / 9) * 8, -58 + Math.cos(t / 9) * 6], elbow: [12 + Math.sin(t / 9) * 3, -46] });
+    function prayStates(t, mode) {
+      if (mode === 'normal') return { lead: salahPose(t), fol: salahPose(Math.max(0, t - 14)) };
+      if (mode === 'friday') {
+        if (t < FRI_K) return { lead: { pose: preach(t), turn: 0, i: 0 }, fol: { pose: prayPoses.julus, turn: 0, i: 0 } };
+        const u = t - FRI_K;
+        const lead = salahPose(u);
+        let fol = salahPose(Math.max(0, u - 14));
+        if (u < 26) fol = { pose: lerpPose(prayPoses.julus, prayPoses.qiyam, ease(Math.min(1, u / 26))), turn: 0, i: 0 };
+        return { lead, fol };
       }
-      const u = t - FRI_K;
-      const lead = salahPose(u);
-      let fol = salahPose(Math.max(0, u - 14));
-      if (u < 26) fol = { pose: lerpPose(prayPoses.julus, prayPoses.qiyam, ease(Math.min(1, u / 26))), turn: 0, i: 0 };
-      return { lead, fol };
+      // Eid: the prayer with extra takbirs, then the khutbah, then Eid Mubarak
+      const T = eidSeq.total;
+      if (t < T) return { lead: salahPose(t, eidSeq), fol: salahPose(Math.max(0, t - 14), eidSeq) };
+      const u = t - T;
+      const sit = { pose: prayPoses.julus, turn: 0, i: 0 };
+      if (u < EID_K) {
+        const lead = u < 26 ? { pose: lerpPose(prayPoses.julus, prayPoses.qiyam, ease(u / 26)), turn: 0, i: 0 } : { pose: preach(u), turn: 0, i: 0 };
+        return { lead, fol: sit };
+      }
+      const g = u - EID_K;
+      const wave = Object.assign({}, prayPoses.qiyam, { hand: [20, -70 + Math.sin(g / 5) * 5], elbow: [14, -56] });
+      return { lead: { pose: wave, turn: 0, i: 0 }, fol: { pose: lerpPose(prayPoses.julus, prayPoses.qiyam, ease(Math.min(1, g / 26))), turn: 0, i: 0 } };
     }
     // wudu: sitting on a low stool at the tap, washing in the right order
     const sitBase = P([16, 0], [16, -26], [-4, -28], [-2, -56], [1, -69], [10, -42], [26, -38]);
@@ -1625,16 +1647,16 @@
     }
     function startSalah() {
       mm.x = 210;
-      mm.y = fridayMode ? 480 : 475;
+      mm.y = prayMode === 'friday' ? 480 : prayMode === 'eid' ? 476 : 475;
       mm.goto = null;
       hold = null;
       mm.dir = 1;
-      salah = { kind: 'pray', t: 0, seg: -1, friday: fridayMode };
-      say(fridayMode ? 'Friday prayer! The imam gives the khutbah. Sit and listen \u{1F92B}' : 'The imam begins... Follow him \u{1F932}', 200);
+      salah = { kind: 'pray', t: 0, seg: -1, mode: prayMode };
+      say(prayMode === 'friday' ? 'Friday prayer! The imam gives the khutbah. Sit and listen \u{1F92B}' : prayMode === 'eid' ? 'Eid prayer! The whole city prays together \u{1F319} Follow the imam' : 'The imam begins... Follow him \u{1F932}', 220);
     }
     function startReading() {
       mm.x = 210;
-      mm.y = fridayMode ? 480 : 475;
+      mm.y = prayMode === 'friday' ? 480 : prayMode === 'eid' ? 476 : 475;
       mm.goto = null;
       hold = null;
       salah = { kind: 'read', t: 0 };
@@ -1663,19 +1685,40 @@
         }
         return;
       }
-      const total = salah.friday ? FRI_K + salahSeq.total : salahSeq.total;
-      const pt = salah.friday ? salah.t - FRI_K : salah.t;
-      const cur = pt < 0 ? -1 : salahPose(pt).i;
+      const mode = salah.mode;
+      const sq = mode === 'eid' ? eidSeq : salahSeq;
+      let total = sq.total;
+      let pt = salah.t;
+      if (mode === 'friday') {
+        total = FRI_K + sq.total;
+        pt = salah.t - FRI_K;
+      } else if (mode === 'eid') {
+        total = sq.total + EID_K + EID_G;
+        if (salah.t >= sq.total) {
+          if (!salah.k1) {
+            salah.k1 = true;
+            say('The imam gives the Eid khutbah. Sit and listen \u{1F92B}', 220);
+            blip(392, 392, 0.4, 0.05);
+          }
+          if (salah.t >= sq.total + EID_K && !salah.k2) {
+            salah.k2 = true;
+            say('Eid Mubarak! عيد مبارك \u{1F389}', 280);
+            [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.25, 0.1, j * 0.12));
+          }
+          pt = -2;
+        }
+      }
+      const cur = pt === -2 ? salah.seg : pt < 0 ? -1 : salahPose(pt, sq).i;
       if (cur !== salah.seg) {
         salah.seg = cur;
-        const sg = salahSeq[Math.max(0, cur)];
+        const sg = sq[Math.max(0, cur)];
         if (cur >= 0 && sg.text) say(sg.text, 110);
         if (cur > 0) blip(260, 240, 0.18, 0.05);
       }
       if (salah.t >= total) {
-        const fri = salah.friday;
         salah = null;
-        if (fri) facAward(2, 25, 'Jumu\'ah Mubarak! The Friday prayer is finished \u{1F932}');
+        if (mode === 'friday') facAward(2, 25, 'Jumu\'ah Mubarak! The Friday prayer is finished \u{1F932}');
+        else if (mode === 'eid') facAward(3, 40, 'Eid Mubarak! The Eid prayer is finished \u{1F319}');
         else facAward(0, 15, 'The prayer is finished \u{1F932}');
         if (adhan.window > 0 && adhan.t < 0) {
           adhan.window = 0;
@@ -1759,8 +1802,8 @@
       } else if (spot.key === 'wudu') {
         startWudu();
       } else if (spot.key === 'friday') {
-        fridayMode = !fridayMode;
-        say(fridayMode ? 'Friday prayer (Jumu\'ah): a big crowd and the khutbah \u{1F54C}' : 'Normal prayer with the imam \u{1F932}', 150);
+        prayMode = prayMode === 'normal' ? 'friday' : prayMode === 'friday' ? 'eid' : 'normal';
+        say(prayMode === 'friday' ? 'Friday prayer (Jumu\'ah): a big crowd and the khutbah \u{1F54C}' : prayMode === 'eid' ? 'Eid prayer: the biggest crowd of the year! \u{1F319}✨' : 'Normal prayer with the imam \u{1F932}', 170);
         blip(660, 880, 0.12, 0.08);
       } else if (spot.key === 'mat') {
         if (!wuduDone) {
@@ -1883,6 +1926,71 @@
           ctx.lineTo(W, y);
           ctx.stroke();
         }
+        if (prayMode === 'eid') {
+          // Eid: the big open prayer ground, with sky, a skyline and flags
+          const sky = ctx.createLinearGradient(0, 0, 0, 360);
+          sky.addColorStop(0, '#7cc4f5');
+          sky.addColorStop(1, '#ffe9c2');
+          ctx.fillStyle = sky;
+          ctx.fillRect(62, 0, W - 62, 360);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          [[130, 70, 1], [300, 46, 0.8], [360, 110, 0.6]].forEach(([cx, cy, sc]) => {
+            ctx.beginPath();
+            ctx.arc(cx, cy, 16 * sc, 0, Math.PI * 2);
+            ctx.arc(cx + 18 * sc, cy + 4 * sc, 13 * sc, 0, Math.PI * 2);
+            ctx.arc(cx - 18 * sc, cy + 5 * sc, 12 * sc, 0, Math.PI * 2);
+            ctx.fill();
+          });
+          ctx.fillStyle = 'rgba(80, 110, 150, 0.5)';
+          [[70, 290, 22, 70], [96, 270, 18, 90], [120, 300, 26, 60], [150, 280, 16, 80], [260, 285, 22, 75], [286, 262, 14, 98], [306, 292, 26, 68], [336, 276, 20, 84]].forEach(([x, y, w, h]) => ctx.fillRect(x, y, w, h));
+          // a mosque with two minarets in the distance
+          ctx.fillStyle = 'rgba(70, 100, 140, 0.7)';
+          ctx.fillRect(176, 300, 76, 60);
+          ctx.beginPath();
+          ctx.arc(214, 300, 24, Math.PI, 0);
+          ctx.fill();
+          ctx.fillRect(168, 262, 8, 98);
+          ctx.fillRect(252, 262, 8, 98);
+          ctx.beginPath();
+          ctx.moveTo(166, 262);
+          ctx.lineTo(172, 248);
+          ctx.lineTo(178, 262);
+          ctx.moveTo(250, 262);
+          ctx.lineTo(256, 248);
+          ctx.lineTo(262, 262);
+          ctx.fill();
+          // flags across the ground
+          const bx = (u) => 62 + (1 - u) * (1 - u) * 0 + 2 * (1 - u) * u * 168 + u * u * 338;
+          const by = (u) => (1 - u) * (1 - u) * 124 + 2 * (1 - u) * u * 176 + u * u * 124;
+          ctx.strokeStyle = '#7b5a3a';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(bx(0), by(0));
+          for (let u = 0.05; u <= 1.001; u += 0.05) ctx.lineTo(bx(u), by(u));
+          ctx.stroke();
+          const flagCols = ['#e63946', '#ffd166', '#2a9d8f', '#4a90d9', '#f15bb5', '#52b788'];
+          for (let k = 0; k < 14; k++) {
+            const u = (k + 0.5) / 14;
+            ctx.fillStyle = flagCols[k % 6];
+            ctx.beginPath();
+            ctx.moveTo(bx(u) - 8, by(u));
+            ctx.lineTo(bx(u) + 8, by(u));
+            ctx.lineTo(bx(u), by(u) + 18);
+            ctx.fill();
+          }
+          ctx.font = '22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#000000';
+          ctx.fillText('\u{1F3EE}', 92, 170 + Math.sin(mallTime / 30) * 3);
+          ctx.fillText('\u{1F3EE}', 340, 170 + Math.cos(mallTime / 30) * 3);
+          ctx.fillText('\u{1F319}', 150, 56);
+          roundedRect(110, 78, 180, 34, 8);
+          ctx.fillStyle = '#d94f8a';
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 15px sans-serif';
+          ctx.fillText('\u{1F319} EID PRAYER صلاة العيد', 200, 101);
+        }
         ctx.fillStyle = '#d7ece6';
         ctx.fillRect(372, 150, 28, 220);
         ctx.fillStyle = '#2f8f7a';
@@ -1902,6 +2010,7 @@
         ctx.textAlign = 'center';
         ctx.fillText('QIBLA', 384, 170);
         ctx.fillText('➡', 384, 184);
+        if (prayMode !== 'eid') {
         // a bookshelf and a quiet sign
         ctx.fillStyle = '#8a6c4a';
         ctx.fillRect(98, 160, 84, 130);
@@ -1913,9 +2022,10 @@
         ctx.fillStyle = '#000000';
         ctx.textAlign = 'center';
         for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) if (!(facState.book && r === 1 && c === 1)) ctx.fillText('\u{1F4D6}', 116 + c * 26, 190 + r * 36);
+        }
         // the board: tap it to change between the normal prayer and the Friday prayer
         roundedRect(204, 138, 96, 58, 8);
-        ctx.fillStyle = fridayMode ? '#ffe28a' : '#ffffff';
+        ctx.fillStyle = prayMode === 'friday' ? '#ffe28a' : prayMode === 'eid' ? '#ffc9e3' : '#ffffff';
         ctx.fill();
         ctx.strokeStyle = '#2f8f7a';
         ctx.lineWidth = 3;
@@ -1925,9 +2035,10 @@
         ctx.font = 'bold 9px sans-serif';
         ctx.fillText('tap to change', 252, 152);
         ctx.font = 'bold 13px sans-serif';
-        ctx.fillText(fridayMode ? 'FRIDAY \u2728' : 'Normal', 252, 171);
+        ctx.fillText(prayMode === 'friday' ? 'FRIDAY \u2728' : prayMode === 'eid' ? 'EID \u{1F319}' : 'Normal', 252, 171);
         ctx.font = 'bold 10px sans-serif';
-        ctx.fillText(fridayMode ? "Jumu'ah prayer" : 'prayer', 252, 187);
+        ctx.fillText(prayMode === 'friday' ? "Jumu'ah prayer" : prayMode === 'eid' ? 'Eid prayer' : 'prayer', 252, 187);
+        if (prayMode !== 'eid') {
         roundedRect(306, 150, 56, 30, 8);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
@@ -1935,6 +2046,7 @@
         ctx.font = 'bold 10px sans-serif';
         ctx.fillText('QUIET', 334, 163);
         ctx.fillText('PLEASE \u{1F90D}', 334, 175);
+        }
         // the shoe rack by the door
         ctx.fillStyle = '#6b4a2e';
         ctx.fillRect(66, 392, 56, 7);
@@ -1950,9 +2062,9 @@
           ctx.fillText('\u{1F45F}', 106, 451);
         }
         const pr = salah && salah.kind === 'pray';
-        const st = pr ? prayStates(salah.t, salah.friday) : null;
+        const st = pr ? prayStates(salah.t, salah.mode) : null;
         const idleP = prayPoses.qiyam;
-        if (!fridayMode) {
+        if (prayMode === 'normal') {
           // the mats: the imam and you in front, two more people behind
           [[210, 475], [315, 475], [210, 420], [315, 420]].forEach(([mx, my]) => {
             roundedRect(mx - 46, my - 22, 92, 36, 8);
@@ -1970,6 +2082,25 @@
           things.push({ y: 420, draw: () => drawWorshipper(210, 424, pr ? st.fol.pose : idleP, shopperLook[1], 0.88, false, pr ? st.fol.turn : 0) });
           things.push({ y: 421, draw: () => drawWorshipper(315, 424, pr ? st.fol.pose : idleP, shopperLook[3], 0.88, false, pr ? st.fol.turn : 0) });
           things.push({ y: 476, draw: () => drawWorshipper(315, 479, pr ? st.lead.pose : idleP, imamLook, 1, true, pr ? st.lead.turn : 0) });
+        } else if (prayMode === 'eid') {
+          // Eid: a huge crowd in many rows, the imam on the minbar in front of them
+          ctx.fillStyle = '#7b5a3a';
+          ctx.fillRect(300, 466, 72, 26);
+          ctx.fillStyle = '#9a7448';
+          ctx.fillRect(300, 466, 72, 6);
+          ctx.fillRect(288, 482, 14, 10);
+          ctx.fillRect(276, 488, 14, 6);
+          const eidLooks = shopperLook.concat([imamLook, ['#c68c5c', '#f6f3ea', '#f6f3ea']]);
+          const stand = prayPoses.qiyam;
+          [66, 102, 138, 174, 210, 246, 282].forEach((cx, ci) => {
+            [386, 408, 430, 452, 474, 496, 518, 540].forEach((cy, ri) => {
+              if (cx === 210 && cy === 474) return; // your place
+              const sc = 0.6 + ((cy - 386) / 154) * 0.38;
+              const kid = (ci + ri * 2) % 5 === 1;
+              things.push({ y: cy, draw: () => drawWorshipper(cx, cy + 3, pr ? st.fol.pose : stand, eidLooks[(ci * 5 + ri * 3) % 8], sc * (kid ? 0.78 : 1), false, pr ? st.fol.turn : 0) });
+            });
+          });
+          things.push({ y: 477, draw: () => drawWorshipper(338, 468, pr ? st.lead.pose : stand, imamLook, 1, true, pr ? st.lead.turn : 0) });
         } else {
           // Friday: the imam on the minbar and a big crowd in rows behind him
           ctx.fillStyle = '#7b5a3a';
@@ -1993,7 +2124,7 @@
           });
           things.push({ y: 480, draw: () => drawWorshipper(335, 470, pr ? st.lead.pose : idleP, imamLook, 1, true, pr ? st.lead.turn : 0) });
         }
-        const myY = fridayMode ? 483 : 479;
+        const myY = prayMode === 'friday' ? 483 : prayMode === 'eid' ? 477 : 479;
         if (salah && salah.kind === 'pray') {
           things.push({ y: myY - 2, draw: () => drawWorshipper(210, myY, st.fol.pose, myLook, 1, false, st.fol.turn) });
         } else if (salah && salah.kind === 'read') {
@@ -2250,6 +2381,27 @@
         things.push({ y: mm.y, draw: () => drawMe() });
       }
       things.sort((a, b) => a.y - b.y).forEach((o) => o.draw());
+      if (salah && salah.kind === 'pray' && salah.mode === 'eid' && salah.t >= eidSeq.total + EID_K) {
+        // Eid Mubarak! confetti and balloons
+        const g = salah.t - eidSeq.total - EID_K;
+        const cols = ['#e63946', '#ffd166', '#2a9d8f', '#4a90d9', '#f15bb5', '#52b788'];
+        for (let k = 0; k < 46; k++) {
+          const cx = 62 + ((k * 53 + g * (0.4 + (k % 3) * 0.25)) % 338);
+          const cy = ((g * (1.2 + (k % 4) * 0.4) + k * 41) % 520) - 30;
+          ctx.fillStyle = cols[k % 6];
+          ctx.fillRect(cx, cy, 6, 9);
+        }
+        ctx.font = '30px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000000';
+        [90, 170, 250, 340].forEach((bx2, k) => ctx.fillText('\u{1F388}', bx2 + Math.sin(g / 20 + k) * 8, 560 - ((g * 1.4 + k * 70) % 560)));
+        roundedRect(60, 196, 280, 46, 23);
+        ctx.fillStyle = 'rgba(217, 79, 138, 0.92)';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.fillText('EID MUBARAK! عيد مبارك', 200, 226);
+      }
       const nk = salah || toi.stage === 4 ? -1 : nearFac();
       if (nk >= 0) {
         const hint = facSpots[sh.facility][nk].hint;
