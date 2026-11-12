@@ -4908,11 +4908,11 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
         else if (phase === 'mall') label = '\u{1F6AA} Leave the mall';
-        else if (phase === 'beach') label = '\u{1F6AA} Leave the beach';
+        else if (phase === 'beach') label = nearSalt() ? '\u{1F354} Order at SALT' : nearKarak() ? '\u2615 Order at KARAK' : '\u{1F6AA} Leave the beach';
         else if (phase === 'station' && !(trip && trip.stage === 'end' && trip.timer > 0)) label = '\u{1F687} Open the metro map';
       }
       if (label !== actLabel) {
@@ -4929,7 +4929,11 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         else getInCar();
       }
       else if (phase === 'mall') leaveMall();
-      else if (phase === 'beach') leaveBeach();
+      else if (phase === 'beach') {
+        if (nearSalt()) openSalt('salt');
+        else if (nearKarak()) openSalt('karak');
+        else leaveBeach();
+      }
       else if (phase === 'station') openMetro();
     });
 
@@ -4947,6 +4951,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (saltOpen) {
+        saltPress(p);
         return;
       }
       if (calOpen) {
@@ -5016,6 +5024,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (e.code === 'Escape' && metroOpen) metroOpen = false;
       if (e.code === 'Escape' && fridgeOpen) fridgeOpen = false;
       if (e.code === 'Escape' && calOpen) calOpen = false;
+      if (e.code === 'Escape' && saltOpen) saltOpen = false;
       if (e.code === 'Enter' || e.code === 'KeyE') {
         if (phase === 'mall') mallAction();
         else if (phase === 'apartment') aptKey();
@@ -5271,7 +5280,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           openMetro();
         }
       }
-      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen) return;
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
@@ -7000,6 +7009,479 @@ function drawOutdoorFront() {
       }
     }
 
+    // ---------- SALT: silver caravans and food carts on the beach, run by an alien ----------
+    let saltOpen = false;
+    let saltEat = null;
+    let beachCoins = 12;
+    let saltTried = [];
+    const saltMenu = [
+      ['\u{1F354}', 'Salt Burger', 3], ['\u{1F35F}', 'Fries', 2],
+      ['\u{1F9C3}', 'Juice', 1], ['\u{1F964}', 'Milkshake', 2],
+      ['\u{1F366}', 'Ice cream', 1], ['\u{1F34B}', 'Lemonade', 1],
+    ];
+    const karakMenu = [
+      ['\u2615', 'Karak chai', 1], ['\u{1F334}', 'Dates', 1],
+      ['\u{1F4A7}', 'Water', 1], ['\u{1F36A}', 'Biscuits', 1],
+      ['\u{1FAD3}', 'Chapati', 2], ['\u{1F369}', 'Luqaimat', 2],
+    ];
+    let shopWhich = 'salt';
+    const menuOf = (w) => (w === 'karak' ? karakMenu : saltMenu);
+    const poolBox = { x: 218, y: 345, w: 164, h: 110 };
+    const inPool = (x, y) => x > poolBox.x + 4 && x < poolBox.x + poolBox.w - 4 && y > poolBox.y + 4 && y < poolBox.y + poolBox.h - 4;
+    let poolSwum = false;
+    let poolLaps = 0;
+    let poolEnd = 0;
+    let bchDir = 1;
+    let strollers = [];
+    const saltCell = (i) => ({ x: 30 + (i % 2) * 180, y: 128 + Math.floor(i / 2) * 100, w: 160, h: 88 });
+    const nearSalt = () => phase === 'beach' && bch.x > 24 && bch.x < 270 && bch.y > 262 && bch.y < 326;
+    const nearKarak = () => phase === 'beach' && bch.x > 8 && bch.x < 152 && bch.y > 494 && bch.y < 548;
+    function openSalt(w) {
+      if (saltEat || saltOpen) return;
+      shopWhich = w || 'salt';
+      saltOpen = true;
+      hold = null;
+      blip(700, 900, 0.12, 0.08);
+    }
+    function saltPress(p) {
+      if (p.x > 130 && p.x < 270 && p.y > 492 && p.y < 530) {
+        saltOpen = false;
+        return;
+      }
+      for (let i = 0; i < saltMenu.length; i++) {
+        const c = saltCell(i);
+        if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
+          const [emoji, name, price] = menuOf(shopWhich)[i];
+          if (beachCoins < price) {
+            say('Not enough coins for the ' + name.toLowerCase() + '!', 100);
+            blip(220, 160, 0.2, 0.08);
+            return;
+          }
+          beachCoins -= price;
+          saltOpen = false;
+          saltEat = { t: 0, i, shop: shopWhich };
+          say('Here you go! Enjoy your ' + name.toLowerCase() + ' ' + emoji, 150);
+          blip(660, 880, 0.15, 0.1);
+          return;
+        }
+      }
+    }
+    function updateSaltEat(step) {
+      saltEat.t += step;
+      if (Math.floor(saltEat.t / 26) !== Math.floor((saltEat.t - step) / 26) && saltEat.t < 130) blip(280 + Math.random() * 120, 200, 0.07, 0.07);
+      if (saltEat.t >= 150) {
+        const [emoji, name, price] = menuOf(saltEat.shop)[saltEat.i];
+        const key = saltEat.shop + saltEat.i;
+        if (saltTried.indexOf(key) < 0) saltTried.push(key);
+        saltEat = null;
+        addScore(4 + price);
+        say('Yum! ' + emoji + ' Tasty! +' + (4 + price), 130);
+        [523, 659, 784].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.1));
+        if (saltTried.length === 3) {
+          addScore(10);
+          say('\u{1F389} You tried 3 different things! +10', 200);
+        }
+      }
+    }
+    function drawSaltPanel() {
+      const karak = shopWhich === 'karak';
+      const menu = menuOf(shopWhich);
+      const accent = karak ? '#ff9f1c' : '#3cff9a';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(16, 50, 368, 490, 18);
+      ctx.fillStyle = karak ? '#fff6e6' : '#eef1f4';
+      ctx.fill();
+      ctx.strokeStyle = accent;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = karak ? '#5a2a12' : '#111418';
+      roundedRect(16, 50, 368, 66, 18);
+      ctx.fill();
+      ctx.fillRect(16, 90, 368, 26);
+      ctx.fillStyle = accent;
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText(karak ? 'K A R A K  \u2615' : 'S A L T  \u{1F47D}', 200, 86);
+      ctx.fillStyle = '#e6d6c4';
+      ctx.font = '12px sans-serif';
+      ctx.fillText((karak ? 'Hot karak, dates and water!' : 'Beach food from another planet!') + ' You have \u{1F4B0} ' + beachCoins, 200, 107);
+      menu.forEach(([emoji, name, price], i) => {
+        const c = saltCell(i);
+        const ok = beachCoins >= price;
+        roundedRect(c.x, c.y, c.w, c.h, 14);
+        ctx.fillStyle = ok ? '#ffffff' : '#dde2e7';
+        ctx.fill();
+        ctx.strokeStyle = ok ? (karak ? '#c98a4b' : '#7d8a96') : '#b9c0c7';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.globalAlpha = ok ? 1 : 0.45;
+        ctx.font = '34px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(emoji, c.x + c.w / 2, c.y + 42);
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillStyle = '#2b2230';
+        ctx.fillText(name, c.x + c.w / 2, c.y + 64);
+        ctx.fillStyle = '#d9822b';
+        ctx.fillText('\u{1F4B0} ' + price, c.x + c.w / 2, c.y + 82);
+        ctx.globalAlpha = 1;
+      });
+      ctx.fillStyle = '#e63946';
+      roundedRect(130, 492, 140, 38, 19);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('Close \u2716', 200, 517);
+    }
+    // the Karak kiosk: hot karak chai, dates and water
+    function drawKarak() {
+      const glow = 0.5 + 0.5 * Math.sin(beachTime / 16 + 2);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+      ctx.beginPath();
+      ctx.ellipse(77, 497, 70, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#c98a4b';
+      ctx.fillRect(20, 432, 116, 62);
+      ctx.fillStyle = '#a9703a';
+      for (let x = 24; x < 136; x += 14) ctx.fillRect(x, 436, 2, 56);
+      ctx.fillStyle = '#2b1a10';
+      ctx.fillRect(34, 446, 88, 30);
+      for (let st = 0; st < 8; st++) {
+        ctx.fillStyle = st % 2 ? '#ffffff' : '#e07a1f';
+        ctx.fillRect(14 + st * 16, 420, 16, 14);
+      }
+      ctx.fillStyle = '#8a5a2a';
+      ctx.fillRect(14, 418, 128, 4);
+      roundedRect(30, 392, 96, 24, 6);
+      ctx.fillStyle = '#5a1f12';
+      ctx.fill();
+      ctx.strokeStyle = '#ffb24a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.save();
+      ctx.shadowColor = '#ffb24a';
+      ctx.shadowBlur = 6 + glow * 6;
+      ctx.fillStyle = '#ffe9c4';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('KARAK \u2615', 78, 410);
+      ctx.restore();
+      ctx.fillStyle = '#9a7448';
+      ctx.fillRect(30, 474, 96, 6);
+      ctx.font = '18px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F9D1}\u200D\u{1F373}', 78, 468);
+      ctx.font = '16px sans-serif';
+      ctx.fillText('\u2615', 44, 473);
+      ctx.fillText('\u{1F334}', 108, 473);
+      ctx.fillText('\u{1F4A7}', 126, 473);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+      ctx.lineWidth = 2;
+      for (let k = 0; k < 2; k++) {
+        ctx.beginPath();
+        ctx.moveTo(42 + k * 6, 458);
+        ctx.quadraticCurveTo(46 + k * 6 + Math.sin(beachTime / 8 + k) * 3, 448, 42 + k * 6, 440);
+        ctx.stroke();
+      }
+    }
+
+    // the swimming pool, with lights under the water
+    function drawPool() {
+      const p = poolBox;
+      const glow = 0.5 + 0.5 * Math.sin(beachTime / 18);
+      roundedRect(p.x - 8, p.y - 8, p.w + 16, p.h + 16, 14);
+      ctx.fillStyle = '#f4efe4';
+      ctx.fill();
+      ctx.strokeStyle = '#c9bda4';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      const g = ctx.createLinearGradient(0, p.y, 0, p.y + p.h);
+      g.addColorStop(0, '#4fd0f0');
+      g.addColorStop(1, '#1e8fd0');
+      roundedRect(p.x, p.y, p.w, p.h, 10);
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.save();
+      roundedRect(p.x, p.y, p.w, p.h, 10);
+      ctx.clip();
+      ctx.fillStyle = 'rgba(180, 255, 255, ' + (0.18 + 0.12 * glow) + ')';
+      [[p.x + 30, p.y + 28], [p.x + p.w - 30, p.y + 28], [p.x + 30, p.y + p.h - 28], [p.x + p.w - 30, p.y + p.h - 28]].forEach(([lx, ly]) => {
+        ctx.beginPath();
+        ctx.arc(lx, ly, 18, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 7; i++) {
+        const wx = p.x + ((i * 43 + beachTime * 0.4) % (p.w + 20)) - 10;
+        const wy = p.y + 14 + ((i * 29) % (p.h - 24));
+        ctx.beginPath();
+        ctx.moveTo(wx, wy);
+        ctx.quadraticCurveTo(wx + 6, wy - 3, wx + 12, wy);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.setLineDash([8, 8]);
+      ctx.beginPath();
+      ctx.moveTo(p.x + 12, p.y + p.h / 2);
+      ctx.lineTo(p.x + p.w - 12, p.y + p.h / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
+      // a ladder, a sign and loungers
+      ctx.strokeStyle = '#c3ccd4';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(p.x + p.w - 10, p.y - 4);
+      ctx.lineTo(p.x + p.w - 10, p.y + 12);
+      ctx.moveTo(p.x + p.w - 22, p.y - 4);
+      ctx.lineTo(p.x + p.w - 22, p.y + 12);
+      ctx.stroke();
+      roundedRect(p.x + 36, p.y - 28, 92, 18, 6);
+      ctx.fillStyle = '#1f6fa8';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F3CA} POOL \u2022 swim here', p.x + 82, p.y - 15);
+      [236, 290, 344].forEach((lx, k) => {
+        roundedRect(lx - 16, p.y + p.h + 14, 32, 14, 4);
+        ctx.fillStyle = k % 2 ? '#ffffff' : '#ffb24a';
+        ctx.fill();
+        ctx.strokeStyle = '#8a8f96';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#f4efe4';
+        ctx.fillRect(lx + 8, p.y + p.h + 12, 8, 6);
+      });
+      // two people already swimming
+      [[0, 0.7], [1, -0.55]].forEach(([k, v]) => {
+        const sx = p.x + 20 + ((beachTime * Math.abs(v) + k * 70) % (p.w - 40));
+        const x = v > 0 ? sx : p.x + p.w - (sx - p.x);
+        const y = p.y + 24 + k * 50 + Math.sin(beachTime / 12 + k) * 2;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 2, 13, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = k ? '#c68c5c' : '#f2c9a0';
+        ctx.beginPath();
+        ctx.arc(x + (v > 0 ? 8 : -8), y - 1, 4.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = k ? '#2a9d8f' : '#e63946';
+        ctx.fillRect(x - 6, y - 3, 10, 5);
+      });
+    }
+    function drawPoolSwimmer() {
+      ctx.save();
+      ctx.translate(bch.x, bch.y);
+      ctx.scale(bchDir, 1);
+      const a = Math.sin(bch.stepT * 0.5);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 5, 22 + Math.sin(beachTime / 6) * 2, 9, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(255, 159, 28, 0.85)';
+      ctx.beginPath();
+      ctx.ellipse(-2, 3, 14, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#f2c9a0';
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(6, 1);
+      ctx.lineTo(16 + a * 6, -5 + a * 3);
+      ctx.moveTo(6, 6);
+      ctx.lineTo(16 - a * 6, 11 - a * 3);
+      ctx.stroke();
+      ctx.fillStyle = '#f2c9a0';
+      ctx.beginPath();
+      ctx.arc(14, 3, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2a2a2a';
+      ctx.beginPath();
+      ctx.arc(13, 1, 6, Math.PI, Math.PI * 1.8);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // evening: the sun sets, warm lights come on
+    function drawEveningLights() {
+      const glow = 0.6 + 0.4 * Math.sin(beachTime / 12);
+      const warm = (x, y, r) => {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, 'rgba(255, 230, 150, 0.9)');
+        g.addColorStop(1, 'rgba(255, 200, 100, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      };
+      // string lights between the SALT caravans and the cart
+      for (let k = 0; k < 14; k++) {
+        const u = (k + 0.5) / 14;
+        const x = 30 + u * 286;
+        const y = 182 + Math.sin(u * Math.PI) * 14 + (1 - u) * 0 + u * 28;
+        warm(x, y, 9 * (0.8 + 0.2 * glow));
+        ctx.fillStyle = '#fff3c4';
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // the lights of the Karak kiosk and the pool
+      for (let k = 0; k < 8; k++) warm(18 + k * 16.5, 420, 8 * (0.8 + 0.2 * glow));
+      [[poolBox.x - 8, poolBox.y - 8], [poolBox.x + poolBox.w + 8, poolBox.y - 8], [poolBox.x - 8, poolBox.y + poolBox.h + 8], [poolBox.x + poolBox.w + 8, poolBox.y + poolBox.h + 8]].forEach(([x, y]) => warm(x, y, 14));
+    }
+
+    // the silver caravans, the cart and the alien who serves you
+    function drawSalt() {
+      const glow = 0.5 + 0.5 * Math.sin(beachTime / 14);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+      ctx.beginPath();
+      ctx.ellipse(150, 268, 140, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // two shiny caravans
+      [[24, 112], [146, 112]].forEach(([x0, w], k) => {
+        const g = ctx.createLinearGradient(0, 214, 0, 262);
+        g.addColorStop(0, '#f4f7fa');
+        g.addColorStop(0.45, '#c3ccd4');
+        g.addColorStop(1, '#8f9aa5');
+        roundedRect(x0, 214, w, 48, 22);
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.strokeStyle = '#6b7783';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.fillRect(x0 + 14, 221, w - 28, 3);
+        ctx.fillStyle = '#6b7783';
+        for (let r = 0; r < 7; r++) {
+          ctx.beginPath();
+          ctx.arc(x0 + 12 + r * ((w - 24) / 6), 253, 1.4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        // the serving hatch with its striped awning
+        ctx.fillStyle = '#1b2127';
+        ctx.fillRect(x0 + 30, 228, w - 60, 20);
+        for (let st = 0; st < 6; st++) {
+          ctx.fillStyle = st % 2 ? '#ffffff' : '#111418';
+          ctx.fillRect(x0 + 24 + st * ((w - 48) / 6), 222, (w - 48) / 6, 8);
+        }
+        ctx.fillStyle = '#9a7448';
+        ctx.fillRect(x0 + 28, 247, w - 56, 5);
+        // wheels
+        [x0 + 22, x0 + w - 22].forEach((wx) => {
+          ctx.fillStyle = '#2b2f35';
+          ctx.beginPath();
+          ctx.arc(wx, 264, 8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#c3ccd4';
+          ctx.beginPath();
+          ctx.arc(wx, 264, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        // a little glowing flying saucer light on the roof
+        ctx.fillStyle = 'rgba(60, 255, 154, ' + (0.25 + 0.35 * glow) + ')';
+        ctx.beginPath();
+        ctx.arc(x0 + w / 2, 214, 14, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = '#9aa5ae';
+        ctx.beginPath();
+        ctx.ellipse(x0 + w / 2, 214, 18, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#3cff9a';
+        [-9, 0, 9].forEach((dx) => {
+          ctx.beginPath();
+          ctx.arc(x0 + w / 2 + dx, 214, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      });
+      // the sign
+      roundedRect(56, 180, 148, 24, 6);
+      ctx.fillStyle = '#111418';
+      ctx.fill();
+      ctx.strokeStyle = '#3cff9a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.save();
+      ctx.shadowColor = '#3cff9a';
+      ctx.shadowBlur = 8 + glow * 6;
+      ctx.fillStyle = '#e8fff3';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('S A L T', 130, 198);
+      ctx.restore();
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1F47D}', 46, 197);
+      ctx.fillText('\u{1F9C2}', 216, 197);
+      // the alien serving food at the hatch
+      ctx.font = '26px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1F47D}', 80, 244 + Math.sin(beachTime / 16) * 2);
+      ctx.font = '18px sans-serif';
+      ctx.fillText('\u{1F354}', 204, 244);
+      // a food cart that looks like a shopping trolley
+      ctx.strokeStyle = '#7d8a96';
+      ctx.lineWidth = 2;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.beginPath();
+      ctx.moveTo(272, 238);
+      ctx.lineTo(312, 238);
+      ctx.lineTo(306, 262);
+      ctx.lineTo(278, 262);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      for (let gx = 280; gx < 308; gx += 7) {
+        ctx.beginPath();
+        ctx.moveTo(gx, 239);
+        ctx.lineTo(gx - 1, 261);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(272, 238);
+      ctx.lineTo(262, 226);
+      ctx.lineTo(258, 226);
+      ctx.stroke();
+      ctx.fillStyle = '#2b2f35';
+      [282, 302].forEach((wx) => {
+        ctx.beginPath();
+        ctx.arc(wx, 267, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.font = '15px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F35F}\u{1F964}', 292, 256);
+      for (let st = 0; st < 6; st++) {
+        ctx.beginPath();
+        ctx.moveTo(292, 218);
+        ctx.arc(292, 238, 26, Math.PI + (st * Math.PI) / 6, Math.PI + ((st + 1) * Math.PI) / 6);
+        ctx.closePath();
+        ctx.fillStyle = st % 2 ? '#ffffff' : '#3cff9a';
+        ctx.fill();
+      }
+      ctx.fillStyle = '#7d8a96';
+      ctx.fillRect(291, 238, 2, 22);
+      // tables with stools in front
+      [[56, 296], [160, 300]].forEach(([tx, ty]) => {
+        ctx.fillStyle = '#c3ccd4';
+        ctx.beginPath();
+        ctx.ellipse(tx, ty, 16, 7, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#7d8a96';
+        ctx.fillRect(tx - 2, ty, 4, 14);
+        ctx.fillStyle = '#3cff9a';
+        [-24, 24].forEach((dx) => {
+          ctx.beginPath();
+          ctx.arc(tx + dx, ty + 6, 6, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      });
+    }
+
     // ---------- the beach: walk on the sand, collect shells and paddle in the sea ----------
     const bch = { x: 200, y: 555, stepT: 0, moving: false };
     let shells = [];
@@ -7021,20 +7503,32 @@ function drawOutdoorFront() {
       shellCount = 0;
       paddled = false;
       splashT = 0;
+      beachCoins = 15;
+      saltTried = [];
+      poolSwum = false;
+      poolLaps = 0;
+      poolEnd = 0;
+      bchDir = 1;
+      strollers = [[20, 205, 330, 0.6, 1, 2], [380, 20, 335, 0.5, -1, 4], [30, 380, 540, 0.7, 1, 1], [360, 40, 560, 0.55, -1, 5]].map(([a, b, y, v, dir, lk], i) => ({ x: a, min: Math.min(a, b), max: Math.max(a, b), y, v, dir, look: shopperLook[lk], t: i * 13 }));
+      saltEat = null;
+      saltOpen = false;
       shells = [];
       for (let i = 0; i < 8; i++) {
-        shells.push({ x: 30 + Math.random() * 340, y: 225 + Math.random() * 300, kind: i < 6 ? 'shell' : 'star', got: false });
+        let sx;
+        let sy;
+        do {
+          sx = 30 + Math.random() * 340;
+          sy = 225 + Math.random() * 300;
+        } while ((sx < 330 && sy < 335) || (sx < 160 && sy > 385 && sy < 505) || (sx > 200 && sx < 400 && sy > 325 && sy < 505));
+        shells.push({ x: sx, y: sy, kind: i < 6 ? 'shell' : 'star', got: false });
       }
       swimmers = [];
       for (let i = 0; i < 6; i++) swimmers.push({ x: 40 + i * 60, y: 50 + (i % 3) * 30, dir: i % 2 ? 1 : -1, v: 0.3 + (i % 3) * 0.15, t: i * 11 });
-      umbrellas = [
-        { x: 70, y: 300, c: '#e63946' }, { x: 320, y: 270, c: '#ffb703' }, { x: 190, y: 360, c: '#2a9d8f' },
-        { x: 80, y: 470, c: '#4361ee' }, { x: 330, y: 450, c: '#f72585' }, { x: 230, y: 520, c: '#ff9f1c' },
-      ];
-      sunbathers = [{ x: 70, y: 322, c: '#f4a261' }, { x: 322, y: 292, c: '#8d5a3b' }, { x: 192, y: 382, c: '#f2c9a0' }, { x: 332, y: 472, c: '#c68c5c' }];
+      umbrellas = [{ x: 352, y: 240, c: '#ffb703' }, { x: 150, y: 372, c: '#e63946' }, { x: 300, y: 548, c: '#4361ee' }, { x: 215, y: 545, c: '#ff9f1c' }];
+      sunbathers = [{ x: 150, y: 394, c: '#f4a261' }, { x: 352, y: 262, c: '#8d5a3b' }];
       kite = { x: 60 + Math.random() * 280, y: 470 + Math.random() * 90, on: false, t: 0, loop: 0, cool: 0, air: 0, kx: 200, ky: 120, col: kiteColours[Math.floor(Math.random() * kiteColours.length)] };
       kiteTime = 0;
-      say('Welcome to ' + dest.name + '! Find the kite \u{1FA81}, collect shells and paddle.', 280);
+      say('Evening at ' + dest.name + '! SALT \u{1F47D} KARAK \u2615 a pool \u{1F3CA} and a kite', 280);
       blip(988, 988, 0.15, 0.1);
       blip(1318, 1318, 0.2, 0.1, 0.14);
     }
@@ -7189,13 +7683,47 @@ function drawOutdoorFront() {
     function updateBeach(step) {
       beachTime += step;
       splashT = Math.max(0, splashT - step);
+      if (saltEat) {
+        bch.moving = false;
+        updateSaltEat(step);
+        return;
+      }
       const d = inputDir(bch.x, bch.y);
       bch.moving = d.moving;
+      const slow = inPool(bch.x, bch.y) ? 0.6 : 1;
       if (d.moving) {
-        bch.x = Math.max(16, Math.min(W - 16, bch.x + d.dx * 2.4 * step));
-        bch.y = Math.max(100, Math.min(H - 12, bch.y + d.dy * 2.4 * step));
+        bch.x = Math.max(16, Math.min(W - 16, bch.x + d.dx * 2.4 * slow * step));
+        bch.y = Math.max(100, Math.min(H - 12, bch.y + d.dy * 2.4 * slow * step));
         bch.stepT += step;
+        if (Math.abs(d.dx) > 0.2) bchDir = d.dx > 0 ? 1 : -1;
       }
+      strollers.forEach((st) => {
+        st.t += step;
+        st.x += st.dir * st.v * step;
+        if (st.x < st.min || st.x > st.max) {
+          st.dir = -st.dir;
+          st.x = Math.max(st.min, Math.min(st.max, st.x));
+        }
+      });
+      if (inPool(bch.x, bch.y)) {
+        if (!poolSwum) {
+          poolSwum = true;
+          addScore(4);
+          say('Splash! You are swimming in the pool \u{1F3CA} +4', 150);
+          noiseBlip();
+        }
+        if (d.moving && Math.floor(beachTime / 14) !== Math.floor((beachTime - step) / 14)) splashT = 30;
+        const left = bch.x < poolBox.x + 24;
+        const right = bch.x > poolBox.x + poolBox.w - 24;
+        if ((left && poolEnd === 1) || (right && poolEnd === -1)) {
+          poolLaps++;
+          addScore(2);
+          say('Lap ' + poolLaps + '! \u{1F3CA} +2', 100);
+          blip(880, 1320, 0.15, 0.08);
+        }
+        if (left) poolEnd = -1;
+        else if (right) poolEnd = 1;
+      } else poolEnd = 0;
       swimmers.forEach((s) => {
         s.t += step;
         s.x += s.dir * s.v * step;
@@ -7236,15 +7764,27 @@ function drawOutdoorFront() {
     function drawBeach() {
       // the sky and the far away sea
       const sky = ctx.createLinearGradient(0, 0, 0, 40);
-      sky.addColorStop(0, '#8fd0f2');
-      sky.addColorStop(1, '#d7f0fb');
+      sky.addColorStop(0, '#6a4c93');
+      sky.addColorStop(1, '#ff9a62');
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, W, 40);
       const sea = ctx.createLinearGradient(0, 40, 0, 190);
-      sea.addColorStop(0, '#2ba3c7');
-      sea.addColorStop(1, '#6fd6e6');
+      sea.addColorStop(0, '#ffb27a');
+      sea.addColorStop(0.35, '#d9809a');
+      sea.addColorStop(1, '#3f6fae');
       ctx.fillStyle = sea;
       ctx.fillRect(0, 40, W, 150);
+      // the setting sun and its shimmer on the sea
+      ctx.fillStyle = 'rgba(255, 240, 170, 0.35)';
+      ctx.beginPath();
+      ctx.arc(200, 40, 44, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = '#ffd36e';
+      ctx.beginPath();
+      ctx.arc(200, 40, 26, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 230, 160, 0.55)';
+      for (let i = 0; i < 9; i++) ctx.fillRect(200 - 22 + i * 5 - i * 2 + Math.sin(beachTime / 14 + i) * 4, 48 + i * 14, 44 - i * 3, 3);
       // Burj Al Arab on the horizon
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.beginPath();
@@ -7292,7 +7832,7 @@ function drawOutdoorFront() {
         ctx.stroke();
       });
       // the sand, with foam along the edge
-      ctx.fillStyle = '#e9d6a0';
+      ctx.fillStyle = '#e6c28e';
       ctx.fillRect(0, 190, W, H - 190);
       ctx.fillStyle = '#d8c58c';
       ctx.fillRect(0, 190, W, 22);
@@ -7316,6 +7856,9 @@ function drawOutdoorFront() {
         drawPalm(px, py - 8);
         drawPalm(px + 6, py - 14);
       });
+      drawSalt();
+      drawKarak();
+      drawPool();
       // towels, sunbathers and umbrellas
       sunbathers.forEach((b) => {
         ctx.fillStyle = b.c === '#f4a261' ? '#ff6b6b' : '#4dabf7';
@@ -7345,6 +7888,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#5b4026';
         ctx.fill();
       });
+      strollers.forEach((st) => drawShopper(st.x, st.y, st.look, 0.55, st.dir, true, st.t * 1.2, false));
       // things to find
       shells.forEach((sh) => {
         if (sh.got) return;
@@ -7359,13 +7903,15 @@ function drawOutdoorFront() {
         ctx.fillText(sh.kind === 'star' ? '⭐' : '\u{1F41A}', sh.x, sh.y + 6);
       });
       // you
-      if (splashT > 0 && bch.y < 190) {
+      if (splashT > 0 && (bch.y < 190 || inPool(bch.x, bch.y))) {
         ctx.strokeStyle = 'rgba(255, 255, 255, ' + splashT / 30 + ')';
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.arc(bch.x, bch.y + 4, 8 + (30 - splashT) * 0.9, 0, Math.PI * 2);
         ctx.stroke();
       }
+      if (inPool(bch.x, bch.y)) drawPoolSwimmer();
+      else {
       ctx.save();
       ctx.translate(bch.x, bch.y);
       ctx.scale(1.7, 1.7);
@@ -7379,7 +7925,24 @@ function drawOutdoorFront() {
       ctx.fillStyle = '#f2c9a0';
       ctx.fill();
       ctx.restore();
+      }
       drawKite();
+      if (saltEat) {
+        const e = menuOf(saltEat.shop)[saltEat.i][0];
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(e, bch.x + 6, bch.y - 34 - Math.abs(Math.sin(saltEat.t / 9)) * 6);
+      }
+      const tint = ctx.createLinearGradient(0, 0, 0, H);
+      tint.addColorStop(0, 'rgba(90, 40, 110, 0.28)');
+      tint.addColorStop(0.5, 'rgba(255, 150, 70, 0.12)');
+      tint.addColorStop(1, 'rgba(60, 30, 80, 0.22)');
+      ctx.fillStyle = tint;
+      ctx.fillRect(0, 0, W, H);
+      drawEveningLights();
+      if (nearSalt() && !saltEat && !saltOpen) drawBubble(80, 214, 'Welcome to SALT! Beep boop \u{1F47D}');
+      if (nearKarak() && !saltEat && !saltOpen) drawBubble(78, 388, 'Karak chai? Dates? Welcome! \u2615');
       // the counter
       ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
       roundedRect(W - 116, 44, 108, 28, 14);
@@ -7388,18 +7951,24 @@ function drawOutdoorFront() {
       ctx.font = 'bold 13px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('\u{1F41A} ' + shellCount + ' / ' + shells.length, W - 62, 63);
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
+      roundedRect(8, 44, 88, 28, 14);
+      ctx.fill();
+      ctx.fillStyle = '#ffd400';
+      ctx.textAlign = 'left';
+      ctx.fillText('\u{1F4B0} ' + beachCoins, 18, 63);
     }
 
     // the car park by the beach: you can see the sea and the way down to the sand
     function drawBeachFront() {
       const sky = ctx.createLinearGradient(0, 0, 0, 80);
-      sky.addColorStop(0, '#8fd0f2');
-      sky.addColorStop(1, '#dff3fb');
+      sky.addColorStop(0, '#6a4c93');
+      sky.addColorStop(1, '#ffb27a');
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, W, 172);
       const sea = ctx.createLinearGradient(0, 70, 0, 172);
-      sea.addColorStop(0, '#2ba3c7');
-      sea.addColorStop(1, '#79dbe8');
+      sea.addColorStop(0, '#f09a78');
+      sea.addColorStop(1, '#4a72b0');
       ctx.fillStyle = sea;
       ctx.fillRect(0, 70, W, 102);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
@@ -7715,6 +8284,7 @@ function drawOutdoorFront() {
       if (fridgeOpen) drawFridgePanel();
       if (buddyAsk) drawBuddyAsk();
       if (calOpen) drawCalendarPanel();
+      if (saltOpen) drawSaltPanel();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
         drawOverlay('Tap to start', 'Make breakfast, get your keys', 'then drive or take the metro!');
