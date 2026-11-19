@@ -580,6 +580,7 @@
       { name: 'Al Farooq Mosque', ar: 'مسجد الفاروق', colour: '#2a7f9e', kind: 'mosque' },
       { name: 'Al Noor Mosque', ar: 'مسجد النور', colour: '#8a5fb0', kind: 'mosque' },
     ];
+    const officeDest = { name: 'Dubai Tech Office', ar: 'مكتب دبي', colour: '#3a86ff', kind: 'office' };
     const beaches = [
       { name: 'Jumeirah Beach', ar: 'شاطئ جميرا', colour: '#1ea7c9', kind: 'beach' },
       { name: 'Kite Beach', ar: 'شاطئ الطائرات الورقية', colour: '#0096c7', kind: 'beach' },
@@ -884,9 +885,9 @@
     let levelFadeTo = 0;
     let lotKind = 'home';
     // the car park has levels 1 to 11 and an outdoor level on the top (homes have 3 and outdoor)
-    const topLevel = () => (lotKind === 'home' ? 12 : lotKind === 'beach' || lotKind === 'metro' ? 1 : lotKind === 'mosque' ? (dest.indoor ? 5 : 1) : 10);
+    const topLevel = () => (lotKind === 'home' ? 12 : lotKind === 'beach' || lotKind === 'metro' ? 1 : lotKind === 'mosque' ? (dest.indoor ? 5 : 1) : lotKind === 'office' ? 1 : 10);
     const indoorMosque = () => lotKind === 'mosque' && !!dest.indoor;
-    const levelName = (l) => (lotKind === 'beach' ? 'Beach car park' : lotKind === 'metro' ? 'Park & Ride' : lotKind === 'mosque' && !dest.indoor ? 'Mosque car park' : l === topLevel() && !indoorMosque() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
+    const levelName = (l) => (lotKind === 'beach' ? 'Beach car park' : lotKind === 'metro' ? 'Park & Ride' : lotKind === 'mosque' && !dest.indoor ? 'Mosque car park' : lotKind === 'office' ? 'Office car park' : l === topLevel() && !indoorMosque() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
     const lotOutdoor = () => lotLevel === topLevel() && !indoorMosque();
     let parked = false;
     let parkedT = 0;
@@ -1159,6 +1160,11 @@
         if (lotKind === 'beach') {
           if (leg === 'out' && !shopped) enterBeach();
           else leaveBackToCar();
+        } else if (lotKind === 'office') {
+          me.y = 192;
+          hold = null;
+          if (leg === 'out' && !shopped) enterOffice();
+          else leaveBackToCar();
         } else if (lotKind === 'mosque') {
           me.y = 192;
           hold = null;
@@ -1231,13 +1237,18 @@
       { name: 'Prayer Room', emoji: '\u{1F54C}', colour: '#2f8f7a', wall: '#e3f2ef', floor: '#cfe0da', facility: 'prayer', items: [['\u{1F54C}', 'Prayer', 0], ['\u{1F4D6}', 'Book', 0], ['\u{1F90D}', 'Calm', 0]] },
       { name: 'Restrooms', emoji: '\u{1F6BB}', colour: '#4a90d9', wall: '#e3eefb', floor: '#cfd8e0', facility: 'wc', items: [['\u{1F6BB}', 'WC', 0], ['\u{1F9FC}', 'Soap', 0], ['\u{1F6B0}', 'Water', 0]] },
       { name: 'Info Desk', emoji: 'ℹ️', colour: '#e08a1e', wall: '#fdf0d8', floor: '#d9c9a8', facility: 'info', items: [['ℹ️', 'Info', 0], ['\u{1F5FA}️', 'Map', 0], ['\u{1F64B}', 'Help', 0]] },
+      { name: 'My Desk', emoji: '\u{1F4BB}', colour: '#3a86ff', wall: '#e6eefb', floor: '#cfd6e0', facility: 'desk', items: [['\u{1F4BB}', 'Work', 0], ['\u{1F4CA}', 'Chart', 0], ['\u{2709}️', 'Mail', 0]] },
+      { name: 'Meeting Room', emoji: '\u{1F91D}', colour: '#7b2cbf', wall: '#efe6fa', floor: '#c9bfd8', facility: 'meeting', items: [['\u{1F91D}', 'Meet', 0], ['\u{1F4CB}', 'Notes', 0], ['\u{1F4A1}', 'Idea', 0]] },
+      { name: 'Pantry', emoji: '☕', colour: '#c98a4b', wall: '#fbf0e1', floor: '#d9c9a8', facility: 'pantry', items: [['☕', 'Coffee', 0], ['\u{1F36A}', 'Snack', 0], ['\u{1F964}', 'Juice', 0]] },
     ];
     const mallSlotX = [0, 100, 200, 400, 500, 600, 800, 880, 960, 1040]; // the six shops on each floor; the escalator is in the middle; then the lift and the services wing
     const mallSlots = 10;
     const mallWorldW = 1160;
     const isMosque = () => !!dest && dest.kind === 'mosque';
-    const worldW = () => (isMosque() ? W : mallWorldW);
-    const slotCount = () => (isMosque() ? 3 : mallSlots);
+    const isOffice = () => !!dest && dest.kind === 'office';
+    const isSmall = () => isMosque() || isOffice();
+    const worldW = () => (isSmall() ? W : mallWorldW);
+    const slotCount = () => (isMosque() ? 3 : isOffice() ? 4 : mallSlots);
     const liftX = 750;
     const mallEscX = 350;
     const mm = { x: 200, y: 505, dir: 1, stepT: 0, moving: false, goto: null };
@@ -1263,9 +1274,9 @@
       ['#f2c9a0', '#6a4c93', '#4a4a4a'], ['#e0ac84', '#ffd166', '#1d3557'], ['#6f4426', '#ffffff', '#7a5a3a'],
     ];
     const mallShelfX = [96, 200, 304];
-    const mallShopIdx = (slot) => (isMosque() ? 24 + slot : slot >= 6 ? 18 + slot : mallFloor * 6 + slot);
+    const mallShopIdx = (slot) => (isMosque() ? 24 + slot : isOffice() ? [28, 29, 30, 26][slot] : slot >= 6 ? 18 + slot : mallFloor * 6 + slot);
     let mallSlotIn = 0;
-    const mallDoorX = (slot) => (isMosque() ? 90 + slot * 110 : mallSlotX[slot] + 50);
+    const mallDoorX = (slot) => (isMosque() ? 90 + slot * 110 : isOffice() ? 60 + slot * 95 : mallSlotX[slot] + 50);
 
     let mallPlace = '';
     function initMallState(keep) {
@@ -1579,6 +1590,188 @@
       });
     }
 
+    // ---------- the office: your desk, the meeting room and the pantry ----------
+    function startMeeting() {
+      const shop = mallShop;
+      if (mallDone[shop][0]) {
+        say('The meeting is over. Good job! \u{1F44F}', 110);
+        return;
+      }
+      const boss = ['#e0ac84', '#2b3a55', '#1b2433'];
+      openTalk('Boss', boss, 'rounded', 'Good morning, team! Did you finish your report?', yesNo(), (a) => ({
+        reply: a === 0 ? 'Excellent! I knew I could count on you.' : 'No problem. Please finish it today.',
+        next: () => openTalk('Boss', boss, 'rounded', 'Can you tell the team your best idea?', yesNo(), (b) => {
+          mallDone[shop][0] = true;
+          addScore(b === 0 ? 8 : 3);
+          say('The meeting went well! \u{1F91D} +' + (b === 0 ? 8 : 3), 140);
+          return { reply: b === 0 ? 'Brilliant idea! Everyone, give a clap! \u{1F44F}' : 'That is okay. Next time!' };
+        }),
+      }));
+    }
+    function enterOffice() {
+      if (!mallActive || mallPlace !== dest.name) initMallState(mallActive);
+      mallActive = true;
+      mallPlace = dest.name;
+      phase = 'mall';
+      mallFloor = 0;
+      mallShop = -1;
+      mallRide = null;
+      mm.x = 200;
+      mm.y = 505;
+      mm.goto = null;
+      mm.dir = 1;
+      mallCamX = 0;
+      hold = null;
+      say('Good morning! \u{1F3E2} Do your work at your desk, join the meeting and have a coffee.', 280);
+      blip(988, 988, 0.15, 0.1);
+      blip(1318, 1318, 0.2, 0.1, 0.14);
+    }
+    function leaveOffice() {
+      mallShop = -1;
+      if (officeWorked && !officeBonus) {
+        officeBonus = true;
+        addScore(10);
+        say('Great work at the office today! \u{1F44F} +10', 200);
+        [523, 659, 784].forEach((f, j) => blip(f, f, 0.15, 0.1, j * 0.1));
+      } else say('Walk back to your car and get in!', 200);
+      phase = 'walk';
+      shopped = true;
+      me.x = 200;
+      me.y = 200;
+      me.hurt = 0;
+      leftCar = true;
+      hold = null;
+    }
+    function drawOfficeStreet() {
+      const wall = ctx.createLinearGradient(0, 0, 0, 400);
+      wall.addColorStop(0, '#dfeafb');
+      wall.addColorStop(1, '#f4f8ff');
+      ctx.fillStyle = wall;
+      ctx.fillRect(0, 0, W, 410);
+      // big windows with the city
+      for (let k = 0; k < 4; k++) {
+        const x = 14 + k * 96;
+        ctx.fillStyle = '#9fd3ee';
+        ctx.fillRect(x, 120, 84, 96);
+        ctx.fillStyle = 'rgba(80, 110, 150, 0.55)';
+        [[6, 60, 14], [26, 40, 16], [50, 52, 12], [66, 36, 14]].forEach(([dx, dy, w]) => ctx.fillRect(x + dx, 120 + dy, w, 96 - dy));
+        ctx.fillStyle = '#c3ccd4';
+        ctx.fillRect(x + 40, 120, 4, 96);
+      }
+      roundedRect(70, 60, 260, 40, 10);
+      ctx.fillStyle = dest.colour;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      fitText('\u{1F3E2} ' + dest.name, 240, 17);
+      ctx.fillText('\u{1F3E2} ' + dest.name, 200, 86);
+      const names = ['My Desk', 'Meeting Room', 'Pantry', 'Restrooms'];
+      for (let s2 = 0; s2 < 4; s2++) {
+        const x = mallDoorX(s2);
+        const sh = mallShopsData[mallShopIdx(s2)];
+        ctx.fillStyle = '#cfd6e0';
+        ctx.fillRect(x - 38, 250, 76, 154);
+        ctx.fillStyle = sh.colour;
+        ctx.fillRect(x - 38, 250, 76, 6);
+        ctx.fillStyle = '#7d8a96';
+        ctx.fillRect(x - 32, 262, 64, 142);
+        ctx.fillStyle = 'rgba(190, 225, 245, 0.85)';
+        ctx.fillRect(x - 28, 266, 56, 134);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x - 1, 266, 2, 134);
+        roundedRect(x - 42, 222, 84, 22, 6);
+        ctx.fillStyle = sh.colour;
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        fitText(sh.emoji + ' ' + names[s2], 76, 11);
+        ctx.fillText(sh.emoji + ' ' + names[s2], x, 238);
+      }
+      ctx.fillStyle = '#d9dee3';
+      ctx.fillRect(0, 404, W, H - 404);
+      ctx.strokeStyle = 'rgba(80, 90, 105, 0.16)';
+      ctx.lineWidth = 1.5;
+      [420, 450, 490, 540].forEach((y) => {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      });
+      roundedRect(30, 436, 340, 120, 10);
+      ctx.fillStyle = '#4a6fa5';
+      ctx.fill();
+      const things = [];
+      pushBuddy(things, 0.8);
+      things.push({ y: mm.y, draw: () => drawMe() });
+      things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
+      const nd = nearMallDoor();
+      if (nd >= 0 && !mallRide) {
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+        roundedRect(mallDoorX(nd) - 66, 196, 132, 26, 13);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F6AA} Tap the door to go in', mallDoorX(nd), 214);
+      }
+    }
+    function drawOfficeFront() {
+      const sky = ctx.createLinearGradient(0, 0, 0, 172);
+      sky.addColorStop(0, '#9fd3ee');
+      sky.addColorStop(1, '#e8f4fa');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 172);
+      // a glass tower
+      const g = ctx.createLinearGradient(80, 0, 320, 0);
+      g.addColorStop(0, '#5f8fc7');
+      g.addColorStop(0.5, '#9fc6ee');
+      g.addColorStop(1, '#5f8fc7');
+      ctx.fillStyle = g;
+      ctx.fillRect(80, 10, 240, 162);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.lineWidth = 2;
+      for (let x = 80; x <= 320; x += 30) {
+        ctx.beginPath();
+        ctx.moveTo(x, 10);
+        ctx.lineTo(x, 172);
+        ctx.stroke();
+      }
+      for (let y = 10; y <= 172; y += 24) {
+        ctx.beginPath();
+        ctx.moveTo(80, y);
+        ctx.lineTo(320, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.18)';
+      ctx.beginPath();
+      ctx.moveTo(80, 10);
+      ctx.lineTo(150, 10);
+      ctx.lineTo(80, 100);
+      ctx.fill();
+      roundedRect(120, 66, 160, 26, 8);
+      ctx.fillStyle = dest.colour;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      fitText('\u{1F3E2} ' + dest.name, 150, 14);
+      ctx.fillText('\u{1F3E2} ' + dest.name, 200, 84);
+      ctx.fillStyle = '#2b3a55';
+      ctx.fillRect(168, 112, 64, 60);
+      ctx.fillStyle = 'rgba(190, 225, 245, 0.9)';
+      ctx.fillRect(172, 116, 26, 56);
+      ctx.fillRect(202, 116, 26, 56);
+      [[28, 168], [372, 168]].forEach(([px, py]) => {
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(px - 2, py - 24, 4, 24);
+        drawPalm(px, py - 26);
+      });
+    }
+
     function leaveMall() {
       if (phase !== 'mall' || mallRide) return;
       if (toi.stage > 0) {
@@ -1598,6 +1791,10 @@
         leaveMosque();
         return;
       }
+      if (isOffice()) {
+        leaveOffice();
+        return;
+      }
       mallShop = -1;
       say('Take the lift to your car! The green ring shows its level.', 200);
       openLift('mall', { type: 'floor', val: mallFloor });
@@ -1607,8 +1804,8 @@
       for (let s = 0; s < slotCount(); s++) if (Math.abs(mm.x - mallDoorX(s)) < 36) return s;
       return -1;
     }
-    const nearMallEsc = () => !isMosque() && Math.abs(mm.x - mallEscX) < 42;
-    const nearLift = () => !isMosque() && Math.abs(mm.x - liftX) < 40;
+    const nearMallEsc = () => !isSmall() && Math.abs(mm.x - mallEscX) < 42;
+    const nearLift = () => !isSmall() && Math.abs(mm.x - liftX) < 40;
     function nearShelf() {
       for (let k = 0; k < 3; k++) if (Math.abs(mm.x - mallShelfX[k]) < 40) return k;
       return -1;
@@ -1631,7 +1828,7 @@
       ];
       {
         const fk = mallShopsData[mallShop].facility;
-        say(fk ? 'Welcome to the ' + mallShopsData[mallShop].name + '! ' + (fk === 'wudu' ? 'Tap your stool to wash for prayer.' : fk === 'prayer' ? 'Shoes off, then your mat.' : fk === 'wc' ? 'Tap things to use them.' : 'Ask the helper anything.') : 'Welcome to ' + mallShopsData[mallShop].name + '! Tap what you want to buy.', 200);
+        say(fk ? 'Welcome to the ' + mallShopsData[mallShop].name + '! ' + (fk === 'wudu' ? 'Tap your stool to wash for prayer.' : fk === 'desk' ? 'Tap the computer to start your work.' : fk === 'meeting' ? 'Tap the table to join the meeting.' : fk === 'pantry' ? 'Tap the machine for a coffee.' : fk === 'prayer' ? 'Shoes off, then your mat.' : fk === 'wc' ? 'Tap things to use them.' : 'Ask the helper anything.') : 'Welcome to ' + mallShopsData[mallShop].name + '! Tap what you want to buy.', 200);
       }
       blip(988, 988, 0.15, 0.08);
       blip(1318, 1318, 0.2, 0.08, 0.14);
@@ -1810,6 +2007,9 @@
       ],
       wudu: [{ x: 125, key: 'wudu', y0: 340, y1: 540, hint: '\u{1F6BF} Tap to do your wudu (washing for prayer)' }],
       wc: [{ x: 120, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 205, key: 'sink', hint: '\u{1F9FC} Tap to wash your hands' }, { x: 290, key: 'dryer', hint: '\u{1F4A8} Tap to dry your hands' }, { x: 350, key: 'stall', hint: '\u{1F6BD} Tap the toilet' }],
+      desk: [{ x: 200, key: 'computer', y0: 300, y1: 530, hint: '\u{1F4BB} Tap the computer to start your work' }],
+      meeting: [{ x: 200, key: 'meet', y0: 300, y1: 530, hint: '\u{1F91D} Tap the table to join the meeting' }],
+      pantry: [{ x: 120, key: 'coffee', y0: 300, y1: 530, hint: '\u2615 Tap to make a coffee' }, { x: 270, key: 'snack', y0: 300, y1: 530, hint: '\u{1F36A} Tap for a snack' }],
       info: [{ x: 120, key: 'map', hint: '\u{1F5FA}️ Tap to look at the mall map' }, { x: 305, key: 'desk', hint: 'ℹ️ Tap to talk to the helper' }],
     };
     const nearFac = () => {
@@ -2152,7 +2352,13 @@
       const kind = mallShopsData[mallShop].facility;
       const spot = facSpots[kind][k];
       if (!spot) return;
-      if (spot.key === 'shoes') {
+      if (spot.key === 'computer') {
+        if (officeWorked) say('You finished your work today \u2705 Well done!', 110);
+        else openChooser('work');
+      } else if (spot.key === 'meet') startMeeting();
+      else if (spot.key === 'coffee') facAward(0, 2, 'Fresh coffee! \u2615');
+      else if (spot.key === 'snack') facAward(1, 2, 'A tasty snack! \u{1F36A}');
+      else if (spot.key === 'shoes') {
         facState.shoes = true;
         say('Shoes off, on the rack \u{1F9E6} Now you can go onto the carpet', 150);
         blip(500, 420, 0.12, 0.08);
@@ -2724,6 +2930,107 @@
           things.push({ y: 505, draw: () => drawShopper(lx, 505, shopperLook[2], 1, -1, true, toi.leave, false) });
         }
         if (toi.stage !== 4) things.push({ y: mm.y, draw: () => drawMe() });
+      } else if (sh.facility === 'desk') {
+        // your desk: a big monitor, a keyboard, a chair and the city outside
+        ctx.fillStyle = '#9fd3ee';
+        ctx.fillRect(250, 130, 130, 120);
+        ctx.fillStyle = 'rgba(80, 110, 150, 0.55)';
+        [[258, 90, 14], [280, 70, 18], [310, 84, 14], [334, 60, 16], [358, 96, 12]].forEach(([x, y, w]) => ctx.fillRect(x, 130 + y, w, 120 - y));
+        ctx.strokeStyle = '#7b5a3a';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(250, 130, 130, 120);
+        ctx.fillStyle = '#8a6c4a';
+        ctx.fillRect(110, 392, 180, 14);
+        ctx.fillRect(118, 406, 10, 62);
+        ctx.fillRect(272, 406, 10, 62);
+        ctx.fillStyle = '#1c1f27';
+        roundedRect(146, 316, 108, 70, 6);
+        ctx.fill();
+        ctx.fillStyle = officeWorked ? '#6dff9c' : '#cfe8ff';
+        ctx.fillRect(152, 322, 96, 56);
+        ctx.fillStyle = '#3a86ff';
+        [[160, 360, 12, 14], [178, 350, 12, 24], [196, 340, 12, 34], [214, 354, 12, 20]].forEach(([x, y, w, h]) => ctx.fillRect(x, y, w, h));
+        ctx.fillStyle = '#4a4f57';
+        ctx.fillRect(190, 386, 20, 6);
+        ctx.fillStyle = '#c3ccd4';
+        roundedRect(158, 392, 84, 8, 3);
+        ctx.fill();
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.fillText('☕', 126, 388);
+        ctx.fillText('\u{1FAB4}', 300, 388);
+        ctx.fillStyle = '#9a7448';
+        ctx.fillRect(330, 330, 50, 100);
+        ctx.fillStyle = '#7b5a3a';
+        ctx.fillRect(334, 346, 42, 4);
+        ctx.fillRect(334, 380, 42, 4);
+        things.push({ y: mm.y, draw: () => drawMe() });
+      } else if (sh.facility === 'meeting') {
+        // the meeting room: a long table, the boss, two colleagues and a whiteboard
+        roundedRect(250, 130, 130, 90, 6);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#7d8a96';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.fillStyle = '#e63946';
+        [[266, 190, 14, 22], [288, 170, 14, 42], [310, 180, 14, 32], [332, 150, 14, 62]].forEach(([x, y, w, h]) => ctx.fillRect(x, 130 + (y - 130) * 0.6 + 36, w, h * 0.6));
+        ctx.fillStyle = '#2b2230';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('SALES', 315, 148);
+        ctx.fillStyle = '#8a6c4a';
+        ctx.beginPath();
+        ctx.ellipse(190, 440, 150, 26, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#a07a52';
+        ctx.beginPath();
+        ctx.ellipse(190, 434, 146, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+        things.push({ y: 400, draw: () => drawSitter(100, 420, shopperLook[1]) });
+        things.push({ y: 401, draw: () => drawSitter(290, 420, shopperLook[3]) });
+        things.push({ y: 402, draw: () => drawShopper(330, 388, ['#e0ac84', '#2b3a55', '#1b2433'], 1.0, -1, false, mallTime, false) });
+        ctx.font = '16px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('\u{1F4CB}', 150, 436);
+        ctx.fillText('☕', 230, 436);
+        things.push({ y: mm.y, draw: () => drawMe() });
+      } else if (sh.facility === 'pantry') {
+        // the pantry: a coffee machine, a fridge and a counter
+        ctx.fillStyle = '#b9bfc6';
+        ctx.fillRect(280, 170, 90, 230);
+        ctx.fillStyle = '#9aa3ac';
+        ctx.fillRect(280, 280, 90, 4);
+        ctx.fillRect(360, 200, 6, 50);
+        ctx.fillStyle = '#9a7448';
+        ctx.fillRect(70, 380, 190, 16);
+        ctx.fillStyle = '#7b5a3a';
+        ctx.fillRect(76, 396, 178, 40);
+        ctx.fillStyle = '#2b3a55';
+        roundedRect(96, 310, 60, 70, 8);
+        ctx.fill();
+        ctx.fillStyle = '#c0392b';
+        ctx.fillRect(104, 320, 44, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(114, 356, 24, 22);
+        ctx.font = '26px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.fillText('☕', 126, 376);
+        ctx.fillText('\u{1F36A}', 210, 374);
+        ctx.fillText('\u{1F964}', 238, 374);
+        if (facFx > 0) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.lineWidth = 2;
+          for (let k = -1; k <= 1; k++) {
+            ctx.beginPath();
+            ctx.moveTo(126 + k * 8, 300);
+            ctx.quadraticCurveTo(126 + k * 8 + 4 * Math.sin(mallTime / 6 + k), 288, 126 + k * 8, 276);
+            ctx.stroke();
+          }
+        }
+        things.push({ y: mm.y, draw: () => drawMe() });
       } else {
         // the info desk: a big mall map and a helper behind the counter
         roundedRect(70, 140, 100, 130, 8);
@@ -2853,7 +3160,7 @@
     }
 
     // ---------- the trolley ----------
-    const nearTrolleyBay = () => !isMosque() && mallFloor === 0 && mallShop < 0 && Math.abs(mm.x - trolleyBayX) < 30;
+    const nearTrolleyBay = () => !isSmall() && mallFloor === 0 && mallShop < 0 && Math.abs(mm.x - trolleyBayX) < 30;
     function trolleyAction() {
       if (!mallTrolley) {
         mallTrolley = true;
@@ -3462,17 +3769,17 @@
           }
         }
         const ex = mallEscX - mallCamX;
-        if (!isMosque() && p.x > ex - 56 && p.x < ex + 56 && p.y > 200 && p.y < 440) {
+        if (!isSmall() && p.x > ex - 56 && p.x < ex + 56 && p.y > 200 && p.y < 440) {
           mm.goto = mallEscX;
           return;
         }
         const lx = liftX - mallCamX;
-        if (!isMosque() && p.x > lx - 48 && p.x < lx + 48 && p.y > 200 && p.y < 440) {
+        if (!isSmall() && p.x > lx - 48 && p.x < lx + 48 && p.y > 200 && p.y < 440) {
           mm.goto = liftX;
           return;
         }
         const bx = trolleyBayX - mallCamX;
-        if (!isMosque() && mallFloor === 0 && p.x > bx - 44 && p.x < bx + 44 && p.y >= 416 && p.y < 475) {
+        if (!isSmall() && mallFloor === 0 && p.x > bx - 44 && p.x < bx + 44 && p.y >= 416 && p.y < 475) {
           mm.goto = trolleyBayX;
           mm.act = { kind: 'trolley' };
           return;
@@ -3667,7 +3974,7 @@
     let havePart = false;
     const repair = { seq: [], i: 0, msg: '', done: false, spark: 0 };
     const repairTools = [['\u{1F527}', 'Wrench'], ['\u{1F50B}', 'Battery'], ['\u{1F6DE}', 'Tyre'], ['\u{1F6E2}️', 'Oil can'], ['\u{1F526}', 'Torch'], ['\u{1FA9B}', 'Screwdriver']];
-    const kindEmoji = (d) => (d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : '\u{1F6CD}️');
+    const kindEmoji = (d) => (d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : d.kind === 'office' ? '\u{1F3E2}' : '\u{1F6CD}️');
 
     function enterGround(fromTaxi) {
       phase = 'ground';
@@ -3744,7 +4051,7 @@
         ctx.fillText(kindEmoji(d) + ' ' + d.name, c.x + 26, c.y + 24);
         ctx.fillStyle = '#6b727b';
         ctx.font = '12px sans-serif';
-        ctx.fillText(d.sub || (d.kind === 'mall' ? 'Shopping mall' : d.kind === 'beach' ? 'Beach' : d.kind === 'mosque' ? 'Mosque' : 'Metro'), c.x + 26, c.y + 43);
+        ctx.fillText(d.sub || (d.kind === 'mall' ? 'Shopping mall' : d.kind === 'beach' ? 'Beach' : d.kind === 'mosque' ? 'Mosque' : d.kind === 'office' ? 'Your office' : 'Metro'), c.x + 26, c.y + 43);
         ctx.fillStyle = '#f2b705';
         ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'right';
@@ -3802,6 +4109,7 @@
         enterStation(lotStation);
       } else if (d.kind === 'mall') enterMallAt(0);
       else if (d.kind === 'beach') enterBeach();
+      else if (d.kind === 'office') enterOffice();
       else enterMosque();
       say('Your taxi dropped you at ' + dest.name + ' \u{1F695} Enjoy!', 220);
     }
@@ -4218,6 +4526,10 @@
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
     const isFriday = () => gameDate.getDay() === 5;
+    const officeDays = [1, 2, 4]; // Monday, Tuesday and Thursday you go to the office
+    const isOfficeDay = () => officeDays.indexOf(gameDate.getDay()) >= 0;
+    let officeWorked = false;
+    let officeBonus = false;
     let fridayDone = false; // you did the Friday prayer today
     let towed = false;
     function saveDay() {
@@ -4246,6 +4558,9 @@
       ['\u{1F341}', 'Maple syrup', false], ['\u{1F36F}', 'Honey', false], ['\u{1F9C8}', 'Butter', false], ['\u{1F95B}', 'Milk', false],
       ['\u{1F9C3}', 'Juice', false], ['\u{1F353}', 'Strawberries', false], ['\u{1F34C}', 'Banana', false], ['\u{1F963}', 'Cereal', false],
     ];
+    let bathOpen = false;
+    const bathToys = [['\u{1F986}', 'Rubber duck'], ['\u{1F6A2}', 'Boat'], ['\u{1F420}', 'Fish'], ['\u{1F433}', 'Whale'], ['\u{1F438}', 'Frog'], ['\u{1FAE7}', 'Bubbles']];
+    const bath = { inWater: [], tried: [], pops: 0, ripples: [], bubbles: [], popBonus: false };
     let aptStage = 'morning'; // morning, then (after your day) the evening: dinner, shower, teeth, bed
     let workCoins = 0; // what you earned at your desk: more coins for the next mall
     const mealName = () => (aptStage === 'evening' ? 'dinner' : 'breakfast');
@@ -4341,6 +4656,8 @@
       }
       secondUsed = false;
       secondActive = false;
+      officeWorked = false;
+      officeBonus = false;
       apt.calSeen = false;
       calOpen = false;
       prayMode = isFriday() ? 'friday' : 'normal';
@@ -4361,6 +4678,232 @@
       departing = false;
       setupHomeLot();
       say((first ? 'Good morning! ' : 'A new day! ') + 'It is ' + dayNames[gameDate.getDay()] + (isFriday() ? ' \u{1F54C}' : '') + ' \u2600\uFE0F Tap to wake up', 260);
+    }
+
+    // ---- the bathtub: a rubber duck and other toys
+    function openBath() {
+      bathOpen = true;
+      bath.inWater = [];
+      bath.ripples = [];
+      bath.bubbles = [];
+      bath.pops = 0;
+      hold = null;
+      blip(500, 800, 0.3, 0.06);
+      say('Bath time! \u{1F6C1} Tap a toy to put it in the water.', 200);
+    }
+    const bathShelfX = (i) => 50 + i * 60;
+    function bathSplash(x, y) {
+      bath.ripples.push({ x, y, t: frameCount });
+      for (let k = 0; k < 3; k++) bath.bubbles.push({ x: x + (k - 1) * 14, y, t: frameCount + k * 4 });
+      if (bath.ripples.length > 8) bath.ripples.shift();
+      if (bath.bubbles.length > 20) bath.bubbles.splice(0, 3);
+    }
+    function bathPress(p) {
+      if (p.x > 110 && p.x < 290 && p.y > 494 && p.y < 540) {
+        bathOpen = false;
+        if (bath.tried.length || bath.pops >= 3) {
+          apt.showered = true;
+          say('What a lovely bath! You are all clean ✨', 180);
+        } else say('You got out of the tub.', 100);
+        return;
+      }
+      for (let i = 0; i < bathToys.length; i++) {
+        if (Math.hypot(p.x - bathShelfX(i), p.y - 148) < 28) {
+          const at = bath.inWater.findIndex((t) => t.i === i);
+          if (at >= 0) bath.inWater.splice(at, 1);
+          else {
+            const x = 130 + Math.random() * 190;
+            const y = 300 + Math.random() * 60;
+            bath.inWater.push({ i, x, y });
+            bathSplash(x, y);
+            blip(i === 0 ? 1300 : 500 + i * 120, i === 0 ? 900 : 700 + i * 120, 0.12, 0.1);
+            if (bath.tried.indexOf(i) < 0) {
+              bath.tried.push(i);
+              addScore(2);
+              say(bathToys[i][0] + ' ' + bathToys[i][1] + ' +2', 90);
+              if (bath.tried.length === bathToys.length) {
+                addScore(10);
+                say('You played with every bath toy! \u{1F389} +10', 200);
+                [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.2, 0.1, j * 0.1));
+              }
+            }
+          }
+          return;
+        }
+      }
+      for (const t of bath.inWater) {
+        if (Math.hypot(p.x - t.x, p.y - t.y) < 30) {
+          bathSplash(t.x, t.y);
+          blip(t.i === 0 ? 1400 : 600 + t.i * 100, t.i === 0 ? 1000 : 800 + t.i * 100, 0.1, 0.1);
+          if (t.i === 0) say('Squeak squeak! \u{1F986}', 70);
+          return;
+        }
+      }
+      if (p.x > 44 && p.x < 356 && p.y > 268 && p.y < 440) {
+        bathSplash(p.x, p.y);
+        bath.pops++;
+        blip(900 + (bath.pops % 4) * 150, 1200, 0.06, 0.08);
+        if (bath.pops >= 10 && !bath.popBonus) {
+          bath.popBonus = true;
+          addScore(3);
+          say('So many bubbles! \u{1FAE7} +3', 120);
+        }
+      }
+    }
+    function drawBathTub() {
+      ctx.fillStyle = '#e3f4f3';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(60, 130, 150, 0.2)';
+      ctx.lineWidth = 1.5;
+      for (let x = 0; x < W; x += 40) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      for (let y = 0; y < H; y += 40) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#2f9fb8';
+      ctx.fillRect(0, 84, W, 34);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('\u{1F6C1} BATH TIME', 200, 107);
+      // the shelf of toys
+      ctx.fillStyle = '#9a7448';
+      ctx.fillRect(20, 184, 360, 10);
+      bathToys.forEach(([emoji, name], i) => {
+        const x = bathShelfX(i);
+        const inW = bath.inWater.some((t) => t.i === i);
+        ctx.fillStyle = inW ? '#d9dee3' : '#ffffff';
+        ctx.beginPath();
+        ctx.arc(x, 148, 28, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = inW ? '#9aa5ae' : '#f15bb5';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.globalAlpha = inW ? 0.35 : 1;
+        ctx.font = '30px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(emoji, x, 159);
+        ctx.globalAlpha = 1;
+        ctx.font = '9px sans-serif';
+        ctx.fillStyle = '#2b2230';
+        ctx.fillText(name, x, 190);
+      });
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#4a4f57';
+      ctx.fillText('Tap a toy to put it in the water. Tap the water for bubbles!', 200, 222);
+      // the tub
+      roundedRect(20, 236, 360, 250, 44);
+      ctx.fillStyle = '#f4f7fa';
+      ctx.fill();
+      ctx.strokeStyle = '#c3ccd4';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#c3ccd4';
+      ctx.fillRect(60, 484, 22, 12);
+      ctx.fillRect(318, 484, 22, 12);
+      const wg = ctx.createLinearGradient(0, 268, 0, 440);
+      wg.addColorStop(0, '#b6ecfb');
+      wg.addColorStop(1, '#5cc3ee');
+      roundedRect(44, 268, 312, 172, 30);
+      ctx.fillStyle = wg;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 2;
+      for (let k = 0; k < 5; k++) {
+        const wx = 70 + ((k * 61 + frameCount * 0.5) % 260);
+        ctx.beginPath();
+        ctx.moveTo(wx, 380 + k * 10);
+        ctx.quadraticCurveTo(wx + 8, 374 + k * 10, wx + 16, 380 + k * 10);
+        ctx.stroke();
+      }
+      // you, with your head above the water and foam on top
+      ctx.fillStyle = '#f2c9a0';
+      ctx.beginPath();
+      ctx.arc(96, 316, 22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#2a2a2a';
+      ctx.beginPath();
+      ctx.arc(96, 310, 22, Math.PI, Math.PI * 1.9);
+      ctx.fill();
+      ctx.fillStyle = '#2a2a2a';
+      ctx.fillRect(100, 316, 3, 3);
+      ctx.fillRect(111, 316, 3, 3);
+      ctx.fillStyle = '#d71920';
+      ctx.beginPath();
+      ctx.arc(96, 350, 30, Math.PI, 0);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+      [[70, 344, 16], [94, 352, 18], [124, 346, 14], [60, 366, 12], [150, 358, 12]].forEach(([x, y, r]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      // the toys floating
+      ctx.font = '40px sans-serif';
+      ctx.fillStyle = '#000000';
+      bath.inWater.forEach((t) => {
+        ctx.fillText(bathToys[t.i][0], t.x + Math.sin(frameCount / 40 + t.i) * 14, t.y + Math.sin(frameCount / 17 + t.i * 2) * 5);
+      });
+      bath.ripples.forEach((r) => {
+        const a = (frameCount - r.t) / 40;
+        if (a >= 1) return;
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + (1 - a) + ')';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.ellipse(r.x, r.y + 6, 10 + a * 36, 4 + a * 14, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+      bath.bubbles.forEach((b) => {
+        const a = (frameCount - b.t) / 60;
+        if (a < 0 || a >= 1) return;
+        ctx.strokeStyle = 'rgba(255, 255, 255, ' + (1 - a) + ')';
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + 0.4 * (1 - a) + ')';
+        ctx.beginPath();
+        ctx.arc(b.x + Math.sin(a * 9) * 6, b.y - a * 90, 7 - a * 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+      roundedRect(110, 494, 180, 46, 23);
+      ctx.fillStyle = '#2fbf71';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('Get out of the tub \u{1F9D6}', 200, 523);
+    }
+    // the tub in the bathroom
+    function drawTubInBathroom() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.beginPath();
+      ctx.ellipse(250, 486, 96, 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#f4f7fa';
+      ctx.beginPath();
+      ctx.ellipse(250, 462, 96, 34, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#c3ccd4';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+      ctx.fillStyle = '#8fdcf5';
+      ctx.beginPath();
+      ctx.ellipse(250, 462, 82, 25, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      [[212, 456, 9], [228, 452, 12], [262, 458, 10], [282, 454, 8]].forEach(([x, y, r]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.font = '22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1F986}', 250 + Math.sin(frameCount / 30) * 4, 462 + Math.sin(frameCount / 14) * 2);
     }
 
     function goRoom(r) {
@@ -4393,7 +4936,7 @@
     }
 
     function aptAction(a) {
-      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || calOpen || chooseOpen || apt.sleep > 0 || apt.reading || apt.play || apt.tv || apt.call || apt.fade > 25) return;
+      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || calOpen || chooseOpen || bathOpen || apt.sleep > 0 || apt.reading || apt.play || apt.tv || apt.call || apt.fade > 25) return;
       if (aptRoom === 'bed') {
         if (a === 'bed') {
           if (!apt.woke) {
@@ -4420,6 +4963,8 @@
             hm.x = bathX.shower;
             say('Shower time! \u{1F6BF}', 130);
           }
+        } else if (a === 'tub') {
+          openBath();
         } else if (a === 'sink') {
           if (!apt.brushed) {
             apt.brushed = true;
@@ -4639,6 +5184,11 @@
       ctx.fillText(calLeave ? 'Before you go out: what day is it?' : 'Your calendar', 200, 93);
       ctx.fillStyle = '#2b2230';
       ctx.font = 'bold 17px sans-serif';
+      ctx.fillStyle = '#6b727b';
+      ctx.font = '11px sans-serif';
+      ctx.fillText('\u{1F3E2} office day   \u{1F54C} Friday prayer   \u{1F3E0} work from home', 200, 150);
+      ctx.fillStyle = '#2b2230';
+      ctx.font = 'bold 17px sans-serif';
       ctx.fillText('Today is ' + dayNames[gameDate.getDay()] + ', ' + gameDate.getDate() + ' ' + monthNames[gameDate.getMonth()] + (isFriday() ? ' \u{1F54C}' : ''), 200, 130);
       // the days
       const y0 = gameDate.getFullYear();
@@ -4659,7 +5209,8 @@
         const fri = idx % 7 === 5;
         const today = d === gameDate.getDate();
         roundedRect(cx + 2, cy, 42, 38, 8);
-        ctx.fillStyle = today ? '#ffd23f' : fri ? '#d9f7e3' : '#f3f0e6';
+        const off = officeDays.indexOf(idx % 7) >= 0;
+        ctx.fillStyle = today ? '#ffd23f' : fri ? '#d9f7e3' : off ? '#dbe8ff' : '#f3f0e6';
         ctx.fill();
         if (today) {
           ctx.strokeStyle = '#d62828';
@@ -4669,20 +5220,25 @@
           ctx.strokeStyle = '#1f9d55';
           ctx.lineWidth = 2;
           ctx.stroke();
+        } else if (off) {
+          ctx.strokeStyle = '#3a86ff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
         }
         ctx.fillStyle = '#2b2230';
         ctx.font = 'bold 15px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText(String(d), cx + 23, cy + 22);
-        if (fri) {
-          ctx.font = '11px sans-serif';
-          ctx.fillText('\u{1F54C}', cx + 23, cy + 35);
-        }
+        ctx.font = '11px sans-serif';
+        if (fri) ctx.fillText('\u{1F54C}', cx + 23, cy + 35);
+        else if (off) ctx.fillText('\u{1F3E2}', cx + 23, cy + 35);
+        else if (idx % 7 === 3) ctx.fillText('\u{1F3E0}', cx + 23, cy + 35);
       }
       // what it means
       const toFri = (5 - gameDate.getDay() + 7) % 7;
       const nf = new Date(gameDate.getFullYear(), gameDate.getMonth(), gameDate.getDate() + toFri);
-      const note = isFriday() ? 'Today is Friday! It is the day of the Friday prayer (Jumu\'ah). Do your wudu and pray in the prayer room at the mall.' : 'The next Friday prayer is on Friday ' + nf.getDate() + ' ' + monthNames[nf.getMonth()] + ', in ' + toFri + (toFri === 1 ? ' day.' : ' days.');
+      const dow = gameDate.getDay();
+      const note = isFriday() ? 'Today is Friday! It is the day of the Friday prayer (Jumu\'ah). No office today: pray at a mosque or the mall.' : isOfficeDay() ? 'Today you work at the office! \u{1F3E2} Drive through the Office tunnel at 0 km. The next Friday prayer is in ' + toFri + (toFri === 1 ? ' day.' : ' days.') : dow === 3 ? 'No office today: you work from home \u{1F3E0} (or go out). The next Friday prayer is in ' + toFri + (toFri === 1 ? ' day.' : ' days.') : 'No office today, enjoy your day! \u{1F389} The next Friday prayer is on Friday ' + nf.getDate() + ' ' + monthNames[nf.getMonth()] + '.';
       roundedRect(34, 420, 332, 62, 12);
       ctx.fillStyle = isFriday() ? '#d9f7e3' : '#eef3f8';
       ctx.fill();
@@ -4799,7 +5355,10 @@
         return;
       }
       if (aptRoom === 'bath') {
-        if (p.x < 135 && p.y > 150 && p.y < 440) {
+        if (p.y > 425 && p.y < 520 && p.x > 150 && p.x < 345) {
+          hm.goto = 262;
+          hm.act = 'tub';
+        } else if (p.x < 135 && p.y > 150 && p.y < 440) {
           hm.goto = bathX.shower;
           hm.act = 'shower';
         } else if (p.x >= 140 && p.x < 250 && p.y > 140 && p.y < 440) {
@@ -4846,6 +5405,7 @@
         return null;
       }
       if (aptRoom === 'bath') {
+        if (Math.abs(hm.x - 262) < 30) return 'tub';
         if (Math.abs(hm.x - bathX.shower) < 40) return 'shower';
         if (Math.abs(hm.x - bathX.sink) < 40) return 'sink';
         if (Math.abs(hm.x - bathX.door) < 30) return 'door';
@@ -5409,6 +5969,7 @@
       ctx.fillStyle = '#000000';
       ctx.textAlign = 'center';
       ctx.fillText(apt.brushed ? '✨' : '\u{1FAA5}', 226, 322);
+      drawTubInBathroom();
       // a towel
       ctx.fillStyle = '#7d8a96';
       ctx.fillRect(262, 190, 50, 5);
@@ -5436,8 +5997,8 @@
       if (!showering) drawShopper(hm.x, hm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.98, hm.dir, hm.moving, hm.stepT, false);
       const n = showering ? null : nearApt();
       if (n) {
-        const texts = { shower: apt.showered ? 'You are clean ✨' : 'Tap the shower \u{1F6BF}', sink: apt.brushed ? 'Clean teeth' : 'Tap to brush your teeth', door: apt.showered ? 'Tap the door: kitchen' : 'Shower first!' };
-        drawAptHint(texts[n], { shower: bathX.shower, sink: bathX.sink, door: bathX.door }[n]);
+        const texts = { tub: 'Tap the bathtub to play \u{1F986}', shower: apt.showered ? 'You are clean ✨' : 'Tap the shower \u{1F6BF}', sink: apt.brushed ? 'Clean teeth' : 'Tap to brush your teeth', door: apt.showered ? 'Tap the door: kitchen' : 'Shower first!' };
+        drawAptHint(texts[n], { tub: 262, shower: bathX.shower, sink: bathX.sink, door: bathX.door }[n]);
       }
       drawAptHud();
     }
@@ -5576,11 +6137,18 @@
           blip(1000 + chooser.done.length * 150, 1000 + chooser.done.length * 150, 0.1, 0.07);
           if (chooser.done.length >= chooser.items.length) {
             chooseOpen = false;
-            apt.stayHome = true;
-            apt.worked = true;
-            workCoins += 6;
-            addScore(8);
-            say('Work done! \u{1F4BC} You earned \u{1F4B0} 6 coins for the next mall +8', 240);
+            if (phase === 'mall' && isOffice()) {
+              officeWorked = true;
+              workCoins += 10;
+              addScore(15);
+              say('Your work at the office is done! \u{1F4BC} +15 and \u{1F4B0} 10 coins for the next mall', 260);
+            } else {
+              apt.stayHome = true;
+              apt.worked = true;
+              workCoins += 6;
+              addScore(8);
+              say('Work done! \u{1F4BC} You earned \u{1F4B0} 6 coins for the next mall +8', 240);
+            }
             [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.2, 0.1, j * 0.1));
           }
         }
@@ -7050,11 +7618,11 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen && !chooseOpen) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen && !chooseOpen && !bathOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && carBroken && repairReady && lotKind === 'home') label = '\u{1F527} Help the engineer';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
-        else if (phase === 'mall') label = isMosque() ? '\u{1F6AA} Leave the mosque' : '\u{1F6AA} Leave the mall';
+        else if (phase === 'mall') label = isMosque() ? '\u{1F6AA} Leave the mosque' : isOffice() ? '\u{1F6AA} Leave the office' : '\u{1F6AA} Leave the mall';
         else if (phase === 'beach') label = nearSalt() ? '\u{1F354} Order at SALT' : nearKarak() ? '\u2615 Order at KARAK' : '\u{1F6AA} Leave the beach';
         else if (phase === 'station' && !(trip && trip.stage === 'end' && trip.timer > 0)) label = '\u{1F687} Open the metro map';
         else if (phase === 'ground') label = '\u{1F6D7} Take the lift';
@@ -7101,6 +7669,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (bathOpen) {
+        bathPress(p);
         return;
       }
       if (chooseOpen) {
@@ -7229,7 +7801,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       shields = [];
       police = null;
       addScore(10);
-      say(leg === 'out' ? 'Off to ' + dest.name + '! ' + (dest.kind === 'beach' ? '\u{1F3D6}\uFE0F' : dest.kind === 'mosque' ? '\u{1F54C}' : '\u{1F6CD}\uFE0F') : 'You are home!', 140);
+      say(leg === 'out' ? 'Off to ' + dest.name + '! ' + (dest.kind === 'beach' ? '\u{1F3D6}\uFE0F' : dest.kind === 'mosque' ? '\u{1F54C}' : dest.kind === 'office' ? '\u{1F3E2}' : '\u{1F6CD}\uFE0F') : 'You are home!', 140);
       blip(660, 990, 0.2, 0.1);
     }
 
@@ -7465,7 +8037,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           openMetro();
         }
       }
-      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen || chooseOpen) return;
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen || chooseOpen || bathOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
@@ -8024,6 +8596,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     }
 
 function drawOutdoorFront() {
+      if (lotKind === 'office') {
+        drawOfficeFront();
+        return;
+      }
       if (lotKind === 'mosque') {
         drawMosqueFront();
         return;
@@ -9016,6 +9592,7 @@ function drawOutdoorFront() {
         else if (mallShopsData[mallShop].facility) drawFacility();
         else drawShopInside();
       } else if (isMosque()) drawMosqueStreet();
+      else if (isOffice()) drawOfficeStreet();
       else drawMallStreet();
       // your coins, bags and trolley
       ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
@@ -9029,7 +9606,7 @@ function drawOutdoorFront() {
       ctx.fillText('\u{1F6CD}\uFE0F ' + mallBag.length + (mallTrolley ? ' \u{1F6D2}' : '/3'), 72, 63);
       drawAdhan();
       if (buddy && buddy.bye && buddy.bye.t < 65) drawBubble(mm.x - (mallShop < 0 ? mallCamX : 0), mm.y - 96, 'Bye ' + buddy.name + '! \u{1F44B}');
-      if (partAccepted && !havePart && taxiMode && mallShop < 0 && !isMosque()) {
+      if (partAccepted && !havePart && taxiMode && mallShop < 0 && !isSmall()) {
         roundedRect(8, 210, 330, 28, 14);
         ctx.fillStyle = '#ff8c1a';
         ctx.fill();
@@ -9041,7 +9618,7 @@ function drawOutdoorFront() {
         ctx.textAlign = 'left';
         ctx.fillText('\u{1F50B} Buy a battery: Electronics shop, level 2', 18, 229);
       }
-      if (eidParty && !eidPartyDone && mallShop < 0 && !isMosque()) {
+      if (eidParty && !eidPartyDone && mallShop < 0 && !isSmall()) {
         roundedRect(8, 178, 330, 28, 14);
         ctx.fillStyle = '#d94f8a';
         ctx.fill();
@@ -9075,10 +9652,11 @@ function drawOutdoorFront() {
       const prev = second ? laneDests.map((d) => d.name) : [];
       const mallPool = malls.filter((m) => prev.indexOf(m.name) < 0);
       const beachPool = beaches.filter((b) => prev.indexOf(b.name) < 0);
-      const pool = mallPool.sort(() => Math.random() - 0.5).slice(0, laneCount - (second ? 2 : 3));
+      const pool = mallPool.sort(() => Math.random() - 0.5).slice(0, laneCount - (second ? 2 : isOfficeDay() ? 4 : 3));
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, beachPool[Math.floor(Math.random() * beachPool.length)]); // the beach is one of the tunnels
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, metroDest); // and so are the metro stations
       if (!second) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, mosques[Math.floor(Math.random() * mosques.length)]); // and a mosque
+      if (!second && isOfficeDay()) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, officeDest); // and, on a work day, your office
       return pool;
     }
     let gateRow = null;
@@ -9283,7 +9861,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.font = '13px sans-serif';
-        ctx.fillText(d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : '\u{1F6CD}️', cx, y - 88);
+        ctx.fillText(d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : d.kind === 'office' ? '\u{1F3E2}' : '\u{1F6CD}️', cx, y - 88);
         const words = d.name.split(' ');
         const half = Math.ceil(words.length / 2);
         const l1 = words.slice(0, half).join(' ');
@@ -10552,7 +11130,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : dest.kind === 'beach' ? '\u{1F3D6}\uFE0F ' : dest.kind === 'metro' ? '\u{1F687} ' : dest.kind === 'mosque' ? '\u{1F54C} ' : '\u{1F6CD}\uFE0F ') + dest.name, W / 2, 28);
+        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : dest.kind === 'beach' ? '\u{1F3D6}\uFE0F ' : dest.kind === 'metro' ? '\u{1F687} ' : dest.kind === 'mosque' ? '\u{1F54C} ' : dest.kind === 'office' ? '\u{1F3E2} ' : '\u{1F6CD}\uFE0F ') + dest.name, W / 2, 28);
       }
       if ((phase === 'park' || phase === 'walk') && levelFade <= 0) {
         ctx.fillStyle = 'rgba(31, 95, 168, 0.85)';
@@ -10589,6 +11167,7 @@ function drawOutdoorFront() {
       if (repairOpen) drawRepairPanel();
       if (giftOpen) drawGiftPanel();
       if (chooseOpen) drawChooserPanel();
+      if (bathOpen) drawBathTub();
       if (talk) drawTalkPanel();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
