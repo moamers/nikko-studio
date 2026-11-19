@@ -774,15 +774,25 @@
       signs.push({ kind: 'gantry', side: 0, y: -40, km: Math.max(1, Math.round((tripLen - travel) / 700)) });
     }
 
+    // the second chance: after the mosque, cross a bridge and choose again from a different set of tunnels
+    let secondUsed = false;
+    let secondActive = false;
+    let bridgeZone = null; // [from, to] distance along the trip
+    const bridgeY = (d) => car.y - (d - travel);
     function startLeg(newLeg) {
       leg = newLeg;
       departing = false;
       dest = newLeg === 'out' ? pendingDest : homeDest;
-      if (newLeg === 'out') laneDests = pickLanes();
+      if (newLeg === 'out') laneDests = pickLanes(secondActive);
       gateRow = null;
       gateWait = 0;
       gateStopped = false;
       tripLen = 4200 + Math.random() * 1200;
+      bridgeZone = null;
+      if (newLeg === 'out' && secondActive) {
+        tripLen = 3900;
+        bridgeZone = [300, 2500];
+      }
       travel = 0;
       arriving = false;
       arriveT = 0;
@@ -804,7 +814,7 @@
       splashes = [];
       phase = 'drive';
       spawnTraffic();
-      say(newLeg === 'out' ? 'Drive on! At 0 km choose a tunnel: malls, the beach or the metro.' : 'Drive back home!', 200);
+      say(newLeg === 'out' ? (secondActive ? 'Second chance! \u{1F309} Cross the bridge, then choose a new tunnel.' : 'Drive on! At 0 km choose a tunnel: malls, the beach or the metro.') : 'Drive back home!', 220);
     }
 
     function resetGame() {
@@ -1057,7 +1067,19 @@
         startLeg('out');
       } else if (shopped) {
         blip(420, 420, 0.12, 0.1);
-        startLeg('home');
+        if (dest.kind === 'mosque' && !secondUsed) {
+          // after the mosque you get a second chance
+          secondUsed = true;
+          secondActive = true;
+          shopped = false;
+          mallActive = false;
+          mallBag = [];
+          bootDone = false;
+          startLeg('out');
+        } else {
+          secondActive = false;
+          startLeg('home');
+        }
       }
     }
 
@@ -3361,6 +3383,8 @@
       apt.skipped = false;
       apt.items = [false, false, false, false];
       aptRoom = 'bed';
+      secondUsed = false;
+      secondActive = false;
       apt.calSeen = false;
       calOpen = false;
       prayMode = isFriday() ? 'friday' : 'normal';
@@ -5885,6 +5909,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       const sand = css.getPropertyValue('--sand').trim() || '#e6d5ab';
       const road = css.getPropertyValue('--road').trim() || '#555a60';
       drawSideCity(sand);
+      drawBridge();
       // the road
       ctx.fillStyle = road;
       ctx.fillRect(roadLeft, 0, roadRight - roadLeft, H);
@@ -5934,8 +5959,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
       }
       signs.filter((s) => s.kind === 'gantry').forEach(drawGantry);
+      drawBridgePylons();
       drawGateSigns();
       drawGateCountdown();
+      drawBridgePill();
 
       // the shield bubble
       if (shieldOn && !crashing && !gameOver) {
@@ -7195,11 +7222,14 @@ function drawOutdoorFront() {
     // ---------- at 0 km the road splits into lanes: one for each place you can go ----------
     const laneCount = 5;
     const laneW = (roadRight - roadLeft) / laneCount;
-    function pickLanes() {
-      const pool = malls.slice().sort(() => Math.random() - 0.5).slice(0, laneCount - 3);
-      pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, beaches[Math.floor(Math.random() * beaches.length)]); // the beach is one of the tunnels
+    function pickLanes(second) {
+      const prev = second ? laneDests.map((d) => d.name) : [];
+      const mallPool = malls.filter((m) => prev.indexOf(m.name) < 0);
+      const beachPool = beaches.filter((b) => prev.indexOf(b.name) < 0);
+      const pool = mallPool.sort(() => Math.random() - 0.5).slice(0, laneCount - (second ? 2 : 3));
+      pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, beachPool[Math.floor(Math.random() * beachPool.length)]); // the beach is one of the tunnels
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, metroDest); // and so are the metro stations
-      pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, mosques[Math.floor(Math.random() * mosques.length)]); // and a mosque
+      if (!second) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, mosques[Math.floor(Math.random() * mosques.length)]); // and a mosque
       return pool;
     }
     let gateRow = null;
@@ -7207,6 +7237,86 @@ function drawOutdoorFront() {
     let gateStopped = false;
     const gateGoBtn = { x: 130, y: 528, w: 140, h: 40 };
     const laneAt = (x) => Math.max(0, Math.min(laneCount - 1, Math.floor((x - roadLeft) / laneW)));
+
+    // the bridge: water on both sides, white rails and towers with cables
+    function drawBridge() {
+      if (!bridgeZone) return;
+      const top = Math.max(0, bridgeY(bridgeZone[1]));
+      const bot = Math.min(H, bridgeY(bridgeZone[0]));
+      if (bot <= top) return;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, top, W, bot - top);
+      ctx.clip();
+      [[0, roadLeft - 10], [roadRight + 10, W]].forEach(([x0, x1]) => {
+        const g = ctx.createLinearGradient(x0, 0, x1, 0);
+        g.addColorStop(0, '#2a8fb8');
+        g.addColorStop(1, '#5fc7dc');
+        ctx.fillStyle = g;
+        ctx.fillRect(x0, 0, x1 - x0, H);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 9; i++) {
+          const wy = ((i * 83 + travel * 0.7) % (H + 40)) - 20;
+          const wx = x0 + 6 + ((i * 37) % Math.max(10, x1 - x0 - 22));
+          ctx.beginPath();
+          ctx.moveTo(wx, wy);
+          ctx.quadraticCurveTo(wx + 5, wy - 3, wx + 10, wy);
+          ctx.stroke();
+        }
+      });
+      // the rails
+      ctx.strokeStyle = '#f4f6f8';
+      ctx.lineWidth = 3;
+      [roadLeft - 14, roadRight + 14].forEach((rx) => {
+        ctx.beginPath();
+        ctx.moveTo(rx, 0);
+        ctx.lineTo(rx, H);
+        ctx.stroke();
+        ctx.fillStyle = '#f4f6f8';
+        for (let k = -1; k < H / 24 + 1; k++) ctx.fillRect(rx - 3, k * 24 + (travel % 24), 6, 8);
+      });
+      ctx.restore();
+    }
+    function drawBridgePylons() {
+      if (!bridgeZone) return;
+      [800, 1500, 2200].forEach((P) => {
+        if (P > bridgeZone[1]) return;
+        const y = bridgeY(P);
+        if (y < -200 || y > H + 200) return;
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+        ctx.fillRect(roadLeft - 10, y - 6, roadRight - roadLeft + 20, 22);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.lineWidth = 2;
+        [[22, roadLeft - 14], [W - 22, roadRight + 14]].forEach(([tx, rx]) => {
+          for (let k = -5; k <= 5; k++) {
+            if (!k) continue;
+            ctx.beginPath();
+            ctx.moveTo(tx, y - 40);
+            ctx.lineTo(rx, y - 40 + k * 32);
+            ctx.stroke();
+          }
+          ctx.fillStyle = '#e9eef2';
+          ctx.fillRect(tx - 8, y - 56, 16, 80);
+          ctx.fillStyle = '#c3ccd4';
+          ctx.fillRect(tx + 2, y - 56, 6, 80);
+        });
+        ctx.fillStyle = 'rgba(233, 238, 242, 0.92)';
+        ctx.fillRect(14, y - 60, W - 28, 10);
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+        ctx.fillRect(14, y - 50, W - 28, 4);
+      });
+    }
+    function drawBridgePill() {
+      if (!bridgeZone || gameOver || travel < bridgeZone[0] - 120 || travel > bridgeZone[1] + 60) return;
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+      roundedRect(W / 2 - 92, 52, 184, 24, 12);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F309} Al Garhoud Bridge', W / 2, 69);
+    }
 
     // the road down to the tunnels: it gets darker and the lanes are coloured
     function drawGateLanes() {
