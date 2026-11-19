@@ -1183,11 +1183,8 @@
     }
 
     function finishHome() {
-      phase = 'homedone';
-      aptRoom = 'kitchen';
-
       addScore(20);
-      say('Home sweet home! \u{1F3E0}', 300);
+      startEvening(true);
       blip(523, 523, 0.15, 0.12);
       blip(659, 659, 0.15, 0.12, 0.15);
       blip(784, 784, 0.3, 0.12, 0.3);
@@ -1275,7 +1272,8 @@
       mm.dir = 1;
       mallRide = null;
       if (!keep) {
-        mallWallet = 20;
+        mallWallet = 20 + workCoins;
+        workCoins = 0;
         mallBag = [];
       }
       mallDone = mallShopsData.map(() => [false, false, false, false, false]);
@@ -4248,6 +4246,21 @@
       ['\u{1F341}', 'Maple syrup', false], ['\u{1F36F}', 'Honey', false], ['\u{1F9C8}', 'Butter', false], ['\u{1F95B}', 'Milk', false],
       ['\u{1F9C3}', 'Juice', false], ['\u{1F353}', 'Strawberries', false], ['\u{1F34C}', 'Banana', false], ['\u{1F963}', 'Cereal', false],
     ];
+    let aptStage = 'morning'; // morning, then (after your day) the evening: dinner, shower, teeth, bed
+    let workCoins = 0; // what you earned at your desk: more coins for the next mall
+    const mealName = () => (aptStage === 'evening' ? 'dinner' : 'breakfast');
+    const Meal = () => mealName()[0].toUpperCase() + mealName().slice(1);
+    const dinnerFoods = [
+      ['\u{1F357}', 'Chicken', true], ['\u{1F35A}', 'Rice', true], ['\u{1F35D}', 'Pasta', true], ['\u{1F41F}', 'Fish', true],
+      ['\u{1F963}', 'Soup', true], ['\u{1F957}', 'Salad', false], ['\u{1F966}', 'Veggies', false], ['\u{1F95B}', 'Milk', false],
+      ['\u{1F9C3}', 'Juice', false], ['\u{1F34E}', 'Apple', false], ['\u{1F956}', 'Bread', false], ['\u{1F370}', 'Cake', false],
+    ];
+    const curFoods = () => (aptStage === 'evening' ? dinnerFoods : fridgeFoods);
+    let chooseOpen = false;
+    const chooser = { kind: '', items: [], done: [] };
+    const toyList = [['\u{1F697}', 'Toy car'], ['\u{1F9F8}', 'Teddy bear'], ['\u{1F9F1}', 'Blocks'], ['\u{1FA80}', 'Yo-yo'], ['\u{1F9E9}', 'Puzzle'], ['⚽', 'Ball']];
+    const bookList = [['\u{1F4D6}', 'The Little Camel'], ['\u{1F4D5}', 'Space Trip'], ['\u{1F4D7}', 'Dubai Adventure']];
+    const workList = [['✉️', 'Answer emails'], ['\u{1F4DE}', 'Make a call'], ['\u{1F4DD}', 'Write a report'], ['\u{1F4CA}', 'Make a chart'], ['\u{1F6E0}️', 'Fix the website']];
     let fridgeOpen = false;
     let fridgePick = [];
     const fridgeCell = (i) => ({ x: 30 + (i % 3) * 112, y: 112 + Math.floor(i / 3) * 70, w: 104, h: 62 });
@@ -4289,6 +4302,15 @@
       apt.skipped = false;
       apt.items = [false, false, false, false];
       aptRoom = 'bed';
+      aptStage = 'morning';
+      apt.sleep = 0;
+      apt.reading = null;
+      apt.play = null;
+      apt.worked = false;
+      apt.played = [];
+      apt.read = [];
+      apt.stayHome = false;
+      chooseOpen = false;
       taxiMode = false;
       taxi = null;
       taxiOpen = false;
@@ -4340,16 +4362,25 @@
         hm.dir = -1;
         say('Down the stairs ⬇️ to the bathroom. Time for a shower! \u{1F6BF}', 200);
         [600, 500, 400].forEach((f, j) => blip(f, f, 0.1, 0.07, j * 0.12));
+      } else if (r === 'bed') {
+        hm.x = 178;
+        hm.dir = 1;
+        say('Your bedroom \u{1F6CF}\uFE0F Tap the bed to read a book' + (aptStage === 'evening' ? ' or to go to sleep' : '') + '.', 200);
+      } else if (r === 'living') {
+        hm.x = 40;
+        hm.dir = 1;
+        say('The living room \u{1F6CB}\uFE0F Play with the toys or do your work at the desk.', 220);
+        blip(500, 650, 0.15, 0.06);
       } else if (r === 'kitchen') {
         hm.x = 40;
         hm.dir = 1;
-        say(carKindNow !== 'home' ? 'Your car is at ' + carPlaceName + ' (level ' + carLevel + '). Take the metro to get it!' : 'Open the fridge and choose your breakfast \u{1F373}', 240);
+        say(carKindNow !== 'home' ? 'Your car is at ' + carPlaceName + ' (level ' + carLevel + '). Take the metro to get it!' : 'Open the fridge and choose your ' + mealName() + ' \u{1F373}', 240);
         blip(500, 700, 0.2, 0.07);
       }
     }
 
     function aptAction(a) {
-      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || calOpen || apt.fade > 25) return;
+      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || calOpen || chooseOpen || apt.sleep > 0 || apt.reading || apt.play || apt.fade > 25) return;
       if (aptRoom === 'bed') {
         if (a === 'bed') {
           if (!apt.woke) {
@@ -4358,7 +4389,9 @@
             hm.dir = 1;
             say('Good morning! ☀️ Go down the stairs to the shower.', 220);
             [392, 523, 659].forEach((f, j) => blip(f, f, 0.2, 0.08, j * 0.12));
-          } else say('Your bed is made. Time for the shower! \u{1F6BF}', 110);
+          } else if (aptStage === 'evening' && apt.eaten && apt.showered && apt.brushed) startSleep();
+          else if (aptStage === 'evening') say('Before bed: dinner \u{1F37D}\uFE0F, a shower \u{1F6BF} and brush your teeth \u{1FAA5}. Or tap the bed again to read!', 220), openChooser('book');
+          else openChooser('book');
         } else if (a === 'stairs') {
           if (!apt.woke) say('Wake up first! Tap your bed \u{1F6CF}️', 100);
           else goRoom('bath');
@@ -4387,27 +4420,36 @@
         }
         return;
       }
+      if (aptRoom === 'living') {
+        if (a === 'toys') openChooser('toy');
+        else if (a === 'desk') {
+          if (apt.worked) say('You already finished your work today \u{1F4BC}', 110);
+          else openChooser('work');
+        }
+        return;
+      }
       if (a === 'fridge') {
-        if (apt.food) say('You chose your breakfast: ' + apt.menu.map((m) => m[0]).join(' '), 110);
+        if (apt.food) say('You chose your ' + mealName() + ': ' + apt.menu.map((m) => m[0]).join(' '), 110);
         else openFridge();
       } else if (a === 'stove') {
-        if (!apt.food) say('Choose your breakfast from the fridge first!', 110);
-        else if (apt.cooked) say('Breakfast is ready on the table!', 90);
+        if (!apt.food) say('Choose your ' + mealName() + ' from the fridge first!', 110);
+        else if (apt.cooked) say(Meal() + ' is ready on the table!', 90);
         else {
           apt.cooking = 110;
           say('Cooking ' + apt.menu.filter((m) => m[2]).map((m) => m[1].toLowerCase()).join(' and ') + '... \u{1F373}', 100);
         }
       } else if (a === 'table') {
-        if (!apt.cooked) say(apt.food ? 'Cook the breakfast first!' : 'Start by choosing food from the fridge.', 100);
-        else if (apt.eaten) say('You have had your breakfast.', 90);
+        if (!apt.cooked) say(apt.food ? 'Cook the ' + mealName() + ' first!' : 'Start by choosing food from the fridge.', 100);
+        else if (apt.eaten) say('You have had your ' + mealName() + '.', 90);
         else {
           apt.eating = { t: 0 };
           hm.x = aptX.table - 28;
           hm.y = 500;
-          say('Yum yum! Eating breakfast...', 120);
+          say('Yum yum! Eating ' + mealName() + '...', 120);
         }
       } else if (a === 'door') {
-        if (!apt.items[0]) say('You need your car keys \u{1F511}! They are on the shelf by the door.', 150);
+        if (aptStage === 'evening') say('It is evening: time to stay home \u{1F319}', 120);
+        else if (!apt.items[0]) say('You need your car keys \u{1F511}! They are on the shelf by the door.', 150);
         else if (!apt.eaten && !apt.skipped) {
           apt.skipped = true;
           say('Breakfast first? Tap the table. Or tap the door again to go without it.', 170);
@@ -4435,7 +4477,7 @@
     function confirmFridge() {
       fridgeOpen = false;
       apt.food = true;
-      apt.menu = fridgePick.map((i) => fridgeFoods[i]);
+      apt.menu = fridgePick.map((i) => curFoods()[i]);
       addScore(1);
       blip(500, 800, 0.15, 0.1);
       if (apt.menu.some((m) => m[2])) say('Nice choice! ' + apt.menu.map((m) => m[0]).join(' ') + ' Now cook it on the stove \u{1F373}', 200);
@@ -4453,7 +4495,7 @@
         confirmFridge();
         return;
       }
-      for (let i = 0; i < fridgeFoods.length; i++) {
+      for (let i = 0; i < curFoods().length; i++) {
         const c = fridgeCell(i);
         if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
           const at = fridgePick.indexOf(i);
@@ -4481,10 +4523,10 @@
       ctx.fillStyle = '#ffffff';
       ctx.textAlign = 'center';
       ctx.font = 'bold 18px sans-serif';
-      ctx.fillText('\u{1F9CA} THE FRIDGE: CHOOSE BREAKFAST', 200, 66);
+      ctx.fillText('\u{1F9CA} THE FRIDGE: CHOOSE ' + mealName().toUpperCase(), 200, 66);
       ctx.font = '12px sans-serif';
       ctx.fillText('Pick up to 3 things (' + fridgePick.length + '/3)', 200, 87);
-      fridgeFoods.forEach((f, i) => {
+      curFoods().forEach((f, i) => {
         const c = fridgeCell(i);
         const on = fridgePick.indexOf(i) >= 0;
         roundedRect(c.x, c.y, c.w, c.h, 12);
@@ -4541,7 +4583,12 @@
           calOpen = false;
           apt.calSeen = true;
           leaveApartment();
-        } else if (p.x > 210 && p.x < 360 && p.y > 498 && p.y < 542) calOpen = false;
+        } else if (p.x > 210 && p.x < 360 && p.y > 498 && p.y < 542) {
+          calOpen = false;
+          apt.stayHome = true;
+          goRoom('living');
+          say('You stay at home today \u{1F3E0} Work, play with toys or read a book. Tap Evening when you are ready.', 280);
+        }
       } else if (p.x > 130 && p.x < 270 && p.y > 498 && p.y < 542) calOpen = false;
     }
     function wrapLines(text, maxChars) {
@@ -4683,6 +4730,7 @@
     }
 
     function leaveApartment() {
+      apt.stayHome = false;
       hm.goto = null;
       openLift('home', { type: 'flat', val: 0 });
     }
@@ -4690,7 +4738,18 @@
     function aptPress(p) {
       hm.goto = null;
       hm.act = null;
-      if (apt.eating || apt.cooking > 0 || apt.shower > 0) return;
+      if (apt.eating || apt.cooking > 0 || apt.shower > 0 || apt.sleep > 0 || apt.reading || apt.play || apt.fade > 25) return;
+      if (aptTabPress(p)) return;
+      if (aptRoom === 'living') {
+        if (p.x < 125 && p.y > 330 && p.y < 440) {
+          hm.goto = 70;
+          hm.act = 'toys';
+        } else if (p.x > 270 && p.y > 300 && p.y < 440) {
+          hm.goto = 330;
+          hm.act = 'desk';
+        } else hold = p;
+        return;
+      }
       if (aptRoom === 'bed') {
         if (!apt.woke) {
           aptAction('bed');
@@ -4762,6 +4821,11 @@
         if (Math.abs(hm.x - bathX.door) < 30) return 'door';
         return null;
       }
+      if (aptRoom === 'living') {
+        if (Math.abs(hm.x - 70) < 38) return 'toys';
+        if (Math.abs(hm.x - 330) < 38) return 'desk';
+        return null;
+      }
       if (Math.abs(hm.x - aptX.fridge) < 36) return 'fridge';
       if (Math.abs(hm.x - aptX.stove) < 36) return 'stove';
       if (Math.abs(hm.x - aptX.table) < 40) return 'table';
@@ -4772,6 +4836,7 @@
 
     function updateApartment(step) {
       if (apt.fade > 0) apt.fade = Math.max(0, apt.fade - step);
+      if (updateHomeFun(step)) return;
       if (apt.shower > 0) {
         apt.shower -= step;
         if (Math.floor(apt.shower / 14) !== Math.floor((apt.shower + step) / 14)) blip(1500 + Math.random() * 400, 1800, 0.08, 0.025);
@@ -4792,7 +4857,7 @@
           apt.cooking = 0;
           apt.cooked = true;
           addScore(2);
-          say('Breakfast is ready! ' + apt.menu.map((m) => m[0]).join('') + ' Take it to the table. +2', 160);
+          say(Meal() + ' is ready! ' + apt.menu.map((m) => m[0]).join('') + ' Take it to the table. +2', 160);
           [660, 880].forEach((f, j) => blip(f, f, 0.15, 0.1, j * 0.1));
         }
         return;
@@ -4806,7 +4871,7 @@
           hm.x = aptX.table - 60;
           const pts = 10 + apt.menu.length;
           addScore(pts);
-          say('Yummy breakfast! \u{1F60B} +' + pts, 150);
+          say('Yummy ' + mealName() + '! \u{1F60B} +' + pts, 150);
           [523, 659, 784].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.1));
         }
         return;
@@ -5010,8 +5075,8 @@
       const n = nearApt();
       if (n && !apt.eating && apt.cooking <= 0) {
         const texts = {
-          fridge: apt.food ? 'You chose your breakfast' : 'Tap the fridge: choose food',
-          stove: apt.cooked ? 'Breakfast is ready' : apt.food ? 'Tap to cook breakfast' : 'Choose food at the fridge',
+          fridge: apt.food ? 'You chose your ' + mealName() : 'Tap the fridge: choose food',
+          stove: apt.cooked ? Meal() + ' is ready' : apt.food ? 'Tap to cook ' + mealName() : 'Choose food at the fridge',
           table: apt.cooked && !apt.eaten ? 'Tap to sit and eat' : 'The kitchen table',
           shelf: 'Tap your things to take them',
           door: 'Tap the door to go out',
@@ -5036,7 +5101,9 @@
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText((apt.woke ? '✅' : '\u{1F6CF}️') + (apt.showered ? '✅' : '\u{1F6BF}') + (apt.food ? '✅' : '\u{1F95A}') + (apt.cooked ? '✅' : '\u{1F373}') + (apt.eaten ? '✅' : '\u{1F35E}') + '  ' + aptItems.map(([e], k) => (apt.items[k] ? '✅' : e)).join(''), 16, 63);
+      if (aptStage === 'evening') ctx.fillText('\u{1F319} ' + (apt.eaten ? '✅' : '\u{1F37D}️') + (apt.showered ? '✅' : '\u{1F6BF}') + (apt.brushed ? '✅' : '\u{1FAA5}') + '\u{1F6CF}️', 16, 63);
+      else ctx.fillText((apt.woke ? '✅' : '\u{1F6CF}️') + (apt.showered ? '✅' : '\u{1F6BF}') + (apt.food ? '✅' : '\u{1F95A}') + (apt.cooked ? '✅' : '\u{1F373}') + (apt.eaten ? '✅' : '\u{1F35E}') + '  ' + aptItems.map(([e], k) => (apt.items[k] ? '✅' : e)).join(''), 16, 63);
+      drawAptTabs();
     }
     function drawAptFade() {
       if (apt.fade > 0) {
@@ -5122,8 +5189,9 @@
       ctx.beginPath();
       ctx.ellipse(46, 366, 26, 12, 0, 0, Math.PI * 2);
       ctx.fill();
-      if (!apt.woke) {
-        // you, fast asleep under the blanket
+      const lying = !apt.woke || !!apt.reading || apt.sleep > 0;
+      if (lying) {
+        // you, fast asleep under the blanket (or reading in bed)
         ctx.fillStyle = '#f2c9a0';
         ctx.beginPath();
         ctx.arc(44, 360, 11, 0, Math.PI * 2);
@@ -5142,13 +5210,20 @@
         ctx.fillStyle = '#2f6fb5';
         ctx.font = 'bold 18px sans-serif';
         ctx.textAlign = 'center';
-        for (let k = 0; k < 3; k++) ctx.fillText('z', 66 + k * 14, 340 - k * 14 - ((frameCount / 3 + k * 13) % 14));
-        roundedRect(70, 226, 160, 40, 20);
-        ctx.fillStyle = 'rgba(255, 210, 63, 0.95)';
-        ctx.fill();
-        ctx.fillStyle = '#3a2f12';
-        ctx.font = 'bold 15px sans-serif';
-        ctx.fillText('☀️ Tap to wake up!', 150, 252);
+        if (!apt.reading) for (let k = 0; k < 3; k++) ctx.fillText('z', 66 + k * 14, 340 - k * 14 - ((frameCount / 3 + k * 13) % 14));
+        else {
+          ctx.font = '26px sans-serif';
+          ctx.fillStyle = '#000000';
+          ctx.fillText('\u{1F4D6}', 80, 338 + Math.sin(frameCount / 10) * 3);
+        }
+        if (!apt.woke) {
+          roundedRect(70, 226, 160, 40, 20);
+          ctx.fillStyle = 'rgba(255, 210, 63, 0.95)';
+          ctx.fill();
+          ctx.fillStyle = '#3a2f12';
+          ctx.font = 'bold 15px sans-serif';
+          ctx.fillText('☀️ Tap to wake up!', 150, 252);
+        }
       } else {
         ctx.fillStyle = '#4a90d9';
         roundedRect(60, 376, 98, 26, 8);
@@ -5186,9 +5261,28 @@
       ctx.font = 'bold 11px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('⬇️ STAIRS', 361, 355);
-      if (apt.woke) drawShopper(hm.x, hm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.98, hm.dir, hm.moving, hm.stepT, false);
-      const n = apt.woke ? nearApt() : null;
-      if (n) drawAptHint(n === 'stairs' ? 'Tap the stairs: go to the shower' : 'Your bed', n === 'stairs' ? stairsX : bedX);
+      if (apt.woke && !apt.reading && apt.sleep <= 0) drawShopper(hm.x, hm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.98, hm.dir, hm.moving, hm.stepT, false);
+      if (apt.sleep > 0) {
+        // the night
+        ctx.fillStyle = 'rgba(8, 14, 50, ' + Math.min(0.82, apt.sleep / 110) + ')';
+        ctx.fillRect(0, 0, W, H);
+        ctx.fillStyle = '#fff3b0';
+        ctx.beginPath();
+        ctx.arc(300, 130, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(8, 14, 50, 0.9)';
+        ctx.beginPath();
+        ctx.arc(307, 126, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        [[230, 110], [250, 150], [280, 100], [236, 170]].forEach(([x, y], k) => ctx.fillRect(x, y, 2 + (k % 2), 2 + (k % 2)));
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 22px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F319} Good night', 200, 260);
+      }
+      const n = apt.woke && !apt.reading && apt.sleep <= 0 ? nearApt() : null;
+      if (n) drawAptHint(n === 'stairs' ? 'Tap the stairs: go to the shower' : aptStage === 'evening' ? 'Tap the bed: sleep or read' : 'Tap the bed to read a book', n === 'stairs' ? stairsX : bedX);
       drawAptHud();
     }
 
@@ -5314,9 +5408,361 @@
       drawAptHud();
     }
 
+    // ---------- the rest of your day at home: the living room, toys, work, books and the evening ----------
+    const aptTabList = () => {
+      const t = [['bed', '\u{1F6CF}️', 'Bed'], ['bath', '\u{1F6BF}', 'Bath'], ['kitchen', '\u{1F373}', 'Kitchen'], ['living', '\u{1F6CB}️', 'Living']];
+      if (aptStage === 'morning' && apt.stayHome) t.push(['evening', '\u{1F319}', 'Evening']);
+      return t;
+    };
+    const aptTabRect = (i, n) => ({ x: 8 + i * Math.floor(384 / n), y: 556, w: Math.floor(384 / n) - 4, h: 34 });
+    const aptBusy = () => apt.sleep > 0 || !!apt.reading || !!apt.play || apt.shower > 0 || !!apt.eating || apt.cooking > 0;
+    function drawAptTabs() {
+      if (!apt.woke || aptBusy()) return;
+      const tabs = aptTabList();
+      tabs.forEach(([key, emoji, label], i) => {
+        const r = aptTabRect(i, tabs.length);
+        roundedRect(r.x, r.y, r.w, r.h, 12);
+        ctx.fillStyle = key === aptRoom ? '#ffd23f' : 'rgba(10, 18, 28, 0.72)';
+        ctx.fill();
+        ctx.fillStyle = key === aptRoom ? '#3a2f12' : '#ffffff';
+        ctx.textAlign = 'center';
+        fitText(emoji + ' ' + label, r.w - 6, 12);
+        ctx.fillText(emoji + ' ' + label, r.x + r.w / 2, r.y + 22);
+      });
+    }
+    function aptTabPress(p) {
+      if (!apt.woke || aptBusy() || p.y < 552) return false;
+      const tabs = aptTabList();
+      for (let i = 0; i < tabs.length; i++) {
+        const r = aptTabRect(i, tabs.length);
+        if (p.x > r.x && p.x < r.x + r.w && p.y > r.y && p.y < r.y + r.h) {
+          const key = tabs[i][0];
+          if (key === aptRoom) return true;
+          if (key === 'evening') startEvening(false);
+          else if (aptStage === 'morning' && key !== 'bed' && key !== 'bath' && !apt.showered) say('Have your shower first! \u{1F6BF}', 110);
+          else goRoom(key);
+          return true;
+        }
+      }
+      return false;
+    }
+    // coming home (or ending a day at home): dinner, a shower, teeth, then bed
+    function startEvening(fromOutside) {
+      aptStage = 'evening';
+      apt.stayHome = false;
+      apt.food = false;
+      apt.cooked = false;
+      apt.cooking = 0;
+      apt.eating = null;
+      apt.eaten = false;
+      apt.menu = [];
+      apt.showered = false;
+      apt.brushed = false;
+      apt.woke = true;
+      apt.shower = 0;
+      fridgeOpen = false;
+      fridgePick = [];
+      if (fromOutside) {
+        phase = 'apartment';
+        aptRoom = 'kitchen';
+        hm.x = 340;
+        hm.y = 505;
+        hm.dir = -1;
+        hm.goto = null;
+        hm.act = null;
+        hold = null;
+        apt.fade = 40;
+        say('Home sweet home! \u{1F3E0} Evening: dinner, a shower, brush your teeth, then bed \u{1F319}', 300);
+      } else {
+        goRoom('kitchen');
+        say('Evening time! \u{1F319} Have dinner, take a shower, brush your teeth, then go to bed.', 280);
+      }
+    }
+    function startSleep() {
+      apt.sleep = 1;
+      hm.goto = null;
+      say('Good night! \u{1F319} Sweet dreams...', 260);
+      [523, 440, 392, 330].forEach((f, j) => blip(f, f, 0.5, 0.05, j * 0.5));
+    }
+    // the choosers: toys, books and your work
+    function openChooser(kind) {
+      chooser.kind = kind;
+      chooser.done = [];
+      if (kind === 'toy') chooser.items = toyList;
+      else if (kind === 'book') chooser.items = bookList;
+      else chooser.items = workList.slice().sort(() => Math.random() - 0.5).slice(0, 3);
+      chooseOpen = true;
+      hold = null;
+      blip(700, 900, 0.1, 0.08);
+    }
+    const chooseCell = (i) => ({ x: 30 + (i % 3) * 112, y: 150 + Math.floor(i / 3) * 100, w: 104, h: 88 });
+    function choosePress(p) {
+      if (p.x > 130 && p.x < 270 && p.y > 420 && p.y < 460) {
+        chooseOpen = false;
+        return;
+      }
+      for (let i = 0; i < chooser.items.length; i++) {
+        const c = chooseCell(i);
+        if (!(p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h)) continue;
+        if (chooser.kind === 'toy') {
+          chooseOpen = false;
+          apt.stayHome = true;
+          apt.play = { i, t: 0 };
+          hm.x = 170;
+          hm.goto = null;
+          say('Playing with the ' + toyList[i][1].toLowerCase() + ' ' + toyList[i][0], 140);
+        } else if (chooser.kind === 'book') {
+          chooseOpen = false;
+          apt.stayHome = true;
+          apt.reading = { i, t: 0 };
+          hm.goto = null;
+          say('Reading \u201C' + bookList[i][1] + '\u201D ' + bookList[i][0], 140);
+        } else if (chooser.done.indexOf(i) < 0) {
+          chooser.done.push(i);
+          blip(1000 + chooser.done.length * 150, 1000 + chooser.done.length * 150, 0.1, 0.07);
+          if (chooser.done.length >= chooser.items.length) {
+            chooseOpen = false;
+            apt.stayHome = true;
+            apt.worked = true;
+            workCoins += 6;
+            addScore(8);
+            say('Work done! \u{1F4BC} You earned \u{1F4B0} 6 coins for the next mall +8', 240);
+            [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.2, 0.1, j * 0.1));
+          }
+        }
+        return;
+      }
+    }
+    function drawChooserPanel() {
+      const kind = chooser.kind;
+      const col = kind === 'toy' ? '#f15bb5' : kind === 'book' ? '#7b2cbf' : '#2a9d8f';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(16, 80, 368, 400, 18);
+      ctx.fillStyle = '#fffdf7';
+      ctx.fill();
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = col;
+      roundedRect(16, 80, 368, 56, 18);
+      ctx.fill();
+      ctx.fillRect(16, 116, 368, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText(kind === 'toy' ? '\u{1F9F8} PLAY WITH A TOY' : kind === 'book' ? '\u{1F4DA} READ A BOOK' : '\u{1F4BB} YOUR WORK', 200, 106);
+      ctx.font = '12px sans-serif';
+      ctx.fillText(kind === 'toy' ? 'Which toy do you want?' : kind === 'book' ? 'Which book do you want?' : 'Do all 3 jobs to finish your work (' + chooser.done.length + '/3)', 200, 126);
+      chooser.items.forEach(([emoji, name], i) => {
+        const c = chooseCell(i);
+        const did = kind === 'work' ? chooser.done.indexOf(i) >= 0 : kind === 'toy' ? apt.played.indexOf(i) >= 0 : apt.read.indexOf(i) >= 0;
+        roundedRect(c.x, c.y, c.w, c.h, 14);
+        ctx.fillStyle = did ? '#d9f7e3' : '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = did ? '#2fbf71' : col;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.font = '32px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(emoji, c.x + c.w / 2, c.y + 44);
+        fitText(name, c.w - 8, 12);
+        ctx.fillStyle = '#2b2230';
+        ctx.fillText(name, c.x + c.w / 2, c.y + 68);
+        if (did) {
+          ctx.font = '14px sans-serif';
+          ctx.fillText('✅', c.x + c.w - 14, c.y + 18);
+        }
+      });
+      ctx.fillStyle = '#e63946';
+      roundedRect(130, 420, 140, 40, 20);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('Close ✖', 200, 445);
+    }
+    function updateHomeFun(step) {
+      if (apt.sleep > 0) {
+        apt.sleep += step;
+        if (Math.floor(apt.sleep / 70) !== Math.floor((apt.sleep - step) / 70)) blip(300, 260, 0.3, 0.03);
+        if (apt.sleep > 320) {
+          apt.sleep = 0;
+          addScore(10);
+          nextTrip();
+        }
+        return true;
+      }
+      if (apt.play) {
+        apt.play.t += step;
+        if (Math.floor(apt.play.t / 25) !== Math.floor((apt.play.t - step) / 25)) blip(600 + Math.random() * 500, 700, 0.06, 0.05);
+        if (apt.play.t >= 230) {
+          const i = apt.play.i;
+          apt.play = null;
+          if (apt.played.indexOf(i) < 0) {
+            apt.played.push(i);
+            addScore(3);
+            say('That was fun! \u{1F60A} +3', 120);
+            if (apt.played.length === toyList.length) {
+              addScore(10);
+              say('You played with every toy! \u{1F389} +10', 200);
+              [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.2, 0.1, j * 0.1));
+            }
+          } else say('That was fun again! \u{1F60A}', 100);
+        }
+        return true;
+      }
+      if (apt.reading) {
+        apt.reading.t += step;
+        if (Math.floor(apt.reading.t / 70) !== Math.floor((apt.reading.t - step) / 70)) blip(900, 700, 0.1, 0.04);
+        if (apt.reading.t >= 270) {
+          const i = apt.reading.i;
+          apt.reading = null;
+          if (apt.read.indexOf(i) < 0) {
+            apt.read.push(i);
+            addScore(4);
+            say('What a good story! \u{1F4D6} +4', 120);
+            if (apt.read.length === bookList.length) {
+              addScore(8);
+              say('You read all the books! \u{1F389} +8', 200);
+            }
+          } else say('A nice story to read again \u{1F4D6}', 100);
+        }
+        return true;
+      }
+      return false;
+    }
+    function drawLiving() {
+      const wall = ctx.createLinearGradient(0, 0, 0, 410);
+      wall.addColorStop(0, '#fdeccd');
+      wall.addColorStop(1, '#f4d6a2');
+      ctx.fillStyle = wall;
+      ctx.fillRect(0, 0, W, 410);
+      ctx.fillStyle = '#b9854f';
+      ctx.fillRect(0, 410, W, H - 410);
+      ctx.strokeStyle = 'rgba(90, 55, 20, 0.18)';
+      ctx.lineWidth = 1.5;
+      for (let y = 422; y < H; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#e6d2b0';
+      ctx.fillRect(0, 398, W, 12);
+      // a big window with curtains
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(150, 84, 112, 112);
+      const sky = ctx.createLinearGradient(0, 90, 0, 190);
+      sky.addColorStop(0, '#8fd0f2');
+      sky.addColorStop(1, '#ffe3a8');
+      ctx.fillStyle = sky;
+      ctx.fillRect(156, 90, 100, 100);
+      ctx.fillStyle = 'rgba(110, 140, 170, 0.75)';
+      [[160, 160, 14], [176, 168, 12], [226, 162, 16], [244, 170, 10]].forEach(([x, y, w]) => ctx.fillRect(x, y, w, 190 - y));
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(204, 90, 4, 100);
+      ctx.fillStyle = '#e07a5f';
+      ctx.fillRect(140, 80, 16, 124);
+      ctx.fillRect(256, 80, 16, 124);
+      // a picture and a plant
+      ctx.fillStyle = '#7b5a3a';
+      ctx.fillRect(300, 100, 64, 50);
+      ctx.fillStyle = '#9fd3c7';
+      ctx.fillRect(305, 105, 54, 40);
+      ctx.fillStyle = '#e8c07a';
+      ctx.beginPath();
+      ctx.arc(332, 126, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.font = '34px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1FAB4}', 262, 400);
+      // the rug
+      ctx.fillStyle = '#c96f6f';
+      ctx.beginPath();
+      ctx.ellipse(175, 500, 130, 38, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#f2d6a2';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      // the sofa
+      ctx.fillStyle = '#2a9d8f';
+      roundedRect(120, 336, 130, 70, 14);
+      ctx.fill();
+      ctx.fillStyle = '#35b3a3';
+      roundedRect(126, 356, 118, 44, 10);
+      ctx.fill();
+      ctx.fillStyle = '#23857a';
+      roundedRect(112, 350, 22, 56, 8);
+      ctx.fill();
+      roundedRect(236, 350, 22, 56, 8);
+      ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      roundedRect(144, 360, 26, 24, 6);
+      ctx.fill();
+      // the toy box
+      ctx.fillStyle = '#c9553d';
+      roundedRect(26, 376, 84, 54, 8);
+      ctx.fill();
+      ctx.fillStyle = '#a8412c';
+      ctx.fillRect(26, 392, 84, 6);
+      ctx.font = '24px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1F9F8}', 46, 376);
+      ctx.fillText('\u{1F697}', 70, 370);
+      ctx.fillText('\u{1F9E9}', 94, 376);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('TOYS', 68, 418);
+      // the desk with your laptop
+      ctx.fillStyle = '#8a6c4a';
+      ctx.fillRect(280, 366, 100, 10);
+      ctx.fillRect(286, 376, 8, 54);
+      ctx.fillRect(366, 376, 8, 54);
+      ctx.fillStyle = '#3a3f46';
+      roundedRect(306, 330, 46, 34, 4);
+      ctx.fill();
+      ctx.fillStyle = apt.worked ? '#6dff9c' : '#9fd8ff';
+      ctx.fillRect(310, 334, 38, 24);
+      ctx.fillStyle = '#4a4f57';
+      ctx.fillRect(298, 362, 62, 5);
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('☕', 366, 360);
+      ctx.fillStyle = '#7b5a3a';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('WORK', 330, 394);
+      // you, or you playing
+      if (apt.play) {
+        const t = apt.play.t;
+        drawSitter(170, 496, ['#f2c9a0', '#d71920', '#26344a']);
+        ctx.font = '30px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        const i = apt.play.i;
+        const tx = 170;
+        if (i === 0) ctx.fillText('\u{1F697}', 100 + ((t * 1.6) % 140), 520);
+        else if (i === 1) ctx.fillText('\u{1F9F8}', tx + 22, 466 - Math.abs(Math.sin(t / 10)) * 8);
+        else if (i === 2) {
+          const n = Math.min(5, Math.floor(t / 36) + 1);
+          const cols = ['#e63946', '#ffd166', '#2a9d8f', '#4a90d9', '#f15bb5'];
+          for (let k = 0; k < n; k++) {
+            ctx.fillStyle = cols[k];
+            ctx.fillRect(tx + 18, 508 - (k + 1) * 14, 30, 13);
+          }
+        } else if (i === 3) ctx.fillText('\u{1FA80}', tx + 30, 450 + Math.abs(Math.sin(t / 7)) * 30);
+        else if (i === 4) ctx.fillText('\u{1F9E9}', tx + 28 + Math.sin(t / 12) * 6, 480);
+        else ctx.fillText('⚽', tx + 40 + Math.sin(t / 16) * 30, 500 - Math.abs(Math.sin(t / 8)) * 50);
+      } else drawShopper(hm.x, hm.y, ['#f2c9a0', '#d71920', '#26344a'], 0.98, hm.dir, hm.moving, hm.stepT, false);
+      const n = apt.play ? null : nearApt();
+      if (n) drawAptHint(n === 'toys' ? 'Tap the toy box to play \u{1F9F8}' : 'Tap the desk to do your work \u{1F4BB}', n === 'toys' ? 70 : 330);
+      drawAptHud();
+    }
+
     function drawApartment() {
       if (aptRoom === 'bed') drawBedroom();
       else if (aptRoom === 'bath') drawBathroom();
+      else if (aptRoom === 'living') drawLiving();
       else {
         drawKitchen();
         drawAptHud();
@@ -6182,7 +6628,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen && !chooseOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && carBroken && repairReady && lotKind === 'home') label = '\u{1F527} Help the engineer';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
@@ -6233,6 +6679,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (chooseOpen) {
+        choosePress(p);
         return;
       }
       if (talk) {
@@ -6326,6 +6776,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (e.code === 'Escape' && saltOpen) saltOpen = false;
       if (e.code === 'Escape' && taxiOpen) taxiOpen = false;
       if (e.code === 'Escape' && giftOpen) giftOpen = false;
+      if (e.code === 'Escape' && chooseOpen) chooseOpen = false;
       if (e.code === 'Escape' && repairOpen && !repair.done) repairOpen = false;
       if (e.code === 'Enter' || e.code === 'KeyE') {
         if (phase === 'mall') mallAction();
@@ -6592,7 +7043,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           openMetro();
         }
       }
-      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen) return;
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen || chooseOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
@@ -9715,6 +10166,7 @@ function drawOutdoorFront() {
       if (taxiOpen) drawTaxiPanel();
       if (repairOpen) drawRepairPanel();
       if (giftOpen) drawGiftPanel();
+      if (chooseOpen) drawChooserPanel();
       if (talk) drawTalkPanel();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
