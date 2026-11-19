@@ -48,3 +48,11 @@ Where I am: **Rung 1 – Tweak** (changing numbers and colours and seeing what h
 - The parking lot has 5 levels. Which level I park on depends on how many places I landed on and my score!
 - New words: **scene** (one part of the game), **chapter** (one step in the story), **top-down** (looking from above).
 - Ideas for next time: my own house on the screen? a friend in the car? more planets with names? a boss alien?
+
+### Session 8  - MORE OF MY IDEAS
+- Colour picker for my car and rocket (swatches + a rainbow slider).
+- The car is a little racer now: stripes, wing and a driver.
+- At NASA I park my car in an INDOOR parking lot, then walk to the NASA door.
+- A special RACE PAD: race 3 rockets. Win and you get a ROCKET HOUSE with a toilet, bed, snacks and a ball to kick!
+- New words: **AI** (the computer players that race against me), **hue** (the colour slider), **cooldown** again (the toilet waits 4 seconds).
+- Claude has not seen the car in Car Dodge. Next time: tell Claude what it looks like!

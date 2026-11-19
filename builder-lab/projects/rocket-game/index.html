@@ -46,6 +46,12 @@
   body.scene #space, body.scene #topButtons, body.scene #boost, body.scene #shieldBtn, body.scene #landBtn, body.scene #map { display: none !important; }
   body.scene #world, body.scene #sceneHud { display: block; }
   body:not(.scene) #sceneToast { display: none !important; }
+  .paint { display: flex; gap: 36px; justify-content: center; flex-wrap: wrap; margin: 12px 0; font-size: 18px; }
+  .paintRow { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .sw { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; max-width: 230px; }
+  .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; padding: 0; margin: 0; cursor: pointer; }
+  .paintRow input[type=range] { width: 210px; }
+  #sceneMsg button { margin: 6px; }
 </style>
 </head>
 <body>
@@ -91,8 +97,9 @@ const SPACE_COLOUR   = "#05061a"; // Try "#0a0030" or "#001a2e"
 // ---- The story: house, car, NASA, rocket, planets, Moon, home ----
 const PLAYER_SPEED   = 5;         // How fast you walk. Try 10!
 const PLAYER_SHIRT   = "#2a9d8f"; // Your shirt colour. Try "orange" or "purple"
-const CAR_COLOUR     = "#e63946"; // Your car's colour. Try "gold" or "blue"
+const CAR_COLOUR     = "#e63946"; // The car colour the game starts with. (You can pick any colour on the start screen!)
 const DRIVE_SECONDS  = 18;        // How long each car ride takes. Try 40 for a LONG drive!
+const RACE_AI_SPEED  = 0.055;     // How fast the other rockets race. Try 0.08 for a HARD race!
 const CRYSTAL_SCORE  = 50;        // Score for each crystal or rock you find on a planet
 const RETURN_LEVELS  = 2;         // How many levels on the flight home
 const RETURN_SECONDS_PER_LEVEL = 12;
@@ -143,7 +150,10 @@ const LEVEL_SCORE    = 100;       // Score for finishing a level
 function makeCanvas(w, h) { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; }
 function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }   // same "random" every time
 
-function drawRocket(flame) {
+let rocketColour = ROCKET_COLOUR;
+try { rocketColour = localStorage.getItem("rocketColour") || ROCKET_COLOUR; } catch (e) {}
+function drawRocket(flame, colour) {
+  colour = colour || rocketColour;
   const c = makeCanvas(200, 200), g = c.getContext("2d");
   if (flame > 0) {                                   // fire!
     const fg = g.createLinearGradient(0, 158, 0, 158 + flame);
@@ -151,7 +161,7 @@ function drawRocket(flame) {
     g.fillStyle = fg;
     g.beginPath(); g.moveTo(86, 158); g.quadraticCurveTo(100, 158 + flame * 1.8, 114, 158); g.closePath(); g.fill();
   }
-  g.fillStyle = ROCKET_COLOUR; g.strokeStyle = "rgba(0,0,0,0.45)"; g.lineWidth = 1.5;   // fins
+  g.fillStyle = colour; g.strokeStyle = "rgba(0,0,0,0.45)"; g.lineWidth = 1.5;   // fins
   g.beginPath(); g.moveTo(72, 105); g.lineTo(44, 158); g.lineTo(72, 150); g.closePath(); g.fill(); g.stroke();
   g.beginPath(); g.moveTo(128, 105); g.lineTo(156, 158); g.lineTo(128, 150); g.closePath(); g.fill(); g.stroke();
   g.fillStyle = "#3a3f46";                           // engine nozzle
@@ -162,7 +172,7 @@ function drawRocket(flame) {
   g.lineTo(70, 152); g.bezierCurveTo(65, 95, 68, 40, 100, 6); g.closePath();
   g.fillStyle = bg; g.fill(); g.stroke();
   g.save(); g.clip();                                // coloured nose and stripe
-  g.fillStyle = ROCKET_COLOUR; g.fillRect(60, 0, 80, 52); g.fillRect(60, 108, 80, 9);
+  g.fillStyle = colour; g.fillRect(60, 0, 80, 52); g.fillRect(60, 108, 80, 9);
   const sh = g.createLinearGradient(70, 0, 130, 0);
   sh.addColorStop(0, "rgba(0,0,0,0.35)"); sh.addColorStop(0.3, "rgba(255,255,255,0.35)"); sh.addColorStop(1, "rgba(0,0,0,0.4)");
   g.fillStyle = sh; g.fillRect(60, 0, 80, 160);
@@ -385,6 +395,19 @@ function setPicture(el, src) { el.style.backgroundImage = "url(" + src + ")"; }
 setPicture(rocket, PIC.rocket);
 function loadImage(src) { const i = new Image(); i.src = src; return i; }
 const IMG = { rocket: loadImage(PIC.rocket), station: loadImage(PIC.station) };
+IMG.rivals = ["#1d6fe0", "#18a558", "#8e44ad"].map(c => loadImage(drawRocket(26, c)));   // the other racers
+IMG.prize = loadImage(drawRocket(26, "#f4c430"));                                        // the rocket house you can win
+
+// Colours you can pick on the start screen
+const SWATCHES = ["#e63946", "#ff7a00", "#ffd23f", "#2ecc71", "#1e90ff", "#8e44ad", "#ff69b4", "#ffffff", "#222222"];
+let carColour = CAR_COLOUR;
+try { carColour = localStorage.getItem("carColour") || CAR_COLOUR; } catch (e) {}
+function setCarColour(c) { carColour = c; try { localStorage.setItem("carColour", c); } catch (e) {} }
+function setRocketColour(c) {
+  rocketColour = c; try { localStorage.setItem("rocketColour", c); } catch (e) {}
+  PIC.rocket = drawRocket(26); PIC.rocketBoost = drawRocket(48);
+  IMG.rocket.src = PIC.rocket; setPicture(rocket, PIC.rocket);
+}
 
 // Places on the map (0 = Earth, 1 = Moon)
 const PLACES_OUT = [
@@ -404,6 +427,9 @@ let mode = "house";                        // which chapter are we in?
 let x, y, score = 0, lives, playing = false, paused = false, things = [], planets = [], progress = 0, level = 1, last = 0;
 let trip = null;                           // the flight we are on (out to the Moon, or back home)
 let landed = 0;                            // how many planets we landed on
+let gear = { badge: false, suit: false, helmet: false };   // what you picked up at NASA
+let ownRocket = false;                     // did you win the rocket house?
+try { ownRocket = localStorage.getItem("rocketOwned") === "1"; } catch (e) {}
 let boostUntil = 0, boostReadyAt = 0, rocketLooksBoosted = false;
 let shieldUntil = 0, shieldReadyAt = 0;
 let rockTimer = 0, alienTimer = 0, starTimer = 0, planetTimer = 0;
@@ -425,6 +451,8 @@ function mean()  { return easy ? EASY_SLOWER : 1; }
 window.addEventListener("keydown", e => {
   keys[e.key] = true;
   if (e.key === " ") { e.preventDefault(); shoot(); }
+  if (raceInput && !e.repeat && [" ", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) raceInput.tap();   // race: tap tap tap!
+  if (raceInput && (e.key === "b" || e.key === "B")) raceInput.boost();
   if (e.key === "b" || e.key === "B") boost();
   if (e.key === "s" || e.key === "S") useShield();
   if (e.key === "l" || e.key === "L") landNow();
@@ -577,19 +605,43 @@ const ptr = { down: false, x: 0, y: 0 };
 const P = { x: 0, y: 0, bob: 0, angle: -Math.PI / 2, moving: false, suit: false, helmet: false };
 
 function toWorld(e) { return { x: (e.clientX - view.ox) / view.s, y: (e.clientY - view.oy) / view.s }; }
-worldCanvas.addEventListener("pointerdown", e => { ptr.down = true; Object.assign(ptr, toWorld(e)); });
+worldCanvas.addEventListener("pointerdown", e => { ptr.down = true; Object.assign(ptr, toWorld(e)); if (raceInput) raceInput.tap(); });
 worldCanvas.addEventListener("pointermove", e => { if (ptr.down) Object.assign(ptr, toWorld(e)); });
 window.addEventListener("pointerup", () => { ptr.down = false; });
 
 function goMode(m) {
   mode = m;
+  raceInput = null;
   document.body.classList.toggle("scene", m !== "flight");
   sceneHud.textContent = "";
 }
 
-function showSceneMsg(html, buttonText, onClick) {
-  sceneMsg.innerHTML = "<div>" + html + "<br><button id='sceneBtn'>" + buttonText + "</button></div>";
+function showSceneMsg(html, buttonText, onClick) { showChoices(html, [[buttonText, onClick]]); }
+function showChoices(html, list) {
+  sceneMsg.innerHTML = "<div>" + html + "<br>" + list.map((b, i) => "<button class='choice' data-i='" + i + "'>" + b[0] + "</button>").join("") + "</div>";
   sceneMsg.style.display = "flex";
+  sceneMsg.querySelectorAll(".choice").forEach(btn => btn.addEventListener("click", () => { sceneMsg.style.display = "none"; list[btn.dataset.i][1](); }));
+}
+function paintRow(id, title) {
+  return "<div class='paintRow'><b>" + title + "</b><canvas id='" + id + "Prev' width='100' height='100'></canvas><div class='sw'>" +
+    SWATCHES.map(c => "<button class='swatch' data-for='" + id + "' data-c='" + c + "' style='background:" + c + "'></button>").join("") +
+    "</div><input type='range' id='" + id + "Hue' min='0' max='360' value='0' title='Slide for any colour'></div>";
+}
+function paintPreview(id) {
+  const c = document.getElementById(id + "Prev"), g = c.getContext("2d");
+  g.clearRect(0, 0, 100, 100);
+  if (id === "car") drawCar(g, 50, 50, 44, 78, carColour);
+  else { const im = new Image(); im.onload = () => g.drawImage(im, 0, 0, 100, 100); im.src = drawRocket(26, rocketColour); }
+}
+function showPaintMsg(head, buttonText, onClick) {
+  sceneMsg.innerHTML = "<div>" + head + "<div class='paint'>" + paintRow("car", "Your car") + paintRow("rocket", "Your rocket") + "</div><button id='sceneBtn'>" + buttonText + "</button></div>";
+  sceneMsg.style.display = "flex";
+  const pick = (id, colour) => { if (id === "car") setCarColour(colour); else setRocketColour(colour); paintPreview(id); };
+  sceneMsg.querySelectorAll(".swatch").forEach(b => b.addEventListener("click", () => pick(b.dataset.for, b.dataset.c)));
+  ["car", "rocket"].forEach(id => {
+    paintPreview(id);
+    document.getElementById(id + "Hue").addEventListener("input", e => pick(id, "hsl(" + e.target.value + ",85%,52%)"));
+  });
   document.getElementById("sceneBtn").addEventListener("click", () => { sceneMsg.style.display = "none"; onClick(); });
 }
 let toastTimer;
@@ -607,14 +659,15 @@ function label(g, text, px, py, size, colour) {
 }
 
 // ----- the person (a boy or girl seen from above) -----
-function inputDir() {
+function inputDir(o) {
+  o = o || P;
   let dx = 0, dy = 0;
   if (keys["ArrowLeft"]  || keys["a"] || keys["A"]) dx -= 1;
   if (keys["ArrowRight"] || keys["d"] || keys["D"]) dx += 1;
   if (keys["ArrowUp"]    || keys["w"] || keys["W"]) dy -= 1;
   if (keys["ArrowDown"]  || keys["s"] || keys["S"]) dy += 1;
-  if (!dx && !dy && ptr.down) {                        // touch and hold: walk toward your finger
-    const ddx = ptr.x - P.x, ddy = ptr.y - P.y, d = Math.hypot(ddx, ddy);
+  if (!dx && !dy && ptr.down) {                        // touch and hold: go toward your finger
+    const ddx = ptr.x - o.x, ddy = ptr.y - o.y, d = Math.hypot(ddx, ddy);
     if (d > 12) { dx = ddx / d; dy = ddy / d; }
   }
   const m = Math.hypot(dx, dy);
@@ -624,16 +677,19 @@ function circleHitsRect(cx, cy, r, w) {
   const nx = Math.max(w.x, Math.min(cx, w.x + w.w)), ny = Math.max(w.y, Math.min(cy, w.y + w.h));
   return (cx - nx) * (cx - nx) + (cy - ny) * (cy - ny) < r * r;
 }
+function moveBody(o, d, sp, r, walls) {                // move a person or car, but not through walls
+  const nx = o.x + d.dx * sp;
+  if (!walls.some(w => circleHitsRect(nx, o.y, r, w))) o.x = nx;
+  const ny = o.y + d.dy * sp;
+  if (!walls.some(w => circleHitsRect(o.x, ny, r, w))) o.y = ny;
+  o.x = Math.max(r, Math.min(VW - r, o.x));
+  o.y = Math.max(r, Math.min(VH - r, o.y));
+}
 function movePlayer(k, walls) {
-  const d = inputDir(), sp = PLAYER_SPEED * k, r = 17;
+  const d = inputDir(P);
   P.moving = d.dx !== 0 || d.dy !== 0;
   if (P.moving) { P.bob += 0.25 * k; P.angle = Math.atan2(d.dy, d.dx); }
-  const nx = P.x + d.dx * sp;
-  if (!walls.some(w => circleHitsRect(nx, P.y, r, w))) P.x = nx;
-  const ny = P.y + d.dy * sp;
-  if (!walls.some(w => circleHitsRect(P.x, ny, r, w))) P.y = ny;
-  P.x = Math.max(r, Math.min(VW - r, P.x));
-  P.y = Math.max(r, Math.min(VH - r, P.y));
+  moveBody(P, d, PLAYER_SPEED * k, 17, walls);
 }
 function drawPerson(g) {
   const swing = P.moving ? Math.sin(P.bob) * 4 : 0;
@@ -659,23 +715,30 @@ function drawPerson(g) {
   g.restore();
 }
 
-// ----- a car seen from above (it faces up) -----
+// ----- a racing car seen from above (it faces up) -----
 function drawCar(g, cx, cy, w, h, col) {
   g.save(); g.translate(cx, cy);
-  g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.roundRect(-w / 2 + 5, -h / 2 + 7, w, h, 12); g.fill();
-  g.fillStyle = "#111";
-  [[-w / 2 - 3, -h * 0.3], [w / 2 - 3, -h * 0.3], [-w / 2 - 3, h * 0.17], [w / 2 - 3, h * 0.17]].forEach(p => g.fillRect(p[0], p[1], 6, h * 0.2));
-  const bg = g.createLinearGradient(-w / 2, 0, w / 2, 0);
-  bg.addColorStop(0, col); bg.addColorStop(0.5, "rgba(255,255,255,0.35)"); bg.addColorStop(1, col);
-  g.fillStyle = col; g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, 12); g.fill();
-  g.fillStyle = bg; g.beginPath(); g.roundRect(-w / 2, -h / 2, w, h, 12); g.fill();
-  g.strokeStyle = "rgba(0,0,0,0.5)"; g.lineWidth = 1.5; g.stroke();
-  g.fillStyle = "#1f3447";
-  g.beginPath(); g.roundRect(-w / 2 + 6, -h * 0.24, w - 12, h * 0.15, 4); g.fill();     // front window
-  g.beginPath(); g.roundRect(-w / 2 + 6, h * 0.16, w - 12, h * 0.12, 4); g.fill();      // back window
-  g.fillStyle = "rgba(255,255,255,0.28)"; g.beginPath(); g.roundRect(-w / 2 + 8, -h * 0.07, w - 16, h * 0.22, 5); g.fill();  // roof
-  g.fillStyle = "#fff3b0"; g.fillRect(-w / 2 + 5, -h / 2 + 2, 9, 5); g.fillRect(w / 2 - 14, -h / 2 + 2, 9, 5);   // headlights
-  g.fillStyle = "#d62828"; g.fillRect(-w / 2 + 5, h / 2 - 6, 9, 4); g.fillRect(w / 2 - 14, h / 2 - 6, 9, 4);     // tail lights
+  g.fillStyle = "rgba(0,0,0,0.3)"; g.beginPath(); g.roundRect(-w / 2 + 5, -h / 2 + 7, w, h, 14); g.fill();
+  g.fillStyle = "#151515";                                               // fat wheels
+  [[-w / 2 - 4, -h * 0.3], [w / 2 - 5, -h * 0.3], [-w / 2 - 4, h * 0.18], [w / 2 - 5, h * 0.18]].forEach(p => { g.beginPath(); g.roundRect(p[0], p[1], 9, h * 0.22, 3); g.fill(); });
+  g.fillStyle = "#222"; g.fillRect(-w / 2 - 2, h / 2 - 12, w + 4, 8);       // back wing
+  g.fillStyle = col; g.fillRect(-w / 2 - 2, h / 2 - 12, 8, 8); g.fillRect(w / 2 - 6, h / 2 - 12, 8, 8);
+  g.beginPath(); g.moveTo(0, -h / 2);                                        // pointy nose
+  g.bezierCurveTo(w / 2, -h / 2 + 4, w / 2 + 1, -h * 0.2, w / 2, h * 0.05);
+  g.lineTo(w / 2 - 2, h / 2 - 14); g.quadraticCurveTo(0, h / 2 - 8, -w / 2 + 2, h / 2 - 14); g.lineTo(-w / 2, h * 0.05);
+  g.bezierCurveTo(-w / 2 - 1, -h * 0.2, -w / 2, -h / 2 + 4, 0, -h / 2); g.closePath();
+  g.fillStyle = col; g.fill();
+  const sh = g.createLinearGradient(-w / 2, 0, w / 2, 0);
+  sh.addColorStop(0, "rgba(0,0,0,0.3)"); sh.addColorStop(0.45, "rgba(255,255,255,0.35)"); sh.addColorStop(1, "rgba(0,0,0,0.35)");
+  g.fillStyle = sh; g.fill();
+  g.strokeStyle = "rgba(0,0,0,0.55)"; g.lineWidth = 1.5; g.stroke();
+  g.save(); g.clip(); g.fillStyle = "rgba(255,255,255,0.9)"; g.fillRect(-7, -h / 2, 5, h); g.fillRect(2, -h / 2, 5, h); g.restore();   // racing stripes
+  g.fillStyle = "#1b2f45"; g.beginPath(); g.roundRect(-w * 0.27, -h * 0.2, w * 0.54, h * 0.3, 8); g.fill();               // cockpit
+  g.fillStyle = "rgba(180,220,255,0.35)"; g.beginPath(); g.roundRect(-w * 0.22, -h * 0.17, w * 0.44, h * 0.1, 5); g.fill();
+  g.fillStyle = "#f1c9a0"; g.beginPath(); g.arc(0, -h * 0.04, w * 0.11, 0, 7); g.fill();                                  // the driver
+  g.fillStyle = "#fff"; g.beginPath(); g.arc(0, -h * 0.05, w * 0.115, Math.PI, 0); g.fill();
+  g.fillStyle = "#fff7b8"; g.beginPath(); g.ellipse(-w * 0.28, -h / 2 + 9, 5, 3, 0.3, 0, 7); g.ellipse(w * 0.28, -h / 2 + 9, 5, 3, -0.3, 0, 7); g.fill();
+  g.fillStyle = "#d62828"; g.fillRect(-w / 2 + 6, h / 2 - 6, 8, 3); g.fillRect(w / 2 - 14, h / 2 - 6, 8, 3);
   g.restore();
 }
 
@@ -719,7 +782,7 @@ function makeHouse(done) {
     },
     draw(g, t) {
       g.drawImage(bg, 0, 0);
-      drawCar(g, 700, 430, 70, 130, CAR_COLOUR);
+      drawCar(g, 700, 430, 70, 130, carColour);
       label(g, "YOUR CAR", 700, 345 + Math.sin(t / 250) * 5, 16, "#fff");
       g.fillStyle = "#ffd23f"; g.beginPath(); g.moveTo(690, 355 + Math.sin(t / 250) * 5); g.lineTo(710, 355 + Math.sin(t / 250) * 5); g.lineTo(700, 366 + Math.sin(t / 250) * 5); g.fill();
       drawPerson(g);
@@ -783,23 +846,25 @@ function makeDrive(dest, done) {
         g.fillStyle = "#fff"; g.fillRect(roadL - 30, gy - 40, 16, 120); g.fillRect(roadR + 14, gy - 40, 16, 120);
         label(g, dest === "nasa" ? "NASA" : "HOME", 500, gy - 15, 34, "#fff");
       }
-      drawCar(g, car.x, car.y, 56, 100, CAR_COLOUR);
+      drawCar(g, car.x, car.y, 56, 100, carColour);
       if (bump > 0) label(g, "Bump!", car.x, car.y - 70, 24, "#ffd23f");
     }
   };
 }
 
 // ----- chapters 3 and 7: inside NASA -----
-function makeNasa(back, done) {
+function makeNasa(back, spawn, done) {
   const items = back ? [] : [
-    { x: 225, y: 125, name: "Visitor badge", kind: "badge", got: false },
-    { x: 485, y: 125, name: "Space suit",    kind: "suit",  got: false },
-    { x: 755, y: 125, name: "Helmet",        kind: "helmet", got: false }
+    { x: 225, y: 125, name: "Visitor badge", kind: "badge",  got: gear.badge },
+    { x: 485, y: 125, name: "Space suit",    kind: "suit",   got: gear.suit },
+    { x: 755, y: 125, name: "Helmet",        kind: "helmet", got: gear.helmet }
   ];
   const rects = [[0, 0, 1000, 20], [0, 20, 100, 230], [330, 20, 40, 210], [600, 20, 40, 210], [870, 20, 130, 210],
-                 [100, 230, 90, 20], [260, 230, 200, 20], [530, 230, 200, 20], [800, 230, 70, 20], [0, 350, 1000, 250]];
+                 [100, 230, 90, 20], [260, 230, 200, 20], [530, 230, 200, 20], [800, 230, 70, 20],
+                 [0, 350, 400, 250], [500, 350, 120, 250], [760, 350, 240, 250], [400, 462, 100, 138], [620, 470, 140, 130]];
   const walls = rects.map(a => ({ x: a[0], y: a[1], w: a[2], h: a[3] }));
   const gate = { x: 870, y: 250, w: 18, h: 100 };
+  const racePad = { x: 690, y: 425 }, prize = { x: 450, y: 420 };
   const R = rng(9);
   const bg = offscreen(g => {
     for (let ty = 0; ty < VH; ty += 50) for (let tx = 0; tx < VW; tx += 50) { g.fillStyle = (tx + ty) % 100 ? "#d9dde3" : "#cfd4db"; g.fillRect(tx, ty, 50, 50); }
@@ -818,38 +883,63 @@ function makeNasa(back, done) {
       g.fillStyle = "#26354f"; g.fillRect(cx, 480, 64, 36);
       g.fillStyle = R() > 0.5 ? "#ffd23f" : "#ff6b6b"; g.fillRect(cx + 6, 486, 52, 18);
     }
-    label(g, "CONTROL ROOM", 300, 372, 20, "#9fb4d6"); label(g, "MISSION LAB", 720, 372, 20, "#9fb4d6");
+    g.fillStyle = "#0e1c33"; g.fillRect(400, 350, 100, 112); g.fillRect(620, 350, 140, 120);   // the two doorways in the hall
+    g.fillStyle = "#1d3557"; g.fillRect(404, 350, 92, 108);                                 // prize rocket bay
+    g.fillStyle = "#2a1a4a"; g.fillRect(624, 350, 132, 116);                                // race pad bay
+    g.strokeStyle = "#ffd23f"; g.lineWidth = 3; g.strokeRect(404, 350, 92, 108); g.strokeRect(624, 350, 132, 116);
+    label(g, "CONTROL ROOM", 200, 372, 20, "#9fb4d6"); label(g, "MISSION LAB", 880, 372, 20, "#9fb4d6");
     label(g, "CHECK-IN", 225, 36, 16, "#2d5b52"); label(g, "SUITS", 485, 36, 16, "#5a3a78"); label(g, "HELMETS", 755, 36, 16, "#8a5a1f");
     label(g, "ENTRANCE", 48, 330, 14, "#bcd");
     label(g, "LAUNCH PAD", 935, 240, 12, "#333");
   });
-  P.suit = false; P.helmet = false;
-  if (back) { P.x = 920; P.y = 330; P.angle = Math.PI; } else { P.x = 40; P.y = 300; P.angle = 0; }
+  P.suit = back ? true : gear.suit; P.helmet = back ? true : gear.helmet;
+  if (spawn === "race") { P.x = 690; P.y = 320; P.angle = Math.PI / 2; }
+  else if (spawn === "home") { P.x = 450; P.y = 320; P.angle = Math.PI / 2; }
+  else if (back) { P.x = 920; P.y = 330; P.angle = Math.PI; }
+  else { P.x = 40; P.y = 300; P.angle = 0; }
   let finished = false;
   const gotCount = () => items.filter(i => i.got).length;
   return {
-    hud: back ? "Welcome back! Walk to the ENTRANCE to go home." : "Collect your badge, suit and helmet. Then go to the rocket!",
+    hud: back ? "Welcome back! Walk to the ENTRANCE to go home. Or race again!" : "Collect your badge, suit and helmet. Then go to the rocket!",
     update(dt, k) {
       const open = back || gotCount() === items.length;
       movePlayer(k, open ? walls : walls.concat([gate]));
       items.forEach(it => {
         if (!it.got && Math.hypot(P.x - it.x, P.y - it.y) < 30) {
-          it.got = true;
+          it.got = true; gear[it.kind] = true;
           if (it.kind === "suit") P.suit = true;
           if (it.kind === "helmet") P.helmet = true;
           toast("You got the " + it.name + "!");
         }
       });
-      if (!back) sceneHud.textContent = gotCount() < items.length ? "Collect your badge, suit and helmet: " + gotCount() + " / " + items.length : "The gate is open! Walk to your rocket on the launch pad!";
-      if (!finished && ((!back && open && P.x > 905) || (back && P.x < 30))) { finished = true; done(); }
+      if (!back) sceneHud.textContent = gotCount() < items.length ? "Collect your badge, suit and helmet: " + gotCount() + " / " + items.length
+        : "The gate is open! Rocket to the Moon on the right, or try the RACE PAD at the bottom!";
+      if (finished) return;
+      if (open && Math.hypot(P.x - racePad.x, P.y - racePad.y) < 46) { finished = true; done("race"); }
+      else if (ownRocket && Math.hypot(P.x - prize.x, P.y - prize.y) < 46) { finished = true; done("home"); }
+      else if ((!back && open && P.x > 905) || (back && P.x < 30)) { finished = true; done("go"); }
     },
     draw(g, t) {
+      const open = back || gotCount() === items.length;
       g.drawImage(bg, 0, 0);
       g.drawImage(IMG.rocket, 890, 245, 120, 120);                                      // your rocket
       if (!back) {
-        const open = gotCount() === items.length;
         g.fillStyle = open ? "rgba(80,255,140,0.35)" : "rgba(255,60,60,0.7)"; g.fillRect(gate.x, gate.y, gate.w, gate.h);
         if (!open) { g.fillStyle = "#fff"; for (let i = 0; i < 4; i++) g.fillRect(gate.x, gate.y + 12 + i * 24, gate.w, 3); }
+      }
+      // the race pad
+      const glow = 0.5 + 0.5 * Math.sin(t / 250);
+      g.fillStyle = open ? "rgba(255,210,63," + (0.25 + glow * 0.3) + ")" : "rgba(150,150,150,0.25)"; g.beginPath(); g.arc(racePad.x, racePad.y, 46, 0, 7); g.fill();
+      for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) { if ((i + j) % 2) continue; g.fillStyle = open ? "#fff" : "#888"; g.fillRect(racePad.x - 32 + i * 8, racePad.y - 32 + j * 8, 8, 8); }
+      g.strokeStyle = open ? "#ffd23f" : "#777"; g.lineWidth = 4; g.strokeRect(racePad.x - 32, racePad.y - 32, 64, 64);
+      label(g, "RACE PAD", racePad.x, 368, 15, open ? "#ffd23f" : "#888");
+      // the prize rocket
+      if (ownRocket) {
+        g.drawImage(IMG.prize, prize.x - 45, prize.y - 55, 90, 90);
+        label(g, "MY ROCKET HOME", prize.x, 368, 12, "#7fe9ff"); label(g, "walk in!", prize.x, 448, 12, "#7fe9ff");
+      } else {
+        g.globalAlpha = 0.25; g.drawImage(IMG.prize, prize.x - 45, prize.y - 55, 90, 90); g.globalAlpha = 1;
+        label(g, "WIN THE RACE", prize.x, 368, 12, "#9fb4d6"); label(g, "to get a rocket!", prize.x, 448, 12, "#9fb4d6");
       }
       items.forEach(it => {
         if (it.got) return;
@@ -868,6 +958,205 @@ function makeNasa(back, done) {
         }
       });
       drawPerson(g);
+    }
+  };
+}
+
+// ----- the indoor parking lot at NASA (park your car, then walk to the NASA door) -----
+function makePark(phase, done) {
+  const carCols = ["#2a6fdb", "#f4a261", "#8d99ae", "#2a9d8f", "#9b5de5", "#e9c46a", "#4cc9f0"];
+  const R = rng(17);
+  const bays = [];
+  for (let i = 0; i < 8; i++) { bays.push({ x: 60 + i * 112, y: 30, w: 96, h: 150, top: true }); bays.push({ x: 60 + i * 112, y: 420, w: 96, h: 150, top: false }); }
+  const target = bays[6];                                            // top row, 4th bay
+  const tx = target.x + target.w / 2, ty = target.y + target.h / 2;
+  bays.forEach((b, i) => { b.car = b !== target && (R() > 0.45 || i === 4 || i === 8); b.col = carCols[Math.floor(R() * carCols.length)]; });
+  const walls = bays.filter(b => b.car).map(b => ({ x: b.x + 8, y: b.y + 10, w: b.w - 16, h: b.h - 20 }));
+  const myCar = { x: 40, y: 300, angle: 0 };
+  let phaseNow = phase === "in" ? "drive" : "walk";
+  if (phase === "out") { myCar.x = tx; myCar.y = ty; myCar.angle = -Math.PI / 2; P.x = 940; P.y = 300; P.angle = Math.PI; }
+  const parkedRect = { x: tx - 28, y: ty - 50, w: 56, h: 100 };
+  let finished = false;
+  const bg = offscreen(g => {
+    g.fillStyle = "#6a6e75"; g.fillRect(0, 0, VW, VH);
+    for (let i = 0; i < 900; i++) { g.fillStyle = R() > 0.5 ? "#73777e" : "#62666d"; g.fillRect(R() * VW, R() * VH, 3, 3); }
+    for (let i = 0; i < 6; i++) { const lg = g.createRadialGradient(80 + i * 170, 300, 5, 80 + i * 170, 300, 120); lg.addColorStop(0, "rgba(255,255,230,0.22)"); lg.addColorStop(1, "rgba(255,255,230,0)"); g.fillStyle = lg; g.fillRect(0, 150, VW, 300); }
+    g.strokeStyle = "rgba(255,255,255,0.85)"; g.lineWidth = 3;
+    bays.forEach(b => { g.strokeRect(b.x, b.y, b.w, b.h); });
+    g.fillStyle = "#ffd23f"; for (let xx = 20; xx < 900; xx += 70) g.fillRect(xx, 297, 40, 5);          // lane line
+    g.fillStyle = "rgba(255,255,255,0.4)";
+    [180, 400, 620, 780].forEach(ax => { g.beginPath(); g.moveTo(ax, 270); g.lineTo(ax + 40, 300); g.lineTo(ax, 330); g.closePath(); g.fill(); });
+    g.fillStyle = "#2b2f36"; g.fillRect(0, 0, VW, 26); g.fillRect(0, 574, VW, 26);
+    label(g, "NASA VISITOR PARKING  -  INDOORS", 500, 13, 15, "#ffd23f");
+    g.fillStyle = "#1c7a3e"; g.fillRect(950, 240, 50, 120); label(g, "TO", 975, 285, 14, "#fff"); label(g, "NASA", 975, 305, 14, "#fff");
+    g.fillStyle = "#2b2f36"; g.fillRect(944, 240, 6, 120);
+  });
+  const drawRot = (g, cx, cy, ang, w, h, col) => { g.save(); g.translate(cx, cy); g.rotate(ang + Math.PI / 2); drawCar(g, 0, 0, w, h, col); g.restore(); };
+  return {
+    myCar, tx, ty,
+    hud: phase === "in" ? "Park your car in the glowing spot!  (arrow keys, or hold your finger where you want to go)" : "Walk back to your car!",
+    update(dt, k) {
+      if (finished) return;
+      if (phaseNow === "drive") {
+        const d = inputDir(myCar), moving = d.dx !== 0 || d.dy !== 0;
+        moveBody(myCar, d, 4.5 * k, 28, walls);
+        if (moving) { let da = Math.atan2(d.dy, d.dx) - myCar.angle; da = Math.atan2(Math.sin(da), Math.cos(da)); myCar.angle += da * Math.min(1, 0.2 * k); }
+        sceneHud.textContent = this.hud;
+        if (Math.abs(myCar.x - tx) < 20 && Math.abs(myCar.y - ty) < 34) {
+          myCar.x = tx; myCar.y = ty; myCar.angle = -Math.PI / 2;
+          phaseNow = "walk"; P.x = tx; P.y = 215; P.angle = Math.PI / 2; P.suit = false; P.helmet = false;
+          toast("Parked! Now walk to the NASA door.");
+        }
+      } else {
+        movePlayer(k, walls.concat([parkedRect]));
+        sceneHud.textContent = phase === "in" ? "Parked! Walk to the NASA door on the right." : "Walk back to your car!";
+        if (phase === "in" && P.x > 945 && P.y > 235 && P.y < 365) { finished = true; done(); }
+        if (phase === "out" && circleHitsRect(P.x, P.y, 17 + 16, parkedRect)) { finished = true; done(); }
+      }
+    },
+    draw(g, t) {
+      g.drawImage(bg, 0, 0);
+      bays.forEach(b => { if (b.car) drawRot(g, b.x + b.w / 2, b.y + b.h / 2, b.top ? -Math.PI / 2 : Math.PI / 2, 56, 100, b.col); });
+      if (phaseNow === "drive") {                                                          // the glowing spot
+        g.fillStyle = "rgba(80,255,140," + (0.25 + 0.2 * Math.sin(t / 200)) + ")"; g.fillRect(target.x, target.y, target.w, target.h);
+        label(g, "P", tx, ty - 40, 34, "rgba(255,255,255,0.9)");
+        g.fillStyle = "#ffd23f"; const ay = 195 + Math.sin(t / 200) * 5; g.beginPath(); g.moveTo(tx - 14, ay); g.lineTo(tx + 14, ay); g.lineTo(tx, ay + 16); g.fill();
+        drawRot(g, myCar.x, myCar.y, myCar.angle, 56, 100, carColour);
+      } else {
+        drawRot(g, tx, ty, -Math.PI / 2, 56, 100, carColour);
+        drawPerson(g);
+      }
+    }
+  };
+}
+
+// ----- the race pad: race 3 other rockets! -----
+let raceInput = null;
+function ordinal(n) { return ["1st", "2nd", "3rd", "4th"][n - 1]; }
+function makeRace(onFinish) {
+  const lanes = [200, 400, 600, 800];
+  const racers = [
+    { you: true, lane: 1, p: 0, v: 0, name: "YOU",    img: IMG.rocket },
+    { lane: 0, p: 0, name: "Blue",   img: IMG.rivals[0], seed: 1.0, ph: 0 },
+    { lane: 2, p: 0, name: "Green",  img: IMG.rivals[1], seed: 2.2, ph: 1 },
+    { lane: 3, p: 0, name: "Purple", img: IMG.rivals[2], seed: 3.7, ph: 2 }
+  ];
+  const you = racers[0];
+  let t = 0, phase = "count", boostLeft = 1, place = 1;
+  raceInput = {
+    tap() { if (phase === "go") you.v = Math.min(0.09, you.v + 0.008); },
+    boost() { if (phase === "go" && boostLeft) { boostLeft = 0; you.v = Math.min(0.12, you.v + 0.035); toast("BOOST!"); } }
+  };
+  const R = rng(4);
+  const crowd = []; for (let i = 0; i < 90; i++) crowd.push({ x: i % 2 ? 20 + R() * 70 : 910 + R() * 70, y: 40 + R() * 520, c: ["#ff6b6b", "#ffd23f", "#4dd2ff", "#7CFC00", "#ff9ff3", "#fff"][Math.floor(R() * 6)] });
+  return {
+    hud: "Get ready...", racers, you,
+    update(dt, k) {
+      t += dt;
+      if (phase === "count") { if (t > 3400) { phase = "go"; t = 0; toast("GO!"); } return; }
+      if (phase === "done") return;
+      const s = dt / 1000;
+      you.v *= Math.exp(-0.8 * s); you.p += you.v * s;
+      racers.slice(1).forEach(a => {
+        a.ph += s;
+        let sp = RACE_AI_SPEED * (0.92 + 0.16 * Math.sin(a.ph * 1.3 + a.seed));
+        const gap = a.p - you.p;
+        if (gap > 0.1) sp *= 0.85; else if (gap < -0.1) sp *= 1.05;     // the others stay close so it is a real race
+        a.p += sp * s;
+      });
+      place = [...racers].sort((a, b) => b.p - a.p).indexOf(you) + 1;
+      sceneHud.textContent = "Mash SPACE (or tap the screen) as fast as you can!   B = one big burst.    You are in " + ordinal(place) + " place";
+      const winner = racers.find(r => r.p >= 1);
+      if (winner) {
+        phase = "done";
+        const finalPlace = winner === you ? 1 : 1 + racers.filter(r => r.p > you.p).length;
+        setTimeout(() => onFinish(winner === you, finalPlace), 800);
+      }
+    },
+    draw(g, tt) {
+      const bgG = g.createLinearGradient(0, 0, 0, VH); bgG.addColorStop(0, "#150b33"); bgG.addColorStop(1, "#2a1d5c");
+      g.fillStyle = bgG; g.fillRect(0, 0, VW, VH);
+      for (let i = 0; i < 60; i++) { g.fillStyle = "rgba(255,255,255,0.6)"; g.fillRect((i * 97) % VW, (i * 53 + tt / 12 * (1 + i % 3)) % VH, 2, 2); }
+      crowd.forEach(c => { g.fillStyle = c.c; g.beginPath(); g.arc(c.x, c.y + Math.sin(tt / 200 + c.x) * 3, 5, 0, 7); g.fill(); });
+      g.fillStyle = "#3a3a52"; g.fillRect(110, 0, 780, VH);                                // the track
+      g.strokeStyle = "rgba(120,220,255,0.7)"; g.lineWidth = 3; g.setLineDash([22, 16]); g.lineDashOffset = -tt / 12;
+      [300, 500, 700].forEach(lx => { g.beginPath(); g.moveTo(lx, 0); g.lineTo(lx, VH); g.stroke(); });
+      g.setLineDash([]); g.strokeStyle = "#ffd23f"; g.lineWidth = 5; g.strokeRect(110, 0, 780, VH);
+      for (let i = 0; i < 26; i++) for (let j = 0; j < 2; j++) { g.fillStyle = (i + j) % 2 ? "#fff" : "#111"; g.fillRect(110 + i * 30, 60 + j * 14, 30, 14); }       // finish line
+      g.fillStyle = "#fff"; g.fillRect(110, 566, 780, 6); label(g, "START", 160, 585, 14, "#ccc"); label(g, "FINISH", 160, 50, 14, "#ccc");
+      racers.forEach(r => {
+        const ry = 500 - r.p * 440, rx = lanes[r.lane];
+        const tail = 26 + Math.random() * 14 + (r.you ? r.v * 450 : r.p > 0 ? 18 : 0);      // a fiery trail
+        const fg = g.createLinearGradient(0, ry + 34, 0, ry + 34 + tail); fg.addColorStop(0, "rgba(255,240,170,0.9)"); fg.addColorStop(0.5, "rgba(255,150,40,0.6)"); fg.addColorStop(1, "rgba(255,80,0,0)");
+        g.fillStyle = fg; g.beginPath(); g.moveTo(rx - 9, ry + 34); g.lineTo(rx + 9, ry + 34); g.lineTo(rx, ry + 34 + tail); g.fill();
+        g.drawImage(r.img, rx - 50, ry - 50, 100, 100);
+        label(g, r.name, rx, ry - 60, 15, r.you ? "#ffd23f" : "#ddd");
+      });
+      g.fillStyle = "#ffffff30"; g.fillRect(300, 590, 400, 8); g.fillStyle = "#7CFC00"; g.fillRect(300, 590, 400 * Math.min(1, you.v / 0.09), 8);   // your speed
+      if (phase === "count") { const n = Math.ceil((3400 - t) / 1000); label(g, n > 3 ? "Ready..." : String(n), 500, 300, 120, "#fff"); }
+    }
+  };
+}
+
+// ----- the rocket house you win: toilet, bed, snacks and a ball to kick -----
+function makeHomeRocket(done) {
+  P.x = 500; P.y = 520; P.angle = -Math.PI / 2; P.suit = false; P.helmet = false;
+  const walls = [[0, 0, 1000, 40], [0, 0, 40, 600], [960, 0, 40, 600], [0, 560, 460, 40], [540, 560, 460, 40], [200, 40, 14, 110]].map(a => ({ x: a[0], y: a[1], w: a[2], h: a[3] }));
+  const ball = { x: 500, y: 380, vx: 0, vy: 0, r: 16 };
+  const R = rng(12);
+  let flush = 0, sleepy = 0, cool = { toilet: 0, snack: 0, bed: 0 }, kicks = 0;
+  const bg = offscreen(g => {
+    g.fillStyle = "#c9d2dc"; g.fillRect(0, 0, VW, VH);
+    for (let i = 0; i < VW; i += 50) for (let j = 0; j < VH; j += 50) { g.strokeStyle = "rgba(0,0,0,0.06)"; g.strokeRect(i, j, 50, 50); }
+    g.fillStyle = "#39424e"; walls.forEach(w => g.fillRect(w.x, w.y, w.w, w.h));
+    g.fillStyle = "#566273"; g.fillRect(0, 0, 1000, 6);
+    for (let i = 0; i < 4; i++) {                                                         // round windows with stars
+      const wx = 300 + i * 130; g.fillStyle = "#222c3a"; g.beginPath(); g.arc(wx, 22, 30, 0, 7); g.fill();
+      g.fillStyle = "#0a1030"; g.beginPath(); g.arc(wx, 22, 24, 0, 7); g.fill();
+      for (let s = 0; s < 8; s++) { g.fillStyle = "#fff"; g.fillRect(wx - 20 + R() * 40, 4 + R() * 34, 2, 2); }
+    }
+    g.fillStyle = "#b8e0e8"; g.fillRect(40, 40, 160, 190);                                // bathroom floor
+    g.fillStyle = "#e3edf1"; g.beginPath(); g.ellipse(110, 105, 28, 34, 0, 0, 7); g.fill();  // toilet bowl
+    g.strokeStyle = "#8aa"; g.lineWidth = 2; g.stroke();
+    g.fillStyle = "#c9d9df"; g.beginPath(); g.ellipse(110, 105, 17, 22, 0, 0, 7); g.fill();
+    g.fillStyle = "#eef5f7"; g.fillRect(86, 52, 48, 22); g.strokeRect(86, 52, 48, 22);   // tank
+    label(g, "TOILET", 110, 160, 13, "#357");
+    g.fillStyle = "#f4f4f4"; g.fillRect(790, 80, 150, 110); g.fillStyle = "#3b6fd4"; g.fillRect(790, 125, 150, 65); g.fillStyle = "#fff"; g.beginPath(); g.roundRect(800, 88, 60, 30, 8); g.fill();   // bed
+    label(g, "BED", 865, 215, 13, "#357");
+    const rg = g.createRadialGradient(500, 380, 20, 500, 380, 150);                        // play rug
+    rg.addColorStop(0, "#ff9ff3"); rg.addColorStop(0.5, "#ffd23f"); rg.addColorStop(1, "#4dd2ff");
+    g.fillStyle = rg; g.beginPath(); g.ellipse(500, 380, 190, 130, 0, 0, 7); g.fill();
+    label(g, "PLAY AREA", 500, 270, 14, "#357");
+    [[400, 330, "#e63946"], [440, 440, "#2ecc71"], [610, 330, "#1e90ff"], [585, 440, "#8e44ad"]].forEach(b => { g.fillStyle = b[2]; g.fillRect(b[0], b[1], 28, 28); g.fillStyle = "#fff"; g.font = "bold 18px sans-serif"; g.textAlign = "center"; g.fillText("A", b[0] + 14, b[1] + 21); });  // toy blocks
+    g.fillStyle = "#e8e8e8"; g.fillRect(850, 400, 90, 140); g.fillStyle = "#cfd4d8"; g.fillRect(850, 400, 90, 6);    // snack fridge
+    g.fillStyle = "#aab"; g.fillRect(920, 440, 6, 40); label(g, "SNACKS", 895, 560 - 8, 13, "#357");
+    label(g, "EXIT", 500, 578, 16, "#7CFC00");
+  });
+  let finished = false;
+  toast("Welcome to your rocket house!");
+  return {
+    hud: "Your rocket house! Use the toilet, take a nap, grab a snack or kick the ball. Exit is the door at the bottom.",
+    update(dt, k) {
+      movePlayer(k, walls);
+      for (const key in cool) cool[key] = Math.max(0, cool[key] - dt);
+      flush = Math.max(0, flush - dt); sleepy = Math.max(0, sleepy - dt);
+      if (Math.hypot(P.x - 110, P.y - 105) < 55 && cool.toilet === 0) { cool.toilet = 4000; flush = 1500; toast("You used the toilet!  Flush!"); }
+      if (Math.hypot(P.x - 865, P.y - 140) < 75 && cool.bed === 0) { cool.bed = 5000; sleepy = 2000; toast("Zzz... a nice nap."); }
+      if (Math.hypot(P.x - 895, P.y - 470) < 75 && cool.snack === 0) { cool.snack = 4000; score += 10; toast("Yum! A snack!  +10"); }
+      const dx = ball.x - P.x, dy = ball.y - P.y, dist = Math.hypot(dx, dy);        // kick the ball!
+      if (dist < ball.r + 20) { const nx = dx / (dist || 1), ny = dy / (dist || 1); ball.vx = nx * 8; ball.vy = ny * 8; ball.x = P.x + nx * (ball.r + 21); ball.y = P.y + ny * (ball.r + 21); kicks++; }
+      ball.x += ball.vx * k; ball.y += ball.vy * k; ball.vx *= Math.pow(0.985, k); ball.vy *= Math.pow(0.985, k);
+      if (ball.x < 56) { ball.x = 56; ball.vx = Math.abs(ball.vx); } if (ball.x > 944) { ball.x = 944; ball.vx = -Math.abs(ball.vx); }
+      if (ball.y < 56) { ball.y = 56; ball.vy = Math.abs(ball.vy); } if (ball.y > 544) { ball.y = 544; ball.vy = -Math.abs(ball.vy); }
+      if (!finished && P.y > 550 && Math.abs(P.x - 500) < 45) { finished = true; done(); }
+    },
+    draw(g, t) {
+      g.drawImage(bg, 0, 0);
+      if (flush > 0) { g.strokeStyle = "rgba(80,170,255,0.8)"; g.lineWidth = 3; for (let i = 0; i < 3; i++) { g.beginPath(); g.arc(110, 105, 6 + i * 6 + (1500 - flush) / 100, 0, 5); g.stroke(); } }
+      g.fillStyle = "#e63946"; g.beginPath(); g.arc(ball.x, ball.y, ball.r, 0, 7); g.fill();
+      g.fillStyle = "#fff"; g.beginPath(); g.arc(ball.x - 4, ball.y - 4, 5, 0, 7); g.fill();
+      drawPerson(g);
+      if (sleepy > 0) { g.fillStyle = "rgba(0,0,30," + Math.min(0.6, sleepy / 1500) + ")"; g.fillRect(0, 0, VW, VH); label(g, "Zzz", 865, 120 - (2000 - sleepy) / 40, 30, "#fff"); }
     }
   };
 }
@@ -971,7 +1260,7 @@ function makeGarage(targetFloor, done) {
       travelled = Math.min(total, travelled + dt / 1000 * 230);
       if (travelled >= total) {
         finished = true;
-        showSceneMsg("You are home!<br>You parked on <b>Level " + (targetFloor + 1) + "</b> of 5<br><span style='font-size:22px'>Score: " + score + "   Best: " + best + "</span>", "Play again", done);
+        showPaintMsg("You are home!<br>You parked on <b>Level " + (targetFloor + 1) + "</b> of 5<br><span style='font-size:22px'>Score: " + score + "   Best: " + best + "</span>", "Play again", done);
       }
     },
     draw(g, t) {
@@ -1006,7 +1295,7 @@ function makeGarage(targetFloor, done) {
     },
     drawSideCar(g, cx, cy, dir) {
       g.save(); g.translate(cx, cy); g.scale(dir, 1);
-      g.fillStyle = CAR_COLOUR; g.beginPath(); g.roundRect(-36, -28, 72, 20, 7); g.fill();
+      g.fillStyle = carColour; g.beginPath(); g.roundRect(-36, -28, 72, 20, 7); g.fill();
       g.beginPath(); g.roundRect(-20, -44, 40, 20, 8); g.fill();
       g.fillStyle = "#cfe8ff"; g.beginPath(); g.roundRect(-16, -41, 15, 13, 3); g.fill(); g.beginPath(); g.roundRect(2, -41, 15, 13, 3); g.fill();
       g.fillStyle = "#fff3b0"; g.fillRect(32, -24, 6, 6);
@@ -1020,19 +1309,47 @@ function makeGarage(targetFloor, done) {
 // ----- the story, one chapter after another -----
 function newStory() {
   score = 0; landed = 0;
+  gear = { badge: false, suit: false, helmet: false };
   startHouse();
 }
 function startHouse() { goMode("house"); scene = makeHouse(() => startDrive("nasa")); sceneHud.textContent = scene.hud; }
 function startDrive(dest) {
   goMode("drive");
-  scene = makeDrive(dest, () => { if (dest === "nasa") startNasa(false); else startGarage(); });
+  scene = makeDrive(dest, () => { if (dest === "nasa") startPark("in"); else startGarage(); });
   sceneHud.textContent = scene.hud;
 }
-function startNasa(back) {
-  goMode("nasa");
-  scene = makeNasa(back, () => { if (back) startDrive("home"); else startFlight("out"); });
+function startPark(phase) {
+  goMode("park");
+  scene = makePark(phase, () => { if (phase === "in") startNasa(false); else startDrive("home"); });
   sceneHud.textContent = scene.hud;
-  toast(back ? "You landed safely at NASA!" : "Welcome to NASA!");
+}
+function startNasa(back, spawn) {
+  goMode("nasa");
+  scene = makeNasa(back, spawn, where => {
+    if (where === "race") startRace(back);
+    else if (where === "home") startHomeRocket(back);
+    else if (back) startPark("out");
+    else startFlight("out");
+  });
+  sceneHud.textContent = scene.hud;
+  if (!spawn) toast(back ? "You landed safely at NASA!" : "Welcome to NASA!");
+}
+function startRace(back) {
+  goMode("race");
+  scene = makeRace((won, place) => {
+    const again = ["Race again!", () => startRace(back)], leave = ["Back to NASA", () => startNasa(back, "race")];
+    if (won && !ownRocket) {
+      ownRocket = true; try { localStorage.setItem("rocketOwned", "1"); } catch (e) {}
+      showChoices("<h1 style='margin:0'>YOU WON!</h1>You won a ROCKET HOUSE!<br><span style='font-size:22px'>You can walk in. It is next to the race pad.</span>", [["Take me back to NASA", () => startNasa(back, "race")]]);
+    } else if (won) showChoices("You won again! 1st place!", [again, leave]);
+    else showChoices("You came " + ordinal(place) + "!<br><span style='font-size:22px'>Mash faster next time!</span>", [again, leave]);
+  });
+  sceneHud.textContent = scene.hud;
+}
+function startHomeRocket(back) {
+  goMode("home");
+  scene = makeHomeRocket(() => startNasa(back, "home"));
+  sceneHud.textContent = scene.hud;
 }
 function startSurface(key, after) {
   goMode("surface");
@@ -1272,8 +1589,9 @@ function update(dt, k) {
 goMode("house");
 scene = makeHouse(() => startDrive("nasa"));
 showButtons();
-showSceneMsg("<h1 style='margin:0'>Moon Mission</h1><div style='font-size:22px;margin:10px 0'>Walk to your car, drive to NASA, fly to the Moon and come home again!</div>" +
-             "<div style='font-size:18px;color:#bcd;margin-bottom:6px'>Walk: arrow keys / WASD, or touch and hold<br>Rocket: arrows or mouse &middot; Space = shoot &middot; B = boost &middot; S = shield &middot; M = map &middot; L = land &middot; E = easy</div>",
+showPaintMsg("<h1 style='margin:0'>Moon Mission</h1><div style='font-size:20px;margin:8px 0'>Walk to your car, park at NASA, race, fly to the Moon and come home!</div>" +
+             "<div style='font-size:15px;color:#bcd'>Walk: arrow keys / WASD, or touch and hold &middot; Rocket: arrows or mouse &middot; Space = shoot &middot; B = boost &middot; S = shield &middot; M = map &middot; L = land &middot; E = easy</div>" +
+             "<div style='font-size:20px;margin-top:8px'>Pick your colours!</div>",
              "Start the mission!", () => { waitingStart = false; sceneHud.textContent = scene.hud; });
 last = performance.now();
 requestAnimationFrame(frame);
