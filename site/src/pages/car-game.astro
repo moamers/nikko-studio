@@ -1061,6 +1061,11 @@
 
     function getInCar() {
       if (phase !== 'walk' || !nearCar) return;
+      if (carBroken && lotKind === 'home' && carKindNow === 'home') {
+        say('Your car does not work! \u{1F697}\u274C Go to level G: take the lift to the taxi.', 260);
+        blip(220, 160, 0.25, 0.1);
+        return;
+      }
       if (departing) {
         departing = false;
         blip(420, 420, 0.12, 0.1);
@@ -1574,6 +1579,10 @@
       }
       if (buddy && !buddy.bye) {
         buddyBye(() => leaveMall());
+        return;
+      }
+      if (taxiMode) {
+        taxiPickup();
         return;
       }
       if (isMosque()) {
@@ -3307,6 +3316,553 @@
       }
     }
 
+    // ---------- level G, the taxi and the engineer: when your car does not work ----------
+    let carBroken = false;
+    let repairReady = false; // the engineer can fix it now
+    let taxiTripDone = false;
+    let noBreakNext = false; // after a repair the car works the next day
+    let taxiMode = false; // you are travelling by taxi today
+    let taxiOpen = false;
+    let taxiLanes = [];
+    let taxi = null; // the taxi ride: { kind: 'out' | 'home', lane }
+    let taxiWait = 0;
+    let groundT = 0;
+    let repairOpen = false;
+    const repair = { seq: [], i: 0, msg: '', done: false, spark: 0 };
+    const repairTools = [['\u{1F527}', 'Wrench'], ['\u{1F50B}', 'Battery'], ['\u{1F6DE}', 'Tyre'], ['\u{1F6E2}️', 'Oil can'], ['\u{1F526}', 'Torch'], ['\u{1FA9B}', 'Screwdriver']];
+    const kindEmoji = (d) => (d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : '\u{1F6CD}️');
+
+    function enterGround(fromTaxi) {
+      phase = 'ground';
+      groundT = 0;
+      hold = null;
+      liftOpen = false;
+      if (carBroken && !taxiTripDone) {
+        taxiLanes = pickLanes(false);
+        openTaxi();
+      } else if (fromTaxi) say('Welcome home! \u{1F3E0} Take the lift to your car level and help the engineer \u{1F527}', 260);
+      else say(carBroken ? 'Level G. Take the lift to your car level to help the engineer \u{1F527}' : 'Level G: your lobby and the taxi stand. Your car works, no taxi needed!', 200);
+    }
+    function openTaxi() {
+      if (!carBroken) {
+        say('Your car works today, so you do not need a taxi \u{1F697}', 150);
+        return;
+      }
+      if (taxiTripDone) {
+        say('You already took the taxi today. Go and help the engineer \u{1F527}', 160);
+        return;
+      }
+      if (!taxiLanes.length) taxiLanes = pickLanes(false);
+      taxiOpen = true;
+      hold = null;
+      blip(700, 700, 0.08, 0.08);
+    }
+    const taxiCell = (i) => ({ x: 30, y: 130 + i * 62, w: 340, h: 54 });
+    function taxiPress(p) {
+      if (p.x > 120 && p.x < 280 && p.y > 462 && p.y < 504) {
+        taxiOpen = false;
+        return;
+      }
+      for (let i = 0; i < taxiLanes.length; i++) {
+        const c = taxiCell(i);
+        if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
+          taxiOpen = false;
+          startTaxiOut(i);
+          return;
+        }
+      }
+    }
+    function drawTaxiPanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(20, 40, 360, 480, 18);
+      ctx.fillStyle = '#fffbe6';
+      ctx.fill();
+      ctx.strokeStyle = '#f2b705';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#f2b705';
+      roundedRect(20, 40, 360, 64, 18);
+      ctx.fill();
+      ctx.fillRect(20, 80, 360, 24);
+      ctx.fillStyle = '#2b2230';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText('\u{1F695} TAXI • تاكسي', 200, 72);
+      ctx.font = '13px sans-serif';
+      ctx.fillText('Your car is broken. Where to?', 200, 95);
+      taxiLanes.forEach((d, i) => {
+        const c = taxiCell(i);
+        roundedRect(c.x, c.y, c.w, c.h, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = d.colour;
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.fillStyle = d.colour;
+        ctx.fillRect(c.x + 8, c.y + 8, 8, c.h - 16);
+        ctx.fillStyle = '#2b2230';
+        ctx.textAlign = 'left';
+        fitText(kindEmoji(d) + ' ' + d.name, 270, 16);
+        ctx.fillText(kindEmoji(d) + ' ' + d.name, c.x + 26, c.y + 24);
+        ctx.fillStyle = '#6b727b';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(d.sub || (d.kind === 'mall' ? 'Shopping mall' : d.kind === 'beach' ? 'Beach' : d.kind === 'mosque' ? 'Mosque' : 'Metro'), c.x + 26, c.y + 43);
+        ctx.fillStyle = '#f2b705';
+        ctx.font = 'bold 20px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('\u{1F695}', c.x + c.w - 12, c.y + 34);
+      });
+      ctx.fillStyle = '#e63946';
+      roundedRect(120, 462, 160, 42, 21);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Back ✖', 200, 489);
+    }
+
+    // the taxi ride to the tunnel, and the drop off at your place
+    function startTaxiOut(i) {
+      taxiMode = true;
+      laneDests = taxiLanes;
+      taxi = { kind: 'out', lane: i };
+      phase = 'taxi';
+      leg = 'out';
+      dest = pendingDest;
+      gateRow = { y: car.y - 1800, passed: false };
+      gateWait = 0;
+      gateStopped = true;
+      travel = 0;
+      tripLen = 1800;
+      arriving = false;
+      signs = [];
+      traffic = [];
+      coins = [];
+      shields = [];
+      police = null;
+      crashing = false;
+      car.x = W / 2;
+      car.y = carStartY;
+      targetX = roadLeft + laneW * (i + 0.5);
+      say('Your taxi is taking you to ' + taxiLanes[i].name + ' \u{1F695}', 220);
+      blip(500, 900, 0.3, 0.1);
+    }
+    function taxiDropoff() {
+      const d = taxiLanes[taxi.lane];
+      gateRow = null;
+      taxi = null;
+      dest = d;
+      shopped = false;
+      mallActive = false;
+      mallBag = [];
+      bootDone = false;
+      mallTrolley = false;
+      secondActive = false;
+      if (d.kind === 'metro') {
+        lotStation = mallStations[Math.floor(Math.random() * mallStations.length)];
+        dest = parkRideDest(lotStation);
+        enterStation(lotStation);
+      } else if (d.kind === 'mall') enterMallAt(0);
+      else if (d.kind === 'beach') enterBeach();
+      else enterMosque();
+      say('Your taxi dropped you at ' + dest.name + ' \u{1F695} Enjoy!', 220);
+    }
+    // when you are done, the taxi comes back after a few seconds
+    function taxiPickup() {
+      phase = 'taxistop';
+      taxiWait = 300;
+      hold = null;
+      mallShop = -1;
+      say('Your taxi is on its way \u{1F695} Wait a few seconds...', 220);
+      blip(660, 880, 0.2, 0.08);
+    }
+    function startTaxiHome() {
+      taxi = { kind: 'home' };
+      phase = 'taxi';
+      leg = 'home';
+      dest = homeDest;
+      gateRow = null;
+      travel = 0;
+      tripLen = 1600;
+      arriving = false;
+      signs = [];
+      traffic = [];
+      coins = [];
+      shields = [];
+      police = null;
+      crashing = false;
+      car.x = W / 2;
+      car.y = carStartY;
+      targetX = car.x;
+      say('Taxi home \u{1F695}\u{1F3E0}', 200);
+      blip(500, 900, 0.3, 0.1);
+    }
+    function updateTaxi(step) {
+      const dist = 5 * step;
+      travel += dist;
+      laneLines.forEach((line) => {
+        line.y += dist;
+        if (line.y > H) line.y -= 8 * 80;
+      });
+      car.x += (targetX - car.x) * (1 - Math.pow(1 - 0.03, step));
+      if (travel >= nextSignAt && taxi && taxi.kind === 'home') {
+        spawnSign();
+        nextSignAt += 230;
+      }
+      signs.forEach((sg) => (sg.y += dist));
+      signs = signs.filter((sg) => sg.y < H + 60);
+      if (taxi.kind === 'out') {
+        gateRow.y += dist;
+        if (gateRow.y >= car.y - 20) taxiDropoff();
+      } else if (travel >= tripLen) {
+        taxiMode = false;
+        taxiTripDone = true;
+        repairReady = true;
+        enterGround(true);
+      }
+    }
+    function updateTaxiStop(step) {
+      taxiWait = Math.max(0, taxiWait - step);
+      if (taxiWait <= 0 && Math.floor((taxiWait + step) / 1) > 0) {
+        say('Your taxi is here! \u{1F695} Get in.', 200);
+        blip(988, 988, 0.15, 0.1);
+      }
+    }
+    function drawTaxiSide(x, y, sc) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.scale(sc, sc);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      ctx.beginPath();
+      ctx.ellipse(0, 26, 62, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      roundedRect(-58, -6, 116, 30, 10);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(-34, -6);
+      ctx.lineTo(-22, -28);
+      ctx.lineTo(26, -28);
+      ctx.lineTo(40, -6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#a67c00';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#9fd3ee';
+      ctx.beginPath();
+      ctx.moveTo(-28, -8);
+      ctx.lineTo(-19, -25);
+      ctx.lineTo(0, -25);
+      ctx.lineTo(0, -8);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(6, -8);
+      ctx.lineTo(6, -25);
+      ctx.lineTo(24, -25);
+      ctx.lineTo(35, -8);
+      ctx.fill();
+      ctx.fillStyle = '#2b2230';
+      for (let k = 0; k < 8; k++) if (k % 2 === 0) ctx.fillRect(-56 + k * 14, 6, 7, 5);
+      roundedRect(-14, -36, 28, 10, 3);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.fillStyle = '#2b2230';
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('TAXI', 0, -28);
+      [-34, 34].forEach((wx) => {
+        ctx.fillStyle = '#2b2f35';
+        ctx.beginPath();
+        ctx.arc(wx, 24, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c3ccd4';
+        ctx.beginPath();
+        ctx.arc(wx, 24, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      ctx.restore();
+    }
+    function drawGround() {
+      const sky = ctx.createLinearGradient(0, 0, 0, 260);
+      sky.addColorStop(0, '#9fd3ee');
+      sky.addColorStop(1, '#e8f4fa');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 330);
+      ctx.fillStyle = 'rgba(120, 150, 175, 0.4)';
+      [[8, 130, 28], [40, 110, 22], [340, 120, 30], [372, 140, 22]].forEach(([x, y, w]) => ctx.fillRect(x, y, w, 330 - y));
+      // your building at street level
+      ctx.fillStyle = '#f3e7cf';
+      ctx.fillRect(40, 30, 320, 300);
+      ctx.fillStyle = '#d8c39a';
+      ctx.fillRect(40, 30, 320, 10);
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 7; c++) {
+        ctx.fillStyle = (r + c) % 4 === 0 ? '#ffe9a8' : '#9fc6de';
+        ctx.fillRect(56 + c * 42, 52 + r * 34, 26, 18);
+      }
+      // the big G, the lobby doors and the lift
+      roundedRect(130, 196, 140, 40, 10);
+      ctx.fillStyle = '#2d6a4f';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('\u{1F3E0} LEVEL G', 200, 224);
+      ctx.fillStyle = '#5b5f66';
+      ctx.fillRect(150, 240, 100, 90);
+      const metal = ctx.createLinearGradient(154, 0, 246, 0);
+      metal.addColorStop(0, '#aeb4bb');
+      metal.addColorStop(0.5, '#eef1f4');
+      metal.addColorStop(1, '#aeb4bb');
+      ctx.fillStyle = metal;
+      ctx.fillRect(154, 244, 44, 86);
+      ctx.fillRect(202, 244, 44, 86);
+      ctx.fillStyle = '#2a9d5f';
+      ctx.fillRect(194, 234, 12, 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText('\u{1F6D7} LIFT', 200, 238);
+      // the taxi stand
+      ctx.fillStyle = '#8f9298';
+      ctx.fillRect(0, 330, W, 270);
+      ctx.fillStyle = '#c9c2b2';
+      ctx.fillRect(0, 330, W, 12);
+      ctx.fillStyle = '#e8b923';
+      for (let x = 0; x < W; x += 28) ctx.fillRect(x, 340, 14, 4);
+      ctx.fillStyle = '#f2b705';
+      roundedRect(262, 262, 100, 36, 8);
+      ctx.fill();
+      ctx.fillStyle = '#2b2230';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('\u{1F695} TAXI', 312, 286);
+      ctx.fillStyle = '#7d8a96';
+      ctx.fillRect(310, 298, 4, 40);
+      drawTaxiSide(110, 420, 1);
+      drawTaxiSide(290, 500, 1);
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
+      roundedRect(8, 44, 232, 28, 14);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText(carBroken ? (taxiTripDone ? '\u{1F527} Go and help the engineer' : '\u{1F695} Tap a taxi to travel') : '\u{1F695} Your car works today', 18, 63);
+    }
+    function drawTaxiStop() {
+      const sky = ctx.createLinearGradient(0, 0, 0, 300);
+      sky.addColorStop(0, '#9fd3ee');
+      sky.addColorStop(1, '#f2f7e8');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 320);
+      ctx.fillStyle = 'rgba(120, 150, 175, 0.4)';
+      [[10, 150, 30], [50, 120, 24], [320, 130, 28], [356, 160, 30]].forEach(([x, y, w]) => ctx.fillRect(x, y, w, 320 - y));
+      ctx.fillStyle = '#c9c2b2';
+      ctx.fillRect(0, 320, W, 14);
+      ctx.fillStyle = '#6d7177';
+      ctx.fillRect(0, 334, W, 266);
+      ctx.fillStyle = '#e8b923';
+      for (let x = 0; x < W; x += 40) ctx.fillRect(x, 440, 22, 5);
+      // the taxi sign
+      ctx.fillStyle = '#7d8a96';
+      ctx.fillRect(298, 240, 5, 84);
+      roundedRect(270, 214, 62, 30, 8);
+      ctx.fillStyle = '#f2b705';
+      ctx.fill();
+      ctx.fillStyle = '#2b2230';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText('\u{1F695} STOP', 301, 234);
+      const u = 1 - taxiWait / 300;
+      const tx = -80 + 320 * Math.min(1, u * 1.15);
+      drawTaxiSide(tx, 410, 1.05);
+      drawShopper(230, 322, ['#f2c9a0', '#d71920', '#26344a'], 1.05, 1, false, 0, false);
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.78)';
+      roundedRect(70, 120, 260, 44, 14);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(taxiWait > 0 ? '\u{1F695} Your taxi is coming... ' + Math.ceil(taxiWait / 60) : '\u{1F695} Your taxi is here!', 200, 148);
+    }
+
+    // the engineer and the broken car
+    function drawEngineer() {
+      if (!carBroken || !(phase === 'walk' || phase === 'park') || !carIsHere() || lotKind !== 'home') return;
+      const ex = car.x + (car.x > 200 ? -52 : 52);
+      const puff = (frameCount / 4) % 30;
+      ctx.font = '22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.globalAlpha = 1 - puff / 30;
+      ctx.fillText('\u{1F4A8}', car.x + 6, car.y - 34 - puff);
+      ctx.globalAlpha = 1;
+      drawShopper(ex, car.y + 22, ['#e0ac84', '#ff8c1a', '#2d3a4a'], 0.9, car.x > 200 ? 1 : -1, false, frameCount, false);
+      ctx.font = '18px sans-serif';
+      ctx.fillText('\u{1F9F0}', ex + (car.x > 200 ? -18 : 18), car.y + 28);
+      roundedRect(car.x - 34, car.y - 62, 68, 18, 9);
+      ctx.fillStyle = '#d62828';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText('⚠️ BROKEN', car.x, car.y - 49);
+    }
+    function openRepair() {
+      repairOpen = true;
+      hold = null;
+      const idx = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5);
+      repair.seq = idx.slice(0, 4);
+      repair.i = 0;
+      repair.done = false;
+      repair.msg = '';
+      blip(500, 700, 0.15, 0.08);
+    }
+    const repairCell = (i) => ({ x: 30 + (i % 3) * 112, y: 340 + Math.floor(i / 3) * 84, w: 104, h: 72 });
+    function repairPress(p) {
+      if (repair.done) {
+        repairOpen = false;
+        carBroken = false;
+        noBreakNext = true;
+        addScore(15);
+        say('Your car is fixed! \u{1F389} +15 Take the lift up to your flat ⬆️', 280);
+        [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.2, 0.1, j * 0.12));
+        return;
+      }
+      if (p.x > 130 && p.x < 270 && p.y > 508 && p.y < 548) {
+        repairOpen = false;
+        return;
+      }
+      for (let i = 0; i < repairTools.length; i++) {
+        const c = repairCell(i);
+        if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
+          if (i === repair.seq[repair.i]) {
+            repair.i++;
+            repair.msg = 'Great! Thank you \u{1F44D}';
+            blip(700 + repair.i * 120, 900 + repair.i * 120, 0.15, 0.1);
+            repair.spark = frameCount;
+            if (repair.i >= repair.seq.length) {
+              repair.done = true;
+              repair.msg = 'Your car is fixed!';
+            }
+          } else {
+            repair.msg = 'Hmm, not that one \u{1F605}';
+            blip(220, 160, 0.2, 0.08);
+          }
+          return;
+        }
+      }
+    }
+    function drawRepairPanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(16, 40, 368, 520, 18);
+      ctx.fillStyle = '#f2f4f7';
+      ctx.fill();
+      ctx.strokeStyle = '#ff8c1a';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#ff8c1a';
+      roundedRect(16, 40, 368, 56, 18);
+      ctx.fill();
+      ctx.fillRect(16, 74, 368, 22);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('\u{1F527} FIX THE CAR WITH THE ENGINEER', 200, 66);
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Hand him the right tool each time (' + repair.i + '/' + repair.seq.length + ')', 200, 87);
+      // the car with its bonnet open
+      const cx = 220;
+      const cy = 205;
+      ctx.fillStyle = '#d62828';
+      roundedRect(cx - 90, cy - 6, 180, 50, 14);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - 20, cy - 6);
+      ctx.lineTo(cx - 6, cy - 40);
+      ctx.lineTo(cx + 60, cy - 40);
+      ctx.lineTo(cx + 80, cy - 6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#9fd3ee';
+      ctx.fillRect(cx - 4, cy - 34, 22, 26);
+      ctx.fillRect(cx + 24, cy - 34, 30, 26);
+      ctx.fillStyle = '#a30f1b';
+      ctx.beginPath();
+      ctx.moveTo(cx - 90, cy);
+      ctx.lineTo(cx - 100, cy - 36);
+      ctx.lineTo(cx - 56, cy - 28);
+      ctx.lineTo(cx - 56, cy);
+      ctx.fill();
+      [-52, 52].forEach((wx) => {
+        ctx.fillStyle = '#2b2f35';
+        ctx.beginPath();
+        ctx.arc(cx + wx, cy + 44, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#c3ccd4';
+        ctx.beginPath();
+        ctx.arc(cx + wx, cy + 44, 7, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      if (!repair.done) {
+        ctx.font = '22px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('\u{1F4A8}', cx - 70 + Math.sin(frameCount / 6) * 4, cy - 44 - ((frameCount / 3) % 18));
+      } else {
+        ctx.font = '26px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('✨', cx - 70, cy - 48 + Math.sin(frameCount / 6) * 4);
+        ctx.fillText('✨', cx + 70, cy - 56 + Math.cos(frameCount / 6) * 4);
+      }
+      if (frameCount - repair.spark < 18) {
+        ctx.font = '22px sans-serif';
+        ctx.fillText('⚡', cx - 70, cy - 20);
+      }
+      // the engineer and what he says
+      drawShopper(66, 262, ['#e0ac84', '#ff8c1a', '#2d3a4a'], 1.1, 1, false, 0, false);
+      if (repair.done) drawBubble(110, 126, 'Your car is fixed!');
+      else drawBubble(110, 126, 'Hand me the ' + repairTools[repair.seq[repair.i]][1] + ' ' + repairTools[repair.seq[repair.i]][0]);
+      ctx.fillStyle = '#6b727b';
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(repair.msg, 200, 322);
+      // the progress
+      for (let k = 0; k < repair.seq.length; k++) {
+        roundedRect(60 + k * 72, 290, 64, 12, 6);
+        ctx.fillStyle = k < repair.i ? '#2fbf71' : '#d7dde3';
+        ctx.fill();
+      }
+      repairTools.forEach(([emoji, name], i) => {
+        const c = repairCell(i);
+        roundedRect(c.x, c.y, c.w, c.h, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#b9c7d3';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.font = '30px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.fillText(emoji, c.x + c.w / 2, c.y + 38);
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillStyle = '#2b2230';
+        ctx.fillText(name, c.x + c.w / 2, c.y + 60);
+      });
+      if (repair.done) {
+        roundedRect(70, 466, 260, 44, 22);
+        ctx.fillStyle = '#2fbf71';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('Car fixed! Tap to continue \u{1F389}', 200, 494);
+      } else {
+        ctx.fillStyle = '#e63946';
+        roundedRect(130, 508, 140, 40, 20);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillText('Later ✖', 200, 533);
+      }
+    }
+
     // ---------- your home: wake up, make breakfast, get your things and go down in the lift ----------
     const apt = { food: false, cooking: 0, cooked: false, eating: null, eaten: false, items: [false, false, false, false], woke: false, showered: false, brushed: false, shower: 0, menu: [], fade: 0 };
     // the calendar: every new day is the next day of the week, and Friday is the day of the Friday prayer
@@ -3383,6 +3939,17 @@
       apt.skipped = false;
       apt.items = [false, false, false, false];
       aptRoom = 'bed';
+      taxiMode = false;
+      taxi = null;
+      taxiOpen = false;
+      repairOpen = false;
+      if (carBroken) repairReady = true;
+      else if (noBreakNext) noBreakNext = false;
+      else if (carKindNow === 'home' && Math.random() < 0.3) {
+        carBroken = true;
+        repairReady = false;
+        taxiTripDone = false;
+      }
       secondUsed = false;
       secondActive = false;
       apt.calSeen = false;
@@ -4439,6 +5006,7 @@
         }
       } else {
         b.push({ label: '\u{1F3E0} My flat', type: 'flat', val: 0, x: 200, y: 166, r: 26, big: true });
+        b.push({ label: '\u{1F695} G \u2022 Taxi level', type: 'ground', val: 0, x: 200, y: 216, r: 20, big: true, h2: 36 });
         const top = carParkTop(kind);
         for (let l = 1; l <= top; l++) {
           const i = l - 1;
@@ -4477,7 +5045,7 @@
     }
 
     function labelOfSel(s) {
-      return s.type === 'floor' ? floorLabel[s.val] : s.type === 'flat' ? 'Flat' : s.type === 'mosque' ? 'Mosque' : s.type === 'metro' ? 'Metro' : 'P' + s.val;
+      return s.type === 'floor' ? floorLabel[s.val] : s.type === 'flat' ? 'Flat' : s.type === 'ground' ? 'G' : s.type === 'mosque' ? 'Mosque' : s.type === 'metro' ? 'Metro' : 'P' + s.val;
     }
 
     function startLiftRide(b) {
@@ -4529,6 +5097,8 @@
         enterMallAt(to.val);
       } else if (to.type === 'flat') {
         finishHome();
+      } else if (to.type === 'ground') {
+        enterGround(false);
       } else {
         // a level of the car park: you step out of the lift, next to the lift doors
         if (fromMall) mallShop = -1;
@@ -4536,6 +5106,10 @@
         phase = 'walk';
         lotKind = kind === 'home' ? 'home' : kind === 'mosque' ? 'mosque' : 'mall';
         if (kind === 'home' && from && from.type === 'flat') departing = true;
+        if (kind === 'home' && from && from.type === 'ground') {
+          shopped = false;
+          departing = !carBroken;
+        }
         lotLevel = to.val;
         bays = levelBays[lotLevel] || (levelBays[lotLevel] = makeLevel(lotLevel));
         me.x = 200;
@@ -4835,6 +5409,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         b.push({ kind: 'mall', label: '\u{1F6CD}️ Up to ' + st.mall, x: 200, y, w: 320, h: 38 });
         y += 44;
         b.push({ kind: 'lot', label: '\u{1F17F}️ Park & Ride car park', x: 200, y, w: 320, h: 38 });
+        if (taxiMode) {
+          y += 44;
+          b.push({ kind: 'taxi', label: '\u{1F695} Taxi home', x: 200, y, w: 320, h: 38 });
+        }
       }
       metroButtons = b;
       metroOpen = true;
@@ -4851,6 +5429,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           metroOpen = false;
           if (b.kind === 'medal') startMedalTrip(stn.st);
           else if (b.kind === 'back') startBackTrip();
+          else if (b.kind === 'taxi') taxiPickup();
           else if (b.kind === 'carride') startCarRide(b.st);
           else if (b.kind === 'mall') {
             dest = mallByName(stn.st.mall);
@@ -5249,12 +5828,15 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
+        else if (phase === 'walk' && nearCar && carBroken && repairReady && lotKind === 'home') label = '\u{1F527} Help the engineer';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
         else if (phase === 'mall') label = isMosque() ? '\u{1F6AA} Leave the mosque' : '\u{1F6AA} Leave the mall';
         else if (phase === 'beach') label = nearSalt() ? '\u{1F354} Order at SALT' : nearKarak() ? '\u2615 Order at KARAK' : '\u{1F6AA} Leave the beach';
         else if (phase === 'station' && !(trip && trip.stage === 'end' && trip.timer > 0)) label = '\u{1F687} Open the metro map';
+        else if (phase === 'ground') label = '\u{1F6D7} Take the lift';
+        else if (phase === 'taxistop' && taxiWait <= 0) label = '\u{1F695} Get in the taxi';
       }
       if (label !== actLabel) {
         actLabel = label;
@@ -5266,8 +5848,13 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       ensureAudio();
       if (phase === 'park') getOutOfCar();
       else if (phase === 'walk') {
-        if (!departing && mallBag.length && !bootDone) startBoot();
+        if (carBroken && repairReady && lotKind === 'home' && nearCar) openRepair();
+        else if (!departing && mallBag.length && !bootDone) startBoot();
         else getInCar();
+      }
+      else if (phase === 'ground') openLift('home', { type: 'ground', val: 0 });
+      else if (phase === 'taxistop') {
+        if (taxiWait <= 0) startTaxiHome();
       }
       else if (phase === 'mall') leaveMall();
       else if (phase === 'beach') {
@@ -5292,6 +5879,14 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (repairOpen) {
+        repairPress(p);
+        return;
+      }
+      if (taxiOpen) {
+        taxiPress(p);
         return;
       }
       if (saltOpen) {
@@ -5321,6 +5916,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (phase === 'drive') targetX = p.x;
       else if (phase === 'apartment') aptPress(p);
       else if (phase === 'mall') mallPress(p);
+      else if (phase === 'ground') openTaxi();
       else if (phase === 'park' || phase === 'walk' || phase === 'beach') hold = p;
       else if (phase === 'apartment') aptPress(p);
     }
@@ -5366,6 +5962,8 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (e.code === 'Escape' && fridgeOpen) fridgeOpen = false;
       if (e.code === 'Escape' && calOpen) calOpen = false;
       if (e.code === 'Escape' && saltOpen) saltOpen = false;
+      if (e.code === 'Escape' && taxiOpen) taxiOpen = false;
+      if (e.code === 'Escape' && repairOpen && !repair.done) repairOpen = false;
       if (e.code === 'Enter' || e.code === 'KeyE') {
         if (phase === 'mall') mallAction();
         else if (phase === 'apartment') aptKey();
@@ -5631,13 +6229,16 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           openMetro();
         }
       }
-      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen) return;
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
       else if (phase === 'mall') updateMall(step);
       else if (phase === 'beach') updateBeach(step);
       else if (phase === 'apartment') updateApartment(step);
+      else if (phase === 'taxi') updateTaxi(step);
+      else if (phase === 'taxistop') updateTaxiStop(step);
+      else if (phase === 'ground') groundT += step;
       else {
         // at home before you set off: the road lines keep still
       }
@@ -5956,7 +6557,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           ctx.stroke();
         });
       } else {
-        drawCar(car.x, car.y, car.w, car.h, carColor, carOutline);
+        drawCar(car.x, car.y, car.w, car.h, phase === 'taxi' ? '#ffd23f' : carColor, phase === 'taxi' ? '#a67c00' : carOutline);
       }
       signs.filter((s) => s.kind === 'gantry').forEach(drawGantry);
       drawBridgePylons();
@@ -7978,6 +8579,11 @@ function drawOutdoorFront() {
 
     function leaveBeach() {
       if (phase !== 'beach') return;
+      if (taxiMode) {
+        kite.on = false;
+        taxiPickup();
+        return;
+      }
       kite.on = false;
       phase = 'walk';
       shopped = true;
@@ -8673,7 +9279,9 @@ function drawOutdoorFront() {
 
     function draw() {
       ctx.clearRect(0, 0, W, H);
-      if (phase === 'drive') drawDrive();
+      if (phase === 'drive' || phase === 'taxi') drawDrive();
+      else if (phase === 'ground') drawGround();
+      else if (phase === 'taxistop') drawTaxiStop();
       else if (phase === 'mall') drawMall();
       else if (phase === 'beach') drawBeach();
       else if (phase === 'apartment' || phase === 'start' || phase === 'homedone') {
@@ -8684,6 +9292,7 @@ function drawOutdoorFront() {
       else if (phase === 'ride') return;
       else {
         drawLot();
+        drawEngineer();
         drawGarageLight();
         drawBootPanel();
       }
@@ -8728,6 +9337,8 @@ function drawOutdoorFront() {
       if (buddyAsk) drawBuddyAsk();
       if (calOpen) drawCalendarPanel();
       if (saltOpen) drawSaltPanel();
+      if (taxiOpen) drawTaxiPanel();
+      if (repairOpen) drawRepairPanel();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
         drawOverlay('Tap to start', 'Make breakfast, get your keys', 'then drive or take the metro!');
