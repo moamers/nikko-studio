@@ -56,3 +56,6 @@ Where I am: **Rung 1 – Tweak** (changing numbers and colours and seeing what h
 - A special RACE PAD: race 3 rockets. Win and you get a ROCKET HOUSE with a toilet, bed, snacks and a ball to kick!
 - New words: **AI** (the computer players that race against me), **hue** (the colour slider), **cooldown** again (the toilet waits 4 seconds).
 - Claude has not seen the car in Car Dodge. Next time: tell Claude what it looks like!
+
+### Session 9
+- I asked for a special boost button in the race: it carries me nearly to the end (85%) and then I finish by myself. It can be used once per race. Setting: RACE_BOOST_TO.

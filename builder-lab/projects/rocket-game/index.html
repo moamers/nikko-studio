@@ -52,6 +52,8 @@
   .swatch { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; padding: 0; margin: 0; cursor: pointer; }
   .paintRow input[type=range] { width: 210px; }
   #sceneMsg button { margin: 6px; }
+  #superBtn { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 11; display: none; margin: 0; font-size: 28px; font-weight: bold; padding: 16px 30px; background: #ff7a00; color: #fff; box-shadow: 0 0 24px #ffb02e; }
+  #superBtn:disabled { background: #666; box-shadow: none; color: #bbb; cursor: default; }
 </style>
 </head>
 <body>
@@ -70,6 +72,7 @@
 <div id="sceneToast"></div>
 <div id="sceneMsg"></div>
 <button id="landBtn"></button>
+<button id="superBtn">SUPER BOOST (B)</button>
 <div id="topButtons">
   <button id="mapBtn">Map (M)</button>
   <button id="easyBtn">Easy: OFF (E)</button>
@@ -100,6 +103,7 @@ const PLAYER_SHIRT   = "#2a9d8f"; // Your shirt colour. Try "orange" or "purple"
 const CAR_COLOUR     = "#e63946"; // The car colour the game starts with. (You can pick any colour on the start screen!)
 const DRIVE_SECONDS  = 18;        // How long each car ride takes. Try 40 for a LONG drive!
 const RACE_AI_SPEED  = 0.055;     // How fast the other rockets race. Try 0.08 for a HARD race!
+const RACE_BOOST_TO  = 0.85;      // The SUPER BOOST carries you this far (0.85 = nearly the end). Try 0.5!
 const CRYSTAL_SCORE  = 50;        // Score for each crystal or rock you find on a planet
 const RETURN_LEVELS  = 2;         // How many levels on the flight home
 const RETURN_SECONDS_PER_LEVEL = 12;
@@ -379,6 +383,8 @@ const mapEl    = document.getElementById("map");
 const shieldEl  = document.getElementById("shield");
 const shieldBtn = document.getElementById("shieldBtn");
 const landBtn   = document.getElementById("landBtn");
+const superBtn  = document.getElementById("superBtn");
+superBtn.addEventListener("click", () => { if (raceInput) raceInput.boost(); });
 const starCanvas = document.getElementById("stars");
 const starPen = starCanvas.getContext("2d");
 const worldCanvas = document.getElementById("world");
@@ -612,6 +618,7 @@ window.addEventListener("pointerup", () => { ptr.down = false; });
 function goMode(m) {
   mode = m;
   raceInput = null;
+  superBtn.style.display = "none";
   document.body.classList.toggle("scene", m !== "flight");
   sceneHud.textContent = "";
 }
@@ -1042,10 +1049,15 @@ function makeRace(onFinish) {
     { lane: 3, p: 0, name: "Purple", img: IMG.rivals[2], seed: 3.7, ph: 2 }
   ];
   const you = racers[0];
-  let t = 0, phase = "count", boostLeft = 1, place = 1;
+  let t = 0, phase = "count", boostLeft = 1, surge = false, place = 1;
+  superBtn.style.display = "block"; superBtn.disabled = false; superBtn.textContent = "SUPER BOOST (B)";
   raceInput = {
     tap() { if (phase === "go") you.v = Math.min(0.09, you.v + 0.008); },
-    boost() { if (phase === "go" && boostLeft) { boostLeft = 0; you.v = Math.min(0.12, you.v + 0.035); toast("BOOST!"); } }
+    boost() {                                         // the SUPER BOOST: it carries you nearly to the end, then you finish by yourself
+      if (phase !== "go" || !boostLeft) return;
+      boostLeft = 0; surge = true; toast("SUPER BOOST!");
+      superBtn.disabled = true; superBtn.textContent = "Used!";
+    }
   };
   const R = rng(4);
   const crowd = []; for (let i = 0; i < 90; i++) crowd.push({ x: i % 2 ? 20 + R() * 70 : 910 + R() * 70, y: 40 + R() * 520, c: ["#ff6b6b", "#ffd23f", "#4dd2ff", "#7CFC00", "#ff9ff3", "#fff"][Math.floor(R() * 6)] });
@@ -1056,7 +1068,10 @@ function makeRace(onFinish) {
       if (phase === "count") { if (t > 3400) { phase = "go"; t = 0; toast("GO!"); } return; }
       if (phase === "done") return;
       const s = dt / 1000;
-      you.v *= Math.exp(-0.8 * s); you.p += you.v * s;
+      if (surge) {                                                   // the boost is carrying you
+        you.p = Math.min(RACE_BOOST_TO, you.p + 0.4 * s); you.v = 0.09;
+        if (you.p >= RACE_BOOST_TO) { surge = false; you.v = 0.05; toast("Now finish it yourself! Mash SPACE!"); }
+      } else { you.v *= Math.exp(-0.8 * s); you.p += you.v * s; }
       racers.slice(1).forEach(a => {
         a.ph += s;
         let sp = RACE_AI_SPEED * (0.92 + 0.16 * Math.sin(a.ph * 1.3 + a.seed));
@@ -1065,10 +1080,10 @@ function makeRace(onFinish) {
         a.p += sp * s;
       });
       place = [...racers].sort((a, b) => b.p - a.p).indexOf(you) + 1;
-      sceneHud.textContent = "Mash SPACE (or tap the screen) as fast as you can!   B = one big burst.    You are in " + ordinal(place) + " place";
+      sceneHud.textContent = "Mash SPACE (or tap the screen) as fast as you can!   B = SUPER BOOST.    You are in " + ordinal(place) + " place";
       const winner = racers.find(r => r.p >= 1);
       if (winner) {
-        phase = "done";
+        phase = "done"; superBtn.style.display = "none";
         const finalPlace = winner === you ? 1 : 1 + racers.filter(r => r.p > you.p).length;
         setTimeout(() => onFinish(winner === you, finalPlace), 800);
       }
