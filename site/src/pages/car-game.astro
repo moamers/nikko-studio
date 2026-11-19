@@ -1064,6 +1064,17 @@
       if (carBroken && lotKind === 'home' && carKindNow === 'home') {
         say('Your car does not work! \u{1F697}\u274C Go to level G: take the lift to the taxi.', 260);
         blip(220, 160, 0.25, 0.1);
+        if (needPart && !partAsked) {
+          partAsked = true;
+          openTalk('Engineer', ['#e0ac84', '#ff8c1a', '#2d3a4a'], 'rounded', 'Your car is broken! \u{1F527} I need a new battery \u{1F50B}. Can you buy one at the Electronics shop in a mall?', yesNo(), (i) => {
+            if (i === 0) {
+              partAccepted = true;
+              return { reply: 'Thank you! Take the taxi from level G, then find the Electronics shop. It is on level 2 of a mall.' };
+            }
+            needPart = false;
+            return { reply: 'Okay, I will try to fix it without a new part.' };
+          });
+        }
         return;
       }
       if (departing) {
@@ -1677,6 +1688,12 @@
       mallWallet -= price;
       mallDone[mallShop][k] = true;
       mallBag.push(emoji);
+      if (partAccepted && !havePart && sh.name === 'Electronics' && name === 'Battery') {
+        havePart = true;
+        say('You bought the battery for the engineer! \u{1F50B} Now take the taxi home.', 220);
+        [659, 784, 988].forEach((f, j) => blip(f, f, 0.14, 0.09, j * 0.08));
+        return;
+      }
       addScore(2);
       say('Bought ' + emoji + ' +2', 100);
       [880, 1175, 1568].forEach((f, j) => blip(f, f, 0.12, 0.1, j * 0.06));
@@ -2867,22 +2884,25 @@
         say('This kid already has a \u{1F381}! Try another kid.', 100);
         return;
       }
-      if (mallWallet < 3) {
-        say('You need 3 coins \u{1F4B0} for a gift. The imam gives an Eidi after the Eid prayer!', 190);
-        blip(220, 160, 0.2, 0.08);
-        return;
-      }
-      mallWallet -= 3;
-      kidGift[i] = true;
-      kidSay[i] = 180;
-      addScore(5);
-      say('You gave the kid a \u{1F381} and some money \u{1F4B0} Eid Mubarak! +5', 190);
-      [784, 988, 1175].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.08));
-      if (kidGift.every(Boolean)) {
-        addScore(15);
-        say('All the kids are happy! \u{1F389} +15', 220);
-        [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.25, 0.1, 0.3 + j * 0.1));
-      }
+      openTalk('Kid', shopperLook[partyKids[i][2]], 'airy', 'Eid Mubarak! Do you have a present for me? \u{1F381}', yesNo(), (ans) => {
+        if (ans !== 0) return { reply: 'Okay! Eid Mubarak anyway!' };
+        if (mallWallet < 3) {
+          blip(220, 160, 0.2, 0.08);
+          return { reply: 'Oh, you need 3 coins. The imam gives an Eidi after the Eid prayer!' };
+        }
+        mallWallet -= 3;
+        kidGift[i] = true;
+        kidSay[i] = 180;
+        addScore(5);
+        say('You gave the kid a \u{1F381} and some money \u{1F4B0} Eid Mubarak! +5', 190);
+        [784, 988, 1175].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.08));
+        if (kidGift.every(Boolean)) {
+          addScore(15);
+          say('All the kids are happy! \u{1F389} +15', 220);
+          [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.25, 0.1, 0.3 + j * 0.1));
+        }
+        return { reply: 'Thank you so much! Eid Mubarak! \u{1F381}' };
+      });
     }
 
     let buddy = null; // a friend who walks around the mall with you
@@ -2900,10 +2920,9 @@
     ];
     function chatWait(step) {
       if (!partner || partner.done) return true;
-      partner.chatT += step;
-      if (partner.chatT >= CHAT_LINE * chatLines().length && !buddyAsk) {
-        buddyAsk = true;
-        blip(784, 784, 0.15, 0.08);
+      if (!partner.talking) {
+        partner.talking = true;
+        startPartnerTalk();
       }
       return false;
     }
@@ -2987,6 +3006,7 @@
       }
       buddy.y += (ty - buddy.y) * Math.min(1, 0.1 * step);
       buddy.sayT = Math.max(0, buddy.sayT - step);
+      buddy.giftT = Math.max(0, (buddy.giftT || 0) - step);
       buddy.nextSay -= step;
       if (buddy.nextSay <= 0 && buddy.sayT <= 0) {
         const lines = mallShop >= 0 ? ['Look at all this stuff!', 'Nice shop!', 'I want that one!', 'This is fun! \u{1F604}'] : ['Wow, this mall is so big!', 'Can we get ice cream? \u{1F366}', 'I like walking with you!', 'Look at that! \u{1F440}', 'What a fun day!'];
@@ -3020,7 +3040,315 @@
         if (buddy.bye) text = buddy.bye.t >= 65 ? 'Bye! See you soon! \u{1F44B}' : '';
         else if (buddy.sayT > 0) text = buddy.say;
         if (text) drawBubble(buddy.x, buddy.y - 100 * k, text);
+        if (buddy.giftT > 0) {
+          ctx.font = '22px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#000000';
+          ctx.fillText(buddy.gift, buddy.x + 18 * k, buddy.y - 70 * k);
+        }
       } });
+    }
+
+    // ---------- talking with people: they ask you something and you answer with your voice (or tap) ----------
+    let dict = null; // the voice (dictation) capability, when this view has it
+    let ttsApi = null; // the text to speech capability, to hear the other person
+    let listening = false;
+    let talk = null; // { name, look, voice, text, options, free, onAnswer, stage, reply, next, heard, partial, msg }
+    function setupVoice() {
+      try {
+        if (!(window.claude && typeof window.claude.use === 'function')) return;
+        window.claude.use('tts').then((t) => { ttsApi = t; }).catch(() => {});
+        window.claude.use('dictation').then((d) => {
+          if (!d) return;
+          dict = d;
+          d.onPartial((e) => {
+            if (talk && talk.stage === 'ask') talk.partial = e.text || '';
+          });
+          d.onFinal((e) => {
+            if (talk && talk.stage === 'ask') {
+              talk.heard = (talk.heard + ' ' + e.text).trim();
+              talk.partial = '';
+              talkHeard(talk.heard);
+            }
+          });
+          d.onState((e) => {
+            listening = e.state === 'listening' || e.state === 'starting';
+          });
+        }).catch(() => {});
+      } catch (e) {}
+    }
+    function speakNpc(text, voice) {
+      try {
+        if (ttsApi) ttsApi.speak(text, { voice: voice || 'buttery' }).catch(() => {});
+      } catch (e) {}
+    }
+    const yesNo = () => [
+      { label: 'Yes! \u{1F44D}', keys: ['yes', 'yeah', 'yep', 'yup', 'sure', 'ok', 'okay', 'please', 'definitely', 'love', 'like', 'will', 'can'] },
+      { label: 'No thanks', keys: ['no', 'nope', 'nah', 'not', 'never'] },
+    ];
+    function openTalk(name, look, voice, text, options, onAnswer, free) {
+      talk = { name, look, voice, text, options, free: !!free, onAnswer, stage: 'ask', reply: '', next: null, heard: '', partial: '', msg: '' };
+      hold = null;
+      blip(784, 988, 0.12, 0.08);
+      speakNpc(text, voice);
+    }
+    function matchOption(text, options) {
+      const t = (text || '').toLowerCase();
+      const words = t.split(/[^a-z']+/).filter(Boolean);
+      for (let i = 0; i < options.length; i++) {
+        for (const k of options[i].keys) {
+          if (words.indexOf(k) >= 0 || (k.length > 3 && t.indexOf(k) >= 0)) return i;
+        }
+      }
+      return -1;
+    }
+    function talkHeard(text) {
+      if (!talk || talk.stage !== 'ask') return;
+      const i = matchOption(text, talk.options);
+      if (i >= 0 || (talk.free && (text || '').trim().length > 1)) {
+        try {
+          if (dict && dict.active()) dict.stop().catch(() => {});
+        } catch (e) {}
+        chooseOption(i, text);
+      } else talk.msg = 'I did not catch that. Say it again, or tap an answer.';
+    }
+    function chooseOption(i, heard) {
+      const r = talk.onAnswer(i, heard) || {};
+      talk.stage = 'reply';
+      talk.heard = heard || (i >= 0 ? talk.options[i].label : '');
+      talk.reply = r.reply || 'OK!';
+      talk.next = r.next || null;
+      speakNpc(talk.reply, talk.voice);
+    }
+    function talkNext() {
+      const n = talk.next;
+      talk = null;
+      if (n) n();
+    }
+    function talkPress(p) {
+      if (talk.stage === 'reply') {
+        if (p.x > 110 && p.x < 290 && p.y > 440 && p.y < 486) talkNext();
+        return;
+      }
+      if (dict && Math.hypot(p.x - 200, p.y - 330) < 42) {
+        try {
+          if (dict.active()) dict.stop().catch(() => {});
+          else {
+            talk.msg = '';
+            dict.start().catch((err) => {
+              if (talk) talk.msg = err && err.code === 'not_granted' ? 'The microphone is off. Tap an answer instead.' : 'I could not listen. Tap an answer instead.';
+            });
+          }
+        } catch (e) {
+          talk.msg = 'I could not listen. Tap an answer instead.';
+        }
+        return;
+      }
+      for (let i = 0; i < talk.options.length; i++) {
+        const c = talkOptCell(i);
+        if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
+          try {
+            if (dict && dict.active()) dict.stop().catch(() => {});
+          } catch (e) {}
+          chooseOption(i, '');
+          return;
+        }
+      }
+    }
+    const talkOptCell = (i) => ({ x: 36 + (i % 2) * 170, y: 416 + Math.floor(i / 2) * 48, w: 158, h: 40 });
+    function drawTalkPanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(20, 100, 360, 424, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#2fa4d8';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      drawShopper(66, 232, talk.look, 1.25, 1, false, 0, false);
+      ctx.fillStyle = '#2fa4d8';
+      roundedRect(26, 248, 80, 22, 11);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(talk.name, 66, 264);
+      // what they say
+      roundedRect(116, 116, 252, 128, 16);
+      ctx.fillStyle = '#eef7fd';
+      ctx.fill();
+      ctx.strokeStyle = '#9fd0ea';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(116, 190);
+      ctx.lineTo(100, 200);
+      ctx.lineTo(116, 208);
+      ctx.fillStyle = '#eef7fd';
+      ctx.fill();
+      ctx.fillStyle = '#2b2230';
+      ctx.font = 'bold 15px sans-serif';
+      const lines = wrapLines(talk.stage === 'reply' ? talk.reply : talk.text, 26);
+      lines.forEach((ln, i) => ctx.fillText(ln, 242, 148 + i * 20 - Math.max(0, lines.length - 4) * 10));
+      if (talk.stage === 'reply') {
+        if (talk.heard) {
+          ctx.fillStyle = '#6b727b';
+          ctx.font = 'italic 13px sans-serif';
+          ctx.fillText('You said: ' + talk.heard.slice(0, 40), 200, 300);
+        }
+        roundedRect(110, 440, 180, 46, 23);
+        ctx.fillStyle = '#2fbf71';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('Continue ▶', 200, 469);
+        return;
+      }
+      // the microphone and the tap answers
+      if (dict) {
+        const pulse = listening ? 4 + Math.sin(frameCount / 5) * 4 : 0;
+        ctx.beginPath();
+        ctx.arc(200, 330, 36 + pulse, 0, Math.PI * 2);
+        ctx.fillStyle = listening ? '#e63946' : '#2fa4d8';
+        ctx.fill();
+        ctx.font = '32px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('\u{1F3A4}', 200, 342);
+        ctx.fillStyle = '#2b2230';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(listening ? 'Listening... say your answer!' : 'Tap the microphone and talk', 200, 386);
+      } else {
+        ctx.fillStyle = '#6b727b';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText('Tap your answer', 200, 330);
+      }
+      const say2 = talk.partial || talk.heard;
+      if (say2 || talk.msg) {
+        ctx.fillStyle = talk.msg ? '#d62828' : '#6b727b';
+        ctx.font = 'italic 13px sans-serif';
+        ctx.fillText(talk.msg || 'I heard: ' + say2.slice(0, 38), 200, 404);
+      }
+      talk.options.forEach((o, i) => {
+        const c = talkOptCell(i);
+        roundedRect(c.x, c.y, c.w, c.h, 20);
+        ctx.fillStyle = '#e8f4fb';
+        ctx.fill();
+        ctx.strokeStyle = '#2fa4d8';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+        ctx.fillStyle = '#22272d';
+        fitText(o.label, c.w - 14, 14);
+        ctx.fillText(o.label, c.x + c.w / 2, c.y + 26);
+      });
+    }
+
+    // a present for your friend
+    let giftOpen = false;
+    const giftItems = [['\u{1F366}', 'Ice cream', 1], ['\u{1F964}', 'Juice', 1], ['\u{1F369}', 'Donut', 2], ['\u{1F388}', 'Balloon', 1], ['\u{1F9F8}', 'Teddy bear', 3], ['\u{1F339}', 'Rose', 2]];
+    const giftCell = (i) => ({ x: 30 + (i % 3) * 112, y: 150 + Math.floor(i / 3) * 96, w: 104, h: 86 });
+    function openGift() {
+      if (!buddy || buddy.bye) return;
+      giftOpen = true;
+      hold = null;
+      blip(700, 900, 0.1, 0.08);
+    }
+    function giftPress(p) {
+      if (p.x > 130 && p.x < 270 && p.y > 400 && p.y < 440) {
+        giftOpen = false;
+        return;
+      }
+      for (let i = 0; i < giftItems.length; i++) {
+        const c = giftCell(i);
+        if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
+          const [emoji, name, price] = giftItems[i];
+          if (mallWallet < price) {
+            say('Not enough coins for the ' + name.toLowerCase() + '!', 100);
+            blip(220, 160, 0.2, 0.08);
+            return;
+          }
+          mallWallet -= price;
+          giftOpen = false;
+          buddy.gift = emoji;
+          buddy.giftT = 500;
+          buddy.say = 'Thank you! I love it! \u{1F60D}';
+          buddy.sayT = 220;
+          addScore(3);
+          say('You bought ' + buddy.name + ' ' + (name.toLowerCase().indexOf('ice') === 0 ? 'an ' : 'a ') + name.toLowerCase() + ' ' + emoji + ' +3', 170);
+          speakNpc('Thank you! I love it!', 'airy');
+          [659, 784, 988].forEach((f, j) => blip(f, f, 0.14, 0.09, j * 0.08));
+          return;
+        }
+      }
+    }
+    function drawGiftPanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(16, 80, 368, 380, 18);
+      ctx.fillStyle = '#fff7ef';
+      ctx.fill();
+      ctx.strokeStyle = '#f15bb5';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#f15bb5';
+      roundedRect(16, 80, 368, 52, 18);
+      ctx.fill();
+      ctx.fillRect(16, 112, 368, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('\u{1F381} Buy ' + (buddy ? buddy.name : 'your friend') + ' something', 200, 112);
+      giftItems.forEach(([emoji, name, price], i) => {
+        const c = giftCell(i);
+        const ok = mallWallet >= price;
+        roundedRect(c.x, c.y, c.w, c.h, 14);
+        ctx.fillStyle = ok ? '#ffffff' : '#e5e7ea';
+        ctx.fill();
+        ctx.strokeStyle = ok ? '#f15bb5' : '#b9c0c7';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        ctx.globalAlpha = ok ? 1 : 0.45;
+        ctx.font = '30px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(emoji, c.x + c.w / 2, c.y + 40);
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillStyle = '#2b2230';
+        ctx.fillText(name, c.x + c.w / 2, c.y + 60);
+        ctx.fillStyle = '#d9822b';
+        ctx.fillText('\u{1F4B0} ' + price, c.x + c.w / 2, c.y + 78);
+        ctx.globalAlpha = 1;
+      });
+      ctx.fillStyle = '#6b727b';
+      ctx.font = '13px sans-serif';
+      ctx.fillText('You have \u{1F4B0} ' + mallWallet, 200, 370);
+      ctx.fillStyle = '#e63946';
+      roundedRect(130, 400, 140, 40, 20);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('Close ✖', 200, 425);
+    }
+
+    // the conversation at the table: three questions
+    function startPartnerTalk() {
+      const n = partner.name;
+      const v = ['buttery', 'airy', 'glassy', 'rounded'][buddyNames.indexOf(n) % 4];
+      const ask3 = () => openTalk(n, partner.look, v, 'Do you want to walk around the mall with me?', yesNo(), (i) => {
+        partner.done = true;
+        if (i === 0) {
+          buddy = { name: n, look: partner.look, x: tableX[partner.table] + 30, y: 480, dir: -1, moving: false, t: 0, say: 'Yay! Let\'s go!', sayT: 200, nextSay: 500, bye: null, gift: '', giftT: 0 };
+          [659, 784, 988].forEach((f, j) => blip(f, f, 0.15, 0.09, j * 0.08));
+          return { reply: 'Yay! Let us go! \u{1F6B6}\u{1F6B6}' };
+        }
+        partnerGone = true;
+        return { reply: 'Okay! Bye ' + n + '! \u{1F44B}' };
+      });
+      const ask2 = () => openTalk(n, partner.look, v, 'What is your favourite shop here?', [
+        { label: 'Toy store \u{1F9F8}', keys: ['toy', 'toys', 'teddy', 'bear', 'lego'] },
+        { label: 'Book shop \u{1F4DA}', keys: ['book', 'books', 'read', 'story'] },
+        { label: 'Ice cream \u{1F366}', keys: ['ice', 'cream', 'icecream'] },
+        { label: 'Sweets \u{1F36C}', keys: ['sweet', 'sweets', 'candy', 'chocolate', 'cake'] },
+      ], (i) => ({ reply: i >= 0 ? 'Oh, I love the ' + ['toy store', 'book shop', 'ice cream', 'sweets'][i] + ' too!' : 'That sounds like fun!', next: ask3 }), true);
+      openTalk(n, partner.look, v, 'Hi! I am ' + n + '. ' + (eidParty ? 'Eid Mubarak! ' : '') + 'Do you like this food court?', yesNo(), (i) => ({ reply: i === 1 ? 'Oh! Maybe next time then.' : 'Me too! The food is so yummy!', next: ask2 }));
     }
 
     // ---------- the food court ----------
@@ -3120,6 +3448,13 @@
       mm.goto = null;
       mm.act = null;
       if (mallBusy()) return;
+      if (buddy && !buddy.bye && !inFacility()) {
+        const bsx = buddy.x - (mallShop < 0 ? mallCamX : 0);
+        if (Math.abs(p.x - bsx) < 30 && p.y > buddy.y - 96 && p.y < buddy.y + 12) {
+          openGift();
+          return;
+        }
+      }
       if (mallShop < 0) {
         for (let s = 0; s < slotCount(); s++) {
           const sx = mallDoorX(s) - mallCamX;
@@ -3328,6 +3663,10 @@
     let taxiWait = 0;
     let groundT = 0;
     let repairOpen = false;
+    let needPart = false;
+    let partAsked = false;
+    let partAccepted = false;
+    let havePart = false;
     const repair = { seq: [], i: 0, msg: '', done: false, spark: 0 };
     const repairTools = [['\u{1F527}', 'Wrench'], ['\u{1F50B}', 'Battery'], ['\u{1F6DE}', 'Tyre'], ['\u{1F6E2}️', 'Oil can'], ['\u{1F526}', 'Torch'], ['\u{1FA9B}', 'Screwdriver']];
     const kindEmoji = (d) => (d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : '\u{1F6CD}️');
@@ -3706,6 +4045,11 @@
       ctx.fillText('⚠️ BROKEN', car.x, car.y - 49);
     }
     function openRepair() {
+      if (partAccepted && !havePart) {
+        say('The engineer is waiting for the \u{1F50B} battery from the Electronics shop in a mall!', 260);
+        taxiTripDone = false;
+        return;
+      }
       repairOpen = true;
       hold = null;
       const idx = [0, 1, 2, 3, 4, 5].sort(() => Math.random() - 0.5);
@@ -3722,7 +4066,13 @@
         carBroken = false;
         noBreakNext = true;
         addScore(15);
-        say('Your car is fixed! \u{1F389} +15 Take the lift up to your flat ⬆️', 280);
+        if (havePart) {
+          addScore(10);
+          say('Your car is fixed with your battery! \u{1F389} +25 Take the lift up to your flat \u2B06\uFE0F', 280);
+        } else say('Your car is fixed! \u{1F389} +15 Take the lift up to your flat \u2B06\uFE0F', 280);
+        needPart = false;
+        partAccepted = false;
+        havePart = false;
         [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.2, 0.1, j * 0.12));
         return;
       }
@@ -3949,6 +4299,10 @@
         carBroken = true;
         repairReady = false;
         taxiTripDone = false;
+        needPart = Math.random() < 0.5;
+        partAsked = false;
+        partAccepted = false;
+        havePart = false;
       }
       secondUsed = false;
       secondActive = false;
@@ -5828,7 +6182,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && carBroken && repairReady && lotKind === 'home') label = '\u{1F527} Help the engineer';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
@@ -5879,6 +6233,14 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (talk) {
+        talkPress(p);
+        return;
+      }
+      if (giftOpen) {
+        giftPress(p);
         return;
       }
       if (repairOpen) {
@@ -5963,6 +6325,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (e.code === 'Escape' && calOpen) calOpen = false;
       if (e.code === 'Escape' && saltOpen) saltOpen = false;
       if (e.code === 'Escape' && taxiOpen) taxiOpen = false;
+      if (e.code === 'Escape' && giftOpen) giftOpen = false;
       if (e.code === 'Escape' && repairOpen && !repair.done) repairOpen = false;
       if (e.code === 'Enter' || e.code === 'KeyE') {
         if (phase === 'mall') mallAction();
@@ -6229,7 +6592,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           openMetro();
         }
       }
-      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen) return;
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
@@ -7793,6 +8156,18 @@ function drawOutdoorFront() {
       ctx.fillText('\u{1F6CD}\uFE0F ' + mallBag.length + (mallTrolley ? ' \u{1F6D2}' : '/3'), 72, 63);
       drawAdhan();
       if (buddy && buddy.bye && buddy.bye.t < 65) drawBubble(mm.x - (mallShop < 0 ? mallCamX : 0), mm.y - 96, 'Bye ' + buddy.name + '! \u{1F44B}');
+      if (partAccepted && !havePart && taxiMode && mallShop < 0 && !isMosque()) {
+        roundedRect(8, 210, 330, 28, 14);
+        ctx.fillStyle = '#ff8c1a';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('\u{1F50B} Buy a battery: Electronics shop, level 2', 18, 229);
+      }
       if (eidParty && !eidPartyDone && mallShop < 0 && !isMosque()) {
         roundedRect(8, 178, 330, 28, 14);
         ctx.fillStyle = '#d94f8a';
@@ -9339,6 +9714,8 @@ function drawOutdoorFront() {
       if (saltOpen) drawSaltPanel();
       if (taxiOpen) drawTaxiPanel();
       if (repairOpen) drawRepairPanel();
+      if (giftOpen) drawGiftPanel();
+      if (talk) drawTalkPanel();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
         drawOverlay('Tap to start', 'Make breakfast, get your keys', 'then drive or take the metro!');
@@ -9362,6 +9739,7 @@ function drawOutdoorFront() {
       }
       // the title screen: your car in its bay at home
       dest = homeDest;
+      setupVoice();
       loadCarPlace();
       loadDay();
       setupHomeLot();
