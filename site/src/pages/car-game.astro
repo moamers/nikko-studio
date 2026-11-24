@@ -580,6 +580,13 @@
       { name: 'Al Farooq Mosque', ar: 'مسجد الفاروق', colour: '#2a7f9e', kind: 'mosque' },
       { name: 'Al Noor Mosque', ar: 'مسجد النور', colour: '#8a5fb0', kind: 'mosque' },
     ];
+    const airportDest = { name: 'Dubai International Airport', ar: 'مطار دبي الدولي', colour: '#1b4f8a', kind: 'airport' };
+    // the countries you can fly to for a holiday (international flights)
+    const airportCountries = [
+      { name: 'Kuwait', ar: 'الكويت', city: 'Kuwait City', flag: 'kw', gate: 'A1', fact: 'Kuwait is a country by the Gulf, with the famous Kuwait Towers.' },
+      { name: 'England', ar: 'إنجلترا', city: 'London', flag: 'en', gate: 'B2', fact: 'England has Big Ben, red buses and lots of rain.' },
+      { name: 'Greece', ar: 'اليونان', city: 'Athens', flag: 'gr', gate: 'C3', fact: 'Greece has white houses, blue domes and sunny islands.' },
+    ];
     const officeDest = { name: 'Dubai Tech Office', ar: 'مكتب دبي', colour: '#3a86ff', kind: 'office' };
     const beaches = [
       { name: 'Jumeirah Beach', ar: 'شاطئ جميرا', colour: '#1ea7c9', kind: 'beach' },
@@ -885,9 +892,9 @@
     let levelFadeTo = 0;
     let lotKind = 'home';
     // the car park has levels 1 to 11 and an outdoor level on the top (homes have 3 and outdoor)
-    const topLevel = () => (lotKind === 'home' ? 12 : lotKind === 'beach' || lotKind === 'metro' ? 1 : lotKind === 'mosque' ? (dest.indoor ? 5 : 1) : lotKind === 'office' ? 1 : 10);
+    const topLevel = () => (lotKind === 'home' ? 12 : lotKind === 'beach' || lotKind === 'metro' ? 1 : lotKind === 'mosque' ? (dest.indoor ? 5 : 1) : lotKind === 'office' || lotKind === 'airport' ? 1 : 10);
     const indoorMosque = () => lotKind === 'mosque' && !!dest.indoor;
-    const levelName = (l) => (lotKind === 'beach' ? 'Beach car park' : lotKind === 'metro' ? 'Park & Ride' : lotKind === 'mosque' && !dest.indoor ? 'Mosque car park' : lotKind === 'office' ? 'Office car park' : l === topLevel() && !indoorMosque() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
+    const levelName = (l) => (lotKind === 'beach' ? 'Beach car park' : lotKind === 'metro' ? 'Park & Ride' : lotKind === 'mosque' && !dest.indoor ? 'Mosque car park' : lotKind === 'office' ? 'Office car park' : lotKind === 'airport' ? 'Airport car park' : l === topLevel() && !indoorMosque() ? 'Level ' + l + ' \u2022 Outdoor' : 'Level ' + l);
     const lotOutdoor = () => lotLevel === topLevel() && !indoorMosque();
     let parked = false;
     let parkedT = 0;
@@ -1160,6 +1167,11 @@
         if (lotKind === 'beach') {
           if (leg === 'out' && !shopped) enterBeach();
           else leaveBackToCar();
+        } else if (lotKind === 'airport') {
+          me.y = 192;
+          hold = null;
+          if (leg === 'out' && !shopped) enterAirport(false);
+          else leaveBackToCar();
         } else if (lotKind === 'office') {
           me.y = 192;
           hold = null;
@@ -1246,9 +1258,10 @@
     const mallWorldW = 1160;
     const isMosque = () => !!dest && dest.kind === 'mosque';
     const isOffice = () => !!dest && dest.kind === 'office';
-    const isSmall = () => isMosque() || isOffice();
+    const isAirport = () => !!dest && dest.kind === 'airport';
+    const isSmall = () => isMosque() || isOffice() || isAirport();
     const worldW = () => (isSmall() ? W : mallWorldW);
-    const slotCount = () => (isMosque() ? 3 : isOffice() ? 4 : mallSlots);
+    const slotCount = () => (isMosque() ? 3 : isOffice() || isAirport() ? 4 : mallSlots);
     const liftX = 750;
     const mallEscX = 350;
     const mm = { x: 200, y: 505, dir: 1, stepT: 0, moving: false, goto: null };
@@ -1274,9 +1287,9 @@
       ['#f2c9a0', '#6a4c93', '#4a4a4a'], ['#e0ac84', '#ffd166', '#1d3557'], ['#6f4426', '#ffffff', '#7a5a3a'],
     ];
     const mallShelfX = [96, 200, 304];
-    const mallShopIdx = (slot) => (isMosque() ? 24 + slot : isOffice() ? [28, 29, 30, 26][slot] : slot >= 6 ? 18 + slot : mallFloor * 6 + slot);
+    const mallShopIdx = (slot) => (isMosque() ? 24 + slot : isAirport() ? 26 : isOffice() ? [28, 29, 30, 26][slot] : slot >= 6 ? 18 + slot : mallFloor * 6 + slot);
     let mallSlotIn = 0;
-    const mallDoorX = (slot) => (isMosque() ? 90 + slot * 110 : isOffice() ? 60 + slot * 95 : mallSlotX[slot] + 50);
+    const mallDoorX = (slot) => (isMosque() ? 90 + slot * 110 : isOffice() || isAirport() ? 60 + slot * 95 : mallSlotX[slot] + 50);
 
     let mallPlace = '';
     function initMallState(keep) {
@@ -1772,6 +1785,572 @@
       });
     }
 
+    // ---------- the airport: fly abroad for a holiday, then come home to Dubai ----------
+    let airportTripDone = false;
+    let flight = null; // { i, dir: 'out' | 'back', t }
+    const hol = { i: 0, x: 200, dir: 1, stepT: 0, moving: false, souv: [], got: [] };
+    function drawFlagC(x, y, w, h, kind) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.clip();
+      if (kind === 'kw') {
+        ['#007a3d', '#ffffff', '#ce1126'].forEach((c, k) => {
+          ctx.fillStyle = c;
+          ctx.fillRect(x, y + (h / 3) * k, w, h / 3 + 1);
+        });
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + w * 0.3, y + h / 3);
+        ctx.lineTo(x + w * 0.3, y + (2 * h) / 3);
+        ctx.lineTo(x, y + h);
+        ctx.fill();
+      } else if (kind === 'en') {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y, w, h);
+        ctx.fillStyle = '#cf142b';
+        ctx.fillRect(x + w * 0.42, y, w * 0.16, h);
+        ctx.fillRect(x, y + h * 0.38, w, h * 0.24);
+      } else if (kind === 'gr') {
+        for (let k = 0; k < 9; k++) {
+          ctx.fillStyle = k % 2 ? '#ffffff' : '#0d5eaf';
+          ctx.fillRect(x, y + (h / 9) * k, w, h / 9 + 1);
+        }
+        ctx.fillStyle = '#0d5eaf';
+        ctx.fillRect(x, y, w * 0.38, (h / 9) * 5);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x + w * 0.15, y, w * 0.08, (h / 9) * 5);
+        ctx.fillRect(x, y + ((h / 9) * 5) / 2 - h * 0.04, w * 0.38, h * 0.08);
+      } else {
+        ctx.fillStyle = '#00732f';
+        ctx.fillRect(x, y, w, h / 3 + 1);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, y + h / 3, w, h / 3 + 1);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(x, y + (2 * h) / 3, w, h / 3 + 1);
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(x, y, w * 0.26, h);
+      }
+      ctx.restore();
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x, y, w, h);
+    }
+    function enterAirport(back) {
+      if (!mallActive || mallPlace !== dest.name) initMallState(mallActive);
+      mallActive = true;
+      mallPlace = dest.name;
+      phase = 'mall';
+      mallFloor = 0;
+      mallShop = -1;
+      mallRide = null;
+      mm.x = 200;
+      mm.y = 505;
+      mm.goto = null;
+      mm.dir = 1;
+      mallCamX = 0;
+      hold = null;
+      if (back) say('Welcome back to Dubai! \u{1F1E6}\u{1F1EA} Your holiday is done. Walk to your car and go home.', 280);
+      else say('Welcome to the airport! ✈️ Tap a gate to fly to Kuwait, England or Greece.', 280);
+      blip(988, 988, 0.15, 0.1);
+      blip(1318, 1318, 0.2, 0.1, 0.14);
+    }
+    function leaveAirport() {
+      mallShop = -1;
+      phase = 'walk';
+      shopped = true;
+      me.x = 200;
+      me.y = 200;
+      me.hurt = 0;
+      leftCar = true;
+      hold = null;
+      say('Walk back to your car and get in!', 200);
+    }
+    function boardFlight(i) {
+      if (airportTripDone) {
+        say('You already had your holiday and came home to Dubai \u{1F3E0}', 160);
+        return;
+      }
+      startFlight(i, 'out');
+    }
+    function startFlight(i, dir) {
+      flight = { i, dir, t: 0 };
+      phase = 'flight';
+      hold = null;
+      kite.on = false;
+      say(dir === 'out' ? 'Boarding the plane to ' + airportCountries[i].name + '! ✈️' : 'Boarding the plane home to Dubai! ✈️', 200);
+      [392, 523, 659].forEach((f, j) => blip(f, f, 0.2, 0.08, j * 0.12));
+    }
+    function updateFlight(step) {
+      flight.t += step;
+      if (Math.floor(flight.t / 60) !== Math.floor((flight.t - step) / 60)) blip(300, 280, 0.2, 0.03);
+      if (flight.t >= 420) {
+        const f = flight;
+        flight = null;
+        if (f.dir === 'out') enterHoliday(f.i);
+        else {
+          airportTripDone = true;
+          addScore(15);
+          dest = airportDest;
+          enterAirport(true);
+          [523, 659, 784, 1047].forEach((q, j) => blip(q, q, 0.2, 0.1, j * 0.1));
+          say('Welcome back to Dubai! \u{1F1E6}\u{1F1EA} +15 Walk to your car and go home.', 280);
+        }
+      }
+    }
+    function enterHoliday(i) {
+      phase = 'holiday';
+      hol.i = i;
+      hol.x = 200;
+      hol.dir = 1;
+      hol.moving = false;
+      hol.got = [];
+      hol.souv = [70 + Math.random() * 40, 170 + Math.random() * 60, 290 + Math.random() * 50];
+      hold = null;
+      addScore(10);
+      say('Welcome to ' + airportCountries[i].name + '! \u{1F389} +10 Walk around and find 3 souvenirs \u{1F381}', 280);
+      [523, 659, 784].forEach((q, j) => blip(q, q, 0.2, 0.1, j * 0.1));
+    }
+    function updateHoliday(step) {
+      const d = inputDir(hol.x, 505);
+      hol.moving = Math.abs(d.dx) > 0.05;
+      if (hol.moving) {
+        hol.x = Math.max(24, Math.min(W - 24, hol.x + d.dx * 2.6 * step));
+        hol.dir = d.dx > 0 ? 1 : -1;
+        hol.stepT += step;
+      }
+      hol.souv.forEach((sx, k) => {
+        if (hol.got.indexOf(k) < 0 && Math.abs(hol.x - sx) < 22) {
+          hol.got.push(k);
+          addScore(3);
+          say('A souvenir! \u{1F381} +3 (' + hol.got.length + '/3)', 110);
+          blip(900, 1500, 0.12, 0.1);
+          if (hol.got.length === 3) {
+            addScore(8);
+            say('You found all 3 souvenirs! \u{1F389} +8 Time to fly home when you are ready.', 220);
+            [523, 659, 784, 1047].forEach((q, j) => blip(q, q, 0.18, 0.1, 0.2 + j * 0.08));
+          }
+        }
+      });
+    }
+    function drawPlaneSide(x, y, sc, bank) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(bank || 0);
+      ctx.scale(sc, sc);
+      ctx.fillStyle = '#ffffff';
+      roundedRect(-90, -16, 180, 32, 16);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(90, -2);
+      ctx.quadraticCurveTo(108, 2, 100, 10);
+      ctx.lineTo(80, 14);
+      ctx.fill();
+      ctx.strokeStyle = '#b9c3cc';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#1b4f8a';
+      ctx.fillRect(-84, 4, 170, 5);
+      ctx.fillStyle = '#c9d2da';
+      ctx.beginPath();
+      ctx.moveTo(-76, -12);
+      ctx.lineTo(-100, -50);
+      ctx.lineTo(-82, -50);
+      ctx.lineTo(-52, -12);
+      ctx.fill();
+      ctx.fillStyle = '#d9dfe5';
+      ctx.beginPath();
+      ctx.moveTo(-10, 12);
+      ctx.lineTo(34, 12);
+      ctx.lineTo(-24, 52);
+      ctx.lineTo(-52, 52);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#7d8a96';
+      ctx.fillRect(-30, 30, 36, 12);
+      ctx.fillStyle = '#9fd3ee';
+      for (let k = 0; k < 9; k++) ctx.fillRect(-60 + k * 14, -8, 8, 8);
+      ctx.restore();
+    }
+    function drawFlight() {
+      const f = flight;
+      const sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, '#3a7bd5');
+      sky.addColorStop(1, '#bfe3ff');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      for (let k = 0; k < 9; k++) {
+        const cx = (W + 80) - ((f.t * (1.2 + (k % 3) * 0.8) + k * 97) % (W + 160));
+        const cy = 90 + ((k * 61) % 440);
+        ctx.beginPath();
+        ctx.arc(cx, cy, 26, 0, Math.PI * 2);
+        ctx.arc(cx + 24, cy + 6, 20, 0, Math.PI * 2);
+        ctx.arc(cx - 24, cy + 8, 18, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      drawPlaneSide(200, 300 + Math.sin(f.t / 18) * 8, 1.4, Math.sin(f.t / 40) * 0.04);
+      // where from and where to
+      const c = airportCountries[f.i];
+      const fromFlag = f.dir === 'out' ? 'ae' : c.flag;
+      const toFlag = f.dir === 'out' ? c.flag : 'ae';
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+      roundedRect(30, 56, 340, 52, 16);
+      ctx.fill();
+      drawFlagC(48, 66, 36, 26, fromFlag);
+      drawFlagC(316, 66, 36, 26, toFlag);
+      const frac = Math.min(1, f.t / 420);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      roundedRect(100, 76, 200, 8, 4);
+      ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      roundedRect(100, 76, 200 * frac, 8, 4);
+      ctx.fill();
+      ctx.font = '16px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText('✈️', 100 + 200 * frac, 74);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(f.dir === 'out' ? 'Flying to ' + c.name + '...' : 'Flying home to Dubai...', 200, 470);
+      ctx.font = '13px sans-serif';
+      fitText(f.dir === 'out' ? c.fact : 'Dubai is your home. Almost there!', 340, 13, '');
+      ctx.fillText(f.dir === 'out' ? c.fact : 'Dubai is your home. Almost there!', 200, 496);
+    }
+    function drawHoliday() {
+      const c = airportCountries[hol.i];
+      const gy = 440;
+      const sky = ctx.createLinearGradient(0, 0, 0, gy);
+      if (hol.i === 1) {
+        sky.addColorStop(0, '#9aa5b1');
+        sky.addColorStop(1, '#d4dae0');
+      } else {
+        sky.addColorStop(0, '#6fc0f0');
+        sky.addColorStop(1, '#e9f6ff');
+      }
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, gy);
+      if (hol.i !== 1) {
+        ctx.fillStyle = '#ffd23f';
+        ctx.beginPath();
+        ctx.arc(330, 90, 28, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      [[80, 120], [250, 70]].forEach(([cx, cy]) => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, 20, 0, Math.PI * 2);
+        ctx.arc(cx + 20, cy + 4, 15, 0, Math.PI * 2);
+        ctx.arc(cx - 18, cy + 5, 14, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      if (hol.i === 0) {
+        // Kuwait: the sea and the Kuwait Towers
+        ctx.fillStyle = '#2ba3c7';
+        ctx.fillRect(0, 330, W, 110);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        for (let k = 0; k < 8; k++) ctx.fillRect((k * 53 + frameCount * 0.3) % W, 350 + (k % 4) * 20, 24, 2);
+        [[150, 300, 1], [230, 330, 0.72]].forEach(([tx, ty, sc]) => {
+          ctx.fillStyle = '#c9d6e2';
+          ctx.beginPath();
+          ctx.moveTo(tx - 7 * sc, 340);
+          ctx.lineTo(tx, ty - 190 * sc);
+          ctx.lineTo(tx + 7 * sc, 340);
+          ctx.fill();
+          ctx.fillStyle = '#4a90d9';
+          ctx.beginPath();
+          ctx.arc(tx, ty - 90 * sc, 24 * sc, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(tx - 24 * sc, ty - 92 * sc, 48 * sc, 4);
+          ctx.fillStyle = '#c9d6e2';
+          ctx.beginPath();
+          ctx.arc(tx, ty - 170 * sc, 9 * sc, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.fillStyle = '#e8c07a';
+        ctx.fillRect(0, gy, W, H - gy);
+      } else if (hol.i === 1) {
+        // England: Big Ben, a red bus and a grey sky
+        ctx.fillStyle = '#c9b68a';
+        ctx.fillRect(268, 160, 56, 220);
+        ctx.fillStyle = '#b8a37a';
+        ctx.fillRect(268, 160, 6, 220);
+        ctx.fillStyle = '#c9b68a';
+        ctx.beginPath();
+        ctx.moveTo(266, 160);
+        ctx.lineTo(296, 90);
+        ctx.lineTo(326, 160);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(296, 190, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#2b2230';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(296, 190);
+        ctx.lineTo(296, 178);
+        ctx.moveTo(296, 190);
+        ctx.lineTo(304, 194);
+        ctx.stroke();
+        ctx.fillStyle = '#7a8793';
+        ctx.fillRect(0, 380, W, 60);
+        ctx.fillStyle = '#d62828';
+        const bx = ((frameCount * 1.3) % (W + 220)) - 110;
+        roundedRect(bx - 50, 392, 100, 40, 6);
+        ctx.fill();
+        roundedRect(bx - 46, 366, 92, 28, 6);
+        ctx.fill();
+        ctx.fillStyle = '#9fd3ee';
+        for (let k = 0; k < 4; k++) {
+          ctx.fillRect(bx - 40 + k * 22, 372, 16, 12);
+          ctx.fillRect(bx - 40 + k * 22, 398, 16, 12);
+        }
+        ctx.fillStyle = '#2b2f35';
+        [-30, 30].forEach((wx) => {
+          ctx.beginPath();
+          ctx.arc(bx + wx, 434, 8, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.fillStyle = '#d62828';
+        ctx.fillRect(60, 330, 22, 50);
+        ctx.fillStyle = '#9fd3ee';
+        ctx.fillRect(64, 336, 14, 30);
+        ctx.fillStyle = '#7a8793';
+        ctx.fillRect(0, gy, W, H - gy);
+        ctx.strokeStyle = 'rgba(120, 150, 190, 0.7)';
+        ctx.lineWidth = 1.5;
+        for (let k = 0; k < 30; k++) {
+          const rx = (k * 43) % W;
+          const ry = ((k * 71 + frameCount * 7) % 440);
+          ctx.beginPath();
+          ctx.moveTo(rx, ry);
+          ctx.lineTo(rx - 3, ry + 10);
+          ctx.stroke();
+        }
+      } else {
+        // Greece: white houses, a blue dome and the sea
+        ctx.fillStyle = '#1e8fd0';
+        ctx.fillRect(0, 340, W, 100);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        for (let k = 0; k < 8; k++) ctx.fillRect((k * 61 + frameCount * 0.3) % W, 360 + (k % 4) * 18, 22, 2);
+        [[40, 300, 70, 60], [118, 280, 60, 80], [210, 310, 70, 50], [296, 290, 64, 70]].forEach(([hx, hy, hw, hh]) => {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(hx, hy, hw, hh);
+          ctx.fillStyle = '#e8eef3';
+          ctx.fillRect(hx + hw - 10, hy, 10, hh);
+          ctx.fillStyle = '#1e8fd0';
+          ctx.fillRect(hx + hw / 2 - 8, hy + hh - 30, 16, 30);
+          ctx.fillRect(hx + 8, hy + 12, 14, 14);
+        });
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(176, 226, 56, 84);
+        ctx.fillStyle = '#1e8fd0';
+        ctx.beginPath();
+        ctx.arc(204, 226, 30, Math.PI, 0);
+        ctx.fill();
+        ctx.fillStyle = '#ffd23f';
+        ctx.fillRect(203, 184, 2, 12);
+        ctx.fillRect(199, 188, 10, 2);
+        ctx.fillStyle = '#e83e8c';
+        [[24, 350], [100, 362], [346, 354], [384, 360]].forEach(([bx2, by2]) => {
+          ctx.beginPath();
+          ctx.arc(bx2, by2, 14, 0, Math.PI * 2);
+          ctx.fill();
+        });
+        ctx.fillStyle = '#e9dcc0';
+        ctx.fillRect(0, gy, W, H - gy);
+      }
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.lineWidth = 1.5;
+      for (let y = gy + 14; y < H; y += 30) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      }
+      // the souvenirs, and you
+      hol.souv.forEach((sx, k) => {
+        if (hol.got.indexOf(k) >= 0) return;
+        const glow = 0.5 + 0.5 * Math.sin(frameCount / 10 + k);
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + 0.35 * glow + ')';
+        ctx.beginPath();
+        ctx.arc(sx, 480, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('\u{1F381}', sx, 488 - Math.abs(Math.sin(frameCount / 12 + k)) * 6);
+      });
+      drawShopper(hol.x, 520, ['#f2c9a0', '#d71920', '#26344a'], 1.0, hol.dir, hol.moving, hol.stepT, false);
+      // the name of the country
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.62)';
+      roundedRect(70, 8, W - 140, 30, 15);
+      ctx.fill();
+      drawFlagC(80, 12, 28, 20, c.flag);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(c.name + ' • ' + c.ar + ' • ' + c.city, W / 2 + 14, 28);
+      ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
+      roundedRect(W - 90, 44, 82, 28, 14);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('\u{1F381} ' + hol.got.length + ' / 3', W - 49, 63);
+    }
+    function drawAirportStreet() {
+      ctx.fillStyle = '#e8eef5';
+      ctx.fillRect(0, 0, W, 410);
+      // a big window with a plane outside
+      ctx.fillStyle = '#9fd3ee';
+      ctx.fillRect(14, 108, 372, 96);
+      ctx.fillStyle = '#c9d2da';
+      ctx.fillRect(14, 180, 372, 24);
+      drawPlaneSide(250 + Math.sin(frameCount / 120) * 6, 168, 0.5, 0);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      ctx.beginPath();
+      ctx.arc(60, 140, 14, 0, Math.PI * 2);
+      ctx.arc(76, 144, 11, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#7d8a96';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(14, 108, 372, 96);
+      // the departures board
+      roundedRect(40, 40, 320, 56, 10);
+      ctx.fillStyle = '#10151c';
+      ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 15px monospace';
+      ctx.fillText('✈️ DEPARTURES • MUSAFIRIN', 200, 62);
+      ctx.fillStyle = Math.floor(frameCount / 30) % 2 ? '#6dff9c' : '#3aa65f';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('KUWAIT  A1   ENGLAND  B2   GREECE  C3', 200, 84);
+      // the gates
+      for (let s2 = 0; s2 < 4; s2++) {
+        const x = mallDoorX(s2);
+        if (s2 < 3) {
+          const c = airportCountries[s2];
+          ctx.fillStyle = '#cfd6e0';
+          ctx.fillRect(x - 38, 250, 76, 154);
+          ctx.fillStyle = '#1b4f8a';
+          ctx.fillRect(x - 38, 250, 76, 6);
+          ctx.fillStyle = '#5b6a7a';
+          ctx.fillRect(x - 30, 262, 60, 142);
+          ctx.fillStyle = 'rgba(190, 225, 245, 0.8)';
+          ctx.fillRect(x - 26, 266, 52, 134);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x - 1, 266, 2, 134);
+          drawFlagC(x - 24, 190, 48, 32, c.flag);
+          roundedRect(x - 40, 226, 80, 20, 6);
+          ctx.fillStyle = '#1b4f8a';
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(c.name + ' ' + c.gate, x, 240);
+        } else {
+          const sh = mallShopsData[26];
+          ctx.fillStyle = '#cfd6e0';
+          ctx.fillRect(x - 38, 250, 76, 154);
+          ctx.fillStyle = sh.colour;
+          ctx.fillRect(x - 38, 250, 76, 6);
+          ctx.fillStyle = '#7d8a96';
+          ctx.fillRect(x - 30, 262, 60, 142);
+          ctx.fillStyle = 'rgba(190, 225, 245, 0.85)';
+          ctx.fillRect(x - 26, 266, 52, 134);
+          roundedRect(x - 40, 226, 80, 20, 6);
+          ctx.fillStyle = sh.colour;
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 11px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(sh.emoji + ' Restrooms', x, 240);
+        }
+      }
+      ctx.fillStyle = '#d9dee3';
+      ctx.fillRect(0, 404, W, H - 404);
+      ctx.strokeStyle = 'rgba(80, 90, 105, 0.16)';
+      ctx.lineWidth = 1.5;
+      [420, 450, 490, 540].forEach((y) => {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+      });
+      ctx.fillStyle = '#ffd23f';
+      for (let x = 20; x < W; x += 50) ctx.fillRect(x, 470, 26, 5);
+      const things = [];
+      pushBuddy(things, 0.8);
+      things.push({ y: mm.y, draw: () => drawMe() });
+      things.sort((a, b) => a.y - b.y).forEach((t) => t.draw());
+      const nd = nearMallDoor();
+      if (nd >= 0 && !mallRide) {
+        ctx.fillStyle = 'rgba(10, 18, 28, 0.82)';
+        roundedRect(mallDoorX(nd) - 70, 196, 140, 26, 13);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(nd < 3 ? '✈️ Tap the gate to fly there' : '\u{1F6AA} Tap the door to go in', mallDoorX(nd), 214);
+      }
+    }
+    function drawAirportFront() {
+      const sky = ctx.createLinearGradient(0, 0, 0, 172);
+      sky.addColorStop(0, '#8fd0f2');
+      sky.addColorStop(1, '#e8f4fa');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 172);
+      // the control tower and a plane
+      ctx.fillStyle = '#c9d2da';
+      ctx.fillRect(334, 40, 18, 132);
+      ctx.fillStyle = '#9fd3ee';
+      roundedRect(322, 24, 42, 22, 5);
+      ctx.fill();
+      ctx.fillStyle = '#7d8a96';
+      ctx.fillRect(326, 44, 34, 6);
+      drawPlaneSide(66, 120, 0.42, -0.04);
+      // the terminal with a curved roof
+      ctx.fillStyle = '#e8eef5';
+      ctx.fillRect(110, 72, 210, 100);
+      ctx.fillStyle = '#1b4f8a';
+      ctx.beginPath();
+      ctx.moveTo(98, 78);
+      ctx.quadraticCurveTo(215, 40, 332, 78);
+      ctx.lineTo(320, 90);
+      ctx.quadraticCurveTo(215, 58, 110, 90);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(160, 205, 240, 0.9)';
+      ctx.fillRect(122, 100, 186, 50);
+      ctx.fillStyle = '#9aa3ad';
+      for (let x = 122; x <= 308; x += 31) ctx.fillRect(x, 100, 3, 50);
+      roundedRect(135, 76, 160, 22, 8);
+      ctx.fillStyle = dest.colour;
+      ctx.fill();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      fitText('✈️ ' + dest.name, 150, 12);
+      ctx.fillText('✈️ ' + dest.name, 215, 92);
+      ctx.fillStyle = '#2b3a55';
+      ctx.fillRect(180, 120, 56, 52);
+      ctx.fillStyle = 'rgba(190, 225, 245, 0.9)';
+      ctx.fillRect(184, 124, 22, 48);
+      ctx.fillRect(210, 124, 22, 48);
+      [[26, 168], [394, 168]].forEach(([px, py]) => {
+        ctx.fillStyle = '#7a5a3a';
+        ctx.fillRect(px - 2, py - 24, 4, 24);
+        drawPalm(px, py - 26);
+      });
+    }
+
     function leaveMall() {
       if (phase !== 'mall' || mallRide) return;
       if (toi.stage > 0) {
@@ -1793,6 +2372,10 @@
       }
       if (isOffice()) {
         leaveOffice();
+        return;
+      }
+      if (isAirport()) {
+        leaveAirport();
         return;
       }
       mallShop = -1;
@@ -3728,7 +4311,10 @@
       if (phase !== 'mall' || mallBusy()) return;
       if (mallShop < 0) {
         const d = nearMallDoor();
-        if (d >= 0) enterShop(d);
+        if (d >= 0) {
+          if (isAirport() && d < 3) boardFlight(d);
+          else enterShop(d);
+        }
         else if (nearTrolleyBay()) trolleyAction();
         else if (nearMallEsc()) rideEscalator();
         else if (nearLift()) openLift('mall', { type: 'floor', val: mallFloor });
@@ -3974,7 +4560,7 @@
     let havePart = false;
     const repair = { seq: [], i: 0, msg: '', done: false, spark: 0 };
     const repairTools = [['\u{1F527}', 'Wrench'], ['\u{1F50B}', 'Battery'], ['\u{1F6DE}', 'Tyre'], ['\u{1F6E2}️', 'Oil can'], ['\u{1F526}', 'Torch'], ['\u{1FA9B}', 'Screwdriver']];
-    const kindEmoji = (d) => (d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : d.kind === 'office' ? '\u{1F3E2}' : '\u{1F6CD}️');
+    const kindEmoji = (d) => (d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : d.kind === 'office' ? '\u{1F3E2}' : d.kind === 'airport' ? '\u2708\uFE0F' : '\u{1F6CD}️');
 
     function enterGround(fromTaxi) {
       phase = 'ground';
@@ -4051,7 +4637,7 @@
         ctx.fillText(kindEmoji(d) + ' ' + d.name, c.x + 26, c.y + 24);
         ctx.fillStyle = '#6b727b';
         ctx.font = '12px sans-serif';
-        ctx.fillText(d.sub || (d.kind === 'mall' ? 'Shopping mall' : d.kind === 'beach' ? 'Beach' : d.kind === 'mosque' ? 'Mosque' : d.kind === 'office' ? 'Your office' : 'Metro'), c.x + 26, c.y + 43);
+        ctx.fillText(d.sub || (d.kind === 'mall' ? 'Shopping mall' : d.kind === 'beach' ? 'Beach' : d.kind === 'mosque' ? 'Mosque' : d.kind === 'office' ? 'Your office' : d.kind === 'airport' ? 'Fly abroad' : 'Metro'), c.x + 26, c.y + 43);
         ctx.fillStyle = '#f2b705';
         ctx.font = 'bold 20px sans-serif';
         ctx.textAlign = 'right';
@@ -4110,6 +4696,7 @@
       } else if (d.kind === 'mall') enterMallAt(0);
       else if (d.kind === 'beach') enterBeach();
       else if (d.kind === 'office') enterOffice();
+      else if (d.kind === 'airport') enterAirport(false);
       else enterMosque();
       say('Your taxi dropped you at ' + dest.name + ' \u{1F695} Enjoy!', 220);
     }
@@ -4658,6 +5245,7 @@
       secondActive = false;
       officeWorked = false;
       officeBonus = false;
+      airportTripDone = false;
       apt.calSeen = false;
       calOpen = false;
       prayMode = isFriday() ? 'friday' : 'normal';
@@ -7622,10 +8210,11 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && carBroken && repairReady && lotKind === 'home') label = '\u{1F527} Help the engineer';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
-        else if (phase === 'mall') label = isMosque() ? '\u{1F6AA} Leave the mosque' : isOffice() ? '\u{1F6AA} Leave the office' : '\u{1F6AA} Leave the mall';
+        else if (phase === 'mall') label = isMosque() ? '\u{1F6AA} Leave the mosque' : isOffice() ? '\u{1F6AA} Leave the office' : isAirport() ? '\u{1F6AA} Leave the airport' : '\u{1F6AA} Leave the mall';
         else if (phase === 'beach') label = nearSalt() ? '\u{1F354} Order at SALT' : nearKarak() ? '\u2615 Order at KARAK' : '\u{1F6AA} Leave the beach';
         else if (phase === 'station' && !(trip && trip.stage === 'end' && trip.timer > 0)) label = '\u{1F687} Open the metro map';
         else if (phase === 'ground') label = '\u{1F6D7} Take the lift';
+        else if (phase === 'holiday') label = '\u2708\uFE0F Fly home to Dubai';
         else if (phase === 'taxistop' && taxiWait <= 0) label = '\u{1F695} Get in the taxi';
       }
       if (label !== actLabel) {
@@ -7643,6 +8232,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         else getInCar();
       }
       else if (phase === 'ground') openLift('home', { type: 'ground', val: 0 });
+      else if (phase === 'holiday') startFlight(hol.i, 'back');
       else if (phase === 'taxistop') {
         if (taxiWait <= 0) startTaxiHome();
       }
@@ -7723,7 +8313,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       else if (phase === 'apartment') aptPress(p);
       else if (phase === 'mall') mallPress(p);
       else if (phase === 'ground') openTaxi();
-      else if (phase === 'park' || phase === 'walk' || phase === 'beach') hold = p;
+      else if (phase === 'park' || phase === 'walk' || phase === 'beach' || phase === 'holiday') hold = p;
       else if (phase === 'apartment') aptPress(p);
     }
     function moveTo(clientX, clientY) {
@@ -7801,7 +8391,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       shields = [];
       police = null;
       addScore(10);
-      say(leg === 'out' ? 'Off to ' + dest.name + '! ' + (dest.kind === 'beach' ? '\u{1F3D6}\uFE0F' : dest.kind === 'mosque' ? '\u{1F54C}' : dest.kind === 'office' ? '\u{1F3E2}' : '\u{1F6CD}\uFE0F') : 'You are home!', 140);
+      say(leg === 'out' ? 'Off to ' + dest.name + '! ' + (dest.kind === 'beach' ? '\u{1F3D6}\uFE0F' : dest.kind === 'mosque' ? '\u{1F54C}' : dest.kind === 'office' ? '\u{1F3E2}' : dest.kind === 'airport' ? '\u2708\uFE0F' : '\u{1F6CD}\uFE0F') : 'You are home!', 140);
       blip(660, 990, 0.2, 0.1);
     }
 
@@ -8046,6 +8636,8 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       else if (phase === 'apartment') updateApartment(step);
       else if (phase === 'taxi') updateTaxi(step);
       else if (phase === 'taxistop') updateTaxiStop(step);
+      else if (phase === 'flight') updateFlight(step);
+      else if (phase === 'holiday') updateHoliday(step);
       else if (phase === 'ground') groundT += step;
       else {
         // at home before you set off: the road lines keep still
@@ -8596,6 +9188,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     }
 
 function drawOutdoorFront() {
+      if (lotKind === 'airport') {
+        drawAirportFront();
+        return;
+      }
       if (lotKind === 'office') {
         drawOfficeFront();
         return;
@@ -9593,6 +10189,7 @@ function drawOutdoorFront() {
         else drawShopInside();
       } else if (isMosque()) drawMosqueStreet();
       else if (isOffice()) drawOfficeStreet();
+      else if (isAirport()) drawAirportStreet();
       else drawMallStreet();
       // your coins, bags and trolley
       ctx.fillStyle = 'rgba(10, 18, 28, 0.7)';
@@ -9652,11 +10249,11 @@ function drawOutdoorFront() {
       const prev = second ? laneDests.map((d) => d.name) : [];
       const mallPool = malls.filter((m) => prev.indexOf(m.name) < 0);
       const beachPool = beaches.filter((b) => prev.indexOf(b.name) < 0);
-      const pool = mallPool.sort(() => Math.random() - 0.5).slice(0, laneCount - (second ? 2 : isOfficeDay() ? 4 : 3));
+      const pool = mallPool.sort(() => Math.random() - 0.5).slice(0, laneCount - (second ? 2 : 4));
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, beachPool[Math.floor(Math.random() * beachPool.length)]); // the beach is one of the tunnels
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, metroDest); // and so are the metro stations
       if (!second) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, mosques[Math.floor(Math.random() * mosques.length)]); // and a mosque
-      if (!second && isOfficeDay()) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, officeDest); // and, on a work day, your office
+      if (!second) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, isOfficeDay() ? officeDest : airportDest); // and, on a work day, your office, otherwise the airport
       return pool;
     }
     let gateRow = null;
@@ -9861,7 +10458,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
         ctx.font = '13px sans-serif';
-        ctx.fillText(d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : d.kind === 'office' ? '\u{1F3E2}' : '\u{1F6CD}️', cx, y - 88);
+        ctx.fillText(d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : d.kind === 'office' ? '\u{1F3E2}' : d.kind === 'airport' ? '\u2708\uFE0F' : '\u{1F6CD}️', cx, y - 88);
         const words = d.name.split(' ');
         const half = Math.ceil(words.length / 2);
         const l1 = words.slice(0, half).join(' ');
@@ -11108,6 +11705,8 @@ function drawOutdoorFront() {
       if (phase === 'drive' || phase === 'taxi') drawDrive();
       else if (phase === 'ground') drawGround();
       else if (phase === 'taxistop') drawTaxiStop();
+      else if (phase === 'flight') drawFlight();
+      else if (phase === 'holiday') drawHoliday();
       else if (phase === 'mall') drawMall();
       else if (phase === 'beach') drawBeach();
       else if (phase === 'apartment' || phase === 'start' || phase === 'homedone') {
@@ -11130,7 +11729,7 @@ function drawOutdoorFront() {
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 14px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : dest.kind === 'beach' ? '\u{1F3D6}\uFE0F ' : dest.kind === 'metro' ? '\u{1F687} ' : dest.kind === 'mosque' ? '\u{1F54C} ' : dest.kind === 'office' ? '\u{1F3E2} ' : '\u{1F6CD}\uFE0F ') + dest.name, W / 2, 28);
+        ctx.fillText((dest.kind === 'home' ? '\u{1F3E0} ' : dest.kind === 'beach' ? '\u{1F3D6}\uFE0F ' : dest.kind === 'metro' ? '\u{1F687} ' : dest.kind === 'mosque' ? '\u{1F54C} ' : dest.kind === 'office' ? '\u{1F3E2} ' : dest.kind === 'airport' ? '\u2708\uFE0F ' : '\u{1F6CD}\uFE0F ') + dest.name, W / 2, 28);
       }
       if ((phase === 'park' || phase === 'walk') && levelFade <= 0) {
         ctx.fillStyle = 'rgba(31, 95, 168, 0.85)';
