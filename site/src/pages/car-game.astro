@@ -1852,7 +1852,7 @@
       mallCamX = 0;
       hold = null;
       if (back) say('Welcome back to Dubai! \u{1F1E6}\u{1F1EA} Your holiday is done. Walk to your car and go home.', 280);
-      else say('Welcome to the airport! ✈️ Tap a gate to fly to Kuwait, England or Greece.', 280);
+      else say(bagPacked ? 'Welcome to the airport! ✈️ Your bag is packed. Tap a gate to fly to Kuwait, England or Greece.' : 'Welcome to the airport! ✈️ To fly you must pack your bag at home the night before.', 280);
       blip(988, 988, 0.15, 0.1);
       blip(1318, 1318, 0.2, 0.1, 0.14);
     }
@@ -1870,6 +1870,11 @@
     function boardFlight(i) {
       if (airportTripDone) {
         say('You already had your holiday and came home to Dubai \u{1F3E0}', 160);
+        return;
+      }
+      if (!bagPacked) {
+        say('You did not pack a bag! \u{1F9F3} Pack your bag at home tonight (say yes to the airport before bed) and come back tomorrow.', 280);
+        blip(220, 160, 0.25, 0.1);
         return;
       }
       startFlight(i, 'out');
@@ -1891,6 +1896,7 @@
         if (f.dir === 'out') enterHoliday(f.i);
         else {
           airportTripDone = true;
+          bagPacked = false;
           addScore(15);
           dest = airportDest;
           enterAirport(true);
@@ -5211,6 +5217,7 @@
       apt.items = [false, false, false, false];
       aptRoom = 'bed';
       aptStage = 'morning';
+      airportAsked = false;
       apt.sleep = 0;
       apt.reading = null;
       apt.play = null;
@@ -5265,7 +5272,7 @@
       hold = null;
       departing = false;
       setupHomeLot();
-      say((first ? 'Good morning! ' : 'A new day! ') + 'It is ' + dayNames[gameDate.getDay()] + (isFriday() ? ' \u{1F54C}' : '') + ' \u2600\uFE0F Tap to wake up', 260);
+      say(bagPacked ? 'Today you fly! \u2708\uFE0F Your bag is packed \u{1F9F3} Tap to wake up, then take the Airport tunnel.' : (first ? 'Good morning! ' : 'A new day! ') + 'It is ' + dayNames[gameDate.getDay()] + (isFriday() ? ' \u{1F54C}' : '') + ' \u2600\uFE0F Tap to wake up', 260);
     }
 
     // ---- the bathtub: a rubber duck and other toys
@@ -5524,7 +5531,7 @@
     }
 
     function aptAction(a) {
-      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || calOpen || chooseOpen || bathOpen || apt.sleep > 0 || apt.reading || apt.play || apt.tv || apt.call || apt.fade > 25) return;
+      if (phase !== 'apartment' || apt.eating || apt.cooking > 0 || apt.shower > 0 || fridgeOpen || calOpen || chooseOpen || bathOpen || packOpen || apt.sleep > 0 || apt.reading || apt.play || apt.tv || apt.call || apt.fade > 25) return;
       if (aptRoom === 'bed') {
         if (a === 'bed') {
           if (!apt.woke) {
@@ -5533,7 +5540,7 @@
             hm.dir = 1;
             say('Good morning! ☀️ Go down the stairs to the shower.', 220);
             [392, 523, 659].forEach((f, j) => blip(f, f, 0.2, 0.08, j * 0.12));
-          } else if (aptStage === 'evening' && apt.eaten && apt.showered && apt.brushed) startSleep();
+          } else if (aptStage === 'evening' && apt.eaten && apt.showered && apt.brushed) askAirport();
           else if (aptStage === 'evening') say('Before bed: dinner \u{1F37D}\uFE0F, a shower \u{1F6BF} and brush your teeth \u{1FAA5}. Or tap the bed again to read!', 220), openChooser('book');
           else openChooser('book');
         } else if (a === 'stairs') {
@@ -5826,7 +5833,7 @@
       const toFri = (5 - gameDate.getDay() + 7) % 7;
       const nf = new Date(gameDate.getFullYear(), gameDate.getMonth(), gameDate.getDate() + toFri);
       const dow = gameDate.getDay();
-      const note = isFriday() ? 'Today is Friday! It is the day of the Friday prayer (Jumu\'ah). No office today: pray at a mosque or the mall.' : isOfficeDay() ? 'Today you work at the office! \u{1F3E2} Drive through the Office tunnel at 0 km. The next Friday prayer is in ' + toFri + (toFri === 1 ? ' day.' : ' days.') : dow === 3 ? 'No office today: you work from home \u{1F3E0} (or go out). The next Friday prayer is in ' + toFri + (toFri === 1 ? ' day.' : ' days.') : 'No office today, enjoy your day! \u{1F389} The next Friday prayer is on Friday ' + nf.getDate() + ' ' + monthNames[nf.getMonth()] + '.';
+      const note = bagPacked ? 'Your bag is packed! \u2708\uFE0F Take the Airport tunnel at 0 km: today you fly on your holiday!' : isFriday() ? 'Today is Friday! It is the day of the Friday prayer (Jumu\'ah). No office today: pray at a mosque or the mall.' : isOfficeDay() ? 'Today you work at the office! \u{1F3E2} Drive through the Office tunnel at 0 km. The next Friday prayer is in ' + toFri + (toFri === 1 ? ' day.' : ' days.') : dow === 3 ? 'No office today: you work from home \u{1F3E0} (or go out). The next Friday prayer is in ' + toFri + (toFri === 1 ? ' day.' : ' days.') : 'No office today, enjoy your day! \u{1F389} The next Friday prayer is on Friday ' + nf.getDate() + ' ' + monthNames[nf.getMonth()] + '.';
       roundedRect(34, 420, 332, 62, 12);
       ctx.fillStyle = isFriday() ? '#d9f7e3' : '#eef3f8';
       ctx.fill();
@@ -6283,6 +6290,7 @@
       ctx.fillStyle = '#ffffff';
       ctx.font = '14px sans-serif';
       ctx.textAlign = 'left';
+      if (bagPacked) ctx.fillText('\u{1F9F3}', 200, 63);
       if (aptStage === 'evening') ctx.fillText('\u{1F319} ' + (apt.eaten ? '✅' : '\u{1F37D}️') + (apt.showered ? '✅' : '\u{1F6BF}') + (apt.brushed ? '✅' : '\u{1FAA5}') + '\u{1F6CF}️', 16, 63);
       else ctx.fillText((apt.woke ? '✅' : '\u{1F6CF}️') + (apt.showered ? '✅' : '\u{1F6BF}') + (apt.food ? '✅' : '\u{1F95A}') + (apt.cooked ? '✅' : '\u{1F373}') + (apt.eaten ? '✅' : '\u{1F35E}') + '  ' + aptItems.map(([e], k) => (apt.items[k] ? '✅' : e)).join(''), 16, 63);
       drawAptTabs();
@@ -6670,6 +6678,133 @@
       }
       if (family) say((family.kind === 'grandma' ? 'Grandma is' : family.kind === 'cousins' ? 'Your cousins are' : 'Grandma and your cousins are') + ' here for dinner! \u{1F37D}\uFE0F Sit at the table.', 280);
     }
+    // ---------- before bed: do you want to fly tomorrow? Then pack your bag ----------
+    let bagPacked = false;
+    let packOpen = false;
+    let airportAsked = false;
+    const packItems = [
+      ['\u{1F6C2}', 'Passport', true], ['\u{1F455}', 'Clothes', true], ['\u{1FAA5}', 'Toothbrush', true], ['\u{1F3AB}', 'Tickets', true],
+      ['\u{1F9F8}', 'Teddy bear', false], ['\u{1F4F7}', 'Camera', false], ['\u{1F576}️', 'Sunglasses', false], ['\u{1F452}', 'Sun hat', false], ['\u{1F4D6}', 'A book', false],
+    ];
+    const pack = { in: [], msg: '' };
+    const packCell = (i) => ({ x: 30 + (i % 3) * 112, y: 150 + Math.floor(i / 3) * 92, w: 104, h: 84 });
+    function askAirport() {
+      if (bagPacked || airportAsked) {
+        startSleep();
+        return;
+      }
+      airportAsked = true;
+      openTalk('Mum', ['#f2c9a0', '#e07a9c', '#5a3a6a'], 'buttery', 'Habibi, before you go to bed: do you want to go to the airport tomorrow for a holiday? ✈️', yesNo(), (a) => {
+        if (a === 0) return { reply: 'Wonderful! Then you must pack your bag now. \u{1F9F3}', next: openPack };
+        return { reply: 'Okay! Then tomorrow will be a normal day. Good night!', next: startSleep };
+      });
+    }
+    function openPack() {
+      packOpen = true;
+      pack.in = [];
+      pack.msg = 'Pack the things you need for a holiday!';
+      hold = null;
+      blip(500, 700, 0.15, 0.08);
+    }
+    function packPress(p) {
+      if (p.x > 130 && p.x < 270 && p.y > 492 && p.y < 530) {
+        packOpen = false;
+        say('Okay, no holiday tomorrow. Good night!', 140);
+        startSleep();
+        return;
+      }
+      if (p.x > 80 && p.x < 320 && p.y > 436 && p.y < 482) {
+        const missing = packItems.findIndex((it, i) => it[2] && pack.in.indexOf(i) < 0);
+        if (missing >= 0) {
+          pack.msg = 'You forgot your ' + packItems[missing][1].toLowerCase() + '! ' + packItems[missing][0];
+          blip(220, 160, 0.2, 0.08);
+          return;
+        }
+        packOpen = false;
+        bagPacked = true;
+        const extras = pack.in.filter((i) => !packItems[i][2]).length;
+        addScore(10 + extras);
+        say('Your bag is packed! \u{1F9F3} +' + (10 + extras) + ' Tomorrow you fly. Good night!', 240);
+        [523, 659, 784, 1047].forEach((f, j) => blip(f, f, 0.2, 0.1, j * 0.1));
+        startSleep();
+        return;
+      }
+      for (let i = 0; i < packItems.length; i++) {
+        const c = packCell(i);
+        if (p.x > c.x && p.x < c.x + c.w && p.y > c.y && p.y < c.y + c.h) {
+          const at = pack.in.indexOf(i);
+          if (at >= 0) pack.in.splice(at, 1);
+          else if (pack.in.length >= 7) pack.msg = 'The suitcase is full! Take something out.';
+          else {
+            pack.in.push(i);
+            pack.msg = packItems[i][0] + ' ' + packItems[i][1] + ' is in the suitcase!';
+            blip(700 + pack.in.length * 60, 800, 0.08, 0.07);
+          }
+          return;
+        }
+      }
+    }
+    function drawPackPanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(0, 0, W, H);
+      roundedRect(16, 80, 368, 460, 18);
+      ctx.fillStyle = '#fff9ee';
+      ctx.fill();
+      ctx.strokeStyle = '#1b4f8a';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#1b4f8a';
+      roundedRect(16, 80, 368, 56, 18);
+      ctx.fill();
+      ctx.fillRect(16, 116, 368, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('\u{1F9F3} PACK YOUR BAG', 200, 106);
+      ctx.font = '12px sans-serif';
+      ctx.fillText('Passport, clothes, toothbrush and tickets are a must! (' + pack.in.length + '/7)', 200, 126);
+      packItems.forEach(([emoji, name, must], i) => {
+        const c = packCell(i);
+        const on = pack.in.indexOf(i) >= 0;
+        roundedRect(c.x, c.y, c.w, c.h, 14);
+        ctx.fillStyle = on ? '#d9f7e3' : '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = on ? '#2fbf71' : must ? '#e08a1e' : '#b9c7d3';
+        ctx.lineWidth = on ? 4 : 3;
+        ctx.stroke();
+        ctx.font = '30px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText(emoji, c.x + c.w / 2, c.y + 42);
+        fitText(name, c.w - 8, 12);
+        ctx.fillStyle = '#2b2230';
+        ctx.fillText(name, c.x + c.w / 2, c.y + 66);
+        if (must) {
+          ctx.font = '10px sans-serif';
+          ctx.fillStyle = '#e08a1e';
+          ctx.fillText('must', c.x + c.w - 18, c.y + 14);
+        }
+        if (on) {
+          ctx.font = '14px sans-serif';
+          ctx.fillText('✅', c.x + 14, c.y + 16);
+        }
+      });
+      ctx.fillStyle = '#4a4f57';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(pack.msg, 200, 428);
+      roundedRect(80, 436, 240, 46, 23);
+      ctx.fillStyle = '#2fbf71';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText('Close the suitcase ✅', 200, 465);
+      ctx.fillStyle = '#e08a1e';
+      roundedRect(130, 492, 140, 36, 18);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText('Not now', 200, 516);
+    }
+
     function startSleep() {
       apt.sleep = 1;
       hm.goto = null;
@@ -8206,7 +8341,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen && !chooseOpen && !bathOpen) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen && !chooseOpen && !bathOpen && !packOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && carBroken && repairReady && lotKind === 'home') label = '\u{1F527} Help the engineer';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
@@ -8259,6 +8394,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (packOpen) {
+        packPress(p);
         return;
       }
       if (bathOpen) {
@@ -8627,7 +8766,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
           openMetro();
         }
       }
-      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen || chooseOpen || bathOpen) return;
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen || chooseOpen || bathOpen || packOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
@@ -11770,6 +11909,7 @@ function drawOutdoorFront() {
       if (giftOpen) drawGiftPanel();
       if (chooseOpen) drawChooserPanel();
       if (bathOpen) drawBathTub();
+      if (packOpen) drawPackPanel();
       if (talk) drawTalkPanel();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
