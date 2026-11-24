@@ -576,18 +576,18 @@
     const mosques = [
       { name: 'Sharjah Mosque', ar: 'مسجد الشارقة', colour: '#1f7a5a', kind: 'mosque', indoor: true },
       { name: 'Jumeirah Mosque', ar: 'مسجد جميرا', colour: '#b8893a', kind: 'mosque' },
-      { name: 'Sheikh Zayed Grand Mosque', ar: 'جامع الشيخ زايد الكبير', colour: '#5f7a99', kind: 'mosque' },
+      { name: 'Sheikh Zayed Grand Mosque', ar: 'جامع الشيخ زايد الكبير', colour: '#5f7a99', kind: 'mosque', short: 'Zayed Mosque' },
       { name: 'Al Farooq Mosque', ar: 'مسجد الفاروق', colour: '#2a7f9e', kind: 'mosque' },
       { name: 'Al Noor Mosque', ar: 'مسجد النور', colour: '#8a5fb0', kind: 'mosque' },
     ];
-    const airportDest = { name: 'Dubai International Airport', ar: 'مطار دبي الدولي', colour: '#1b4f8a', kind: 'airport' };
+    const airportDest = { name: 'Dubai International Airport', ar: 'مطار دبي الدولي', colour: '#1b4f8a', kind: 'airport', short: 'Airport' };
     // the countries you can fly to for a holiday (international flights)
     const airportCountries = [
       { name: 'Kuwait', ar: 'الكويت', city: 'Kuwait City', flag: 'kw', gate: 'A1', fact: 'Kuwait is a country by the Gulf, with the famous Kuwait Towers.' },
       { name: 'England', ar: 'إنجلترا', city: 'London', flag: 'en', gate: 'B2', fact: 'England has Big Ben, red buses and lots of rain.' },
       { name: 'Greece', ar: 'اليونان', city: 'Athens', flag: 'gr', gate: 'C3', fact: 'Greece has white houses, blue domes and sunny islands.' },
     ];
-    const officeDest = { name: 'Dubai Tech Office', ar: 'مكتب دبي', colour: '#3a86ff', kind: 'office' };
+    const officeDest = { name: 'Dubai Tech Office', ar: 'مكتب دبي', colour: '#3a86ff', kind: 'office', short: 'Your Office' };
     const beaches = [
       { name: 'Jumeirah Beach', ar: 'شاطئ جميرا', colour: '#1ea7c9', kind: 'beach' },
       { name: 'Kite Beach', ar: 'شاطئ الطائرات الورقية', colour: '#0096c7', kind: 'beach' },
@@ -4587,7 +4587,7 @@
       hold = null;
       blip(700, 700, 0.08, 0.08);
     }
-    const taxiCell = (i) => ({ x: 30, y: 130 + i * 62, w: 340, h: 54 });
+    const taxiCell = (i) => ({ x: 30, y: 118 + i * 56, w: 340, h: 50 });
     function taxiPress(p) {
       if (p.x > 120 && p.x < 280 && p.y > 462 && p.y < 504) {
         taxiOpen = false;
@@ -8881,7 +8881,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         for (let i = 0; i < laneCount; i++) {
           const cx = roadLeft + i * laneW + laneW / 2;
           const d = laneDests[i];
-          const words = d.name.split(' ');
+          const words = (d.short || d.name).split(' ');
           const half = Math.ceil(words.length / 2);
           const l1 = words.slice(0, half).join(' ');
           const l2 = words.slice(half).join(' ');
@@ -10243,17 +10243,20 @@ function drawOutdoorFront() {
     }
 
     // ---------- at 0 km the road splits into lanes: one for each place you can go ----------
-    const laneCount = 5;
+    const laneCount = 6; // malls, the beach, the metro, a mosque, the airport and (on work days) your office
     const laneW = (roadRight - roadLeft) / laneCount;
     function pickLanes(second) {
       const prev = second ? laneDests.map((d) => d.name) : [];
       const mallPool = malls.filter((m) => prev.indexOf(m.name) < 0);
       const beachPool = beaches.filter((b) => prev.indexOf(b.name) < 0);
-      const pool = mallPool.sort(() => Math.random() - 0.5).slice(0, laneCount - (second ? 2 : 4));
+      const pool = mallPool.sort(() => Math.random() - 0.5).slice(0, laneCount - (second ? 2 : isOfficeDay() ? 5 : 4));
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, beachPool[Math.floor(Math.random() * beachPool.length)]); // the beach is one of the tunnels
       pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, metroDest); // and so are the metro stations
       if (!second) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, mosques[Math.floor(Math.random() * mosques.length)]); // and a mosque
-      if (!second) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, isOfficeDay() ? officeDest : airportDest); // and, on a work day, your office, otherwise the airport
+      if (!second) {
+        pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, airportDest); // the airport is always there
+        if (isOfficeDay()) pool.splice(Math.floor(Math.random() * (pool.length + 1)), 0, officeDest); // and, on a work day, your office
+      }
       return pool;
     }
     let gateRow = null;
@@ -10459,14 +10462,14 @@ function drawOutdoorFront() {
         ctx.textAlign = 'center';
         ctx.font = '13px sans-serif';
         ctx.fillText(d.kind === 'beach' ? '\u{1F3D6}️' : d.kind === 'metro' ? '\u{1F687}' : d.kind === 'mosque' ? '\u{1F54C}' : d.kind === 'office' ? '\u{1F3E2}' : d.kind === 'airport' ? '\u2708\uFE0F' : '\u{1F6CD}️', cx, y - 88);
-        const words = d.name.split(' ');
+        const words = (d.short || d.name).split(' ');
         const half = Math.ceil(words.length / 2);
         const l1 = words.slice(0, half).join(' ');
         const l2 = words.slice(half).join(' ');
-        fitText(l1, laneW - 8, 9);
+        fitText(l1, laneW - 4, 9);
         ctx.fillText(l1, cx, y - 76);
         if (l2) {
-          fitText(l2, laneW - 8, 9);
+          fitText(l2, laneW - 4, 9);
           ctx.fillText(l2, cx, y - 65);
         }
         if (d.sub) {
