@@ -226,13 +226,13 @@
     let fuelOutT = 0;
     let station = null; // a fuel station floating by: { y, side, paid }
     let stationIn = 1300;
-    let storm = { state: 'none', t: 0, k: 0, kickIn: 120, kickV: 0, flash: 0, next: 1500 };
+    let storm = { state: 'none', t: 0, k: 0, kickIn: 120, kickV: 0, flash: 0, next: 420 };
     let shopOpen = false;
     let shopTab = 0;
     let shopMsg = '';
     let shield = 0;
     let island = null; // { y, side, dig, done, t }
-    let islandIn = 1500;
+    let islandIn = 600;
     let bursts = []; // treasure coins flying up
     let endReason = 'wreck';
     const heldBtn = { slow: null, boost: null };
@@ -326,11 +326,11 @@
       fuelOutT = 0;
       shield = upLevel[1];
       island = null;
-      islandIn = 1500;
+      islandIn = 600;
       bursts = [];
       station = null;
       stationIn = 1300;
-      storm = { state: 'none', t: 0, k: 0, kickIn: 120, kickV: 0, flash: 0, next: 1500 };
+      storm = { state: 'none', t: 0, k: 0, kickIn: 120, kickV: 0, flash: 0, next: 420 };
       endReason = 'wreck';
       boostEnergy = 100;
       boosting = false;
@@ -612,7 +612,7 @@
         st.k = Math.max(0, 1 - st.t / 160);
         if (st.t > 160) {
           st.state = 'none';
-          st.next = 1800 + Math.random() * 1200;
+          st.next = 1200 + Math.random() * 800;
           missionEvent('storm');
           say('The storm has passed ☀️');
         }
@@ -705,7 +705,7 @@
       } else if (!inside && !island.done) island.dig = Math.max(0, island.dig - step / 160);
       if (island.y > H + 150) {
         island = null;
-        islandIn = 1700 + Math.random() * 900;
+        islandIn = 1100 + Math.random() * 700;
       }
     }
 
@@ -1789,6 +1789,10 @@
       ctx.fillText(title, W / 2, H / 2 - 16);
       ctx.font = '18px sans-serif';
       ctx.fillText(subtitle, W / 2, H / 2 + 20);
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillStyle = '#ffe066';
+      ctx.fillText('\u{1F3EA} The Harbor shop is at the dock: boats and upgrades!', W / 2, H / 2 + 56);
+      ctx.fillText('\u{1F3C6} Check your daily mission there too', W / 2, H / 2 + 80);
     }
 
     function draw() {
