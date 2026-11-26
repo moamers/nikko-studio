@@ -277,8 +277,8 @@
 
     const carStartY = H - 130;
     const car = { x: W / 2, y: carStartY, w: 36, h: 60 };
-    const carColor = '#d62828'; // red
-    const carOutline = '#8c1a1a';
+    let carColor = '#d62828'; // red
+    let carOutline = '#8c1a1a';
 
     function roundedRect(x, y, w, h, r) {
       ctx.beginPath();
@@ -714,6 +714,13 @@
 
     function startCrash() {
       if (crashing || gameOver) return;
+      if (leg === 'abroad') {
+        traffic = traffic.filter((o) => o.y < car.y - 200);
+        invuln = 90;
+        say('Bump! \u{1F697}\u{1F4A5} Careful with the rental car!', 120);
+        blip(150, 90, 0.3, 0.12);
+        return;
+      }
       crashing = true;
       crashTimer = crashDuration;
       crashAngle = 0;
@@ -936,6 +943,10 @@
     }
 
     function enterLot() {
+      if (leg === 'abroad') {
+        arriveAbroad(ab.target);
+        return;
+      }
       phase = 'park';
       lotStation = dest.station || null;
       makeLot(dest.kind);
@@ -1901,7 +1912,7 @@
       if (flight.t >= 420) {
         const f = flight;
         flight = null;
-        if (f.dir === 'out') enterHoliday(f.i);
+        if (f.dir === 'out') enterArrivals(f.i);
         else {
           airportTripDone = true;
           bagPacked = false;
@@ -7269,6 +7280,593 @@
       ctx.fillText('Hurry up ⏩', 200, 552);
     }
 
+    // ---------- abroad: land, collect your bag, rent a car or take the bus, find a hotel, come back ----------
+    let abOpen = null; // 'bags' | 'map' | 'place' | 'hotel' | 'rental' | 'bus'
+    const ab = { i: 0, loc: 'airport', car: false, hotelDone: false, visited: {}, t: 0, bagGot: false, msg: '', place: null, target: null, souv: [], photo: false, hStage: 'desk', food: 0, rentalPick: -1 };
+    const abPlaces = [
+      [
+        { id: 'towers', name: 'Kuwait Towers', emoji: '🗼', sky: ['#6fc0f0', '#e9f6ff'], ground: '#e8d6a8', col: '#2ba3c7', fact: 'The Kuwait Towers stand by the sea. One ball holds water!' },
+        { id: 'avenues', name: 'The Avenues Mall', emoji: '🛍️', sky: ['#7fb7e6', '#f2e6ff'], ground: '#d7c2e0', col: '#8e5bd0', fact: 'The Avenues is one of the biggest malls in Kuwait.' },
+        { id: 'souq', name: 'Souq Mubarakiya', emoji: '🏺', sky: ['#f4b97a', '#ffe9c9'], ground: '#c99a62', col: '#c9783a', fact: 'An old market with spices, sweets and lots of lamps.' },
+        { id: 'mosque', name: 'Grand Mosque', emoji: '🕌', sky: ['#78c0ee', '#fff4d6'], ground: '#e9dcc0', col: '#2fa36b', fact: 'The Grand Mosque of Kuwait has a huge golden dome.' },
+        { id: 'hotel', name: 'Kuwait Hotel', emoji: '🏨', col: '#d6457d' },
+        { id: 'airport', name: 'Kuwait Airport', emoji: '✈️', col: '#1b4f8a' },
+      ],
+      [
+        { id: 'sutton', name: 'Sutton', emoji: '🏘️', sky: ['#a9b4be', '#dde3e8'], ground: '#7fb069', col: '#6aa84f', fact: 'Sutton is a town in south London with a big green park.' },
+        { id: 'kingston', name: 'Kingston', emoji: '🏰', sky: ['#9fb0c0', '#e2e8ee'], ground: '#8cbf7a', col: '#4f7cac', fact: 'Kingston is by the River Thames, with a market and a palace nearby.' },
+        { id: 'london', name: 'Central London', emoji: '🎡', sky: ['#9aa5b1', '#d4dae0'], ground: '#9aa8a0', col: '#c0392b', fact: 'Big Ben, red buses and the London Eye are all in the middle of London!' },
+        { id: 'tower', name: 'Tower Bridge', emoji: '🌉', sky: ['#a7b3be', '#dfe5ea'], ground: '#7d95a8', col: '#3d6a9e', fact: 'Tower Bridge opens in the middle to let tall ships go by.' },
+        { id: 'hotel', name: 'London Hotel', emoji: '🏨', col: '#d6457d' },
+        { id: 'airport', name: 'Heathrow Airport', emoji: '✈️', col: '#1b4f8a' },
+      ],
+      [
+        { id: 'acropolis', name: 'The Acropolis', emoji: '🏛️', sky: ['#6fc0f0', '#eaf7ff'], ground: '#d9cdb0', col: '#3b82c4', fact: 'The Acropolis is a very old hill with temples, in Athens.' },
+        { id: 'plaka', name: 'Plaka Old Town', emoji: '🍽️', sky: ['#7cc7f2', '#fff3d9'], ground: '#e2c9a0', col: '#d98c2b', fact: 'Little streets with white houses, cafes and souvenir shops.' },
+        { id: 'beach', name: 'Glyfada Beach', emoji: '🏖️', sky: ['#58b9ee', '#e6f7ff'], ground: '#f1dfa7', col: '#00a6c8', fact: 'A sunny beach by the Greek sea, near Athens.' },
+        { id: 'sounion', name: 'Cape Sounion', emoji: '🌅', sky: ['#f6a65e', '#ffe0b0'], ground: '#b9d3e8', col: '#e0702d', fact: 'An old temple on a cliff, where the sunset is amazing.' },
+        { id: 'hotel', name: 'Athens Hotel', emoji: '🏨', col: '#d6457d' },
+        { id: 'airport', name: 'Athens Airport', emoji: '✈️', col: '#1b4f8a' },
+      ],
+    ];
+    const abCars = [
+      { name: 'Little Mini', col: '#2a9d8f', out: '#17665d' },
+      { name: 'Red Racer', col: '#d62828', out: '#8c1a1a' },
+      { name: 'Sunny Van', col: '#ffb703', out: '#a67c00' },
+    ];
+    const abFoods = [['🥐', 'Croissant'], ['🍳', 'Eggs'], ['🥞', 'Pancakes'], ['☕', 'Coffee'], ['🍊', 'Orange']];
+    const abPlace = (id) => abPlaces[ab.i].find((p) => p.id === id);
+    const abCanFly = () => ab.loc === 'airport' && ab.hotelDone && !ab.car;
+    const abBags = ['#8e44ad', '#e67e22', '#2c3e50', '#16a085', '#c0392b', '#7f8c8d', '#2980b9'];
+    function enterArrivals(i) {
+      ab.i = i;
+      ab.loc = 'airport';
+      ab.car = false;
+      ab.hotelDone = false;
+      ab.visited = {};
+      ab.bagGot = false;
+      ab.hStage = 'desk';
+      ab.msg = '';
+      phase = 'abroad';
+      hold = null;
+      addScore(10);
+      abOpen = 'bags';
+      ab.t = 0;
+      say('Welcome to ' + airportCountries[i].name + '! \u{1F389} +10', 200);
+      [523, 659, 784].forEach((q, j) => blip(q, q, 0.2, 0.1, j * 0.1));
+    }
+    function openAb(kind) {
+      abOpen = kind;
+      ab.t = 0;
+      ab.msg = '';
+      hold = null;
+      blip(660, 880, 0.12, 0.07);
+    }
+    function arriveAbroad(id) {
+      phase = 'abroad';
+      ab.loc = id;
+      boosting = false;
+      police = null;
+      traffic = [];
+      if (audioCtx && sirenGain) sirenGain.gain.setValueAtTime(0, audioCtx.currentTime);
+      const pl = abPlace(id);
+      if (pl.id === 'hotel') {
+        ab.hStage = ab.hotelDone ? 'done' : 'desk';
+        openAb('hotel');
+      } else {
+        ab.place = pl;
+        ab.photo = false;
+        ab.souv = pl.id === 'airport' ? [] : [0, 1, 2].map((k) => ({ x: 70 + k * 130 + Math.random() * 30, y: 350 + Math.random() * 70, got: false }));
+        openAb('place');
+        if (pl.id !== 'airport' && !ab.visited[id]) {
+          ab.visited[id] = true;
+          addScore(5);
+        }
+      }
+    }
+    function startAbroadDrive(pl) {
+      abOpen = null;
+      startLeg('home');
+      leg = 'abroad';
+      dest = { name: pl.name, ar: '', colour: pl.col, kind: 'abroad', short: pl.name };
+      tripLen = 2300 + Math.random() * 500;
+      say('Driving to ' + pl.name + '! \u{1F697}' + (ab.i === 1 ? ' In England we drive on the left!' : ''), 220);
+    }
+    function abTravel(pl) {
+      ab.target = pl.id;
+      if (ab.car) startAbroadDrive(pl);
+      else openAb('bus');
+    }
+    function updateAb(step) {
+      if (!abOpen) return;
+      ab.t += step;
+      if (abOpen === 'bus' && ab.t >= 150) arriveAbroad(ab.target);
+      if (abOpen === 'hotel' && ab.hStage === 'night' && ab.t >= 200) {
+        ab.hStage = 'morning';
+        ab.food = 0;
+        ab.t = 0;
+        [523, 659, 784].forEach((q, j) => blip(q, q, 0.2, 0.09, j * 0.1));
+      }
+    }
+    function bagPos(k) {
+      const a = ab.t * 0.012 + k * 0.9;
+      return { x: 200 + Math.cos(a) * 140, y: 330 + Math.sin(a) * 55, a };
+    }
+    function abPress(p) {
+      if (abOpen === 'bags') {
+        if (!ab.bagGot) {
+          for (let k = 0; k < 7; k++) {
+            const b = bagPos(k);
+            if (Math.hypot(p.x - b.x, p.y - b.y) < 30) {
+              if (k === 2) {
+                ab.bagGot = true;
+                addScore(5);
+                ab.msg = 'You got your suitcase! 🧳 +5';
+                [659, 784, 1047].forEach((q, j) => blip(q, q, 0.15, 0.09, j * 0.1));
+              } else {
+                ab.msg = 'That is not your bag! Look for the green circle 🟢';
+                blip(220, 160, 0.2, 0.07);
+              }
+              return;
+            }
+          }
+        } else if (hit(p, 80, 500, 240, 46)) {
+          openAb('map');
+          ab.msg = 'Find a hotel to stay in! 🏨';
+        }
+      } else if (abOpen === 'map') {
+        if (ab.loc === 'airport' && !ab.car && hit(p, 20, 140, 180, 44)) {
+          openAb('rental');
+          ab.rentalPick = -1;
+          return;
+        }
+        const pls = abPlaces[ab.i];
+        for (let k = 0; k < pls.length; k++) {
+          if (hit(p, 20 + (k % 2) * 190, 222 + Math.floor(k / 2) * 114, 180, 104)) {
+            const pl = pls[k];
+            if (pl.id === ab.loc) arriveAbroad(pl.id);
+            else abTravel(pl);
+            return;
+          }
+        }
+      } else if (abOpen === 'rental') {
+        for (let k = 0; k < 3; k++) if (hit(p, 20 + k * 126, 250, 114, 160)) ab.rentalPick = k;
+        if (ab.rentalPick >= 0 && hit(p, 80, 450, 240, 46)) {
+          const c = abCars[ab.rentalPick];
+          carColor = c.col;
+          carOutline = c.out;
+          ab.car = true;
+          addScore(5);
+          openAb('map');
+          ab.msg = 'You have the keys! 🔑 Tap a place to drive there. +5';
+          blip(784, 1047, 0.2, 0.1);
+        } else if (hit(p, 310, 14, 76, 30)) openAb('map');
+      } else if (abOpen === 'place') {
+        const pl = ab.place;
+        if (hit(p, 80, 530, 240, 44)) {
+          openAb('map');
+          return;
+        }
+        if (pl.id === 'airport') {
+          if (ab.car && hit(p, 80, 330, 240, 46)) {
+            ab.car = false;
+            carColor = '#d62828';
+            carOutline = '#8c1a1a';
+            addScore(10);
+            ab.msg = 'Car returned! 🔑 +10';
+            blip(784, 1047, 0.2, 0.1);
+          } else if (!ab.car && abCanFly() && hit(p, 80, 330, 240, 46)) {
+            abOpen = null;
+            startFlight(ab.i, 'back');
+          }
+          return;
+        }
+        if (hit(p, 100, 160, 200, 140) && !ab.photo) {
+          ab.photo = true;
+          addScore(2);
+          ab.msg = '📸 Click! What a nice photo! +2';
+          blip(1200, 1200, 0.08, 0.1);
+        }
+        ab.souv.forEach((sv) => {
+          if (!sv.got && Math.hypot(p.x - sv.x, p.y - sv.y) < 30) {
+            sv.got = true;
+            addScore(3);
+            ab.msg = 'A souvenir! 🎁 +3 (' + ab.souv.filter((q) => q.got).length + '/3)';
+            blip(900, 1500, 0.12, 0.1);
+            if (ab.souv.every((q) => q.got)) {
+              addScore(5);
+              ab.msg = 'All 3 souvenirs! 🎉 +5';
+            }
+          }
+        });
+      } else if (abOpen === 'hotel') {
+        if (ab.hStage === 'desk' && hit(p, 80, 470, 240, 46)) {
+          ab.hStage = 'room';
+          addScore(5);
+          blip(784, 1047, 0.2, 0.1);
+        } else if (ab.hStage === 'room' && (hit(p, 80, 470, 240, 46) || hit(p, 60, 300, 280, 120))) {
+          ab.hStage = 'night';
+          ab.t = 0;
+          blip(300, 150, 0.8, 0.05);
+        } else if (ab.hStage === 'morning') {
+          for (let i = 0; i < 5; i++) {
+            if (hit(p, 24 + i * 70, 300, 62, 70)) {
+              ab.food++;
+              if (ab.food <= 6) addScore(1);
+              ab.msg = 'Yum! ' + abFoods[i][0] + ' ' + abFoods[i][1];
+              blip(500 + i * 80, 700, 0.1, 0.07);
+            }
+          }
+          if (hit(p, 80, 470, 240, 46)) {
+            ab.hotelDone = true;
+            addScore(20);
+            openAb('map');
+            ab.msg = 'Hotel done! 🏨 +20 ' + (ab.car ? 'Return the car at the airport.' : 'Go to the airport when you are ready.');
+            [523, 659, 784, 1047].forEach((q, j) => blip(q, q, 0.18, 0.1, j * 0.08));
+          }
+        }
+        if (hit(p, 310, 14, 76, 30) && (ab.hStage === 'desk' || ab.hStage === 'room' || ab.hStage === 'done')) openAb('map');
+      }
+    }
+    function abTitle(text, sub, back) {
+      ctx.fillStyle = '#1b4f8a';
+      ctx.fillRect(0, 0, W, 56);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText(text, 16, 26);
+      ctx.font = '12px sans-serif';
+      fitText(sub, back ? 280 : 360, 12, '');
+      ctx.fillText(sub, 16, 46);
+      if (back) {
+        roundedRect(310, 14, 76, 30, 15);
+        ctx.fillStyle = 'rgba(255,255,255,0.25)';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText('🗺️ Map', 348, 34);
+      }
+    }
+    function abBtn(label, colour, y, on) {
+      roundedRect(80, y, 240, 46, 23);
+      ctx.fillStyle = on === false ? '#9aa5b1' : colour || '#2fbf71';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(label, 200, y + 29);
+    }
+    function drawAbPanel() {
+      ctx.save();
+      ctx.textAlign = 'center';
+      ({ bags: drawAbBags, map: drawAbMap, rental: drawAbRental, place: drawAbPlace, hotel: drawAbHotel, bus: drawAbBus })[abOpen]();
+      ctx.restore();
+    }
+    function drawAbBags() {
+      const c = airportCountries[ab.i];
+      ctx.fillStyle = '#dfe5ea';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#c8cfd6';
+      ctx.fillRect(0, 230, W, H - 230);
+      abTitle('🛄 BAGGAGE CLAIM', '🛬 You landed in ' + c.name + '! Find your suitcase', false);
+      drawFlagC(330, 12, 44, 30, c.flag);
+      // the carousel
+      ctx.strokeStyle = '#2b3139';
+      ctx.lineWidth = 46;
+      ctx.beginPath();
+      ctx.ellipse(200, 330, 140, 55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = '#4a525c';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 14]);
+      ctx.lineDashOffset = -ab.t;
+      ctx.beginPath();
+      ctx.ellipse(200, 330, 140, 55, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const order = [0, 1, 2, 3, 4, 5, 6].map((k) => ({ k, b: bagPos(k) })).sort((p, q) => p.b.y - q.b.y);
+      order.forEach(({ k, b }) => {
+        if (k === 2 && ab.bagGot) return;
+        const col = k === 2 ? '#1b4f8a' : abBags[k];
+        if (k === 2) {
+          const pulse = 0.5 + 0.5 * Math.sin(frameCount / 8);
+          ctx.fillStyle = 'rgba(47,191,113,' + (0.18 + 0.15 * pulse) + ')';
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, 32 + pulse * 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#2fbf71';
+          ctx.lineWidth = 5;
+          ctx.stroke();
+        }
+        roundedRect(b.x - 18, b.y - 13, 36, 26, 5);
+        ctx.fillStyle = col;
+        ctx.fill();
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(b.x - 6, b.y - 18, 12, 5);
+        if (k === 2) {
+          ctx.fillStyle = '#ffd23f';
+          ctx.fillRect(b.x - 18, b.y - 3, 36, 6);
+        }
+      });
+      ctx.fillStyle = '#10151c';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(ab.bagGot ? 'Got it! 🎉' : 'Tap YOUR suitcase: the blue one with the green circle 🟢', 200, 130);
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillStyle = '#4a4f57';
+      ctx.fillText(ab.msg, 200, 470);
+      if (ab.bagGot) {
+        ctx.font = '50px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('🧳', 200, 430);
+        abBtn('Out to arrivals ➡️', '#2fbf71', 500);
+      }
+    }
+    function drawAbMap() {
+      const c = airportCountries[ab.i];
+      const pls = abPlaces[ab.i];
+      ctx.fillStyle = '#e8f0e4';
+      ctx.fillRect(0, 0, W, H);
+      abTitle('🗺️ ' + c.name.toUpperCase(), 'You are at: ' + abPlace(ab.loc).name, false);
+      drawFlagC(330, 12, 44, 30, c.flag);
+      // the things to do
+      roundedRect(16, 60, 368, 74, 12);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#1b4f8a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#1b4f8a';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText((ab.hotelDone ? '✅' : '⬜') + ' Find a hotel and stay the night 🏨', 30, 83);
+      ctx.fillText((ab.car ? '⬜ Return your rental car to the airport 🚗' : '✅ No rental car to return'), 30, 103);
+      ctx.fillText(abCanFly() ? '✅ Ready! Go to the airport and fly home ✈️' : '⬜ Then fly home to Dubai ✈️', 30, 123);
+      ctx.textAlign = 'center';
+      if (ab.loc === 'airport' && !ab.car) {
+        roundedRect(20, 140, 180, 44, 22);
+        ctx.fillStyle = '#e08a1e';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('🚗 Rent a car', 110, 168);
+        ctx.fillStyle = '#4a4f57';
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.fillText('or tap a place to take', 208, 158);
+        ctx.fillText('the bus 🚌', 208, 174);
+        ctx.textAlign = 'center';
+      } else {
+        ctx.fillStyle = '#4a4f57';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(ab.car ? '🚗 You have a rental car: tap a place to drive there!' : '🚌 Tap a place to take the bus there', 200, 168);
+      }
+      ctx.fillStyle = '#2b5a2b';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(ab.msg, 200, 208);
+      pls.forEach((pl, k) => {
+        const x = 20 + (k % 2) * 190;
+        const y = 222 + Math.floor(k / 2) * 114;
+        roundedRect(x, y, 180, 104, 14);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = pl.col;
+        ctx.lineWidth = pl.id === ab.loc ? 5 : 3;
+        ctx.stroke();
+        ctx.fillStyle = '#000000';
+        ctx.font = '40px sans-serif';
+        ctx.fillText(pl.emoji, x + 90, y + 52);
+        ctx.fillStyle = '#2b2230';
+        fitText(pl.name, 168, 14);
+        ctx.fillText(pl.name, x + 90, y + 78);
+        ctx.font = '11px sans-serif';
+        ctx.fillStyle = '#5b6a7a';
+        ctx.fillText(pl.id === ab.loc ? '📍 You are here' : pl.id === 'hotel' ? (ab.hotelDone ? '✅ Stayed' : '🏨 Find it!') : pl.id === 'airport' ? 'Fly home from here' : ab.visited[pl.id] ? '✅ Visited' : 'Tap to go', x + 90, y + 95);
+      });
+    }
+    function drawAbRental() {
+      ctx.fillStyle = '#eef1f5';
+      ctx.fillRect(0, 0, W, H);
+      abTitle('🚗 CAR RENTAL', 'Pick a car for your holiday', true);
+      ctx.font = '52px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('🧑‍💼', 200, 130);
+      roundedRect(40, 150, 320, 50, 14);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#1b4f8a';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#1b4f8a';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText('Hello! Which car would you like?', 200, 181);
+      abCars.forEach((c, k) => {
+        const x = 20 + k * 126;
+        roundedRect(x, 250, 114, 160, 14);
+        ctx.fillStyle = ab.rentalPick === k ? '#d9f7e3' : '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = ab.rentalPick === k ? '#2fbf71' : '#1b4f8a';
+        ctx.lineWidth = ab.rentalPick === k ? 5 : 3;
+        ctx.stroke();
+        drawCar(x + 57, 330, 44, 72, c.col, c.out);
+        ctx.fillStyle = '#2b2230';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(c.name, x + 57, 395);
+      });
+      ctx.fillStyle = '#4a4f57';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(ab.rentalPick < 0 ? 'Tap a car' : 'Nice choice! Remember: bring it back to the airport.', 200, 432);
+      abBtn('Get the keys 🔑', '#2fbf71', 450, ab.rentalPick >= 0);
+    }
+    function drawAbBus() {
+      const pl = abPlace(ab.target);
+      ctx.fillStyle = '#9fd3ee';
+      ctx.fillRect(0, 0, W, 330);
+      ctx.fillStyle = '#7fb069';
+      ctx.fillRect(0, 330, W, 90);
+      ctx.fillStyle = '#4a525c';
+      ctx.fillRect(0, 400, W, 130);
+      ctx.fillStyle = '#ffd23f';
+      for (let x = -((ab.t * 5) % 60); x < W; x += 60) ctx.fillRect(x, 462, 36, 5);
+      ctx.font = '34px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      for (let k = 0; k < 6; k++) ctx.fillText(k % 2 ? '🌳' : '🏠', ((k * 90 - ab.t * 2.5) % 540 + 540) % 540 - 70, 360);
+      ctx.font = '90px sans-serif';
+      ctx.fillText('🚌', 200, 450 + Math.sin(ab.t / 4) * 3);
+      ctx.fillStyle = 'rgba(10,18,28,0.7)';
+      roundedRect(30, 70, 340, 70, 16);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('🚌 Bus to ' + pl.name, 200, 100);
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      roundedRect(70, 116, 260, 8, 4);
+      ctx.fill();
+      ctx.fillStyle = '#ffd23f';
+      roundedRect(70, 116, 260 * Math.min(1, ab.t / 150), 8, 4);
+      ctx.fill();
+    }
+    function drawAbPlace() {
+      const pl = ab.place;
+      if (pl.id === 'airport') {
+        ctx.fillStyle = '#e8eef5';
+        ctx.fillRect(0, 0, W, H);
+        abTitle('✈️ ' + pl.name.toUpperCase(), 'Car park and departures', false);
+        ctx.textAlign = 'center';
+        ctx.font = '70px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('✈️', 200, 160);
+        ctx.fillStyle = '#1b4f8a';
+        ctx.font = 'bold 14px sans-serif';
+        const need = [];
+        if (!ab.hotelDone) need.push('🏨 stay in a hotel');
+        if (ab.car) need.push('🚗 return the rental car');
+        const tx = abCanFly() ? 'You have done everything! Ready to go home? 🇦🇪' : 'Before you fly home: ' + need.join(' and ');
+        fitText(tx, 360, 14);
+        ctx.fillText(tx, 200, 230);
+        ctx.fillStyle = '#2b5a2b';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(ab.msg, 200, 290);
+        if (ab.car) abBtn('🔑 Return the rental car', '#e08a1e', 330);
+        else abBtn('✈️ Fly home to Dubai', '#2fbf71', 330, abCanFly());
+        abBtn('🗺️ Back to the map', '#1b4f8a', 530);
+        return;
+      }
+      const sky = ctx.createLinearGradient(0, 0, 0, 400);
+      sky.addColorStop(0, pl.sky[0]);
+      sky.addColorStop(1, pl.sky[1]);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, 400);
+      ctx.fillStyle = pl.ground;
+      ctx.fillRect(0, 400, W, H - 400);
+      abTitle(pl.emoji + ' ' + pl.name.toUpperCase(), airportCountries[ab.i].name, false);
+      roundedRect(20, 66, 360, 40, 12);
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.fill();
+      ctx.fillStyle = '#1b4f8a';
+      fitText(pl.fact, 340, 12);
+      ctx.textAlign = 'center';
+      ctx.fillText(pl.fact, 200, 91);
+      ctx.font = '120px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText(pl.emoji, 200, 270 + Math.sin(frameCount / 40) * 3);
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#1b4f8a';
+      ctx.fillText(ab.photo ? '📸 Photo taken!' : '👆 Tap it to take a photo', 200, 310);
+      ab.souv.forEach((sv) => {
+        if (sv.got) return;
+        ctx.font = '34px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('🎁', sv.x, sv.y + Math.sin(frameCount / 14 + sv.x) * 5);
+      });
+      ctx.fillStyle = '#2b2230';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(ab.msg || 'Find the 3 gifts 🎁 on the ground!', 200, 490);
+      abBtn('🗺️ Back to the map', '#1b4f8a', 530);
+    }
+    function drawAbHotel() {
+      const st = ab.hStage;
+      const night = st === 'night';
+      ctx.fillStyle = night ? '#0f1730' : st === 'morning' ? '#fff3d1' : st === 'room' ? '#e7d3ea' : '#f1e7d2';
+      ctx.fillRect(0, 0, W, H);
+      abTitle('🏨 ' + abPlace('hotel').name.toUpperCase(), { desk: 'Reception', room: 'Your room', night: 'Good night...', morning: 'Good morning! Breakfast time', done: 'Reception' }[st], st === 'desk' || st === 'room' || st === 'done');
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      if (st === 'desk' || st === 'done') {
+        ctx.font = '60px sans-serif';
+        ctx.fillText('🧑‍💼', 200, 170);
+        roundedRect(30, 190, 340, 56, 14);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.fillStyle = '#7a3a5a';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(st === 'done' ? 'Thank you for staying with us!' : 'Welcome! Do you need a room for the night?', 200, 223);
+        if (st === 'desk') abBtn('Check in 🔑', '#d6457d', 470);
+      } else if (st === 'room') {
+        roundedRect(60, 330, 280, 100, 14);
+        ctx.fillStyle = '#c0485c';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        roundedRect(76, 336, 80, 34, 10);
+        ctx.fill();
+        ctx.fillStyle = '#7a3a5a';
+        ctx.fillRect(60, 400, 280, 30);
+        ctx.fillStyle = '#9fd3ee';
+        ctx.fillRect(140, 110, 120, 110);
+        ctx.strokeStyle = '#7d8a96';
+        ctx.lineWidth = 5;
+        ctx.strokeRect(140, 110, 120, 110);
+        ctx.font = '30px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('🌙', 200, 170);
+        ctx.fillStyle = '#7a3a5a';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText('A big day! Tap the bed to go to sleep', 200, 300);
+        abBtn('Go to sleep 😴', '#d6457d', 470);
+      } else if (st === 'night') {
+        ctx.fillStyle = '#ffffff';
+        for (let k = 0; k < 18; k++) ctx.fillRect((k * 83) % W, 70 + ((k * 47) % 300), 3, 3);
+        ctx.font = '70px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.fillText('🌙', 300, 160);
+        ctx.font = (30 + (ab.t % 60) / 3) + 'px sans-serif';
+        ctx.fillText('💤', 200, 360 - (ab.t % 60) / 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('Zzz... sleeping in the hotel', 200, 470);
+      } else {
+        ctx.font = '60px sans-serif';
+        ctx.fillText('☀️', 330, 120);
+        ctx.fillStyle = '#7a3a5a';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText('Tap the buffet and eat your breakfast!', 200, 150);
+        for (let i = 0; i < 5; i++) {
+          const x = 24 + i * 70;
+          roundedRect(x, 300, 62, 70, 12);
+          ctx.fillStyle = '#ffffff';
+          ctx.fill();
+          ctx.strokeStyle = '#d6457d';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.font = '30px sans-serif';
+          ctx.fillStyle = '#000000';
+          ctx.fillText(abFoods[i][0], x + 31, 338);
+          ctx.font = 'bold 10px sans-serif';
+          ctx.fillStyle = '#2b2230';
+          ctx.fillText(abFoods[i][1], x + 31, 360);
+        }
+        ctx.fillStyle = '#7a3a5a';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(ab.msg, 200, 420);
+        abBtn('Check out ✅', '#2fbf71', 470);
+      }
+    }
+
     function startSleep() {
       apt.sleep = 1;
       hm.goto = null;
@@ -8805,7 +9403,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
     let actLabel = null;
     function updateAct() {
       let label = null;
-      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen && !chooseOpen && !bathOpen && !packOpen && !airOpen) {
+      if (!gameOver && !liftOpen && !liftRide && !metroOpen && !fridgeOpen && !buddyAsk && !calOpen && !saltOpen && !taxiOpen && !repairOpen && !talk && !giftOpen && !chooseOpen && !bathOpen && !packOpen && !airOpen && !abOpen) {
         if (phase === 'park' && parked) label = '\u{1F6AA} Get out of the car';
         else if (phase === 'walk' && nearCar && carBroken && repairReady && lotKind === 'home') label = '\u{1F527} Help the engineer';
         else if (phase === 'walk' && nearCar && bootT <= 0 && (departing || (leg === 'out' && shopped))) label = !departing && mallBag.length && !bootDone ? '\u{1F9F3} Put the bags in the boot' : '\u{1F697} Get in the car';
@@ -8858,6 +9456,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       if (liftRide) return;
       if (liftOpen) {
         liftPress(p);
+        return;
+      }
+      if (abOpen) {
+        abPress(p);
         return;
       }
       if (airOpen) {
@@ -9194,7 +9796,10 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
       } else if (gateRow) {
         gateRow.y += dist;
       }
-      if (leg === 'home' && !arriving && travel >= tripLen) startArrival();
+      if ((leg === 'home' || leg === 'abroad') && !arriving && travel >= tripLen) {
+        startArrival();
+        if (leg === 'abroad') say('Arriving at ' + dest.name + '! \u{1F697}', 140);
+      }
       levelFlash = Math.max(0, levelFlash - step);
       shieldFlash = Math.max(0, shieldFlash - step);
       invuln = Math.max(0, invuln - step);
@@ -9236,7 +9841,8 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         }
       }
       if (airOpen) updateAirSteps(step);
-      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen || chooseOpen || bathOpen || packOpen || airOpen) return;
+      if (abOpen) updateAb(step);
+      if (liftOpen || metroOpen || fridgeOpen || buddyAsk || calOpen || saltOpen || taxiOpen || repairOpen || talk || giftOpen || chooseOpen || bathOpen || packOpen || airOpen || abOpen) return;
       if (phase === 'drive') updateDrive(step);
       else if (phase === 'park') updatePark(step);
       else if (phase === 'walk') updateWalk(step);
@@ -9604,7 +10210,7 @@ const TRAIN_DOC = "\u003c!doctype html>\u003chtml lang=\"en\">\u003chead>\u003cm
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 13px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText((leg === 'out' ? '\u{1F6E3}\uFE0F Choose a tunnel at 0 km' : '\u{1F3E0} Home') + ' \u2022 ' + Math.max(0, Math.ceil((tripLen - travel) / 700)) + ' km', W / 2, 26);
+        ctx.fillText((leg === 'out' ? '\u{1F6E3}\uFE0F Choose a tunnel at 0 km' : leg === 'abroad' ? '\u{1F697} ' + dest.name : '\u{1F3E0} Home') + ' \u2022 ' + Math.max(0, Math.ceil((tripLen - travel) / 700)) + ' km', W / 2, 26);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
         roundedRect(64, 33, W - 128, 7, 3.5);
         ctx.fill();
@@ -12319,6 +12925,10 @@ function drawOutdoorFront() {
       else if (phase === 'taxistop') drawTaxiStop();
       else if (phase === 'flight') drawFlight();
       else if (phase === 'holiday') drawHoliday();
+      else if (phase === 'abroad') {
+        ctx.fillStyle = '#e8f0e4';
+        ctx.fillRect(0, 0, W, H);
+      }
       else if (phase === 'mall') drawMall();
       else if (phase === 'beach') drawBeach();
       else if (phase === 'apartment' || phase === 'start' || phase === 'homedone') {
@@ -12381,6 +12991,7 @@ function drawOutdoorFront() {
       if (bathOpen) drawBathTub();
       if (packOpen) drawPackPanel();
       if (airOpen) drawAirPanel();
+      if (abOpen) drawAbPanel();
       if (talk) drawTalkPanel();
       if (liftRide) drawLiftRide();
       if (phase === 'start') {
