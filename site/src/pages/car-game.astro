@@ -1915,6 +1915,16 @@
         if (f.dir === 'out') enterArrivals(f.i);
         else {
           airportTripDone = true;
+          if (ab.homeCar) {
+            car.x = ab.homeCar.x;
+            car.y = ab.homeCar.y;
+          }
+          leg = 'out';
+          carColor = '#d62828';
+          carOutline = '#8c1a1a';
+          crashing = false;
+          arriving = false;
+          traffic = [];
           bagPacked = false;
           airStage = 'checkin';
           airCountry = -1;
@@ -7320,6 +7330,7 @@
     const abBags = ['#8e44ad', '#e67e22', '#2c3e50', '#16a085', '#c0392b', '#7f8c8d', '#2980b9'];
     function enterArrivals(i) {
       ab.i = i;
+      ab.homeCar = { x: car.x, y: car.y }; // where your own car is parked in the airport car park
       ab.loc = 'airport';
       ab.car = false;
       ab.hotelDone = false;
