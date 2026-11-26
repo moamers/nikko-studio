@@ -108,7 +108,7 @@
 
 <div class="wrap">
   <h1>&#9973; Boat Dodge</h1>
-  <p class="sub">Drag your finger (or mouse) left and right to sail. Dodge the rocks and sharks, grab the gold!</p>
+  <p class="sub">Board your boat at the dock, then drag left and right to sail. Dodge the rocks and sharks, grab the gold! Too slow and the police come: hit Boost to get away.</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -138,7 +138,7 @@
     const keySpeed = 9;
 
     let targetX = boat.x;
-    let keys = { left: false, right: false };
+    let keys = { left: false, right: false, slow: false, boost: false };
 
     let rocks = []; // rocks and sharks to dodge
     let coins = []; // gold to collect
@@ -153,6 +153,23 @@
     let scrollY = 0; // makes the waves drift past
     let frame = 0;
     let lastTime = null;
+
+    // wallet, police, boost and the dock
+    let wallet = 500;
+    let boostEnergy = 100;
+    let boosting = false;
+    let slowTimer = 0;
+    let policeCool = 0;
+    let police = null; // { g: how far behind you, state: 'chase' | 'caught', x, flash, fine, t }
+    let dock = null; // { stage: 'walk' | 'board' | 'rope' | 'castoff', sx, goal, t, off, ... }
+    let toast = null; // { text, t }
+    const heldBtn = { slow: null, boost: null };
+    const slowBtn = { x: 12, y: 542, w: 96, h: 44 };
+    const boostBtn = { x: 292, y: 542, w: 96, h: 44 };
+    const dockBtn = { x: 90, y: 536, w: 220, h: 48 };
+    const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
+    const slowHeld = () => keys.slow || heldBtn.slow !== null;
+    const boostHeld = () => keys.boost || heldBtn.boost !== null;
 
     // Sinking animation (the boat tips over and settles in the water, still
     // fully visible).
@@ -212,13 +229,99 @@
       crashT = 0;
       gameOver = false;
       started = true;
+      wallet = 500;
+      boostEnergy = 100;
+      boosting = false;
+      slowTimer = 0;
+      policeCool = 0;
+      police = null;
+      toast = null;
+      heldBtn.slow = null;
+      heldBtn.boost = null;
       scoreEl.textContent = 'Score: 0';
       levelEl.textContent = 'Level 1';
       spawnRock();
     }
 
+    // before every trip you go to the ship dock, walk to your boat and board it
+    function enterDock() {
+      dock = { stage: 'walk', sx: 44, goal: null, t: 0, off: 0, face: 1, px: 0, py: 0, fromX: 0 };
+      started = false;
+      gameOver = false;
+      crashing = false;
+      crashT = 0;
+      boat.x = W / 2;
+      targetX = boat.x;
+      rocks = [];
+      coins = [];
+      splashes = [];
+      police = null;
+      boosting = false;
+      toast = null;
+    }
+
     function startOrRestart() {
-      if (!started || gameOver) resetGame();
+      if ((!started || gameOver) && !dock) enterDock();
+    }
+
+    function say(text) {
+      toast = { text, t: 170 };
+    }
+
+    function addPoints(n) {
+      score += n;
+      scoreEl.textContent = 'Score: ' + score;
+    }
+
+    function spawnPolice() {
+      police = { g: 200, state: 'chase', x: boat.x, flash: 0, fine: 0, t: 0 };
+      say('\u{1F6A8} Police boat! You are too slow. Boost to get away!');
+    }
+
+    function payFine() {
+      const amount = Math.min(wallet, police.fine);
+      wallet -= amount;
+      police = null;
+      slowTimer = 0;
+      policeCool = 900;
+      say(amount > 0 ? 'Fine paid: -' + amount + ' \u{1F4B0} You may go. Sail on!' : 'You have no money, so only a warning. Sail on!');
+    }
+
+    function dockPress(p) {
+      if (dock.stage === 'walk') {
+        if (dock.sx > 105 && inRect(p, dockBtn)) {
+          dock.stage = 'board';
+          dock.t = 0;
+          dock.fromX = dock.sx;
+          dock.goal = null;
+        } else if (p.y < 530) dock.goal = Math.max(24, Math.min(140, p.x));
+      } else if (dock.stage === 'rope' && inRect(p, dockBtn)) {
+        dock.stage = 'castoff';
+        dock.t = 0;
+      }
+    }
+
+    function press(p, id) {
+      if (dock) {
+        dockPress(p);
+        return;
+      }
+      if (police && police.state === 'caught') {
+        if (police.t > 30 && inRect(p, { x: 90, y: 330, w: 220, h: 50 })) payFine();
+        return;
+      }
+      if (!started || gameOver) {
+        startOrRestart();
+        return;
+      }
+      if (inRect(p, slowBtn)) heldBtn.slow = id;
+      else if (inRect(p, boostBtn)) heldBtn.boost = id;
+      else targetX = p.x;
+    }
+
+    function release(id) {
+      if (heldBtn.slow === id) heldBtn.slow = null;
+      if (heldBtn.boost === id) heldBtn.boost = null;
     }
 
     function startCrash() {
@@ -247,46 +350,94 @@
       return t * t * (3 - 2 * t);
     }
 
-    function pointerToX(clientX) {
+    function pointerPt(clientX, clientY) {
       const rect = canvas.getBoundingClientRect();
-      return ((clientX - rect.left) / rect.width) * W;
+      return { x: ((clientX - rect.left) / rect.width) * W, y: ((clientY - rect.top) / rect.height) * H };
     }
 
     canvas.addEventListener('mousedown', (e) => {
-      startOrRestart();
-      targetX = pointerToX(e.clientX);
+      press(pointerPt(e.clientX, e.clientY), 'mouse');
     });
     canvas.addEventListener('mousemove', (e) => {
-      targetX = pointerToX(e.clientX);
+      const p = pointerPt(e.clientX, e.clientY);
+      if (started && !gameOver && !dock && !inRect(p, slowBtn) && !inRect(p, boostBtn) && heldBtn.slow === null && heldBtn.boost === null) targetX = p.x;
     });
+    window.addEventListener('mouseup', () => release('mouse'));
     canvas.addEventListener(
       'touchstart',
       (e) => {
-        startOrRestart();
-        targetX = pointerToX(e.touches[0].clientX);
+        for (const t of e.changedTouches) press(pointerPt(t.clientX, t.clientY), t.identifier);
       },
       { passive: true }
     );
     canvas.addEventListener(
       'touchmove',
       (e) => {
-        targetX = pointerToX(e.touches[0].clientX);
+        for (const t of e.changedTouches) {
+          const p = pointerPt(t.clientX, t.clientY);
+          if (started && !gameOver && !dock && t.identifier !== heldBtn.slow && t.identifier !== heldBtn.boost) targetX = p.x;
+        }
       },
       { passive: true }
     );
+    const endTouch = (e) => {
+      for (const t of e.changedTouches) release(t.identifier);
+    };
+    canvas.addEventListener('touchend', endTouch, { passive: true });
+    canvas.addEventListener('touchcancel', endTouch, { passive: true });
 
     window.addEventListener('keydown', (e) => {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = true;
       if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = true;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.slow = true;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.boost = true;
       if (e.code === 'Space') {
         e.preventDefault();
-        startOrRestart();
+        if (dock) dockPress({ x: 200, y: 560 });
+        else if (police && police.state === 'caught') press({ x: 200, y: 350 }, 'key');
+        else startOrRestart();
       }
+      if (e.code.startsWith('Arrow')) e.preventDefault();
     });
     window.addEventListener('keyup', (e) => {
       if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
       if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
+      if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.slow = false;
+      if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.boost = false;
     });
+
+    function updateDock(step) {
+      dock.t += step;
+      if (dock.stage === 'walk') {
+        if (keys.left || keys.right) {
+          dock.goal = null;
+          dock.face = keys.left ? -1 : 1;
+          dock.sx += dock.face * 2.8 * step;
+        } else if (dock.goal !== null) {
+          const d = dock.goal - dock.sx;
+          if (Math.abs(d) > 2) {
+            dock.face = Math.sign(d);
+            dock.sx += Math.sign(d) * Math.min(Math.abs(d), 2.8 * step);
+          } else dock.goal = null;
+        }
+        dock.sx = Math.max(24, Math.min(140, dock.sx));
+      } else if (dock.stage === 'board') {
+        const p = Math.min(1, dock.t / 45);
+        dock.px = dock.fromX + (W / 2 - dock.fromX) * p;
+        dock.py = 520 + (boatY - 520) * p - Math.sin(p * Math.PI) * 24;
+        if (p >= 1) {
+          dock.stage = 'rope';
+          dock.t = 0;
+        }
+      } else if (dock.stage === 'castoff') {
+        dock.off += 3.4 * step;
+        scrollY = (scrollY + 3.4 * step) % 120;
+        if (dock.off > 280) {
+          dock = null;
+          resetGame();
+        }
+      }
+    }
 
     function update() {
       const now = performance.now();
@@ -297,6 +448,17 @@
 
       splashes.forEach((s) => (s.age += step));
       splashes = splashes.filter((s) => s.age < 40);
+
+      if (dock) {
+        updateDock(step);
+        scrollY = (scrollY + 2 * step) % 120;
+        return;
+      }
+
+      if (toast) {
+        toast.t -= step;
+        if (toast.t <= 0) toast = null;
+      }
 
       if (crashing) {
         crashTimer -= step;
@@ -311,7 +473,24 @@
 
       // The sea keeps drifting even on the start and game-over screens.
       const running = started && !gameOver;
-      const dist = (running ? worldSpeed() : 2) * step;
+      if (police && police.state === 'caught') {
+        police.t += step;
+        police.flash += step;
+        return; // the police have stopped you: nothing moves until you pay
+      }
+      let mult = 1;
+      if (running) {
+        if (boostHeld() && boostEnergy > 0) {
+          boosting = true;
+          boostEnergy = Math.max(0, boostEnergy - 1.0 * step);
+          mult = 1.6;
+        } else {
+          boosting = false;
+          boostEnergy = Math.min(100, boostEnergy + 0.5 * step);
+          if (slowHeld()) mult = 0.45;
+        }
+      }
+      const dist = (running ? worldSpeed() * mult : 2) * step;
       scrollY = (scrollY + dist) % 120;
 
       if (!running) return;
@@ -351,6 +530,7 @@
         if (Math.sqrt(dx * dx + dy * dy) < c.r + 22) {
           c.collected = true;
           score += 3;
+          wallet += 5;
           scoreEl.textContent = 'Score: ' + score;
           splashes.push({ x: c.x, y: c.y, age: 18 });
         }
@@ -363,6 +543,31 @@
       }
 
       levelFlash = Math.max(0, levelFlash - step);
+
+      // go too slow and the police boat comes after you
+      policeCool = Math.max(0, policeCool - step);
+      const crawling = slowHeld() && !boosting;
+      if (!police) {
+        if (crawling) slowTimer += step;
+        else slowTimer = Math.max(0, slowTimer - step * 0.5);
+        if (slowTimer > 120 && policeCool <= 0) spawnPolice();
+      } else {
+        const rate = 0.55 + (crawling ? 0.6 : 0) - (boosting ? 3.2 : 0);
+        police.g -= rate * step;
+        police.x += (boat.x - police.x) * 0.04 * step;
+        police.flash += step;
+        if (police.g > 360) {
+          police = null;
+          slowTimer = 0;
+          policeCool = 600;
+          addPoints(5);
+          say('You outran the police! \u{1F680} +5');
+        } else if (police.g <= 45) {
+          police.state = 'caught';
+          police.t = 0;
+          police.fine = 20 + Math.floor(Math.random() * 31); // up to 50
+        }
+      }
     }
 
     // ---------- drawing ----------
@@ -481,12 +686,12 @@
       const angle = crashDir * sink * 1.35;
 
       // foam trail behind the boat while sailing
-      if (!crashing && !gameOver) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
+      if (!crashing && !gameOver && (started || (dock && dock.stage === 'castoff'))) {
+        ctx.fillStyle = boosting ? 'rgba(255, 255, 255, 0.5)' : 'rgba(255, 255, 255, 0.28)';
         ctx.beginPath();
         ctx.moveTo(x - 12, y + 26);
-        ctx.lineTo(x - 26 - Math.sin(frame / 10) * 3, y + 92);
-        ctx.lineTo(x + 26 + Math.sin(frame / 10) * 3, y + 92);
+        ctx.lineTo(x - 26 - Math.sin(frame / 10) * 3, y + 92 + (boosting ? 46 : 0));
+        ctx.lineTo(x + 26 + Math.sin(frame / 10) * 3, y + 92 + (boosting ? 46 : 0));
         ctx.lineTo(x + 12, y + 26);
         ctx.closePath();
         ctx.fill();
@@ -551,6 +756,256 @@
       });
     }
 
+
+    function drawPolice() {
+      const p = police;
+      const caught = p.state === 'caught';
+      const x = caught ? Math.min(W - 30, boat.x + 46) : p.x;
+      const y = caught ? boatY + 4 : boatY + p.g;
+      if (y > H + 70) return;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.beginPath();
+      ctx.moveTo(0, -33);
+      ctx.quadraticCurveTo(19, -10, 15, 28);
+      ctx.lineTo(-15, 28);
+      ctx.quadraticCurveTo(-19, -10, 0, -33);
+      ctx.closePath();
+      ctx.fillStyle = '#f4f6f8';
+      ctx.fill();
+      ctx.strokeStyle = '#1b3a6b';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.fillStyle = '#1b3a6b';
+      ctx.fillRect(-13, -2, 26, 9);
+      ctx.fillStyle = '#9fd3ee';
+      ctx.fillRect(-8, -18, 16, 12);
+      const on = Math.floor(p.flash / 8) % 2 === 0;
+      ctx.fillStyle = on ? '#ff2d2d' : '#5a1a1a';
+      ctx.beginPath();
+      ctx.arc(-6, -22, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = on ? '#1a2a5a' : '#3a7bff';
+      ctx.beginPath();
+      ctx.arc(6, -22, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+      ctx.beginPath();
+      ctx.arc(x + (on ? -6 : 6), y - 22, 22, 0, Math.PI * 2);
+      ctx.fillStyle = on ? 'rgba(255, 40, 40, 0.28)' : 'rgba(60, 120, 255, 0.28)';
+      ctx.fill();
+    }
+
+    function drawHud() {
+      // wallet
+      ctx.fillStyle = 'rgba(10, 25, 35, 0.65)';
+      ctx.beginPath();
+      ctx.roundRect(10, 10, 112, 32, 16);
+      ctx.fill();
+      ctx.fillStyle = '#ffe066';
+      ctx.font = 'bold 17px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('\u{1F4B0} ' + wallet, 22, 33);
+      if (toast) {
+        const a = Math.min(1, toast.t / 25);
+        ctx.globalAlpha = a;
+        ctx.font = 'bold 14px sans-serif';
+        const w = Math.min(W - 24, ctx.measureText(toast.text).width + 28);
+        ctx.fillStyle = 'rgba(10, 25, 35, 0.8)';
+        ctx.beginPath();
+        ctx.roundRect(W / 2 - w / 2, 96, w, 34, 17);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(toast.text, W / 2, 118);
+        ctx.globalAlpha = 1;
+      }
+      // the Slow and Boost buttons
+      const slowOn = slowHeld();
+      ctx.fillStyle = slowOn ? '#e08a1e' : 'rgba(10, 25, 35, 0.65)';
+      ctx.beginPath();
+      ctx.roundRect(slowBtn.x, slowBtn.y, slowBtn.w, slowBtn.h, 22);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('⚓ Slow', slowBtn.x + slowBtn.w / 2, slowBtn.y + 28);
+      const bOn = boosting;
+      ctx.fillStyle = 'rgba(10, 25, 35, 0.65)';
+      ctx.beginPath();
+      ctx.roundRect(boostBtn.x, boostBtn.y, boostBtn.w, boostBtn.h, 22);
+      ctx.fill();
+      ctx.fillStyle = bOn ? '#ff7a1a' : '#2fbf71';
+      ctx.beginPath();
+      ctx.roundRect(boostBtn.x + 3, boostBtn.y + 3, Math.max(0, (boostBtn.w - 6) * (boostEnergy / 100)), boostBtn.h - 6, 19);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('\u{1F680} Boost', boostBtn.x + boostBtn.w / 2, boostBtn.y + 28);
+    }
+
+    function drawFinePanel() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.roundRect(40, 170, 320, 230, 20);
+      ctx.fill();
+      ctx.strokeStyle = '#1b3a6b';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#1b3a6b';
+      ctx.beginPath();
+      ctx.roundRect(40, 170, 320, 48, 20);
+      ctx.fill();
+      ctx.fillRect(40, 196, 320, 22);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText('\u{1F6A8} POLICE! STOP!', 200, 202);
+      ctx.font = '44px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1F46E}', 200, 262);
+      ctx.fillStyle = '#1b3a6b';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('You were sailing too slowly!', 200, 292);
+      ctx.fillText('Your fine is \u{1F4B0} ' + police.fine, 200, 316);
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#5b6a7a';
+      ctx.fillText('You have \u{1F4B0} ' + wallet, 200, 336);
+      if (police.t > 30) {
+        ctx.fillStyle = '#2fbf71';
+        ctx.beginPath();
+        ctx.roundRect(90, 346, 220, 44, 22);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.fillText('Pay the fine \u{1F4B8}', 200, 374);
+      }
+    }
+
+    function drawDock() {
+      const d = dock;
+      ctx.save();
+      ctx.translate(0, d.off);
+      // a big ship far away
+      ctx.font = '90px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText('\u{1F6A2}', 290, 190 + Math.sin(frame / 40) * 3);
+      // the dock: planks
+      const plank = (x, y, w, h) => {
+        ctx.fillStyle = '#a8793f';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#8a5f2c';
+        ctx.lineWidth = 2;
+        for (let yy = y + 14; yy < y + h; yy += 14) {
+          ctx.beginPath();
+          ctx.moveTo(x, yy);
+          ctx.lineTo(x + w, yy);
+          ctx.stroke();
+        }
+        ctx.strokeStyle = '#6b4a22';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(x, y, w, h);
+      };
+      plank(-4, 440, 154, 170);
+      plank(250, 440, 154, 170);
+      plank(-4, 566, W + 8, 40);
+      // containers and a crane
+      [['#c0392b', 266, 452, 56, 34], ['#2c7fb8', 328, 452, 62, 34], ['#e8a317', 280, 492, 74, 34]].forEach(([c, x, y, w, h]) => {
+        ctx.fillStyle = c;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(x, y, w, h);
+        for (let k = 1; k < 5; k++) {
+          ctx.beginPath();
+          ctx.moveTo(x + (w / 5) * k, y);
+          ctx.lineTo(x + (w / 5) * k, y + h);
+          ctx.stroke();
+        }
+      });
+      ctx.font = '54px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1F3D7}️', 366, 446);
+      // the sign
+      ctx.fillStyle = '#5a3a1a';
+      ctx.beginPath();
+      ctx.roundRect(14, 394, 124, 34, 8);
+      ctx.fill();
+      ctx.fillStyle = '#ffe9b0';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.fillText('⚓ SHIP DOCK', 76, 416);
+      // bollards, the rope and the gangplank
+      [[150, 470], [150, 520], [250, 470]].forEach(([x, y]) => {
+        ctx.fillStyle = '#3a3f45';
+        ctx.beginPath();
+        ctx.arc(x, y, 7, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      if (d.stage !== 'castoff') {
+        ctx.strokeStyle = '#d9c28a';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(150, 470);
+        ctx.quadraticCurveTo(168, 484, 183, 474);
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#c99a55';
+      ctx.beginPath();
+      ctx.moveTo(150, 508);
+      ctx.lineTo(150, 524);
+      ctx.lineTo(188, 504);
+      ctx.lineTo(188, 492);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawDockFront() {
+      const d = dock;
+      // the sailor
+      if (d.stage === 'walk' || d.stage === 'board') {
+        const x = d.stage === 'walk' ? d.sx : d.px;
+        const y = d.stage === 'walk' ? 520 : d.py;
+        ctx.fillStyle = 'rgba(0,0,0,0.25)';
+        ctx.beginPath();
+        ctx.ellipse(x, y + 14 + (d.stage === 'board' ? 0 : 0), 14, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '36px sans-serif';
+        ctx.fillStyle = '#000000';
+        ctx.textAlign = 'center';
+        ctx.fillText('\u{1F9D1}‍✈️', x, y + 8 + Math.sin(d.t / 5) * (d.stage === 'walk' && d.goal !== null ? 2 : 0));
+      }
+      let msg = '';
+      let label = '';
+      if (d.stage === 'walk') {
+        msg = d.sx > 105 ? 'You are at the boat! Climb aboard ⛵' : 'Walk along the dock to your boat \u{1F449} Tap the dock';
+        if (d.sx > 105) label = 'Board the boat ⛵';
+      } else if (d.stage === 'board') msg = 'Climbing aboard...';
+      else if (d.stage === 'rope') {
+        msg = 'You are on board! Untie the rope.';
+        label = 'Untie the rope & sail \u{1FAA2}';
+      } else msg = 'Sailing out of the dock... ⛵';
+      ctx.fillStyle = 'rgba(10, 25, 35, 0.72)';
+      ctx.beginPath();
+      ctx.roundRect(20, 20, W - 40, 38, 19);
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(msg, W / 2, 44);
+      if (label) {
+        ctx.fillStyle = '#2fbf71';
+        ctx.beginPath();
+        ctx.roundRect(dockBtn.x, dockBtn.y, dockBtn.w, dockBtn.h, 24);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 17px sans-serif';
+        ctx.fillText(label, W / 2, dockBtn.y + 31);
+      }
+    }
+
     function drawOverlay(title, subtitle) {
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.fillRect(0, 0, W, H);
@@ -566,10 +1021,15 @@
       ctx.clearRect(0, 0, W, H);
       drawSea();
 
+      if (dock) drawDock();
       coins.forEach(drawCoin);
       rocks.forEach((o) => (o.kind === 'shark' ? drawShark(o) : drawRock(o)));
+      if (police) drawPolice();
       drawBoat();
       drawSplashes();
+      if (dock) drawDockFront();
+      else if (started && !gameOver) drawHud();
+      if (police && police.state === 'caught') drawFinePanel();
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
@@ -579,10 +1039,10 @@
         ctx.fillText('Level ' + level + '!', W / 2, 70);
       }
 
-      if (!started) {
-        drawOverlay('Tap to start', 'Dodge the rocks and sharks!');
+      if (!started && !dock) {
+        drawOverlay('Tap to start', 'Go to the dock and board your boat!');
       } else if (gameOver) {
-        drawOverlay('Shipwrecked!', 'Tap to sail again • Score: ' + score);
+        drawOverlay('Shipwrecked!', 'Tap to go back to the dock • Score: ' + score);
       }
     }
 
