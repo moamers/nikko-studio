@@ -108,7 +108,7 @@
 
 <div class="wrap">
   <h1>&#9973; Boat Dodge</h1>
-  <p class="sub">Board your boat at the dock, then drag left and right to sail. Dodge the rocks and sharks, grab the gold! Too slow and the police come: hit Boost to get away.</p>
+  <p class="sub">Board your boat at the dock, then drag left and right to sail. Dodge the rocks and sharks, grab the gold! Too slow and the police come: hit Boost to get away. Watch your fuel \u26FD and the storms \u26C8\uFE0F!</p>
   <p class="score" id="score">Score: 0</p>
   <p class="level" id="level">Level 1</p>
   <p class="best" id="best">Best: 0</p>
@@ -134,7 +134,14 @@
     // leave it in the wrong place.
     const boatY = H - 130;
     const boat = { x: W / 2, w: 38, h: 64 };
-    const followSpeed = 0.35;
+    const boats = [
+      { name: 'Red Sailboat', price: 0, boost: 1.6, follow: 0.35, hull: '#d62828', edge: '#8c1a1a' },
+      { name: 'Speedboat', price: 120, boost: 1.9, follow: 0.42, hull: '#1b6fd1', edge: '#0f3f7a' },
+      { name: 'Jet Racer', price: 250, boost: 2.2, follow: 0.5, hull: '#ffcf1a', edge: '#7a5a00' },
+      { name: 'Golden Rocket', price: 400, boost: 2.6, follow: 0.6, hull: '#d4a017', edge: '#6b4a00' },
+    ];
+    let curBoat = 0;
+    let owned = [true, false, false, false];
     const keySpeed = 9;
 
     let targetX = boat.x;
@@ -163,10 +170,19 @@
     let police = null; // { g: how far behind you, state: 'chase' | 'caught', x, flash, fine, t }
     let dock = null; // { stage: 'walk' | 'board' | 'rope' | 'castoff', sx, goal, t, off, ... }
     let toast = null; // { text, t }
+    let fuel = 100;
+    let fuelOutT = 0;
+    let station = null; // a fuel station floating by: { y, side, paid }
+    let stationIn = 1300;
+    let storm = { state: 'none', t: 0, k: 0, kickIn: 120, kickV: 0, flash: 0, next: 1500 };
+    let shopOpen = false;
+    let shopMsg = '';
+    let endReason = 'wreck';
     const heldBtn = { slow: null, boost: null };
     const slowBtn = { x: 12, y: 542, w: 96, h: 44 };
     const boostBtn = { x: 292, y: 542, w: 96, h: 44 };
-    const dockBtn = { x: 90, y: 536, w: 220, h: 48 };
+    const dockBtn = { x: 176, y: 536, w: 210, h: 48 };
+    const shopBtn = { x: 14, y: 536, w: 150, h: 48 };
     const inRect = (p, r) => p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h;
     const slowHeld = () => keys.slow || heldBtn.slow !== null;
     const boostHeld = () => keys.boost || heldBtn.boost !== null;
@@ -183,7 +199,21 @@
 
     try {
       best = Number(localStorage.getItem('boatDodgeBest') || 0);
+      const w = localStorage.getItem('boatDodgeWallet');
+      if (w !== null && !isNaN(Number(w))) wallet = Number(w);
+      const o = JSON.parse(localStorage.getItem('boatDodgeOwned') || 'null');
+      if (Array.isArray(o) && o.length === boats.length) owned = o.map(Boolean);
+      const cb = Number(localStorage.getItem('boatDodgeBoat') || 0);
+      if (cb >= 0 && cb < boats.length && owned[cb]) curBoat = cb;
     } catch (e) {}
+    owned[0] = true;
+    function saveProgress() {
+      try {
+        localStorage.setItem('boatDodgeWallet', String(Math.floor(wallet)));
+        localStorage.setItem('boatDodgeOwned', JSON.stringify(owned));
+        localStorage.setItem('boatDodgeBoat', String(curBoat));
+      } catch (e) {}
+    }
     bestEl.textContent = 'Best: ' + best;
 
     function levelFor(s) {
@@ -229,7 +259,12 @@
       crashT = 0;
       gameOver = false;
       started = true;
-      wallet = 500;
+      fuel = 100;
+      fuelOutT = 0;
+      station = null;
+      stationIn = 1300;
+      storm = { state: 'none', t: 0, k: 0, kickIn: 120, kickV: 0, flash: 0, next: 1500 };
+      endReason = 'wreck';
       boostEnergy = 100;
       boosting = false;
       slowTimer = 0;
@@ -258,6 +293,10 @@
       police = null;
       boosting = false;
       toast = null;
+      shopOpen = false;
+      shopMsg = '';
+      if (wallet < 100) wallet = 100; // pocket money so you can always go on
+      saveProgress();
     }
 
     function startOrRestart() {
@@ -281,13 +320,46 @@
     function payFine() {
       const amount = Math.min(wallet, police.fine);
       wallet -= amount;
+      saveProgress();
       police = null;
       slowTimer = 0;
       policeCool = 900;
       say(amount > 0 ? 'Fine paid: -' + amount + ' \u{1F4B0} You may go. Sail on!' : 'You have no money, so only a warning. Sail on!');
     }
 
+    function shopPress(p) {
+      if (inRect(p, { x: 100, y: 502, w: 200, h: 40 })) {
+        shopOpen = false;
+        return;
+      }
+      for (let i = 0; i < boats.length; i++) {
+        const cx = 32 + (i % 2) * 172;
+        const cy = 108 + Math.floor(i / 2) * 190;
+        if (!inRect(p, { x: cx, y: cy, w: 162, h: 178 })) continue;
+        if (owned[i]) {
+          curBoat = i;
+          shopMsg = boats[i].name + ' is ready! \u26F5';
+        } else if (wallet >= boats[i].price) {
+          wallet -= boats[i].price;
+          owned[i] = true;
+          curBoat = i;
+          shopMsg = 'You bought the ' + boats[i].name + '! \u{1F389}';
+        } else shopMsg = 'Not enough money for the ' + boats[i].name + ' yet \u{1F4B0}';
+        saveProgress();
+        return;
+      }
+    }
+
     function dockPress(p) {
+      if (shopOpen) {
+        shopPress(p);
+        return;
+      }
+      if (dock.stage === 'walk' && (inRect(p, shopBtn) || (p.x < 150 && p.y > 396 && p.y < 470))) {
+        shopOpen = true;
+        shopMsg = 'Spend your money on a faster boat!';
+        return;
+      }
       if (dock.stage === 'walk') {
         if (dock.sx > 105 && inRect(p, dockBtn)) {
           dock.stage = 'board';
@@ -393,7 +465,7 @@
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.boost = true;
       if (e.code === 'Space') {
         e.preventDefault();
-        if (dock) dockPress({ x: 200, y: 560 });
+        if (dock) dockPress({ x: 280, y: 560 });
         else if (police && police.state === 'caught') press({ x: 200, y: 350 }, 'key');
         else startOrRestart();
       }
@@ -405,6 +477,100 @@
       if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.slow = false;
       if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'ArrowUp' || e.code === 'KeyW') keys.boost = false;
     });
+
+
+    function updateStorm(step) {
+      const st = storm;
+      if (st.flash > 0) st.flash -= step;
+      if (st.state === 'none') {
+        st.k = 0;
+        if (level >= 2) st.next -= step;
+        if (st.next <= 0) {
+          st.state = 'warn';
+          st.t = 0;
+          say('⛈️ A storm is coming! Big waves ahead!');
+        }
+        return;
+      }
+      st.t += step;
+      if (st.state === 'warn') {
+        st.k = Math.min(0.35, st.t / 400);
+        if (st.t > 160) {
+          st.state = 'on';
+          st.t = 0;
+        }
+      } else if (st.state === 'on') {
+        st.k = Math.min(1, 0.35 + st.t / 160);
+        // waves shove the boat sideways
+        const drift = Math.sin(frame / 38) * 1.3 * st.k * step;
+        boat.x += drift;
+        targetX += drift;
+        st.kickIn -= step;
+        if (st.kickIn <= 0) {
+          st.kickV = (Math.random() < 0.5 ? -1 : 1) * (9 + Math.random() * 5);
+          st.kickIn = 150 + Math.random() * 110;
+          splashes.push({ x: boat.x, y: boatY, age: 0 });
+        }
+        if (Math.random() < 0.004 * step) st.flash = 9;
+        if (st.t > 1000) {
+          st.state = 'fade';
+          st.t = 0;
+        }
+      } else if (st.state === 'fade') {
+        st.k = Math.max(0, 1 - st.t / 160);
+        if (st.t > 160) {
+          st.state = 'none';
+          st.next = 1800 + Math.random() * 1200;
+          say('The storm has passed ☀️');
+        }
+      }
+      if (Math.abs(st.kickV) > 0.2) {
+        boat.x += st.kickV * step;
+        targetX += st.kickV * step;
+        st.kickV *= Math.pow(0.86, step);
+      }
+      boat.x = Math.max(boat.w / 2, Math.min(W - boat.w / 2, boat.x));
+      targetX = Math.max(boat.w / 2, Math.min(W - boat.w / 2, targetX));
+    }
+
+    function stationZone() {
+      return station.side === 0 ? { x: 56, w: 104 } : { x: W - 160, w: 104 };
+    }
+
+    function updateStation(step, dist) {
+      if (!station) {
+        stationIn -= step;
+        if (fuel < 30 && stationIn > 240) stationIn = 240;
+        if (stationIn <= 0) {
+          station = { y: -190, side: Math.random() < 0.5 ? 0 : 1, paid: 0, filling: false };
+          say('⛽ A fuel station is coming up!');
+        }
+        return;
+      }
+      station.y += dist;
+      const z = stationZone();
+      const inside = boat.x > z.x && boat.x < z.x + z.w && Math.abs(boatY - (station.y + 85)) < 85;
+      if (inside && fuel < 100 && wallet > 0) {
+        const gain = Math.min(1.4 * step, 100 - fuel);
+        const cost = Math.min(wallet, gain * 0.25);
+        fuel += cost < gain * 0.25 ? cost * 4 : gain;
+        wallet -= cost;
+        station.paid += cost;
+        station.filling = true;
+      } else if (station.filling) {
+        station.filling = false;
+        if (station.paid > 0.5) {
+          say('⛽ Tank filled! -' + Math.round(station.paid) + ' \u{1F4B0}');
+          saveProgress();
+        }
+        station.paid = 0;
+      }
+      if (station.y > H + 30) {
+        if (station.paid > 0.5) saveProgress();
+        station = null;
+        stationIn = 1500 + Math.random() * 600;
+      }
+    }
 
     function updateDock(step) {
       dock.t += step;
@@ -480,25 +646,37 @@
       }
       let mult = 1;
       if (running) {
-        if (boostHeld() && boostEnergy > 0) {
+        if (boostHeld() && boostEnergy > 0 && fuel > 0) {
           boosting = true;
           boostEnergy = Math.max(0, boostEnergy - 1.0 * step);
-          mult = 1.6;
+          mult = boats[curBoat].boost;
         } else {
           boosting = false;
           boostEnergy = Math.min(100, boostEnergy + 0.5 * step);
           if (slowHeld()) mult = 0.45;
         }
+        // the engine: fuel runs down, and with an empty tank you only drift
+        fuel = Math.max(0, fuel - (0.028 + (boosting ? 0.06 : 0)) * step);
+        if (fuel <= 0) {
+          mult = Math.min(mult, 0.3);
+          fuelOutT += step;
+          if (fuelOutT > 600) {
+            endReason = 'fuel';
+            endGame();
+            return;
+          }
+        } else fuelOutT = 0;
       }
       const dist = (running ? worldSpeed() * mult : 2) * step;
       scrollY = (scrollY + dist) % 120;
 
       if (!running) return;
 
+      updateStorm(step);
       if (keys.left) targetX -= keySpeed * step;
       if (keys.right) targetX += keySpeed * step;
       targetX = Math.max(boat.w / 2, Math.min(W - boat.w / 2, targetX));
-      boat.x += (targetX - boat.x) * (1 - Math.pow(1 - followSpeed, step));
+      boat.x += (targetX - boat.x) * (1 - Math.pow(1 - boats[curBoat].follow, step));
 
       rocks.forEach((o) => {
         o.y += dist;
@@ -531,6 +709,7 @@
           c.collected = true;
           score += 3;
           wallet += 5;
+          saveProgress();
           scoreEl.textContent = 'Score: ' + score;
           splashes.push({ x: c.x, y: c.y, age: 18 });
         }
@@ -544,6 +723,8 @@
 
       levelFlash = Math.max(0, levelFlash - step);
 
+      updateStation(step, dist);
+
       // go too slow and the police boat comes after you
       policeCool = Math.max(0, policeCool - step);
       const crawling = slowHeld() && !boosting;
@@ -552,7 +733,7 @@
         else slowTimer = Math.max(0, slowTimer - step * 0.5);
         if (slowTimer > 120 && policeCool <= 0) spawnPolice();
       } else {
-        const rate = 0.55 + (crawling ? 0.6 : 0) - (boosting ? 3.2 : 0);
+        const rate = 0.55 + (crawling ? 0.6 : 0) - (boosting ? (3.2 * (boats[curBoat].boost - 1)) / 0.6 : 0);
         police.g -= rate * step;
         police.x += (boat.x - police.x) * 0.04 * step;
         police.flash += step;
@@ -589,6 +770,154 @@
           ctx.stroke();
         }
       }
+    }
+
+    function drawStorm() {
+      const k = storm.k;
+      if (k <= 0) return;
+      // big waves
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + 0.4 * k + ')';
+      ctx.lineWidth = 4;
+      for (let row = -1; row < H / 90 + 1; row++) {
+        const y = row * 90 + ((scrollY * 1.5) % 90);
+        for (let col = 0; col < 4; col++) {
+          const x = col * 110 + (row % 2 === 0 ? 30 : 80) + Math.sin(frame / 22 + row + col) * 12;
+          ctx.beginPath();
+          ctx.arc(x, y, 24 + 6 * Math.sin(frame / 18 + col), Math.PI * 0.12, Math.PI * 0.88);
+          ctx.stroke();
+        }
+      }
+    }
+
+    function drawStormOverlay() {
+      const k = storm.k;
+      if (k <= 0) return;
+      ctx.fillStyle = 'rgba(8, 20, 40, ' + 0.42 * k + ')';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = 'rgba(200, 220, 255, ' + 0.45 * k + ')';
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 46; i++) {
+        const x = (i * 97 + frame * 2.2) % (W + 40) - 20;
+        const y = (i * 53 + frame * 14) % (H + 40) - 20;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 6, y + 16);
+        ctx.stroke();
+      }
+      if (storm.flash > 0) {
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + 0.5 * (storm.flash / 9) + ')';
+        ctx.fillRect(0, 0, W, H);
+      }
+    }
+
+    function drawStation() {
+      const st = station;
+      const left = st.side === 0;
+      const px = left ? 0 : W - 58;
+      ctx.fillStyle = '#a8793f';
+      ctx.fillRect(px, st.y, 58, 170);
+      ctx.strokeStyle = '#8a5f2c';
+      ctx.lineWidth = 2;
+      for (let yy = st.y + 14; yy < st.y + 170; yy += 14) {
+        ctx.beginPath();
+        ctx.moveTo(px, yy);
+        ctx.lineTo(px + 58, yy);
+        ctx.stroke();
+      }
+      ctx.strokeStyle = '#6b4a22';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(px, st.y, 58, 170);
+      ctx.font = '34px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('⛽', px + 29, st.y + 95);
+      ctx.fillStyle = '#e8a317';
+      ctx.fillRect(px + 6, st.y + 8, 46, 18);
+      ctx.fillStyle = '#1a1a1a';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('FUEL', px + 29, st.y + 21);
+      // the bay where you refuel
+      const z = stationZone();
+      ctx.fillStyle = st.filling ? 'rgba(47, 191, 113, 0.4)' : 'rgba(255, 224, 102, 0.22)';
+      ctx.fillRect(z.x, st.y + 4, z.w, 162);
+      ctx.setLineDash([8, 8]);
+      ctx.strokeStyle = st.filling ? '#2fbf71' : '#ffe066';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(z.x, st.y + 4, z.w, 162);
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(st.filling ? '⛽ Filling...' : '⛽ Fuel bay', z.x + z.w / 2, st.y + 88);
+    }
+
+    function drawShop() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = '#fff9ee';
+      ctx.beginPath();
+      ctx.roundRect(20, 50, 360, 500, 18);
+      ctx.fill();
+      ctx.strokeStyle = '#1b4f8a';
+      ctx.lineWidth = 4;
+      ctx.stroke();
+      ctx.fillStyle = '#1b4f8a';
+      ctx.beginPath();
+      ctx.roundRect(20, 50, 360, 48, 18);
+      ctx.fill();
+      ctx.fillRect(20, 78, 360, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 18px sans-serif';
+      ctx.fillText('\u{1F3EA} HARBOR SHOP', 34, 82);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#ffe066';
+      ctx.fillText('\u{1F4B0} ' + Math.floor(wallet), 366, 82);
+      boats.forEach((b, i) => {
+        const x = 32 + (i % 2) * 172;
+        const y = 108 + Math.floor(i / 2) * 190;
+        ctx.beginPath();
+        ctx.roundRect(x, y, 162, 178, 14);
+        ctx.fillStyle = curBoat === i ? '#d9f7e3' : '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = curBoat === i ? '#2fbf71' : '#1b4f8a';
+        ctx.lineWidth = curBoat === i ? 5 : 3;
+        ctx.stroke();
+        ctx.fillStyle = '#bfe3f5';
+        ctx.beginPath();
+        ctx.roundRect(x + 10, y + 8, 142, 84, 10);
+        ctx.fill();
+        ctx.save();
+        ctx.translate(x + 81, y + 52);
+        ctx.scale(0.95, 0.95);
+        drawBoatShape(i, true);
+        ctx.restore();
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#1a2a33';
+        ctx.font = 'bold 14px sans-serif';
+        ctx.fillText(b.name, x + 81, y + 112);
+        ctx.font = '10px sans-serif';
+        ctx.fillStyle = '#4a6572';
+        ctx.fillText('\u{1F680} Boost x' + b.boost.toFixed(1) + '  \u{1F3AF} Steer ' + '★'.repeat(i + 1), x + 81, y + 129);
+        const can = owned[i] || wallet >= b.price;
+        ctx.beginPath();
+        ctx.roundRect(x + 16, y + 140, 130, 28, 14);
+        ctx.fillStyle = curBoat === i ? '#2fbf71' : owned[i] ? '#1b6fd1' : can ? '#e08a1e' : '#9aa5b1';
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(curBoat === i ? 'Using ✅' : owned[i] ? 'Use this boat' : 'Buy \u{1F4B0} ' + b.price, x + 81, y + 159);
+      });
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#1a2a33';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.fillText(shopMsg, 200, 494);
+      ctx.beginPath();
+      ctx.roundRect(100, 502, 200, 40, 20);
+      ctx.fillStyle = '#1b4f8a';
+      ctx.fill();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 15px sans-serif';
+      ctx.fillText('Back to the dock ⚓', 200, 528);
     }
 
     function drawRock(o) {
@@ -679,11 +1008,108 @@
       ctx.stroke();
     }
 
+
+    // the boats you can sail (also used by the shop): drawn pointing up at 0, 0
+    function drawBoatShape(i, flame) {
+      const b = boats[i];
+      const hull = () => {
+        ctx.beginPath();
+        ctx.moveTo(0, -33);
+        ctx.quadraticCurveTo(19, -10, 15, 28);
+        ctx.lineTo(-15, 28);
+        ctx.quadraticCurveTo(-19, -10, 0, -33);
+        ctx.closePath();
+      };
+      if (i >= 2 && flame) {
+        ctx.fillStyle = i === 3 ? '#ffb000' : '#ff7a1a';
+        ctx.beginPath();
+        ctx.moveTo(-8, 28);
+        ctx.lineTo(0, 28 + 26 + Math.sin(frame / 2) * 5);
+        ctx.lineTo(8, 28);
+        ctx.fill();
+      }
+      hull();
+      ctx.fillStyle = b.hull;
+      ctx.fill();
+      ctx.strokeStyle = b.edge;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      if (i === 0) {
+        ctx.beginPath();
+        ctx.moveTo(0, -24);
+        ctx.quadraticCurveTo(12, -8, 9, 22);
+        ctx.lineTo(-9, 22);
+        ctx.quadraticCurveTo(-12, -8, 0, -24);
+        ctx.closePath();
+        ctx.fillStyle = '#f2d9a8';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(0, -18);
+        ctx.quadraticCurveTo(22, -2, 3, 14);
+        ctx.lineTo(0, 14);
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#c9c2b2';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(0, -1, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#6b4f2a';
+        ctx.fill();
+      } else if (i === 1) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-11, -4, 22, 8);
+        ctx.fillStyle = '#9fd3ee';
+        ctx.beginPath();
+        ctx.moveTo(-8, -10);
+        ctx.lineTo(8, -10);
+        ctx.lineTo(6, -20);
+        ctx.lineTo(-6, -20);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#333333';
+        ctx.fillRect(-5, 24, 10, 9);
+      } else if (i === 2) {
+        ctx.fillStyle = '#1a1a1a';
+        ctx.fillRect(-3, -28, 6, 52);
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, -4, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#1a1a1a';
+        ctx.beginPath();
+        ctx.moveTo(-15, 14);
+        ctx.lineTo(-24, 28);
+        ctx.lineTo(-12, 26);
+        ctx.moveTo(15, 14);
+        ctx.lineTo(24, 28);
+        ctx.lineTo(12, 26);
+        ctx.fill();
+      } else {
+        ctx.fillStyle = '#fff3b0';
+        ctx.fillRect(-4, -26, 8, 50);
+        ctx.fillStyle = '#c0392b';
+        ctx.beginPath();
+        ctx.arc(0, -8, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#b8860b';
+        ctx.beginPath();
+        ctx.moveTo(-15, 8);
+        ctx.lineTo(-28, 30);
+        ctx.lineTo(-12, 24);
+        ctx.moveTo(15, 8);
+        ctx.lineTo(28, 30);
+        ctx.lineTo(12, 24);
+        ctx.fill();
+      }
+    }
+
     function drawBoat() {
       const sink = crashing || (gameOver && crashT > 0) ? crashT : 0;
       const x = boat.x;
       const y = boatY + sink * 30;
-      const angle = crashDir * sink * 1.35;
+      const angle = crashDir * sink * 1.35 + (storm.k > 0 && !dock ? Math.sin(frame / 9) * 0.1 * storm.k : 0);
 
       // foam trail behind the boat while sailing
       if (!crashing && !gameOver && (started || (dock && dock.stage === 'castoff'))) {
@@ -701,46 +1127,7 @@
       ctx.translate(x, y);
       ctx.rotate(angle);
 
-      // hull
-      ctx.beginPath();
-      ctx.moveTo(0, -33);
-      ctx.quadraticCurveTo(19, -10, 15, 28);
-      ctx.lineTo(-15, 28);
-      ctx.quadraticCurveTo(-19, -10, 0, -33);
-      ctx.closePath();
-      ctx.fillStyle = '#d62828';
-      ctx.fill();
-      ctx.strokeStyle = '#8c1a1a';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // deck
-      ctx.beginPath();
-      ctx.moveTo(0, -24);
-      ctx.quadraticCurveTo(12, -8, 9, 22);
-      ctx.lineTo(-9, 22);
-      ctx.quadraticCurveTo(-12, -8, 0, -24);
-      ctx.closePath();
-      ctx.fillStyle = '#f2d9a8';
-      ctx.fill();
-
-      // sail
-      ctx.beginPath();
-      ctx.moveTo(0, -18);
-      ctx.quadraticCurveTo(22, -2, 3, 14);
-      ctx.lineTo(0, 14);
-      ctx.closePath();
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.strokeStyle = '#c9c2b2';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-
-      // mast
-      ctx.beginPath();
-      ctx.arc(0, -1, 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#6b4f2a';
-      ctx.fill();
+      drawBoatShape(curBoat, boosting);
 
       ctx.restore();
     }
@@ -805,7 +1192,26 @@
       ctx.fillStyle = '#ffe066';
       ctx.font = 'bold 17px sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText('\u{1F4B0} ' + wallet, 22, 33);
+      ctx.fillText('\u{1F4B0} ' + Math.floor(wallet), 22, 33);
+      // the fuel gauge
+      ctx.fillStyle = 'rgba(10, 25, 35, 0.65)';
+      ctx.beginPath();
+      ctx.roundRect(10, 48, 112, 24, 12);
+      ctx.fill();
+      const low = fuel < 25;
+      ctx.fillStyle = low && Math.floor(frame / 10) % 2 ? '#ff4d4d' : fuel < 50 ? '#ffb000' : '#2fbf71';
+      ctx.beginPath();
+      ctx.roundRect(36, 54, Math.max(0, 80 * (fuel / 100)), 12, 6);
+      ctx.fill();
+      ctx.font = '14px sans-serif';
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('\u26FD', 14, 66);
+      if (storm.state === 'on' || storm.state === 'warn') {
+        ctx.font = '26px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.fillText('\u26C8\uFE0F', W - 14, 34);
+        ctx.textAlign = 'left';
+      }
       if (toast) {
         const a = Math.min(1, toast.t / 25);
         ctx.globalAlpha = a;
@@ -928,14 +1334,31 @@
       ctx.font = '54px sans-serif';
       ctx.fillStyle = '#000000';
       ctx.fillText('\u{1F3D7}️', 366, 446);
-      // the sign
+      // the harbor shop
+      ctx.fillStyle = '#efe0b8';
+      ctx.fillRect(12, 400, 126, 62);
+      ctx.strokeStyle = '#6b4a22';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(12, 400, 126, 62);
+      for (let k = 0; k < 7; k++) {
+        ctx.fillStyle = k % 2 ? '#ffffff' : '#d62828';
+        ctx.fillRect(12 + k * 18, 400, 18, 16);
+      }
+      ctx.fillStyle = '#5a3a1a';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('HARBOR SHOP', 75, 440);
+      ctx.font = '20px sans-serif';
+      ctx.fillStyle = '#000000';
+      ctx.fillText('\u{1F6A4}', 75, 458);
+      // the ship dock sign
       ctx.fillStyle = '#5a3a1a';
       ctx.beginPath();
-      ctx.roundRect(14, 394, 124, 34, 8);
+      ctx.roundRect(258, 418, 112, 24, 8);
       ctx.fill();
       ctx.fillStyle = '#ffe9b0';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.fillText('⚓ SHIP DOCK', 76, 416);
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText('\u2693 SHIP DOCK', 314, 435);
       // bollards, the rope and the gangplank
       [[150, 470], [150, 520], [250, 470]].forEach(([x, y]) => {
         ctx.fillStyle = '#3a3f45';
@@ -980,12 +1403,12 @@
       let msg = '';
       let label = '';
       if (d.stage === 'walk') {
-        msg = d.sx > 105 ? 'You are at the boat! Climb aboard ⛵' : 'Walk along the dock to your boat \u{1F449} Tap the dock';
+        msg = d.sx > 105 ? 'You are at the boat! Climb aboard \u26F5' : 'Walk to your boat \u{1F449} or visit the Harbor shop \u{1F3EA}';
         if (d.sx > 105) label = 'Board the boat ⛵';
       } else if (d.stage === 'board') msg = 'Climbing aboard...';
       else if (d.stage === 'rope') {
         msg = 'You are on board! Untie the rope.';
-        label = 'Untie the rope & sail \u{1FAA2}';
+        label = 'Untie the rope \u{1FAA2}';
       } else msg = 'Sailing out of the dock... ⛵';
       ctx.fillStyle = 'rgba(10, 25, 35, 0.72)';
       ctx.beginPath();
@@ -995,6 +1418,15 @@
       ctx.font = 'bold 14px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText(msg, W / 2, 44);
+      if (d.stage === 'walk') {
+        ctx.fillStyle = '#1b6fd1';
+        ctx.beginPath();
+        ctx.roundRect(shopBtn.x, shopBtn.y, shopBtn.w, shopBtn.h, 24);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 15px sans-serif';
+        ctx.fillText('\u{1F3EA} Harbor shop', shopBtn.x + shopBtn.w / 2, shopBtn.y + 30);
+      }
       if (label) {
         ctx.fillStyle = '#2fbf71';
         ctx.beginPath();
@@ -1002,7 +1434,7 @@
         ctx.fill();
         ctx.fillStyle = '#ffffff';
         ctx.font = 'bold 17px sans-serif';
-        ctx.fillText(label, W / 2, dockBtn.y + 31);
+        ctx.fillText(label, dockBtn.x + dockBtn.w / 2, dockBtn.y + 31);
       }
     }
 
@@ -1020,16 +1452,20 @@
     function draw() {
       ctx.clearRect(0, 0, W, H);
       drawSea();
+      drawStorm();
 
       if (dock) drawDock();
+      if (station) drawStation();
       coins.forEach(drawCoin);
       rocks.forEach((o) => (o.kind === 'shark' ? drawShark(o) : drawRock(o)));
       if (police) drawPolice();
       drawBoat();
       drawSplashes();
+      drawStormOverlay();
       if (dock) drawDockFront();
       else if (started && !gameOver) drawHud();
       if (police && police.state === 'caught') drawFinePanel();
+      if (shopOpen) drawShop();
 
       if (levelFlash > 0 && started && !gameOver) {
         const alpha = Math.min(1, levelFlash / 20);
@@ -1042,7 +1478,7 @@
       if (!started && !dock) {
         drawOverlay('Tap to start', 'Go to the dock and board your boat!');
       } else if (gameOver) {
-        drawOverlay('Shipwrecked!', 'Tap to go back to the dock • Score: ' + score);
+        drawOverlay(endReason === 'fuel' ? 'Out of fuel! \u26FD' : 'Shipwrecked!', 'Tap to go back to the dock • Score: ' + score);
       }
     }
 
